@@ -19,6 +19,7 @@ graph LR
     A --> C[管理错题]
     A --> D[复习计划]
     A --> E[用户数据分析]
+    A --> F[多端同步]
 
     %% 添加错题模块
     B --> B1[OCR / 手动输入]
@@ -45,12 +46,15 @@ graph LR
     E --> E2[薄弱环节诊断]
     E --> E3[学习效率建议]
 
+    %% 多端同步模块
+    F --> F1[云端数据同步]
+
     %% 样式美化
     classDef module fill:#f9f,stroke:#333,stroke-width:2px;
     classDef feature fill:#bbf,stroke:#666,stroke-width:1.5px;
     class A module;
-    class B,C,D,E module;
-    class B1,B2,B3,C1,C2,C3,C4,D1,D2,D3,E1,E2,E3 feature;
+    class B,C,D,E,F module;
+    class B1,B2,B3,C1,C2,C3,C4,D1,D2,D3,E1,E2,E3,F1 feature;
 ```
 
 ---
@@ -115,8 +119,8 @@ graph LR
 ## 🛠️ 技术栈
 
 - **前端**：Vue + TypeScript + TailwindCSS
-- **后端**：Rust + Tauri
-- **数据库**：PostgreSQL
+- **后端**：Rust + Tauri + SQLite
+- **云端**：Flask + MySQL
 
 
 ---
