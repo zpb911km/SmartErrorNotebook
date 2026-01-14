@@ -30,6 +30,10 @@ interface ErrorQuestion {
   error_note?: string; // 错题笔记
   created_at: number; // 创建时间戳
   updated_at: number; // 修改时间戳
+  sources?: Source[]; // 出题来源
+  tags?: ErrorTags[]; // 错题标签
+  attachments?: Attachment[]; // 附件
+  srs_data?: SRSData; // 单词记忆数据
 }
 
 interface SRSData {
@@ -48,6 +52,7 @@ interface Source {
   book?: string; // 书名
   chapter?: string; // 章节名
   knowledge?: string; // 知识点名
+  subject?: Subject; // 科目
 }
 
 interface ErrorTags {
