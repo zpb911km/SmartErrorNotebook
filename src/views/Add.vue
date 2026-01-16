@@ -1,10 +1,32 @@
 <template>
   <div class="add-page">
+    <!-- 相机模态框组件 -->
+    <CameraModal 
+      :visible="showCamera" 
+      @close="handleCameraClose" 
+      @capture="handleCameraCapture" 
+      @error="disableCamera"
+    />
+
+    <!-- 图片编辑模态框组件 -->
+    <ImageEditor 
+      :visible="showEdit" 
+      :imageData="editImageData"
+      @close="handleEditClose"
+      @confirm="handleEditConfirm"
+    />
+
     <div class="upload-area" :class="{ 'drag-over': isDragOver }" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false" @drop.prevent="handleDrop">
       <div class="upload-content" v-if="!imageUrl">
         <div class="upload-icon">📷</div>
         <p>点击或拖拽上传题目图片</p>
-        <input type="file" accept="image/*" @change="handleFileSelect" class="file-input">
+        <div class="upload-buttons">
+          <div class="upload-ctn">
+            <button class="upload-btn">选择文件</button>
+            <input type="file" accept="image/*" @change="handleFileSelect" class="file-input" ref="fileInputRef">
+          </div>
+          <button class="upload-btn camera-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">拍照</button>
+        </div>
       </div>
       <div class="image-preview" v-else>
         <img :src="imageUrl" alt="题目图片">
@@ -101,9 +123,20 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import CameraModal from '../components/CameraModal.vue'
+import ImageEditor from '../components/ImageEditor.vue'
 
 const isDragOver = ref(false)
 const imageUrl = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// 相机相关状态
+const showCamera = ref(false)
+const cameraDisabled = ref(false)
+
+// 图片编辑相关状态
+const showEdit = ref(false)
+const editImageData = ref('')
 
 const form = ref({
   subject: '',
@@ -127,26 +160,78 @@ const aiResult = ref({
   suggestion: '建议复习函数的定义域和值域相关概念'
 })
 
+// 打开文件选择
+const openFileInput = () => {
+  fileInputRef.value?.click()
+}
+
+// 处理文件选择
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files[0]) {
     const file = target.files[0]
-    imageUrl.value = URL.createObjectURL(file)
+    const imageData = URL.createObjectURL(file)
+    openEdit(imageData)
   }
 }
 
+// 处理拖拽
 const handleDrop = (e: DragEvent) => {
   isDragOver.value = false
   if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
     const file = e.dataTransfer.files[0]
-    imageUrl.value = URL.createObjectURL(file)
+    const imageData = URL.createObjectURL(file)
+    openEdit(imageData)
   }
 }
 
+// 清除图片
 const clearImage = () => {
   imageUrl.value = ''
 }
 
+// 打开相机
+const openCamera = () => {
+  showCamera.value = true
+}
+
+// 相机关闭
+const handleCameraClose = () => {
+  showCamera.value = false
+}
+
+// 禁用相机
+const disableCamera = () => {
+  showCamera.value = false
+  cameraDisabled.value = true
+}
+
+// 相机拍照
+const handleCameraCapture = (imageData: string) => {
+  showCamera.value = false
+  openEdit(imageData)
+}
+
+// 打开图片编辑
+const openEdit = (imageData: string) => {
+  editImageData.value = imageData
+  showEdit.value = true
+}
+
+// 图片编辑关闭
+const handleEditClose = () => {
+  showEdit.value = false
+  editImageData.value = ''
+}
+
+// 图片编辑确认
+const handleEditConfirm = (imageData: string) => {
+  showEdit.value = false
+  editImageData.value = ''
+  imageUrl.value = imageData
+}
+
+// 重置表单
 const resetForm = () => {
   form.value = {
     subject: '',
@@ -159,6 +244,7 @@ const resetForm = () => {
   imageUrl.value = ''
 }
 
+// 保存错题
 const saveError = () => {
   console.log('保存错题', form.value)
   alert('错题保存成功！')
@@ -172,6 +258,11 @@ const saveError = () => {
   padding-bottom: 100px;
 }
 
+.upload-ctn {
+  position: relative;
+}
+
+/* 上传区域 */
 .upload-area {
   background: var(--card-bg);
   border: 2px dashed var(--border-color);
@@ -187,10 +278,6 @@ const saveError = () => {
   background: var(--primary-light);
 }
 
-.upload-content {
-  position: relative;
-}
-
 .upload-icon {
   font-size: 48px;
   margin-bottom: 12px;
@@ -198,7 +285,39 @@ const saveError = () => {
 
 .upload-content p {
   color: var(--text-secondary);
-  margin: 0;
+  margin: 0 0 16px 0;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.upload-btn {
+  padding: 10px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.upload-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.upload-btn.camera-btn {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.upload-btn.camera-btn:hover {
+  background: #1565c0;
 }
 
 .file-input {
