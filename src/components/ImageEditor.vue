@@ -2,8 +2,96 @@
   <div class="edit-modal" v-if="visible">
     <div class="edit-header">
       <button class="header-btn close-btn" @click="handleCancel">✕</button>
-      <span class="edit-title">框选题目区域</span>
+      <span class="edit-title">图片编辑</span>
       <button class="header-btn confirm-btn" @click="handleConfirm">✓</button>
+    </div>
+    
+    <!-- 工具栏 -->
+    <div class="toolbar">
+      <button 
+        v-for="tool in tools" 
+        :key="tool.id"
+        class="tool-btn"
+        :class="{ active: currentTool === tool.id }"
+        @click="selectTool(tool.id)"
+        :title="tool.name"
+      >
+        {{ tool.icon }}
+      </button>
+      
+      <div class="toolbar-divider"></div>
+      
+      <button class="tool-btn" @click="undo" :disabled="historyIndex <= 0" title="撤销">
+        ↩️
+      </button>
+      <button class="tool-btn" @click="redo" :disabled="historyIndex >= history.length - 1" title="重做">
+        ↪️
+      </button>
+      
+      <div class="toolbar-divider"></div>
+      
+      <button class="tool-btn" @click="resetAll" title="重置">
+        🔄
+      </button>
+    </div>
+    
+    <!-- 调整面板 -->
+    <div class="adjustment-panel" v-if="showAdjustmentPanel">
+      <div class="panel-header">
+        <span>{{ currentToolName }}</span>
+        <button class="panel-close" @click="showAdjustmentPanel = false">✕</button>
+      </div>
+      
+      <div class="panel-content">
+        <!-- 裁剪工具 -->
+        <div v-if="currentTool === 'crop'" class="crop-controls">
+          <p class="hint">拖动四个角点框选裁剪区域</p>
+          <div class="crop-buttons">
+            <button class="control-btn" @click="resetCrop">重置选区</button>
+            <button class="control-btn primary" @click="applyCrop">应用裁剪</button>
+          </div>
+        </div>
+        
+        <!-- 旋转工具 -->
+        <div v-if="currentTool === 'rotate'" class="rotate-controls">
+          <button class="control-btn" @click="rotate(-90)">↺ 左转90°</button>
+          <button class="control-btn" @click="rotate(90)">↻ 右转90°</button>
+          <button class="control-btn" @click="rotate(180)">↔ 180°</button>
+          <div class="slider-control">
+            <label>自由旋转: {{ rotationAngle }}°</label>
+            <input type="range" v-model.number="rotationAngle" min="-180" max="180" @input="previewRotation">
+          </div>
+          <button class="control-btn primary" @click="applyRotation">应用旋转</button>
+        </div>
+        
+        <!-- 对比度工具 -->
+        <div v-if="currentTool === 'contrast'" class="contrast-controls">
+          <div class="slider-control">
+            <label>对比度: {{ contrast }}%</label>
+            <input type="range" v-model.number="contrast" min="0" max="200" @input="previewContrast">
+          </div>
+          <div class="slider-control">
+            <label>亮度: {{ brightness }}%</label>
+            <input type="range" v-model.number="brightness" min="0" max="200" @input="previewContrast">
+          </div>
+          <button class="control-btn" @click="resetContrast">重置</button>
+          <button class="control-btn primary" @click="applyContrast">应用</button>
+        </div>
+        
+        <!-- 二值化工具 -->
+        <div v-if="currentTool === 'threshold'" class="threshold-controls">
+          <div class="slider-control">
+            <label>阈值: {{ threshold }}</label>
+            <input type="range" v-model.number="threshold" min="0" max="255" @input="previewThreshold">
+          </div>
+          <div class="checkbox-control">
+            <input type="checkbox" id="invert" v-model="invertThreshold">
+            <label for="invert">反色</label>
+          </div>
+          <button class="control-btn" @click="resetThreshold">重置</button>
+          <button class="control-btn primary" @click="applyThreshold">应用</button>
+        </div>
+      </div>
     </div>
     
     <div class="edit-canvas-container" ref="containerRef">
@@ -16,17 +104,20 @@
         @touchstart="handleTouchStart"
         @touchmove="handleTouchMove"
         @touchend="handleTouchEnd"
+        @wheel="handleWheel"
       ></canvas>
     </div>
     
-    <div class="edit-controls">
-      <button class="control-btn" @click="resetCorners">重置选区</button>
+    <!-- 状态栏 -->
+    <div class="status-bar">
+      <span>{{ imageInfo }}</span>
+      <span v-if="currentTool === 'crop'">{{ cropInfo }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 
 interface Props {
   visible: boolean
@@ -41,9 +132,31 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+// 工具定义
+const tools = [
+  { id: 'crop', name: '裁剪', icon: '✂️' },
+  { id: 'rotate', name: '旋转', icon: '🔄' },
+  { id: 'contrast', name: '对比度', icon: '🌓' },
+  { id: 'threshold', name: '二值化', icon: '◐' }
+]
+
+// Canvas 引用
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLDivElement | null>(null)
-const image = ref<HTMLImageElement | null>(null)
+
+// 图像数据
+const originalImage = ref<HTMLImageElement | null>(null)
+const currentImage = ref<HTMLImageElement | null>(null)
+
+// 操作历史
+const history = ref<string[]>([])
+const historyIndex = ref(-1)
+
+// 当前工具
+const currentTool = ref<string>('crop')
+const showAdjustmentPanel = ref(true)
+
+// 裁剪相关
 const corners = ref<{x: number; y: number}[]>([
   { x: 0, y: 0 },
   { x: 0, y: 0 },
@@ -52,6 +165,46 @@ const corners = ref<{x: number; y: number}[]>([
 ])
 const draggingCorner = ref<number | null>(null)
 const pointRadius = 20
+
+// 旋转相关
+const rotationAngle = ref(0)
+
+// 对比度相关
+const contrast = ref(100)
+const brightness = ref(100)
+
+// 二值化相关
+const threshold = ref(128)
+const invertThreshold = ref(false)
+
+// 缩放相关
+const scale = ref(1)
+const panX = ref(0)
+const panY = ref(0)
+const isPanning = ref(false)
+const lastPanPos = ref({ x: 0, y: 0 })
+
+// 计算属性
+const currentToolName = computed(() => {
+  const tool = tools.find(t => t.id === currentTool.value)
+  return tool ? tool.name : ''
+})
+
+const imageInfo = computed(() => {
+  if (!currentImage.value) return ''
+  return `${currentImage.value.width} × ${currentImage.value.height}px`
+})
+
+const cropInfo = computed(() => {
+  if (currentTool.value !== 'crop' || corners.value.every(c => c.x === 0 && c.y === 0)) {
+    return ''
+  }
+  const minX = Math.min(...corners.value.map(c => c.x))
+  const minY = Math.min(...corners.value.map(c => c.y))
+  const maxX = Math.max(...corners.value.map(c => c.x))
+  const maxY = Math.max(...corners.value.map(c => c.y))
+  return `选区: ${Math.round(maxX - minX)} × ${Math.round(maxY - minY)}px`
+})
 
 // 监听 visible 变化
 watch(() => props.visible, async (newVal) => {
@@ -64,50 +217,72 @@ watch(() => props.visible, async (newVal) => {
 const loadImage = () => {
   const img = new Image()
   img.onload = () => {
-    image.value = img
+    originalImage.value = img
+    currentImage.value = img
+    
+    // 初始化历史记录
+    history.value = [props.imageData]
+    historyIndex.value = 0
+    
+    // 重置所有参数
+    resetAllParameters()
+    
     nextTick(() => {
-      initCanvas(img)
+      initCanvas()
+      initCropCorners()
     })
   }
   img.src = props.imageData
 }
 
 // 初始化 Canvas
-const initCanvas = (img: HTMLImageElement) => {
-  if (!canvasRef.value || !containerRef.value) return
+const initCanvas = () => {
+  if (!canvasRef.value || !containerRef.value || !currentImage.value) return
   
   const canvas = canvasRef.value
   const container = containerRef.value
+  const img = currentImage.value
   
   // 设置 Canvas 尺寸
   const maxWidth = container.clientWidth
   const maxHeight = container.clientHeight
   
-  const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
-  canvas.width = img.width * scale
-  canvas.height = img.height * scale
+  const imgScale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
+  scale.value = imgScale
+  panX.value = 0
+  panY.value = 0
   
-  // 初始化四个角点（留出边距）
+  canvas.width = img.width
+  canvas.height = img.height
+  
+  drawCanvas()
+}
+
+// 初始化裁剪角点
+const initCropCorners = () => {
+  if (!canvasRef.value || !currentImage.value) return
+  
+  const canvas = canvasRef.value
   const padding = 50
+  
   corners.value = [
     { x: padding, y: padding },
     { x: canvas.width - padding, y: padding },
     { x: canvas.width - padding, y: canvas.height - padding },
     { x: padding, y: canvas.height - padding }
   ]
-  drawCanvas()
 }
 
 // 绘制 Canvas
 const drawCanvas = () => {
-  if (!canvasRef.value || !image.value) return
+  if (!canvasRef.value || !currentImage.value) return
   
   const canvas = canvasRef.value
   const ctx = canvas.getContext('2d')
   
   if (!ctx) return
   
-  const img = image.value
+  const img = currentImage.value
   
   // 清空 Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -115,6 +290,14 @@ const drawCanvas = () => {
   // 绘制图片
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
   
+  // 如果是裁剪工具，绘制裁剪框
+  if (currentTool.value === 'crop') {
+    drawCropOverlay(ctx, canvas)
+  }
+}
+
+// 绘制裁剪遮罩
+const drawCropOverlay = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
   // 绘制半透明遮罩
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
@@ -129,7 +312,7 @@ const drawCanvas = () => {
   ctx.closePath()
   ctx.clip()
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  ctx.drawImage(currentImage.value!, 0, 0, canvas.width, canvas.height)
   ctx.restore()
   
   // 绘制四边形边框
@@ -144,7 +327,7 @@ const drawCanvas = () => {
   ctx.stroke()
   
   // 绘制顶点
-  corners.value.forEach((corner, index) => {
+  corners.value.forEach((corner) => {
     ctx.beginPath()
     ctx.arc(corner.x, corner.y, pointRadius, 0, Math.PI * 2)
     ctx.fillStyle = '#1976d2'
@@ -181,93 +364,430 @@ const screenToCanvas = (screenX: number, screenY: number) => {
 
 // 鼠标事件处理
 const handleMouseDown = (e: MouseEvent) => {
-  const rect = canvasRef.value?.getBoundingClientRect()
-  if (!rect) return
-  
-  const { x, y } = screenToCanvas(e.clientX, e.clientY)
-  
-  // 检查是否点击了某个顶点
-  corners.value.forEach((corner, index) => {
-    const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
-    if (distance <= pointRadius) {
-      draggingCorner.value = index
-    }
-  })
+  if (currentTool.value === 'crop') {
+    const { x, y } = screenToCanvas(e.clientX, e.clientY)
+    
+    corners.value.forEach((corner, index) => {
+      const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
+      if (distance <= pointRadius) {
+        draggingCorner.value = index
+      }
+    })
+  } else {
+    isPanning.value = true
+    lastPanPos.value = { x: e.clientX, y: e.clientY }
+  }
 }
 
 const handleMouseMove = (e: MouseEvent) => {
-  if (draggingCorner.value === null) return
-  
-  const { x, y } = screenToCanvas(e.clientX, e.clientY)
-  
-  // 限制在 Canvas 范围内
-  const clampedX = Math.max(0, Math.min(x, canvasRef.value!.width))
-  const clampedY = Math.max(0, Math.min(y, canvasRef.value!.height))
-  
-  corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
-  drawCanvas()
+  if (currentTool.value === 'crop' && draggingCorner.value !== null) {
+    const { x, y } = screenToCanvas(e.clientX, e.clientY)
+    
+    const clampedX = Math.max(0, Math.min(x, canvasRef.value!.width))
+    const clampedY = Math.max(0, Math.min(y, canvasRef.value!.height))
+    
+    corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
+    drawCanvas()
+  } else if (isPanning.value) {
+    const dx = e.clientX - lastPanPos.value.x
+    const dy = e.clientY - lastPanPos.value.y
+    
+    panX.value += dx
+    panY.value += dy
+    
+    lastPanPos.value = { x: e.clientX, y: e.clientY }
+    
+    updateCanvasTransform()
+  }
 }
 
 const handleMouseUp = () => {
   draggingCorner.value = null
+  isPanning.value = false
 }
 
 // 触摸事件处理
 const handleTouchStart = (e: TouchEvent) => {
   e.preventDefault()
-  const rect = canvasRef.value?.getBoundingClientRect()
-  if (!rect) return
-  
-  const touch = e.touches[0]
-  const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
-  
-  corners.value.forEach((corner, index) => {
-    const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
-    if (distance <= pointRadius) {
-      draggingCorner.value = index
-    }
-  })
+  if (currentTool.value === 'crop') {
+    const touch = e.touches[0]
+    const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
+    
+    corners.value.forEach((corner, index) => {
+      const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
+      if (distance <= pointRadius) {
+        draggingCorner.value = index
+      }
+    })
+  }
 }
 
 const handleTouchMove = (e: TouchEvent) => {
   e.preventDefault()
-  if (draggingCorner.value === null) return
-  
-  const touch = e.touches[0]
-  const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
-  
-  // 限制在 Canvas 范围内
-  const clampedX = Math.max(0, Math.min(x, canvasRef.value!.width))
-  const clampedY = Math.max(0, Math.min(y, canvasRef.value!.height))
-  
-  corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
-  drawCanvas()
+  if (currentTool.value === 'crop' && draggingCorner.value !== null) {
+    const touch = e.touches[0]
+    const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
+    
+    const clampedX = Math.max(0, Math.min(x, canvasRef.value!.width))
+    const clampedY = Math.max(0, Math.min(y, canvasRef.value!.height))
+    
+    corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
+    drawCanvas()
+  }
 }
 
 const handleTouchEnd = () => {
   draggingCorner.value = null
 }
 
-// 重置选区
-const resetCorners = () => {
-  if (!canvasRef.value || !image.value) return
+// 滚轮缩放
+const handleWheel = (e: WheelEvent) => {
+  e.preventDefault()
+  const delta = e.deltaY > 0 ? 0.9 : 1.1
+  scale.value = Math.max(0.1, Math.min(5, scale.value * delta))
+  updateCanvasTransform()
+}
+
+// 更新 Canvas 变换
+const updateCanvasTransform = () => {
+  if (!canvasRef.value) return
   
-  const canvas = canvasRef.value
-  const padding = 50
-  corners.value = [
-    { x: padding, y: padding },
-    { x: canvas.width - padding, y: padding },
-    { x: canvas.width - padding, y: canvas.height - padding },
-    { x: padding, y: canvas.height - padding }
-  ]
+  canvasRef.value.style.transform = `scale(${scale.value}) translate(${panX.value / scale.value}px, ${panY.value / scale.value}px)`
+}
+
+// 选择工具
+const selectTool = (toolId: string) => {
+  currentTool.value = toolId
+  showAdjustmentPanel.value = true
+  
+  // 重置参数
+  if (toolId === 'rotate') {
+    rotationAngle.value = 0
+  } else if (toolId === 'contrast') {
+    contrast.value = 100
+    brightness.value = 100
+  } else if (toolId === 'threshold') {
+    threshold.value = 128
+    invertThreshold.value = false
+  }
+  
   drawCanvas()
 }
 
-// 计算透视变换矩阵
-const computePerspectiveTransform = (src: {x: number; y: number}[], dst: {x: number; y: number}[]) => {
-  // 求解透视变换矩阵 H，使得 H * src = dst
-  // 使用高斯消元法求解线性方程组
+// 重置裁剪
+const resetCrop = () => {
+  initCropCorners()
+  drawCanvas()
+}
+
+// 应用裁剪
+const applyCrop = () => {
+  if (!canvasRef.value || !currentImage.value) return
   
+  const canvas = canvasRef.value
+  const img = currentImage.value
+  
+  // 计算目标矩形的尺寸
+  const p0 = corners.value[0]
+  const p1 = corners.value[1]
+  const p2 = corners.value[2]
+  const p3 = corners.value[3]
+  
+  const topWidth = Math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2)
+  const bottomWidth = Math.sqrt((p2.x - p3.x) ** 2 + (p2.y - p3.y) ** 2)
+  const width = Math.round((topWidth + bottomWidth) / 2)
+  
+  const leftHeight = Math.sqrt((p3.x - p0.x) ** 2 + (p3.y - p0.y) ** 2)
+  const rightHeight = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
+  const height = Math.round((leftHeight + rightHeight) / 2)
+  
+  // 创建临时 Canvas
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = canvas.width
+  tempCanvas.height = canvas.height
+  const tempCtx = tempCanvas.getContext('2d')
+  if (!tempCtx) return
+  tempCtx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  const srcImageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height)
+  
+  // 创建结果 Canvas
+  const resultCanvas = document.createElement('canvas')
+  resultCanvas.width = width
+  resultCanvas.height = height
+  const resultCtx = resultCanvas.getContext('2d')
+  if (!resultCtx) return
+  const resultImageData = resultCtx.createImageData(width, height)
+  
+  // 计算逆透视变换矩阵
+  const dst = [
+    { x: 0, y: 0 },
+    { x: width, y: 0 },
+    { x: width, y: height },
+    { x: 0, y: height }
+  ]
+  
+  const invMatrix = computePerspectiveTransform(dst, corners.value)
+  
+  // 逐像素映射
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const srcPoint = applyPerspectiveTransform({ x, y }, invMatrix)
+      
+      if (srcPoint.x >= 0 && srcPoint.x < canvas.width &&
+          srcPoint.y >= 0 && srcPoint.y < canvas.height) {
+        
+        const [r, g, b, a] = bilinearInterpolation(srcImageData, srcPoint.x, srcPoint.y)
+        
+        const destIdx = (y * width + x) * 4
+        resultImageData.data[destIdx] = r
+        resultImageData.data[destIdx + 1] = g
+        resultImageData.data[destIdx + 2] = b
+        resultImageData.data[destIdx + 3] = a
+      }
+    }
+  }
+  
+  resultCtx.putImageData(resultImageData, 0, 0)
+  
+  // 更新当前图像
+  const newImageData = resultCanvas.toDataURL('image/jpeg', 0.9)
+  addToHistory(newImageData)
+}
+
+// 预览旋转
+const previewRotation = () => {
+  if (!canvasRef.value || !currentImage.value) return
+  
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  const angle = rotationAngle.value * Math.PI / 180
+  
+  // 清空并旋转
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.save()
+  ctx.translate(canvas.width / 2, canvas.height / 2)
+  ctx.rotate(angle)
+  ctx.translate(-canvas.width / 2, -canvas.height / 2)
+  ctx.drawImage(currentImage.value, 0, 0, canvas.width, canvas.height)
+  ctx.restore()
+}
+
+// 应用旋转
+const rotate = (angle: number) => {
+  rotationAngle.value = (rotationAngle.value + angle) % 360
+  previewRotation()
+}
+
+const applyRotation = () => {
+  if (!canvasRef.value || !currentImage.value) return
+  
+  const canvas = canvasRef.value
+  const img = currentImage.value
+  
+  const angle = rotationAngle.value * Math.PI / 180
+  
+  // 计算旋转后的尺寸
+  const cos = Math.abs(Math.cos(angle))
+  const sin = Math.abs(Math.sin(angle))
+  const newWidth = img.width * cos + img.height * sin
+  const newHeight = img.width * sin + img.height * cos
+  
+  // 创建新 Canvas
+  const resultCanvas = document.createElement('canvas')
+  resultCanvas.width = newWidth
+  resultCanvas.height = newHeight
+  const resultCtx = resultCanvas.getContext('2d')
+  if (!resultCtx) return
+  
+  // 旋转图像
+  resultCtx.translate(newWidth / 2, newHeight / 2)
+  resultCtx.rotate(angle)
+  resultCtx.drawImage(img, -img.width / 2, -img.height / 2)
+  
+  const newImageData = resultCanvas.toDataURL('image/jpeg', 0.9)
+  addToHistory(newImageData)
+  
+  rotationAngle.value = 0
+}
+
+// 预览对比度
+const previewContrast = () => {
+  if (!canvasRef.value || !currentImage.value) return
+  
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(currentImage.value, 0, 0, canvas.width, canvas.height)
+  
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const data = imageData.data
+  
+  const contrastFactor = (contrast.value - 100) / 100
+  const brightnessFactor = (brightness.value - 100) / 100 * 255
+  
+  for (let i = 0; i < data.length; i += 4) {
+    // 应用对比度
+    data[i] = ((data[i] - 128) * (1 + contrastFactor) + 128 + brightnessFactor)
+    data[i + 1] = ((data[i + 1] - 128) * (1 + contrastFactor) + 128 + brightnessFactor)
+    data[i + 2] = ((data[i + 2] - 128) * (1 + contrastFactor) + 128 + brightnessFactor)
+  }
+  
+  ctx.putImageData(imageData, 0, 0)
+}
+
+// 重置对比度
+const resetContrast = () => {
+  contrast.value = 100
+  brightness.value = 100
+  previewContrast()
+}
+
+// 应用对比度
+const applyContrast = () => {
+  if (!canvasRef.value) return
+  
+  const newImageData = canvasRef.value.toDataURL('image/jpeg', 0.9)
+  addToHistory(newImageData)
+  
+  contrast.value = 100
+  brightness.value = 100
+}
+
+// 预览二值化
+const previewThreshold = () => {
+  if (!canvasRef.value || !currentImage.value) return
+  
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(currentImage.value, 0, 0, canvas.width, canvas.height)
+  
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const data = imageData.data
+  
+  for (let i = 0; i < data.length; i += 4) {
+    // 转换为灰度
+    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114
+    
+    // 二值化
+    const value = gray >= threshold.value ? 255 : 0
+    
+    if (invertThreshold.value) {
+      data[i] = 255 - value
+      data[i + 1] = 255 - value
+      data[i + 2] = 255 - value
+    } else {
+      data[i] = value
+      data[i + 1] = value
+      data[i + 2] = value
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0)
+}
+
+// 重置二值化
+const resetThreshold = () => {
+  threshold.value = 128
+  invertThreshold.value = false
+  previewThreshold()
+}
+
+// 应用二值化
+const applyThreshold = () => {
+  if (!canvasRef.value) return
+  
+  const newImageData = canvasRef.value.toDataURL('image/jpeg', 0.9)
+  addToHistory(newImageData)
+  
+  threshold.value = 128
+  invertThreshold.value = false
+}
+
+// 添加到历史记录
+const addToHistory = (imageData: string) => {
+  // 删除当前位置之后的历史
+  history.value = history.value.slice(0, historyIndex.value + 1)
+  
+  // 添加新状态
+  history.value.push(imageData)
+  historyIndex.value = history.value.length - 1
+  
+  // 加载新图像
+  loadHistoryImage()
+}
+
+// 加载历史图像
+const loadHistoryImage = () => {
+  const img = new Image()
+  img.onload = () => {
+    currentImage.value = img
+    
+    if (!canvasRef.value) return
+    
+    const canvas = canvasRef.value
+    canvas.width = img.width
+    canvas.height = img.height
+    
+    initCropCorners()
+    drawCanvas()
+  }
+  img.src = history.value[historyIndex.value]
+}
+
+// 撤销
+const undo = () => {
+  if (historyIndex.value > 0) {
+    historyIndex.value--
+    loadHistoryImage()
+  }
+}
+
+// 重做
+const redo = () => {
+  if (historyIndex.value < history.value.length - 1) {
+    historyIndex.value++
+    loadHistoryImage()
+  }
+}
+
+// 重置所有参数
+const resetAllParameters = () => {
+  rotationAngle.value = 0
+  contrast.value = 100
+  brightness.value = 100
+  threshold.value = 128
+  invertThreshold.value = false
+}
+
+// 重置所有
+const resetAll = () => {
+  if (!originalImage.value) return
+  
+  history.value = [props.imageData]
+  historyIndex.value = 0
+  
+  currentImage.value = originalImage.value
+  resetAllParameters()
+  
+  if (!canvasRef.value) return
+  
+  const canvas = canvasRef.value
+  canvas.width = originalImage.value.width
+  canvas.height = originalImage.value.height
+  
+  initCropCorners()
+  drawCanvas()
+}
+
+// 透视变换相关函数
+const computePerspectiveTransform = (src: {x: number; y: number}[], dst: {x: number; y: number}[]) => {
   const A: number[][] = []
   const b: number[] = []
   
@@ -283,10 +803,8 @@ const computePerspectiveTransform = (src: {x: number; y: number}[], dst: {x: num
     b.push(dy)
   }
   
-  // 高斯消元法求解
   const n = 8
   for (let i = 0; i < n; i++) {
-    // 找到主元
     let maxRow = i
     for (let k = i + 1; k < n; k++) {
       if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
@@ -294,11 +812,9 @@ const computePerspectiveTransform = (src: {x: number; y: number}[], dst: {x: num
       }
     }
     
-    // 交换行
     [A[i], A[maxRow]] = [A[maxRow], A[i]]
     ;[b[i], b[maxRow]] = [b[maxRow], b[i]]
     
-    // 消元
     for (let k = i + 1; k < n; k++) {
       const factor = A[k][i] / A[i][i]
       for (let j = i; j < n; j++) {
@@ -308,7 +824,6 @@ const computePerspectiveTransform = (src: {x: number; y: number}[], dst: {x: num
     }
   }
   
-  // 回代
   const x = new Array(n).fill(0)
   for (let i = n - 1; i >= 0; i--) {
     x[i] = b[i]
@@ -325,7 +840,6 @@ const computePerspectiveTransform = (src: {x: number; y: number}[], dst: {x: num
   ]
 }
 
-// 应用透视变换矩阵到点
 const applyPerspectiveTransform = (point: {x: number; y: number}, matrix: number[][]) => {
   const x = point.x
   const y = point.y
@@ -337,7 +851,6 @@ const applyPerspectiveTransform = (point: {x: number; y: number}, matrix: number
   return { x: newX, y: newY }
 }
 
-// 双线性插值
 const bilinearInterpolation = (imageData: ImageData, x: number, y: number) => {
   const width = imageData.width
   const height = imageData.height
@@ -379,93 +892,11 @@ const bilinearInterpolation = (imageData: ImageData, x: number, y: number) => {
   return [r, g, b, a]
 }
 
-// 透视变换
-const perspectiveTransform = () => {
-  if (!canvasRef.value || !image.value) return null
-  
-  const canvas = canvasRef.value
-  const img = image.value
-  
-  // 计算目标矩形的尺寸（基于四边形的边长）
-  const p0 = corners.value[0]
-  const p1 = corners.value[1]
-  const p2 = corners.value[2]
-  const p3 = corners.value[3]
-  
-  // 计算四边形的宽度（取上下边的平均值）
-  const topWidth = Math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2)
-  const bottomWidth = Math.sqrt((p2.x - p3.x) ** 2 + (p2.y - p3.y) ** 2)
-  const width = Math.round((topWidth + bottomWidth) / 2)
-  
-  // 计算四边形的高度（取左右边的平均值）
-  const leftHeight = Math.sqrt((p3.x - p0.x) ** 2 + (p3.y - p0.y) ** 2)
-  const rightHeight = Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2)
-  const height = Math.round((leftHeight + rightHeight) / 2)
-  
-  // 创建临时 Canvas 获取原始图像数据
-  const tempCanvas = document.createElement('canvas')
-  tempCanvas.width = canvas.width
-  tempCanvas.height = canvas.height
-  const tempCtx = tempCanvas.getContext('2d')
-  if (!tempCtx) return null
-  tempCtx.drawImage(img, 0, 0, canvas.width, canvas.height)
-  const srcImageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height)
-  
-  // 创建结果 Canvas
-  const resultCanvas = document.createElement('canvas')
-  resultCanvas.width = width
-  resultCanvas.height = height
-  const resultCtx = resultCanvas.getContext('2d')
-  if (!resultCtx) return null
-  const resultImageData = resultCtx.createImageData(width, height)
-  
-  // 计算从目标矩形到源四边形的逆透视变换矩阵
-  const dst = [
-    { x: 0, y: 0 },
-    { x: width, y: 0 },
-    { x: width, y: height },
-    { x: 0, y: height }
-  ]
-  
-  // 计算从目标到源的变换矩阵（逆变换）
-  const invMatrix = computePerspectiveTransform(dst, corners.value)
-  
-  // 对目标图像的每个像素进行逆变换
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      // 通过逆变换找到源图像中的对应位置
-      const srcPoint = applyPerspectiveTransform({ x, y }, invMatrix)
-      
-      // 检查是否在源图像范围内
-      if (srcPoint.x >= 0 && srcPoint.x < canvas.width &&
-          srcPoint.y >= 0 && srcPoint.y < canvas.height) {
-        
-        // 使用双线性插值获取像素值
-        const [r, g, b, a] = bilinearInterpolation(srcImageData, srcPoint.x, srcPoint.y)
-        
-        const destIdx = (y * width + x) * 4
-        resultImageData.data[destIdx] = r
-        resultImageData.data[destIdx + 1] = g
-        resultImageData.data[destIdx + 2] = b
-        resultImageData.data[destIdx + 3] = a
-      }
-    }
-  }
-  
-  resultCtx.putImageData(resultImageData, 0, 0)
-  
-  return resultCanvas.toDataURL('image/jpeg', 0.9)
-}
-
 // 确认编辑
 const handleConfirm = () => {
-  const transformedImage = perspectiveTransform()
-  if (transformedImage) {
-    emit('confirm', transformedImage)
-  } else {
-    // 如果透视变换失败，使用原图
-    emit('confirm', props.imageData)
-  }
+  if (!canvasRef.value) return
+  const imageData = canvasRef.value.toDataURL('image/jpeg', 0.9)
+  emit('confirm', imageData)
 }
 
 // 取消编辑
@@ -526,6 +957,180 @@ const handleCancel = () => {
   font-weight: 500;
 }
 
+.toolbar {
+  position: absolute;
+  top: calc(56px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 9;
+  overflow-x: auto;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.3);
+  margin: 0 4px;
+}
+
+.tool-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tool-btn.active {
+  background: var(--primary-color);
+}
+
+.tool-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.adjustment-panel {
+  position: absolute;
+  top: calc(120px + env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+  background: rgba(30, 30, 30, 0.95);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 8;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.panel-header span {
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.panel-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hint {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  text-align: center;
+  margin: 0;
+}
+
+.crop-buttons,
+.rotate-controls,
+.contrast-controls,
+.threshold-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-btn {
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-btn.primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.slider-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slider-control label {
+  color: white;
+  font-size: 14px;
+}
+
+.slider-control input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.slider-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+}
+
+.checkbox-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-control input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkbox-control label {
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .edit-canvas-container {
   flex: 1;
   display: flex;
@@ -534,40 +1139,33 @@ const handleCancel = () => {
   background: #000;
   overflow: hidden;
   padding: 20px;
+  padding-top: 120px;
+  padding-bottom: 60px;
 }
 
 .edit-canvas-container canvas {
   max-width: 100%;
   max-height: 100%;
   touch-action: none;
+  transition: transform 0.1s;
 }
 
-.edit-controls {
+.status-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   z-index: 10;
 }
 
-.control-btn {
-  padding: 12px 24px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.control-btn:active {
-  background: rgba(255, 255, 255, 0.2);
+.status-bar span {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
 }
 </style>
