@@ -41,10 +41,10 @@ const showBottomNav = computed(() => {
 }
 
 .main-content.with-top-bar {
-  padding-top: 56px;
+  padding-top: calc(56px + env(safe-area-inset-top));
 }
 
 .main-content.with-bottom-nav {
-  padding-bottom: 60px;
+  padding-bottom: calc(60px + env(safe-area-inset-bottom));
 }
 </style>

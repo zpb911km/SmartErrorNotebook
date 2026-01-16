@@ -29,3 +29,5 @@ pnpm-lock.yaml
 
 SEN.prg
 graphs.md
+src-tauri/gen/
+

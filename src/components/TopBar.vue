@@ -61,7 +61,9 @@ const handleSettings = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding-top: env(safe-area-inset-top);
+  padding-left: 16px;
+  padding-right: 16px;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -120,5 +122,11 @@ const handleSettings = () => {
 
 .icon-btn:active {
   background: var(--input-bg);
+}
+
+@media (max-width: 768px) { 
+  .top-bar {
+    height: calc(56px + env(safe-area-inset-top));
+  }
 }
 </style>
