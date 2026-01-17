@@ -25,15 +25,9 @@ interface ErrorQuestion {
   subjectid: string; // uuid
   prompt: string; // 题干
   type: QuestionType; // 题型
-  answer: string; // 标准答案
+  answer?: string; // 标准答案
   analysis?: string; // 解析
   error_note?: string; // 错题笔记
-  created_at: number; // 创建时间戳
-  updated_at: number; // 修改时间戳
-  sources?: Source[]; // 出题来源
-  tags?: ErrorTags[]; // 错题标签
-  attachments?: Attachment[]; // 附件
-  srs_data?: SRSData; // 单词记忆数据
 }
 
 interface SRSData {
@@ -65,20 +59,16 @@ interface ErrorTags {
 interface Attachment {
   id: string; // uuid
   question_id: string; // uuid
-  type: AttachmentType; // 附件意义
-  file_type: FileType; // 文件类型
+  type: string; // 附件意义
+  file_type: string; // 文件类型
   path: string; // 文件相对路径
   hash: string; // 文件哈希
-  created_at: number; // 创建时间戳
-  updated_at: number; // 修改时间戳
 }
 
 interface Subject {
   id: string; // uuid，主键
   name: string; // 科目名称，同一用户下唯一
   color?: string; // 科目标识色
-  created_at: number; // 创建时间戳
-  updated_at: number; // 修改时间戳
 }
 
 interface UserConfig {
