@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import TopBar from './components/TopBar.vue'
 import BottomNav from './components/BottomNav.vue'
+import Notification from './components/Notification.vue'
 
 const route = useRoute()
 
@@ -26,6 +27,7 @@ const showBottomNav = computed(() => {
       <router-view />
     </main>
     <BottomNav v-if="showBottomNav" />
+    <Notification />
   </div>
 </template>
 
