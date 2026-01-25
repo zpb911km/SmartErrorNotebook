@@ -17,7 +17,7 @@
     />
 
     <div class="upload-area" :class="{ 'drag-over': isDragOver }" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false" @drop.prevent="handleDrop">
-      <div class="upload-content" v-if="!imageUrl">
+      <div class="upload-content">
         <div class="upload-icon">📷</div>
         <p>点击或拖拽上传题目图片</p>
         <div class="upload-buttons">
@@ -28,7 +28,7 @@
           <button class="upload-btn camera-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">拍照</button>
         </div>
       </div>
-      <div class="image-preview" v-else>
+      <div class="image-preview" v-if="imageUrl">
         <img :src="imageUrl" alt="题目图片">
         <button class="remove-btn" @click="clearImage">✕</button>
       </div>
@@ -38,14 +38,9 @@
       <h3>题目信息</h3>
       <div class="form-group">
         <label>科目</label>
-        <select v-model="form.subject">
-          <option value="">请选择科目</option>
-          <option value="math">数学</option>
-          <option value="physics">物理</option>
-          <option value="chemistry">化学</option>
-          <option value="english">英语</option>
-          <option value="chinese">语文</option>
-        </select>
+        <SubjectSelector
+          @select="(subject_id) => {form.subject = subject_id}"
+        />
       </div>
 
       <div class="form-group">
@@ -122,9 +117,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
+import { Subject } from '../types'
+import { getSubjects } from '../apis/subjects'
+import SubjectSelector from '../components/SubjectSelector.vue'
 
 const isDragOver = ref(false)
 const imageUrl = ref('')
@@ -158,6 +156,17 @@ const aiResult = ref({
   knowledge: '函数',
   reason: '概念不清',
   suggestion: '建议复习函数的定义域和值域相关概念'
+})
+
+onMounted(() => {
+  // 获取相机权限
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(() => {
+      cameraDisabled.value = false
+    })
+    .catch(() => {
+      disableCamera()
+    });
 })
 
 // 打开文件选择
