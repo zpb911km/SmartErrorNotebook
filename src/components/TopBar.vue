@@ -45,7 +45,7 @@ const handleSearch = () => {
 }
 
 const handleSettings = () => {
-  console.log('打开设置')
+  router.push('/settings')
 }
 </script>
 
