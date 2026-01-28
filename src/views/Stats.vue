@@ -61,22 +61,6 @@
         </div>
       </div>
     </div>
-
-    <div class="weak-section">
-      <h3>薄弱环节</h3>
-      <div class="weak-list">
-        <div v-for="(item, index) in weakPoints" :key="index" class="weak-item">
-          <div class="weak-rank">{{ index + 1 }}</div>
-          <div class="weak-info">
-            <div class="weak-name">{{ item.name }}</div>
-            <div class="weak-count">{{ item.count }} 次错误</div>
-          </div>
-          <div class="weak-action" @click="reviewWeak(item)">
-            <span>复习</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -109,13 +93,6 @@ const weeklyStats = ref([
   { day: '周日', count: 20 }
 ])
 
-const weakPoints = ref([
-  { name: '函数与导数', count: 15 },
-  { name: '牛顿运动定律', count: 12 },
-  { name: '化学方程式配平', count: 10 },
-  { name: '英语语法', count: 8 }
-])
-
 const getPieStyle = (item: any, index: number) => {
   const total = subjectDistribution.value.reduce((sum, i) => sum + i.count, 0)
   const percent = (item.count / total) * 100
@@ -128,10 +105,6 @@ const getPieStyle = (item: any, index: number) => {
 const getBarHeight = (count: number) => {
   const max = Math.max(...weeklyStats.value.map(item => item.count))
   return (count / max) * 100
-}
-
-const reviewWeak = (item: any) => {
-  console.log('复习薄弱点', item)
 }
 </script>
 
@@ -287,75 +260,5 @@ const reviewWeak = (item: any) => {
   font-size: 12px;
   color: var(--text-primary);
   margin-bottom: 4px;
-}
-
-.weak-section {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.weak-section h3 {
-  font-size: 16px;
-  margin: 0 0 16px 0;
-  color: var(--text-primary);
-}
-
-.weak-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.weak-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--input-bg);
-  border-radius: 8px;
-}
-
-.weak-rank {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.weak-info {
-  flex: 1;
-}
-
-.weak-name {
-  font-size: 14px;
-  color: var(--text-primary);
-  margin-bottom: 4px;
-}
-
-.weak-count {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.weak-action {
-  padding: 8px 16px;
-  background: var(--primary-color);
-  color: white;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.weak-action:active {
-  transform: scale(0.98);
 }
 </style>

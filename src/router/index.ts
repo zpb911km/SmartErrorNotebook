@@ -25,9 +25,15 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/review',
-    name: 'Review',
-    component: () => import('../views/Review.vue'),
+    name: 'Preview',
+    component: () => import('../views/Preview.vue'),
     meta: { title: '复习计划' }
+  },
+  {
+    path: '/review-detail',
+    name: 'ReviewDetail',
+    component: () => import('../views/Review-Detail.vue'),
+    meta: { title: '复习详情' }
   },
   {
     path: '/stats',
