@@ -42,12 +42,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '个人主页' }
   },
   {
-    path: '/stats-full',
-    name: 'Stats',
-    component: () => import('../views/Stats.vue'),
-    meta: { title: '数据分析' }
-  },
-  {
     path: '/settings',
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
