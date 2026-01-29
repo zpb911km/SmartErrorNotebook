@@ -41,7 +41,7 @@ const goBack = () => {
 }
 
 const handleSearch = () => {
-  console.log('打开搜索')
+  router.push({ path: '/manage', query: { focus: 'search' } })
 }
 
 const handleSettings = () => {

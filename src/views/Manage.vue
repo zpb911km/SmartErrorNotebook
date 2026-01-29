@@ -16,8 +16,15 @@
         <option value="mastered">已掌握</option>
       </select>
 
-      <div class="search-box">
-        <input type="text" v-model="filters.keyword" placeholder="搜索错题...">
+      <div class="search-box" :class="{ 'blinking': isSearchBlinking }">
+        <input 
+          type="text" 
+          v-model="filters.keyword" 
+          placeholder="搜索错题..."
+          ref="searchInputRef"
+          @focus="onSearchFocus"
+          @click="onSearchFocus"
+        >
       </div>
     </div>
 
@@ -43,13 +50,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const filters = ref({
   subject: '',
   status: '',
   keyword: ''
 })
+
+// 搜索框闪烁状态
+const isSearchBlinking = ref(false)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+let blinkTimer: number | null = null
+
+// 停止闪烁
+const stopBlinking = () => {
+  isSearchBlinking.value = false
+  if (blinkTimer) {
+    clearTimeout(blinkTimer)
+    blinkTimer = null
+  }
+}
+
+// 检查是否需要闪烁
+onMounted(() => {
+  if (route.query.focus === 'search') {
+    isSearchBlinking.value = true
+    // 3秒后自动停止闪烁
+    blinkTimer = window.setTimeout(() => {
+      stopBlinking()
+    }, 3000)
+  }
+})
+
+onUnmounted(() => {
+  if (blinkTimer) {
+    clearTimeout(blinkTimer)
+  }
+})
+
+// 点击搜索框时停止闪烁
+const onSearchFocus = () => {
+  stopBlinking()
+}
 
 const errors = ref([
   {
@@ -155,6 +201,22 @@ const viewError = (error: any) => {
 .search-box input:focus {
   outline: none;
   border-color: var(--primary-color);
+}
+
+/* 搜索框闪烁动画 */
+.search-box.blinking input {
+  animation: searchBlink 0.6s ease-in-out infinite;
+}
+
+@keyframes searchBlink {
+  0%, 100% {
+    border-color: var(--border-color);
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 8px rgba(25, 118, 210, 0.5);
+  }
 }
 
 .error-list {
