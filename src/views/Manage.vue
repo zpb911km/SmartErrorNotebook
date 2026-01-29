@@ -75,21 +75,37 @@ const stopBlinking = () => {
   }
 }
 
-// 检查是否需要闪烁
-onMounted(() => {
-  if (route.query.focus === 'search') {
-    isSearchBlinking.value = true
-    // 3秒后自动停止闪烁
-    blinkTimer = window.setTimeout(() => {
-      stopBlinking()
-    }, 3000)
+// 开始闪烁
+const startBlinking = () => {
+  isSearchBlinking.value = true
+  // 3秒后自动停止闪烁
+  if (blinkTimer) {
+    clearTimeout(blinkTimer)
   }
+  blinkTimer = window.setTimeout(() => {
+    stopBlinking()
+  }, 3000)
+}
+
+// 监听自定义事件（当用户已在当前页面时触发）
+const handleTriggerBlink = () => {
+  startBlinking()
+}
+
+onMounted(() => {
+  // 从其他页面跳转过来时检查是否需要闪烁
+  if (route.query.focus === 'search') {
+    startBlinking()
+  }
+  // 监听自定义事件
+  window.addEventListener('trigger-search-blink', handleTriggerBlink)
 })
 
 onUnmounted(() => {
   if (blinkTimer) {
     clearTimeout(blinkTimer)
   }
+  window.removeEventListener('trigger-search-blink', handleTriggerBlink)
 })
 
 // 点击搜索框时停止闪烁
