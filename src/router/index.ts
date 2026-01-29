@@ -25,9 +25,15 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/review',
-    name: 'Review',
-    component: () => import('../views/Review.vue'),
+    name: 'Preview',
+    component: () => import('../views/Preview.vue'),
     meta: { title: '复习计划' }
+  },
+  {
+    path: '/review-detail',
+    name: 'ReviewDetail',
+    component: () => import('../views/Review-Detail.vue'),
+    meta: { title: '复习详情' }
   },
   {
     path: '/stats',
@@ -36,10 +42,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '个人主页' }
   },
   {
-    path: '/stats-full',
-    name: 'Stats',
-    component: () => import('../views/Stats.vue'),
-    meta: { title: '数据分析' }
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/Settings.vue'),
+    meta: { title: '设置' }
   }
 ]
 

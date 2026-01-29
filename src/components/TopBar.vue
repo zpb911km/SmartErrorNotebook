@@ -41,11 +41,17 @@ const goBack = () => {
 }
 
 const handleSearch = () => {
-  console.log('打开搜索')
+  if (router.currentRoute.value.path === '/manage') {
+    // 已在管理页面，触发自定义事件
+    window.dispatchEvent(new CustomEvent('trigger-search-blink'))
+  } else {
+    // 跳转到管理页面，带上闪烁标记
+    router.push({ path: '/manage', query: { focus: 'search' } })
+  }
 }
 
 const handleSettings = () => {
-  console.log('打开设置')
+  router.push('/settings')
 }
 </script>
 
