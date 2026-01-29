@@ -1,19 +1,29 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { getSources, createSource } from '../apis/sources';
+import { computed, onMounted, ref, watch } from 'vue';
+import { getSources, getBooks, getChapters, getKnowledges, createSource, getOrCreateSourceId, getSource } from '../apis/sources';
 import { Source } from '../types';
 import { showInfo } from '../utils/notification';
 
-const sources = ref<Source[]>([]);
 const selectedSource = ref<Source | null>(null);
 const isExpanded = ref(false);
-const showAddSource = ref(false);
-const newSource = ref<Omit<Source, 'id' | 'question_id'>>({
-  subject_id: undefined,
-  book: '',
-  chapter: '',
-  knowledge: '',
-});
+
+// 分层选择的数据
+const books = ref<string[]>([]);
+const chapters = ref<string[]>([]);
+const knowledges = ref<string[]>([]);
+
+// 当前选择的层级
+const selectedBook = ref<string>('');
+const selectedChapter = ref<string>('');
+const selectedKnowledge = ref<string>('');
+
+// 添加新项的输入框
+const showAddBookInput = ref(false);
+const showAddChapterInput = ref(false);
+const showAddKnowledgeInput = ref(false);
+const newBook = ref<string>('');
+const newChapter = ref<string>('');
+const newKnowledge = ref<string>('');
 
 const props = defineProps<{
   currentSourceId: string;
@@ -24,76 +34,190 @@ const emit = defineEmits<{
   (e: 'select', source_id: string): void;
 }>();
 
-const updateSourcesForSubject = (subjectId?: string) => {
-  getSources()
+// 先定义所有函数
+const resetSelection = () => {
+  selectedBook.value = '';
+  selectedChapter.value = '';
+  selectedKnowledge.value = '';
+  chapters.value = [];
+  knowledges.value = [];
+  showAddBookInput.value = false;
+  showAddChapterInput.value = false;
+  showAddKnowledgeInput.value = false;
+};
+
+const loadBooks = () => {
+  getBooks(props.subjectId)
     .then(data => {
-      if (subjectId) {
-        // 过滤出属于当前科目的来源，或者没有指定科目的来源
-        sources.value = data.filter(source => 
-          !source.subject_id || source.subject_id === subjectId
-        );
-      } else {
-        sources.value = data;
-      }
+      books.value = data;
     })
     .catch(error => {
-      console.error('获取来源失败：', error);
-      sources.value = [];
+      console.error('获取书名失败：', error);
+      books.value = [];
     });
 };
 
-// 当subjectId变化时，更新可用的来源列表
+const handleAddBook = () => {
+  if (!newBook.value.trim()) return;
+
+  books.value.push(newBook.value);
+  selectedBook.value = newBook.value;
+  newBook.value = '';
+  showAddBookInput.value = false;
+};
+
+const handleAddChapter = () => {
+  if (!newChapter.value.trim()) return;
+
+  chapters.value.push(newChapter.value);
+  selectedChapter.value = newChapter.value;
+  newChapter.value = '';
+  showAddChapterInput.value = false;
+};
+
+const handleAddKnowledge = () => {
+  if (!newKnowledge.value.trim()) return;
+
+  knowledges.value.push(newKnowledge.value);
+  selectedKnowledge.value = newKnowledge.value;
+  newKnowledge.value = '';
+  showAddKnowledgeInput.value = false;
+};
+
+const selectedText = computed(() => {
+  if (selectedBook || selectedChapter || selectedKnowledge) {
+    return `${selectedBook.value || ''} ${selectedChapter.value || ''} ${selectedKnowledge.value || ''}`.trim() || '请选择来源';
+  }
+  return '请选择来源';
+});
+
+const loadSourceById = async (sourceId: string) => {
+  if (!sourceId) {
+    selectedSource.value = null;
+    return;
+  }
+
+  try {
+    const source = await getSource(sourceId);
+    if (source.book) {
+      selectedBook.value = source.book;
+    }
+    if (source.chapter) {
+      selectedChapter.value = source.chapter;
+    }
+    if (source.knowledge) {
+      selectedKnowledge.value = source.knowledge;
+    }
+    // 预加载下一级数据
+    if (source.book) {
+      getChapters(props.subjectId, source.book).then(data => {
+        chapters.value = data;
+        if (source.chapter && source.book) {
+          getKnowledges(props.subjectId, source.book, source.chapter).then(data => {
+            knowledges.value = data;
+          });
+        }
+      });
+    }
+  } catch (error) {
+    console.error('获取来源失败：', error);
+  }
+};
+
+const onSelectorClicked = () => {
+  isExpanded.value = !isExpanded.value;
+  if ((selectedBook || selectedChapter || selectedKnowledge) && !isExpanded.value) {
+    getOrCreateSourceId({
+      book: selectedBook.value,
+      chapter: selectedChapter.value,
+      knowledge: selectedKnowledge.value,
+    }).then(sourceId => {
+      loadSourceById(sourceId);
+      emit('select', sourceId);
+    }).catch(error => {
+      console.error('创建来源失败：', error);
+    });
+  }
+};
+
+// 然后定义 watch
+// 当选择书名时,加载章节列表
+watch(selectedBook, (newBook) => {
+  if (newBook) {
+    getChapters(props.subjectId, newBook)
+      .then(data => {
+        chapters.value = data;
+        selectedChapter.value = '';
+        selectedKnowledge.value = '';
+        showAddChapterInput.value = false;
+        showAddKnowledgeInput.value = false;
+      })
+      .catch(error => {
+        console.error('获取章节失败：', error);
+        chapters.value = [];
+      });
+  }
+});
+
+// 当选择章节时,加载知识点列表
+watch(selectedChapter, (newChapter) => {
+  if (newChapter && selectedBook.value) {
+    getKnowledges(props.subjectId, selectedBook.value, newChapter)
+      .then(data => {
+        knowledges.value = data;
+        selectedKnowledge.value = '';
+        showAddKnowledgeInput.value = false;
+      })
+      .catch(error => {
+        console.error('获取知识点失败：', error);
+        knowledges.value = [];
+      });
+  }
+});
+
+// 当subjectId变化时,重新加载书名列表
 watch(
   () => props.subjectId,
-  (newSubjectId) => {
-    updateSourcesForSubject(newSubjectId);
+  () => {
+    resetSelection();
+    loadBooks();
   }, { immediate: true }
 );
 
 watch(
   () => props.currentSourceId,
   (newVal) => {
-    if (newVal === '') {
-      selectedSource.value = null;
-    } else {
-      const source = sources.value.find(source => source.id === newVal);
-      if (source) {
-        selectedSource.value = source;
-      }
-    }
-  }
+    loadSourceById(newVal);
+  }, { immediate: true }
 );
 
-const handleClick = (source: Source) => {
-  selectedSource.value = source;
-  emit('select', source.id);
-  isExpanded.value = false;
-};
+// 自动确认选择 - 支持部分选择
+watch([selectedBook, selectedChapter, selectedKnowledge], ([book, chapter, knowledge]) => {
+  if (book) {
+    // 只要有书名就创建/更新来源
+    const newSourceData: Omit<Source, 'id' | 'question_id'> = {
+      subject_id: props.subjectId,
+      book: book,
+      chapter: chapter || undefined,
+      knowledge: knowledge || undefined,
+    };
 
-const handleAddSource = () => {
-  // 如果有传入的subjectId，就设置到新来源中
-  if (props.subjectId) {
-    newSource.value.subject_id = props.subjectId;
+    createSource(newSourceData)
+      .then((data) => {
+        console.log('创建来源成功', data);
+        selectedSource.value = data as Source;
+
+        // 如果用户选择了书但没继续选择章节和知识点,就自动关闭
+        if (!chapter && !knowledge) {
+          isExpanded.value = false;
+          emit('select', data.id);
+        }
+      })
+      .catch(error => {
+        console.error('创建来源失败：', error);
+      });
   }
-  
-  createSource(newSource.value)
-    .then((data) => {
-      console.log('创建来源成功', data);
-      showInfo('添加成功', '来源添加成功');
-      
-      // 直接将新来源添加到列表
-      sources.value.push(data as Source);
-      
-      // 选择新创建的来源
-      selectedSource.value = data as Source;
-      showAddSource.value = false;
-      isExpanded.value = false;
-      emit('select', data.id);
-    })
-    .catch(error => {
-      console.error('创建来源失败：', error);
-    });
-};
+});
 
 onMounted(() => {
   selectedSource.value = null;
@@ -101,18 +225,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="add-source-container" v-if="showAddSource">
-    <input v-model="newSource.book" type="text" placeholder="请输入书名"></input>
-    <input v-model="newSource.chapter" type="text" placeholder="请输入章节"></input>
-    <input v-model="newSource.knowledge" type="text" placeholder="请输入知识点"></input>
-    <button @click="handleAddSource" class="confirm">添加</button>
-    <button @click="showAddSource = false" class="cancel">取消</button>
-  </div>
   <div class="source-selector">
     <!-- 选择器触发按钮 -->
-    <div class="selector-trigger" @click="isExpanded = !isExpanded" :class="{ 'expanded': isExpanded }">
+    <div class="selector-trigger" @click="onSelectorClicked()" :class="{ 'expanded': isExpanded }">
       <span class="selected-text">
-        {{ selectedSource ? `${selectedSource.book || ''} ${selectedSource.chapter || ''} ${selectedSource.knowledge || ''}`.trim() || '请选择来源' : '请选择来源' }}
+        {{ selectedText }}
       </span>
       <svg class="arrow-icon" :class="{ 'rotated': isExpanded }" xmlns="http://www.w3.org/2000/svg" width="16"
         height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -121,21 +238,72 @@ onMounted(() => {
       </svg>
     </div>
 
-    <!-- 下拉选项 -->
+    <!-- 多列下拉面板 -->
     <transition name="slide-down">
       <div v-if="isExpanded" class="dropdown-container">
-        <div class="source-option" v-for="source in sources" :key="source.id" @click="handleClick(source)">
-          <span class="option-name">
-            {{ source.book ? `${source.book} ` : '' }}
-            {{ source.chapter ? `${source.chapter} ` : '' }}
-            {{ source.knowledge ? `${source.knowledge}` : '' }}
-          </span>
-        </div>
-        <div class="source-option">
-          <span class="option-name" @click="showAddSource = true">+ 添加新来源</span>
-        </div>
-        <div v-if="sources.length === 0" class="no-options">
-          暂无来源数据
+        <div class="columns-container">
+          <!-- 第一列：书名 -->
+          <div class="column">
+            <div class="column-header">
+              <span class="column-title">书名</span>
+              <button @click="showAddBookInput = !showAddBookInput" class="add-icon-btn">+</button>
+            </div>
+            <div class="column-options">
+              <div class="column-option" :class="{ 'selected': selectedBook === book }" v-for="book in books"
+                :key="book" @click="selectedBook = book">
+                {{ book }}
+              </div>
+            </div>
+            <div class="column-add" v-if="showAddBookInput">
+              <input v-model="newBook" type="text" placeholder="新书名" @keyup.enter="handleAddBook">
+              <button @click="handleAddBook" class="add-btn">确定</button>
+            </div>
+            <div v-if="books.length === 0" class="empty-hint">
+              暂无数据
+            </div>
+          </div>
+
+          <!-- 第二列：章节 -->
+          <div class="column" v-if="selectedBook">
+            <div class="column-header">
+              <span class="column-title">章节</span>
+              <button @click="showAddChapterInput = !showAddChapterInput" class="add-icon-btn">+</button>
+            </div>
+            <div class="column-options">
+              <div class="column-option" :class="{ 'selected': selectedChapter === chapter }"
+                v-for="chapter in chapters" :key="chapter" @click="selectedChapter = chapter">
+                {{ chapter }}
+              </div>
+            </div>
+            <div class="column-add" v-if="showAddChapterInput">
+              <input v-model="newChapter" type="text" placeholder="新章节" @keyup.enter="handleAddChapter">
+              <button @click="handleAddChapter" class="add-btn">确定</button>
+            </div>
+            <div v-if="chapters.length === 0" class="empty-hint">
+              暂无数据
+            </div>
+          </div>
+
+          <!-- 第三列：知识点 -->
+          <div class="column" v-if="selectedChapter">
+            <div class="column-header">
+              <span class="column-title">知识点</span>
+              <button @click="showAddKnowledgeInput = !showAddKnowledgeInput" class="add-icon-btn">+</button>
+            </div>
+            <div class="column-options">
+              <div class="column-option" :class="{ 'selected': selectedKnowledge === knowledge }"
+                v-for="knowledge in knowledges" :key="knowledge" @click="selectedKnowledge = knowledge">
+                {{ knowledge }}
+              </div>
+            </div>
+            <div class="column-add" v-if="showAddKnowledgeInput">
+              <input v-model="newKnowledge" type="text" placeholder="新知识点" @keyup.enter="handleAddKnowledge">
+              <button @click="handleAddKnowledge" class="add-btn">确定</button>
+            </div>
+            <div v-if="knowledges.length === 0" class="empty-hint">
+              暂无数据
+            </div>
+          </div>
         </div>
       </div>
     </transition>
@@ -202,107 +370,148 @@ onMounted(() => {
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  max-height: 200px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.source-option {
+.columns-container {
+  display: flex;
+  min-height: 300px;
+  max-height: 400px;
+}
+
+.column {
+  flex: 1;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.column:last-child {
+  border-right: none;
+}
+
+.column-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 15px;
+  background-color: var(--gray-100);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.column-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--gray-700);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.add-icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background-color var(--transition-base);
-  border-radius: calc(var(--radius-sm) - 2px);
-  margin: 4px;
 }
 
-.source-option:hover {
-  background-color: var(--gray-100) !important;
+.add-icon-btn:hover {
+  background-color: var(--primary-dark);
 }
 
-.option-name {
-  font-size: var(--font-size-base);
+.column-options {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.column-option {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column-option:hover {
+  background-color: var(--gray-100);
+}
+
+.column-option.selected {
+  background-color: var(--primary-color);
+  color: var(--white);
+}
+
+.column-add {
+  padding: 10px;
+  border-top: 1px solid var(--border-color);
+  gap: 8px;
+}
+
+.column-add input {
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.column-add input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.add-btn {
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
-  flex-grow: 1;
+  transition: background-color var(--transition-base);
+  white-space: nowrap;
 }
 
-.no-options {
-  padding: 15px;
+.add-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+.empty-hint {
+  padding: 20px;
   text-align: center;
   color: var(--gray-500);
   font-style: italic;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
 }
 
 /* 下拉动画 */
 .slide-down-enter-active {
   transition: all var(--transition-base);
-  max-height: 200px;
 }
 
 .slide-down-leave-active {
   transition: all var(--transition-base);
-  max-height: 200px;
 }
 
 .slide-down-enter-from,
 .slide-down-leave-to {
   opacity: 0;
   transform: translateY(-10px);
-  max-height: 0;
-}
-
-.add-source-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: var(--z-modal);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 20px;
-  background-color: var(--card-bg);
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xl);
-  min-width: 300px;
-}
-
-.add-source-container input {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  background-color: var(--input-bg);
-  color: var(--text-primary);
-}
-
-.add-source-container button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: var(--font-size-base);
-  transition: background-color var(--transition-base);
-}
-
-.add-source-container .confirm {
-  background-color: var(--primary-color);
-  color: var(--white);
-}
-
-.add-source-container .confirm:hover {
-  background-color: var(--primary-dark);
-}
-
-.add-source-container .cancel {
-  background-color: var(--gray-300);
-  color: var(--gray-700);
-}
-
-.add-source-container .cancel:hover {
-  background-color: var(--gray-400);
 }
 </style>

@@ -38,6 +38,14 @@ pub fn run() {
             commands::update_question,
             commands::delete_question,
             commands::get_question_stats,
+            commands::get_sources,
+            commands::get_books,
+            commands::get_chapters,
+            commands::get_knowledges,
+            commands::create_source,
+            commands::update_source,
+            commands::delete_source,
+            commands::get_source
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
