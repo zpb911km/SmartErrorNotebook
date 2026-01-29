@@ -1,104 +1,118 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { createSubject, getSubjects } from '../apis/subjects';
-import { Subject } from '../types';
+import { getSources, createSource } from '../apis/sources';
+import { Source } from '../types';
 import { showInfo } from '../utils/notification';
 
-const getRandomRGBColor = () => {
-  const r = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  const g = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  const b = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  return `#${r}${g}${b}`;
-};
-
-const subjects = ref<Subject[]>([]);
-const selectedSubject = ref<Subject | null>(null);
+const sources = ref<Source[]>([]);
+const selectedSource = ref<Source | null>(null);
 const isExpanded = ref(false);
-const showAddSubject = ref(false);
-const newSubject = ref<Subject>({
-  id: '',
-  name: '',
-  color: getRandomRGBColor(),
+const showAddSource = ref(false);
+const newSource = ref<Omit<Source, 'id' | 'question_id'>>({
+  subject_id: undefined,
+  book: '',
+  chapter: '',
+  knowledge: '',
 });
 
 const props = defineProps<{
-  currentSubjectId: string;
+  currentSourceId: string;
+  subjectId?: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', subject_id: string): void;
+  (e: 'select', source_id: string): void;
 }>();
 
+const updateSourcesForSubject = (subjectId?: string) => {
+  getSources()
+    .then(data => {
+      if (subjectId) {
+        // 过滤出属于当前科目的来源，或者没有指定科目的来源
+        sources.value = data.filter(source => 
+          !source.subject_id || source.subject_id === subjectId
+        );
+      } else {
+        sources.value = data;
+      }
+    })
+    .catch(error => {
+      console.error('获取来源失败：', error);
+      sources.value = [];
+    });
+};
+
+// 当subjectId变化时，更新可用的来源列表
 watch(
-  () => props.currentSubjectId,
+  () => props.subjectId,
+  (newSubjectId) => {
+    updateSourcesForSubject(newSubjectId);
+  }, { immediate: true }
+);
+
+watch(
+  () => props.currentSourceId,
   (newVal) => {
     if (newVal === '') {
-      selectedSubject.value = null;
-    }
-    const subject = subjects.value.find(subject => subject.id === newVal);
-    if (subject) {
-      selectedSubject.value = subject;
+      selectedSource.value = null;
+    } else {
+      const source = sources.value.find(source => source.id === newVal);
+      if (source) {
+        selectedSource.value = source;
+      }
     }
   }
-)
+);
 
-watch(
-  () => showAddSubject,
-  () => {
-    newSubject.value = {
-      id: '',
-      name: '',
-      color: getRandomRGBColor(),
-    };
-  }
-)
-
-const handleClick = (subject: Subject) => {
-  selectedSubject.value = subject;
-  emit('select', subject.id);
+const handleClick = (source: Source) => {
+  selectedSource.value = source;
+  emit('select', source.id);
   isExpanded.value = false;
 };
 
-const handleAddSubject = () => {
-  createSubject(newSubject.value)
+const handleAddSource = () => {
+  // 如果有传入的subjectId，就设置到新来源中
+  if (props.subjectId) {
+    newSource.value.subject_id = props.subjectId;
+  }
+  
+  createSource(newSource.value)
     .then((data) => {
-      console.log(data)
-      showInfo('添加成功', '科目添加成功');
-      subjects.value.push(newSubject.value);
-      selectedSubject.value = newSubject.value;
-      showAddSubject.value = false;
+      console.log('创建来源成功', data);
+      showInfo('添加成功', '来源添加成功');
+      
+      // 直接将新来源添加到列表
+      sources.value.push(data as Source);
+      
+      // 选择新创建的来源
+      selectedSource.value = data as Source;
+      showAddSource.value = false;
       isExpanded.value = false;
-      emit('select', newSubject.value.id);
+      emit('select', data.id);
     })
     .catch(error => {
-      console.error('创建科目失败：', error);
+      console.error('创建来源失败：', error);
     });
 };
 
 onMounted(() => {
-  getSubjects()
-    .then(data => {
-      subjects.value = data;
-    })
-    .catch(error => {
-      console.error('获取科目失败：', error);
-    });
-  selectedSubject.value = null;
+  selectedSource.value = null;
 });
 </script>
 
 <template>
-  <div class="add-subject-container" v-if="showAddSubject">
-    <input v-model="newSubject.name" type="text" placeholder="请输入科目名称"></input>
-    <input v-model="newSubject.color" type="color" title="选择颜色" :style="{ backgroundColor: newSubject.color }"></input>
-    <button @click="handleAddSubject" class="confirm">添加</button>
-    <button @click="showAddSubject = false" class="cancel">取消</button>
+  <div class="add-source-container" v-if="showAddSource">
+    <input v-model="newSource.book" type="text" placeholder="请输入书名"></input>
+    <input v-model="newSource.chapter" type="text" placeholder="请输入章节"></input>
+    <input v-model="newSource.knowledge" type="text" placeholder="请输入知识点"></input>
+    <button @click="handleAddSource" class="confirm">添加</button>
+    <button @click="showAddSource = false" class="cancel">取消</button>
   </div>
-  <div class="subject-selector">
+  <div class="source-selector">
     <!-- 选择器触发按钮 -->
     <div class="selector-trigger" @click="isExpanded = !isExpanded" :class="{ 'expanded': isExpanded }">
       <span class="selected-text">
-        {{ selectedSubject ? selectedSubject.name : '请选择科目' }}
+        {{ selectedSource ? `${selectedSource.book || ''} ${selectedSource.chapter || ''} ${selectedSource.knowledge || ''}`.trim() || '请选择来源' : '请选择来源' }}
       </span>
       <svg class="arrow-icon" :class="{ 'rotated': isExpanded }" xmlns="http://www.w3.org/2000/svg" width="16"
         height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -110,15 +124,18 @@ onMounted(() => {
     <!-- 下拉选项 -->
     <transition name="slide-down">
       <div v-if="isExpanded" class="dropdown-container">
-        <div class="subject-option" v-for="subject in subjects" :key="subject.id" @click="handleClick(subject)">
-          <span class="option-name">{{ subject.name }}</span>
-          <div class="color-indicator" :style="{ backgroundColor: subject.color }"></div>
+        <div class="source-option" v-for="source in sources" :key="source.id" @click="handleClick(source)">
+          <span class="option-name">
+            {{ source.book ? `${source.book} ` : '' }}
+            {{ source.chapter ? `${source.chapter} ` : '' }}
+            {{ source.knowledge ? `${source.knowledge}` : '' }}
+          </span>
         </div>
-        <div class="subject-option">
-          <span class="option-name" @click="showAddSubject = true">+ 添加新科目</span>
+        <div class="source-option">
+          <span class="option-name" @click="showAddSource = true">+ 添加新来源</span>
         </div>
-        <div v-if="subjects.length === 0" class="no-options">
-          暂无科目数据
+        <div v-if="sources.length === 0" class="no-options">
+          暂无来源数据
         </div>
       </div>
     </transition>
@@ -126,9 +143,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.subject-selector {
+.source-selector {
   position: relative;
-  width: 200px;
+  width: 100%;
   font-family: var(--font-family-base);
 }
 
@@ -189,7 +206,7 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.subject-option {
+.source-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -200,7 +217,7 @@ onMounted(() => {
   margin: 4px;
 }
 
-.subject-option:hover {
+.source-option:hover {
   background-color: var(--gray-100) !important;
 }
 
@@ -208,14 +225,6 @@ onMounted(() => {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   flex-grow: 1;
-}
-
-.color-indicator {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  margin-left: 10px;
-  border: 1px solid var(--white);
 }
 
 .no-options {
@@ -244,14 +253,14 @@ onMounted(() => {
   max-height: 0;
 }
 
-.add-subject-container {
+.add-source-container {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: var(--z-modal);
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
   padding: 20px;
   background-color: var(--card-bg);
@@ -261,8 +270,7 @@ onMounted(() => {
   min-width: 300px;
 }
 
-.add-subject-container input {
-  flex: 1;
+.add-source-container input {
   padding: 8px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -271,7 +279,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.add-subject-container button {
+.add-source-container button {
   padding: 8px 16px;
   border: none;
   border-radius: var(--radius-sm);
@@ -280,21 +288,21 @@ onMounted(() => {
   transition: background-color var(--transition-base);
 }
 
-.add-subject-container .confirm {
+.add-source-container .confirm {
   background-color: var(--primary-color);
   color: var(--white);
 }
 
-.add-subject-container .confirm:hover {
+.add-source-container .confirm:hover {
   background-color: var(--primary-dark);
 }
 
-.add-subject-container .cancel {
+.add-source-container .cancel {
   background-color: var(--gray-300);
   color: var(--gray-700);
 }
 
-.add-subject-container .cancel:hover {
+.add-source-container .cancel:hover {
   background-color: var(--gray-400);
 }
 </style>

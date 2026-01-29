@@ -2,10 +2,13 @@
 
 // 定义枚举类型
 enum QuestionType {
-  MultipleChoice = "multiple_choice",
-  ShortAnswer = "short_answer",
-  TrueFalse = "true_false",
-  // 其他题型可以继续添加
+  MultipleChoice = "多选题",
+  ShortAnswer = "简答题",
+  TrueFalse = "判断题",
+  SigleChoice = "单选题",
+  FillInTheBlank = "填空题",
+  Essay = "论述题",
+  Calculation = "计算题",
 }
 
 enum AttachmentType {

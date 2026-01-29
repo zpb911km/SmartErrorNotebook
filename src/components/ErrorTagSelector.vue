@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { createSubject, getSubjects } from '../apis/subjects';
-import { Subject } from '../types';
+import { getErrorTags, createErrorTag } from '../apis/errorTags';
+import { ErrorTags } from '../types';
 import { showInfo } from '../utils/notification';
 
 const getRandomRGBColor = () => {
@@ -11,94 +11,83 @@ const getRandomRGBColor = () => {
   return `#${r}${g}${b}`;
 };
 
-const subjects = ref<Subject[]>([]);
-const selectedSubject = ref<Subject | null>(null);
+const errorTags = ref<ErrorTags[]>([]);
+const selectedErrorTag = ref<ErrorTags | null>(null);
 const isExpanded = ref(false);
-const showAddSubject = ref(false);
-const newSubject = ref<Subject>({
-  id: '',
+const showAddErrorTag = ref(false);
+const newErrorTag = ref<Omit<ErrorTags, 'id' | 'question_id'>>({
   name: '',
   color: getRandomRGBColor(),
 });
 
 const props = defineProps<{
-  currentSubjectId: string;
+  currentErrorTagId: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', subject_id: string): void;
+  (e: 'select', error_tag_id: string): void;
 }>();
 
 watch(
-  () => props.currentSubjectId,
+  () => props.currentErrorTagId,
   (newVal) => {
     if (newVal === '') {
-      selectedSubject.value = null;
-    }
-    const subject = subjects.value.find(subject => subject.id === newVal);
-    if (subject) {
-      selectedSubject.value = subject;
+      selectedErrorTag.value = null;
+    } else {
+      const tag = errorTags.value.find(tag => tag.id === newVal);
+      if (tag) {
+        selectedErrorTag.value = tag;
+      }
     }
   }
-)
+);
 
-watch(
-  () => showAddSubject,
-  () => {
-    newSubject.value = {
-      id: '',
-      name: '',
-      color: getRandomRGBColor(),
-    };
-  }
-)
-
-const handleClick = (subject: Subject) => {
-  selectedSubject.value = subject;
-  emit('select', subject.id);
+const handleClick = (errorTag: ErrorTags) => {
+  selectedErrorTag.value = errorTag;
+  emit('select', errorTag.id);
   isExpanded.value = false;
 };
 
-const handleAddSubject = () => {
-  createSubject(newSubject.value)
+const handleAddErrorTag = () => {
+  createErrorTag(newErrorTag.value)
     .then((data) => {
-      console.log(data)
-      showInfo('添加成功', '科目添加成功');
-      subjects.value.push(newSubject.value);
-      selectedSubject.value = newSubject.value;
-      showAddSubject.value = false;
+      console.log('创建错因标签成功', data);
+      showInfo('添加成功', '错因标签添加成功');
+      errorTags.value.push(data);
+      selectedErrorTag.value = data;
+      showAddErrorTag.value = false;
       isExpanded.value = false;
-      emit('select', newSubject.value.id);
+      emit('select', data.id);
     })
     .catch(error => {
-      console.error('创建科目失败：', error);
+      console.error('创建错因标签失败：', error);
     });
 };
 
 onMounted(() => {
-  getSubjects()
+  getErrorTags()
     .then(data => {
-      subjects.value = data;
+      errorTags.value = data;
     })
     .catch(error => {
-      console.error('获取科目失败：', error);
+      console.error('获取错因标签失败：', error);
     });
-  selectedSubject.value = null;
+  selectedErrorTag.value = null;
 });
 </script>
 
 <template>
-  <div class="add-subject-container" v-if="showAddSubject">
-    <input v-model="newSubject.name" type="text" placeholder="请输入科目名称"></input>
-    <input v-model="newSubject.color" type="color" title="选择颜色" :style="{ backgroundColor: newSubject.color }"></input>
-    <button @click="handleAddSubject" class="confirm">添加</button>
-    <button @click="showAddSubject = false" class="cancel">取消</button>
+  <div class="add-error-tag-container" v-if="showAddErrorTag">
+    <input v-model="newErrorTag.name" type="text" placeholder="请输入错因名称"></input>
+    <input v-model="newErrorTag.color" type="color" title="选择颜色" :style="{ backgroundColor: newErrorTag.color }"></input>
+    <button @click="handleAddErrorTag" class="confirm">添加</button>
+    <button @click="showAddErrorTag = false" class="cancel">取消</button>
   </div>
-  <div class="subject-selector">
+  <div class="error-tag-selector">
     <!-- 选择器触发按钮 -->
     <div class="selector-trigger" @click="isExpanded = !isExpanded" :class="{ 'expanded': isExpanded }">
       <span class="selected-text">
-        {{ selectedSubject ? selectedSubject.name : '请选择科目' }}
+        {{ selectedErrorTag ? selectedErrorTag.name : '请选择错因' }}
       </span>
       <svg class="arrow-icon" :class="{ 'rotated': isExpanded }" xmlns="http://www.w3.org/2000/svg" width="16"
         height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -110,15 +99,15 @@ onMounted(() => {
     <!-- 下拉选项 -->
     <transition name="slide-down">
       <div v-if="isExpanded" class="dropdown-container">
-        <div class="subject-option" v-for="subject in subjects" :key="subject.id" @click="handleClick(subject)">
-          <span class="option-name">{{ subject.name }}</span>
-          <div class="color-indicator" :style="{ backgroundColor: subject.color }"></div>
+        <div class="error-tag-option" v-for="errorTag in errorTags" :key="errorTag.id" @click="handleClick(errorTag)">
+          <span class="option-name">{{ errorTag.name }}</span>
+          <div class="color-indicator" :style="{ backgroundColor: errorTag.color }"></div>
         </div>
-        <div class="subject-option">
-          <span class="option-name" @click="showAddSubject = true">+ 添加新科目</span>
+        <div class="error-tag-option">
+          <span class="option-name" @click="showAddErrorTag = true">+ 添加新错因</span>
         </div>
-        <div v-if="subjects.length === 0" class="no-options">
-          暂无科目数据
+        <div v-if="errorTags.length === 0" class="no-options">
+          暂无错因标签数据
         </div>
       </div>
     </transition>
@@ -126,9 +115,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.subject-selector {
+.error-tag-selector {
   position: relative;
-  width: 200px;
+  width: 100%;
   font-family: var(--font-family-base);
 }
 
@@ -189,7 +178,7 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.subject-option {
+.error-tag-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -200,7 +189,7 @@ onMounted(() => {
   margin: 4px;
 }
 
-.subject-option:hover {
+.error-tag-option:hover {
   background-color: var(--gray-100) !important;
 }
 
@@ -244,7 +233,7 @@ onMounted(() => {
   max-height: 0;
 }
 
-.add-subject-container {
+.add-error-tag-container {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -261,7 +250,7 @@ onMounted(() => {
   min-width: 300px;
 }
 
-.add-subject-container input {
+.add-error-tag-container input {
   flex: 1;
   padding: 8px 12px;
   border: 1px solid var(--border-color);
@@ -271,7 +260,7 @@ onMounted(() => {
   color: var(--text-primary);
 }
 
-.add-subject-container button {
+.add-error-tag-container button {
   padding: 8px 16px;
   border: none;
   border-radius: var(--radius-sm);
@@ -280,21 +269,21 @@ onMounted(() => {
   transition: background-color var(--transition-base);
 }
 
-.add-subject-container .confirm {
+.add-error-tag-container .confirm {
   background-color: var(--primary-color);
   color: var(--white);
 }
 
-.add-subject-container .confirm:hover {
+.add-error-tag-container .confirm:hover {
   background-color: var(--primary-dark);
 }
 
-.add-subject-container .cancel {
+.add-error-tag-container .cancel {
   background-color: var(--gray-300);
   color: var(--gray-700);
 }
 
-.add-subject-container .cancel:hover {
+.add-error-tag-container .cancel:hover {
   background-color: var(--gray-400);
 }
 </style>

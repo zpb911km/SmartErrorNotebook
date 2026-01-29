@@ -16,16 +16,15 @@
       @confirm="handleEditConfirm"
     />
 
-    <div class="upload-area" :class="{ 'drag-over': isDragOver }" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false" @drop.prevent="handleDrop">
+    <div class="upload-area">
       <div class="upload-content">
         <div class="upload-icon">📷</div>
-        <p>点击或拖拽上传题目图片</p>
         <div class="upload-buttons">
           <div class="upload-ctn">
             <button class="upload-btn">选择文件</button>
             <input type="file" accept="image/*" @change="handleFileSelect" class="file-input" ref="fileInputRef">
           </div>
-          <button class="upload-btn camera-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">拍照</button>
+          <button class="upload-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
         </div>
       </div>
       <div class="image-preview" v-if="imageUrl">
@@ -39,79 +38,67 @@
       <div class="form-group">
         <label>科目</label>
         <SubjectSelector
+          :currentSubjectId="form.subject"
           @select="(subject_id) => {form.subject = subject_id}"
         />
       </div>
 
       <div class="form-group">
-        <label>知识点</label>
-        <input type="text" v-model="form.knowledge" placeholder="例如：函数、力学、语法等">
+        <label>题目</label>
+        <textarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></textarea>  
       </div>
 
       <div class="form-group">
         <label>题型</label>
         <select v-model="form.type">
-          <option value="">请选择题型</option>
-          <option value="choice">选择题</option>
-          <option value="fill">填空题</option>
-          <option value="calc">计算题</option>
-          <option value="essay">论述题</option>
+          <option v-for="type in everyQuestionType" :key="type" :value="type">{{ type }}</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>难度</label>
-        <div class="difficulty-selector">
-          <button v-for="level in difficultyLevels" :key="level.value"
-                  class="difficulty-btn"
-                  :class="{ active: form.difficulty === level.value }"
-                  @click="form.difficulty = level.value">
-            {{ level.label }}
-          </button>
-        </div>
+        <label>答案</label>
+        <textarea v-model="form.answer" placeholder="请输入答案..." rows="3"></textarea>
       </div>
 
       <div class="form-group">
-        <label>错误原因</label>
-        <select v-model="form.reason">
-          <option value="">请选择错误原因</option>
-          <option value="careless">粗心大意</option>
-          <option value="concept">概念不清</option>
-          <option value="method">方法错误</option>
-          <option value="calculation">计算错误</option>
-          <option value="other">其他</option>
-        </select>
+        <label>解析</label>
+        <textarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></textarea>
       </div>
 
       <div class="form-group">
-        <label>备注</label>
-        <textarea v-model="form.note" placeholder="添加备注或笔记..." rows="3"></textarea>
+        <label>错题小记</label>
+        <textarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></textarea>
       </div>
-    </div>
 
-    <div class="ai-suggestion" v-if="aiResult">
-      <h3>AI 分析结果</h3>
-      <div class="suggestion-item">
-        <span class="suggestion-label">识别科目：</span>
-        <span class="suggestion-value">{{ aiResult.subject }}</span>
+      <div class="form-group">
+        <label>来源</label>
+        <SourceSelector
+          :currentSourceId="form.source"
+          :subjectId="form.subject"
+          @select="(source_id) => {form.source = source_id}"
+        />
       </div>
-      <div class="suggestion-item">
-        <span class="suggestion-label">知识点：</span>
-        <span class="suggestion-value">{{ aiResult.knowledge }}</span>
+
+      <div class="form-group">
+        <label>错因</label>
+        <ErrorTagSelector
+          :currentErrorTagId="form.error_tag"
+          @select="(error_tag_id) => {form.error_tag = error_tag_id}"
+        />
       </div>
-      <div class="suggestion-item">
-        <span class="suggestion-label">错因分析：</span>
-        <span class="suggestion-value">{{ aiResult.reason }}</span>
-      </div>
-      <div class="suggestion-item">
-        <span class="suggestion-label">解题建议：</span>
-        <span class="suggestion-value">{{ aiResult.suggestion }}</span>
+
+      <div class="form-group">
+        <label>SRS 预设</label>
+        <SRSPresetSelector
+          :currentPresetId="currentPresetId"
+          @select="handlePresetSelect"
+        />
       </div>
     </div>
 
     <div class="action-buttons">
       <button class="btn cancel" @click="resetForm">取消</button>
-      <button class="btn save" @click="saveError">保存</button>
+      <button class="btn save" @click="saveError" :disabled="isSaving">保存</button>
     </div>
   </div>
 </template>
@@ -120,12 +107,16 @@
 import { onMounted, ref } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
-import { Subject } from '../types'
-import { getSubjects } from '../apis/subjects'
 import SubjectSelector from '../components/SubjectSelector.vue'
+import SourceSelector from '../components/SourceSelector.vue'
+import ErrorTagSelector from '../components/ErrorTagSelector.vue'
+import SRSPresetSelector from '../components/SRSPresetSelector.vue'
+import { QuestionType } from '../types'
+import { createErrorQuestion, CreateErrorQuestionRequest } from '../apis/errorQuestions'
+import { showInfo, showError } from '../utils/notification'
 
-const isDragOver = ref(false)
 const imageUrl = ref('')
+const isSaving = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 // 相机相关状态
@@ -136,26 +127,28 @@ const cameraDisabled = ref(false)
 const showEdit = ref(false)
 const editImageData = ref('')
 
+// SRS预设相关状态
+const currentPresetId = ref('')
+const selectedPreset = ref(null)
+
+// 题型
+const everyQuestionType = Object.values(QuestionType)
+
 const form = ref({
+  // base info
   subject: '',
-  knowledge: '',
+  prompt: '',
   type: '',
-  difficulty: 'medium',
-  reason: '',
-  note: ''
-})
-
-const difficultyLevels = [
-  { label: '简单', value: 'easy' },
-  { label: '中等', value: 'medium' },
-  { label: '困难', value: 'hard' }
-]
-
-const aiResult = ref({
-  subject: '数学',
-  knowledge: '函数',
-  reason: '概念不清',
-  suggestion: '建议复习函数的定义域和值域相关概念'
+  answer: '',
+  analysis: '',
+  error_note: '',
+  // source info
+  source: '',
+  // error tag info
+  error_tag: '',
+  // SRS info
+  difficulty: 0,
+  mastery: 0
 })
 
 onMounted(() => {
@@ -169,26 +162,11 @@ onMounted(() => {
     });
 })
 
-// 打开文件选择
-const openFileInput = () => {
-  fileInputRef.value?.click()
-}
-
 // 处理文件选择
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files[0]) {
     const file = target.files[0]
-    const imageData = URL.createObjectURL(file)
-    openEdit(imageData)
-  }
-}
-
-// 处理拖拽
-const handleDrop = (e: DragEvent) => {
-  isDragOver.value = false
-  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
-    const file = e.dataTransfer.files[0]
     const imageData = URL.createObjectURL(file)
     openEdit(imageData)
   }
@@ -240,24 +218,108 @@ const handleEditConfirm = (imageData: string) => {
   imageUrl.value = imageData
 }
 
+// 处理SRS预设选择
+const handlePresetSelect = (preset: any) => {
+  selectedPreset.value = preset
+  currentPresetId.value = preset.id
+  form.value.difficulty = preset.difficulty
+  form.value.mastery = preset.mastery
+}
+
 // 重置表单
 const resetForm = () => {
   form.value = {
+    // base info
     subject: '',
-    knowledge: '',
+    prompt: '',
     type: '',
-    difficulty: 'medium',
-    reason: '',
-    note: ''
+    answer: '',
+    analysis: '',
+    error_note: '',
+    // source info
+    source: '',
+    // error tag info
+    error_tag: '',
+    // SRS info
+    difficulty: 0,
+    mastery: 0
   }
   imageUrl.value = ''
+  currentPresetId.value = ''
+  selectedPreset.value = null
 }
 
 // 保存错题
-const saveError = () => {
-  console.log('保存错题', form.value)
-  alert('错题保存成功！')
-  resetForm()
+const saveError = async () => {
+  // 验证必填字段
+  if (!form.value.subject) {
+    showError('错误', '请选择科目')
+    return
+  }
+  
+  if (!form.value.prompt) {
+    showError('错误', '请输入题目')
+    return
+  }
+  
+  if (!form.value.type) {
+    showError('错误', '请选择题型')
+    return
+  }
+  
+  isSaving.value = true
+  
+  try {
+    // 准备请求对象
+    const request: CreateErrorQuestionRequest = {
+      errorQuestion: {
+        userid: 'current_user_id', // 模拟当前用户ID，后端应该处理这个
+        subjectid: form.value.subject,
+        prompt: form.value.prompt,
+        type: form.value.type as QuestionType,
+        answer: form.value.answer || undefined,
+        analysis: form.value.analysis || undefined,
+        error_note: form.value.error_note || undefined,
+      },
+      srsData: {
+        difficulty: form.value.difficulty,
+        mastery: form.value.mastery,
+        lastreviewed_at: Date.now(), // 使用当前时间戳
+        review_count: 0, // 新增错题，复习次数为0
+      },
+      attachment: imageUrl.value ? imageUrl.value : undefined, // 图片数据，如果是base64格式
+    }
+    
+    // 如果选择了来源，需要获取来源的详细信息
+    if (form.value.source) {
+      // 在实际实现中，您可能需要通过API获取来源的详细信息
+      // 这里我们模拟获取来源信息
+      console.log('选择了来源:', form.value.source);
+    }
+    
+    // 如果选择了错因标签，需要获取错因标签的详细信息
+    if (form.value.error_tag) {
+      // 在实际实现中，您可能需要通过API获取错因标签的详细信息
+      // 这里我们模拟获取错因标签信息
+      console.log('选择了错因:', form.value.error_tag);
+    }
+    
+    console.log('保存错题请求:', request)
+    
+    // 发送请求
+    const response = await createErrorQuestion(request)
+    console.log('保存错题成功:', response)
+    
+    showInfo('成功', '错题保存成功')
+    
+    // 重置表单
+    resetForm()
+  } catch (error) {
+    console.error('保存错题失败:', error)
+    showError('错误', '保存错题失败: ' + (error as Error).message)
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
 
@@ -317,16 +379,6 @@ const saveError = () => {
 .upload-btn:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
-}
-
-.upload-btn.camera-btn {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-.upload-btn.camera-btn:hover {
-  background: #1565c0;
 }
 
 .file-input {
