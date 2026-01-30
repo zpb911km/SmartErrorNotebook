@@ -27,17 +27,30 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
+            // Greeting
             commands::greet,
+            // Subject
             commands::get_subjects,
             commands::create_subject,
             commands::update_subject,
             commands::delete_subject,
+            // Error Question
             commands::get_questions,
             commands::get_question,
             commands::create_question,
             commands::update_question,
             commands::delete_question,
             commands::get_question_stats,
+            // Error Tag
+            commands::create_error_tags_for_question,
+            // SRS Data
+            commands::create_srs_data,
+            // Attachment
+            commands::create_attachment,
+            commands::create_attachments_for_question,
+            commands::get_attachments_by_question,
+            commands::delete_attachment,
+            // Source
             commands::get_sources,
             commands::get_books,
             commands::get_chapters,
@@ -45,7 +58,8 @@ pub fn run() {
             commands::create_source,
             commands::update_source,
             commands::delete_source,
-            commands::get_source
+            commands::get_source,
+            commands::get_or_create_source_id
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

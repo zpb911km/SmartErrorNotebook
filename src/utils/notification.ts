@@ -32,6 +32,7 @@ const initNotification = () => {
 // 通用通知方法
 const showNotification = (type: NotificationType, title: string, message: string, duration?: number) => {
   initNotification();
+  console.log(`[${type.toUpperCase()}] ${title}: ${message}`);
   notificationInstance.addNotification(type, title, message, duration);
 };
 
@@ -56,8 +57,8 @@ export const showError = (title: string, message: string, duration?: number) => 
 };
 
 // 显示调试通知
-export const showDebug = (title: string, message: string, duration?: number) => {
-  showNotification('debug', title, message, duration);
+export const showDebug = (title: string, message: string | Object, duration?: number) => {
+  showNotification('debug', title, JSON.stringify(message), duration);
 };
 
 // 销毁通知实例（可选）

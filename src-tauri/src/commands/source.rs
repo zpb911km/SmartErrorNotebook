@@ -1,12 +1,12 @@
 // 来源相关命令
 
 use crate::AppState;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, FromQueryResult};
+use sea_orm::{ColumnTrait, EntityTrait, FromQueryResult, QueryFilter, QuerySelect};
 use tauri::State;
 
 use crate::database::entities::{prelude::Source, source};
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct CreateSourceInput {
     pub subject_id: Option<String>,
     pub book: Option<String>,
@@ -190,10 +190,11 @@ pub async fn create_source(
     use sea_orm::ActiveModelTrait;
     use sea_orm::Set;
     use uuid::Uuid;
+    let id = Uuid::new_v4().to_string();
 
     let new_source = source::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        question_id: Set(Uuid::new_v4().to_string()), // 临时 UUID,实际使用时会关联到错题
+        id: Set(id.clone()),
+        question_id: Set(None), // 暂时为空，后续关联错题时再更新
         subject_id: Set(input.subject_id),
         book: Set(input.book),
         chapter: Set(input.chapter),
@@ -206,9 +207,17 @@ pub async fn create_source(
         sync_hash: Set(None),
     };
 
-    let source = new_source.insert(db).await.map_err(|e| e.to_string())?;
+    // 插入数据
+    let _ = new_source.insert(db).await;
 
-    Ok(source)
+    // 再次查询确认插入成功
+    let inserted_source = Source::find_by_id(id)
+        .one(db)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("插入后未能找到新创建的记录".to_string())?;
+
+    Ok(inserted_source)
 }
 
 /// 更新来源
@@ -279,4 +288,53 @@ pub async fn delete_source(
     source.update(db).await.map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+/// 获取或新增来源,并返回id
+#[tauri::command]
+pub async fn get_or_create_source_id(
+    state: State<'_, AppState>,
+    input: CreateSourceInput,
+) -> Result<String, String> { 
+    let db = state.db.as_ref();
+    let input_copy = input.clone();
+    
+    // 构建查询条件，对 None 值特殊处理
+    let mut query = Source::find()
+        .filter(source::Column::DeletedAt.is_null()); // 只查询未删除的记录
+    
+    if let Some(ref subject_id) = input.subject_id {
+        query = query.filter(source::Column::SubjectId.eq(subject_id));
+    } else {
+        // 如果输入值为 None，过滤数据库中也为 NULL 的记录
+        query = query.filter(source::Column::SubjectId.is_null());
+    }
+    
+    if let Some(ref book) = input.book {
+        query = query.filter(source::Column::Book.eq(book));
+    } else {
+        query = query.filter(source::Column::Book.is_null());
+    }
+    
+    if let Some(ref chapter) = input.chapter {
+        query = query.filter(source::Column::Chapter.eq(chapter));
+    } else {
+        query = query.filter(source::Column::Chapter.is_null());
+    }
+    
+    if let Some(ref knowledge) = input.knowledge {
+        query = query.filter(source::Column::Knowledge.eq(knowledge));
+    } else {
+        query = query.filter(source::Column::Knowledge.is_null());
+    }
+
+    let source = query.one(db).await.map_err(|e| e.to_string())?;
+    
+    match source {
+        Some(source) => Ok(source.id),
+        None => {
+            let source = create_source(state, input_copy).await?;
+            Ok(source.id)
+        }
+    }
 }

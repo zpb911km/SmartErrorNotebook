@@ -27,9 +27,15 @@
           <button class="upload-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
         </div>
       </div>
-      <div class="image-preview" v-if="imageUrl">
-        <img :src="imageUrl" alt="题目图片">
-        <button class="remove-btn" @click="clearImage">✕</button>
+      <div class="image-preview-list" v-if="imageUrls.length > 0">
+        <div class="image-preview-item" v-for="(url, index) in imageUrls" :key="index">
+          <img :src="url" :alt="`题目图片 ${index + 1}`">
+          <div class="image-actions">
+            <button class="action-btn edit-btn" @click="openEdit(url, index)" title="编辑">✎</button>
+            <button class="action-btn remove-btn" @click="removeImage(index)" title="删除">✕</button>
+          </div>
+          <div class="image-index">{{ index + 1 }}</div>
+        </div>
       </div>
     </div>
 
@@ -75,15 +81,15 @@
         <SourceSelector
           :currentSourceId="form.source"
           :subjectId="form.subject"
-          @select="(source_id) => {form.source = source_id}"
+          @select="(source) => selectedSource = source"
         />
       </div>
 
       <div class="form-group">
         <label>错因</label>
         <ErrorTagSelector
-          :currentErrorTagId="form.error_tag"
-          @select="(error_tag_id) => {form.error_tag = error_tag_id}"
+          :currentTags="form.error_tags"
+          @select="(tags) => {form.error_tags = tags}"
         />
       </div>
 
@@ -104,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
@@ -112,12 +118,21 @@ import SourceSelector from '../components/SourceSelector.vue'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
 import SRSPresetSelector from '../components/SRSPresetSelector.vue'
 import { QuestionType } from '../types'
-import { createErrorQuestion, CreateErrorQuestionRequest } from '../apis/errorQuestions'
-import { showInfo, showError } from '../utils/notification'
+import { createErrorQuestion } from '../apis/errorQuestions'
+import { createErrorTagsForQuestion } from '../apis/errorTags'
+import { createSRSData } from '../apis/srsData'
+import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
+import { showInfo, showError, showDebug } from '../utils/notification'
+import { getOrCreateSourceId } from '../apis/sources'
 
-const imageUrl = ref('')
+const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const selectedSource = ref<{
+    book: string;
+    chapter: string | undefined;
+    knowledge: string | undefined;
+  } | null>(null)
 
 // 相机相关状态
 const showCamera = ref(false)
@@ -126,6 +141,7 @@ const cameraDisabled = ref(false)
 // 图片编辑相关状态
 const showEdit = ref(false)
 const editImageData = ref('')
+const editingImageIndex = ref<number>(-1)
 
 // SRS预设相关状态
 const currentPresetId = ref('')
@@ -145,10 +161,17 @@ const form = ref({
   // source info
   source: '',
   // error tag info
-  error_tag: '',
+  error_tags: [] as Array<{ name: string; color: string }>,
   // SRS info
   difficulty: 0,
   mastery: 0
+})
+
+const currentSource = computed(() => {
+  return {
+    subject_id: form.value.subject,
+    ...selectedSource.value,
+  }
 })
 
 onMounted(() => {
@@ -168,13 +191,15 @@ const handleFileSelect = (e: Event) => {
   if (target.files && target.files[0]) {
     const file = target.files[0]
     const imageData = URL.createObjectURL(file)
-    openEdit(imageData)
+    openEdit(imageData, -1) // -1 表示添加新图片
   }
+  // 重置 input 以便再次选择同一文件
+  target.value = ''
 }
 
-// 清除图片
-const clearImage = () => {
-  imageUrl.value = ''
+// 移除图片
+const removeImage = (index: number) => {
+  imageUrls.value.splice(index, 1)
 }
 
 // 打开相机
@@ -196,12 +221,13 @@ const disableCamera = () => {
 // 相机拍照
 const handleCameraCapture = (imageData: string) => {
   showCamera.value = false
-  openEdit(imageData)
+  openEdit(imageData, -1) // -1 表示添加新图片
 }
 
 // 打开图片编辑
-const openEdit = (imageData: string) => {
+const openEdit = (imageData: string, index: number) => {
   editImageData.value = imageData
+  editingImageIndex.value = index
   showEdit.value = true
 }
 
@@ -215,7 +241,14 @@ const handleEditClose = () => {
 const handleEditConfirm = (imageData: string) => {
   showEdit.value = false
   editImageData.value = ''
-  imageUrl.value = imageData
+  if (editingImageIndex.value === -1) {
+    // 添加新图片
+    imageUrls.value.push(imageData)
+  } else {
+    // 替换指定索引的图片
+    imageUrls.value[editingImageIndex.value] = imageData
+  }
+  editingImageIndex.value = -1
 }
 
 // 处理SRS预设选择
@@ -239,12 +272,12 @@ const resetForm = () => {
     // source info
     source: '',
     // error tag info
-    error_tag: '',
+    error_tags: [],
     // SRS info
     difficulty: 0,
     mastery: 0
   }
-  imageUrl.value = ''
+  imageUrls.value = []
   currentPresetId.value = ''
   selectedPreset.value = null
 }
@@ -267,51 +300,66 @@ const saveError = async () => {
     return
   }
   
+  if (imageUrls.value.length === 0) {
+    showError('错误', '请至少添加一张图片')
+    return
+  }
+  
   isSaving.value = true
+  showDebug('保存中...', form.value)
   
   try {
-    // 准备请求对象
-    const request: CreateErrorQuestionRequest = {
-      errorQuestion: {
-        userid: 'current_user_id', // 模拟当前用户ID，后端应该处理这个
-        subjectid: form.value.subject,
-        prompt: form.value.prompt,
-        type: form.value.type as QuestionType,
-        answer: form.value.answer || undefined,
-        analysis: form.value.analysis || undefined,
-        error_note: form.value.error_note || undefined,
-      },
-      srsData: {
-        difficulty: form.value.difficulty,
-        mastery: form.value.mastery,
-        lastreviewed_at: Date.now(), // 使用当前时间戳
-        review_count: 0, // 新增错题，复习次数为0
-      },
-      attachment: imageUrl.value ? imageUrl.value : undefined, // 图片数据，如果是base64格式
+    // 1. 创建错题
+    const errorQuestion = await createErrorQuestion({
+      userid: 'current_user', // TODO: 从用户状态获取
+      subject_id: form.value.subject,
+      source_id: form.value.source,
+      prompt: form.value.prompt,
+      type: form.value.type as QuestionType,
+      answer: form.value.answer,
+      analysis: form.value.analysis,
+      error_note: form.value.error_note,
+    });
+    
+    // 2. 批量创建错因标签
+    if (form.value.error_tags.length > 0) {
+      await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags);
+      showDebug('创建错因标签成功', form.value.error_tags);
     }
     
-    // 如果选择了来源，需要获取来源的详细信息
-    if (form.value.source) {
-      // 在实际实现中，您可能需要通过API获取来源的详细信息
-      // 这里我们模拟获取来源信息
-      console.log('选择了来源:', form.value.source);
+    // 3. 创建SRS数据
+    await createSRSData(
+      errorQuestion.id,
+      form.value.difficulty,
+      form.value.mastery
+    );
+    showDebug('创建SRS数据成功', { difficulty: form.value.difficulty, mastery: form.value.mastery });
+    
+    // 4. 批量上传图片
+    if (imageUrls.value.length > 0) {
+      showDebug('开始上传图片...', `共 ${imageUrls.value.length} 张`);
+      
+      const attachmentsData = await Promise.all(
+        imageUrls.value.map(async (url, index) => {
+          try {
+            const base64Data = await blobUrlToBase64(url);
+            return {
+              type_: 'original',
+              file_type: 'image/png',
+              base64_data: base64Data,
+            };
+          } catch (error) {
+            console.error(`转换图片 ${index + 1} 失败:`, error);
+            throw error;
+          }
+        })
+      );
+      
+      await createAttachmentsForQuestion(errorQuestion.id, attachmentsData);
+      showDebug('上传图片成功', `共 ${attachmentsData.length} 张`);
     }
     
-    // 如果选择了错因标签，需要获取错因标签的详细信息
-    if (form.value.error_tag) {
-      // 在实际实现中，您可能需要通过API获取错因标签的详细信息
-      // 这里我们模拟获取错因标签信息
-      console.log('选择了错因:', form.value.error_tag);
-    }
-    
-    console.log('保存错题请求:', request)
-    
-    // 发送请求
-    const response = await createErrorQuestion(request)
-    console.log('保存错题成功:', response)
-    
-    showInfo('成功', '错题保存成功')
-    
+    showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
     // 重置表单
     resetForm()
   } catch (error) {
@@ -321,6 +369,24 @@ const saveError = async () => {
     isSaving.value = false
   }
 }
+
+watch(currentSource, async (newSource) => {
+  if (newSource.book) {
+    const subjectId = newSource.subject_id === ''? undefined : newSource.subject_id;
+    showDebug('正在获取来源ID...', newSource);
+    await getOrCreateSourceId({
+      subject_id: subjectId,
+      book: newSource.book,
+      chapter: newSource.chapter === ''? undefined : newSource.chapter,
+      knowledge: newSource.knowledge === ''? undefined : newSource.knowledge,
+    }).then(sourceId => {
+      form.value.source = sourceId;
+      showDebug('获取来源ID成功', sourceId);
+    }).catch(error => {
+      showError('添加失败', '添加来源失败' + error);
+    });
+  }
+})
 </script>
 
 <style scoped>
@@ -391,31 +457,81 @@ const saveError = async () => {
   cursor: pointer;
 }
 
-.image-preview {
+.image-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.image-preview-item {
   position: relative;
-}
-
-.image-preview img {
-  max-width: 100%;
-  max-height: 300px;
   border-radius: 8px;
+  overflow: hidden;
+  background: var(--input-bg);
 }
 
-.remove-btn {
+.image-preview-item img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.image-actions {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.image-preview-item:hover .image-actions {
+  opacity: 1;
+}
+
+.action-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
   color: white;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s;
+}
+
+.action-btn.edit-btn {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.action-btn.edit-btn:hover {
+  background: var(--primary-color);
+}
+
+.action-btn.remove-btn {
+  background: rgba(220, 53, 69, 0.8);
+}
+
+.action-btn.remove-btn:hover {
+  background: #dc3545;
+}
+
+.image-index {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .form-section {

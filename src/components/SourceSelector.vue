@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { getSources, getBooks, getChapters, getKnowledges, createSource, getOrCreateSourceId, getSource } from '../apis/sources';
 import { Source } from '../types';
-import { showInfo } from '../utils/notification';
+import { showError, showInfo } from '../utils/notification';
 
 const selectedSource = ref<Source | null>(null);
 const isExpanded = ref(false);
@@ -31,7 +31,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', source_id: string): void;
+  (e: 'select', source: {
+    book: string;
+    chapter: string | undefined;
+    knowledge: string | undefined;
+  }): void;
 }>();
 
 // 先定义所有函数
@@ -108,12 +112,15 @@ const loadSourceById = async (sourceId: string) => {
     if (source.knowledge) {
       selectedKnowledge.value = source.knowledge;
     }
+    if (props.subjectId) {
+      books.value = await getBooks(props.subjectId);
+    }
     // 预加载下一级数据
     if (source.book) {
-      getChapters(props.subjectId, source.book).then(data => {
+      getChapters(source.book).then(data => {
         chapters.value = data;
         if (source.chapter && source.book) {
-          getKnowledges(props.subjectId, source.book, source.chapter).then(data => {
+          getKnowledges(source.book, source.chapter).then(data => {
             knowledges.value = data;
           });
         }
@@ -127,16 +134,11 @@ const loadSourceById = async (sourceId: string) => {
 const onSelectorClicked = () => {
   isExpanded.value = !isExpanded.value;
   if ((selectedBook || selectedChapter || selectedKnowledge) && !isExpanded.value) {
-    getOrCreateSourceId({
+    emit('select', {
       book: selectedBook.value,
       chapter: selectedChapter.value,
       knowledge: selectedKnowledge.value,
-    }).then(sourceId => {
-      loadSourceById(sourceId);
-      emit('select', sourceId);
-    }).catch(error => {
-      console.error('创建来源失败：', error);
-    });
+    })
   }
 };
 
@@ -144,7 +146,7 @@ const onSelectorClicked = () => {
 // 当选择书名时,加载章节列表
 watch(selectedBook, (newBook) => {
   if (newBook) {
-    getChapters(props.subjectId, newBook)
+    getChapters(newBook)
       .then(data => {
         chapters.value = data;
         selectedChapter.value = '';
@@ -162,7 +164,7 @@ watch(selectedBook, (newBook) => {
 // 当选择章节时,加载知识点列表
 watch(selectedChapter, (newChapter) => {
   if (newChapter && selectedBook.value) {
-    getKnowledges(props.subjectId, selectedBook.value, newChapter)
+    getKnowledges(selectedBook.value, newChapter)
       .then(data => {
         knowledges.value = data;
         selectedKnowledge.value = '';
@@ -190,34 +192,6 @@ watch(
     loadSourceById(newVal);
   }, { immediate: true }
 );
-
-// 自动确认选择 - 支持部分选择
-watch([selectedBook, selectedChapter, selectedKnowledge], ([book, chapter, knowledge]) => {
-  if (book) {
-    // 只要有书名就创建/更新来源
-    const newSourceData: Omit<Source, 'id' | 'question_id'> = {
-      subject_id: props.subjectId,
-      book: book,
-      chapter: chapter || undefined,
-      knowledge: knowledge || undefined,
-    };
-
-    createSource(newSourceData)
-      .then((data) => {
-        console.log('创建来源成功', data);
-        selectedSource.value = data as Source;
-
-        // 如果用户选择了书但没继续选择章节和知识点,就自动关闭
-        if (!chapter && !knowledge) {
-          isExpanded.value = false;
-          emit('select', data.id);
-        }
-      })
-      .catch(error => {
-        console.error('创建来源失败：', error);
-      });
-  }
-});
 
 onMounted(() => {
   selectedSource.value = null;

@@ -5,8 +5,15 @@ export async function getErrorTags(): Promise<ErrorTags[]> {
   return await invoke('get_error_tags');
 }
 
-export async function createErrorTag(errorTag: Omit<ErrorTags, 'id' | 'question_id'>): Promise<ErrorTags> {
+export async function createErrorTag(errorTag: Omit<ErrorTags, 'id'>): Promise<ErrorTags> {
   return await invoke('create_error_tag', { errorTag });
+}
+
+export async function createErrorTagsForQuestion(
+  questionId: string,
+  tags: Array<{ name: string; color: string }>
+): Promise<ErrorTags[]> {
+  return await invoke('create_error_tags_for_question', { questionId, tags });
 }
 
 export async function updateErrorTag(errorTag: ErrorTags): Promise<ErrorTags> {

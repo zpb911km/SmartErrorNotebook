@@ -11,6 +11,7 @@ use crate::database::entities::{prelude::{Subject, ErrorQuestion}, error_questio
 pub struct CreateQuestionInput {
     pub userid: String,
     pub subjectid: String,
+    pub sourceid: Option<String>,
     pub prompt: String,
     #[serde(rename = "type")]
     pub type_: String,
@@ -107,6 +108,7 @@ pub async fn create_question(
 ) -> Result<error_question::Model, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
+    let id = Uuid::new_v4().to_string();
 
     // 验证科目是否存在
     let _ = Subject::find_by_id(input.subjectid.clone())
@@ -116,9 +118,10 @@ pub async fn create_question(
         .ok_or("Subject not found")?;
 
     let new_question = error_question::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(id.clone()),
         userid: Set(input.userid),
         subjectid: Set(input.subjectid),
+        sourceid: Set(input.sourceid),
         prompt: Set(input.prompt),
         type_: Set(input.type_),
         answer: Set(input.answer),
@@ -132,7 +135,13 @@ pub async fn create_question(
         sync_hash: Set(None),
     };
 
-    let question = new_question.insert(db).await.map_err(|e| e.to_string())?;
+    new_question.save(db).await.map_err(|e| e.to_string())?;
+
+    let question = ErrorQuestion::find_by_id(id)
+        .one(db)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("插入后未能找到新创建的记录".to_string())?;
 
     Ok(question)
 }

@@ -6,7 +6,7 @@ import { QuestionType, AttachmentType, FileType, ErrorQuestion, SRSData, Source,
 export const mockErrorQuestion1: ErrorQuestion = {
   id: uuidv4(),
   userid: uuidv4(),
-  subjectid: uuidv4(),
+  subject_id: uuidv4(),
   prompt: "什么是JavaScript?",
   type: QuestionType.ShortAnswer,
   answer: "JavaScript是一种用于网页开发的脚本语言。",
@@ -19,7 +19,7 @@ export const mockErrorQuestion1: ErrorQuestion = {
 export const mockErrorQuestion2: ErrorQuestion = {
   id: uuidv4(),
   userid: mockErrorQuestion1.userid,
-  subjectid: mockErrorQuestion1.subjectid,
+  subject_id: mockErrorQuestion1.subject_id,
   prompt: "解释一下闭包。",
   type: QuestionType.ShortAnswer,
   answer: "闭包是函数和对其周围状态（词法环境）的引用组合。",
@@ -50,7 +50,7 @@ export const mockSRSData2: SRSData = {
 export const mockSource1: Source = {
   id: uuidv4(),
   question_id: mockErrorQuestion1.id,
-  subject_id: mockErrorQuestion1.subjectid,
+  subject_id: mockErrorQuestion1.subject_id,
   book: "JavaScript权威指南",
   chapter: "第2章",
   knowledge: "语言基础",
@@ -59,7 +59,7 @@ export const mockSource1: Source = {
 export const mockSource2: Source = {
   id: uuidv4(),
   question_id: mockErrorQuestion2.id,
-  subject_id: mockErrorQuestion2.subjectid,
+  subject_id: mockErrorQuestion2.subject_id,
   book: "深入浅出JavaScript",
   chapter: "第5章",
   knowledge: "闭包",

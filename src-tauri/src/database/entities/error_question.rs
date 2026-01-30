@@ -10,6 +10,7 @@ pub struct Model {
     pub id: String,
     pub userid: String,
     pub subjectid: String,
+    pub sourceid: Option<String>,
     pub prompt: String,
     pub type_: String,
     #[sea_orm(column_type = "Text")]
@@ -36,8 +37,6 @@ pub enum Relation {
     Subject,
     #[sea_orm(has_one = "super::srs_data::Entity")]
     SrsData,
-    #[sea_orm(has_many = "super::source::Entity")]
-    Sources,
     #[sea_orm(has_many = "super::error_tag::Entity")]
     ErrorTags,
     #[sea_orm(has_many = "super::attachment::Entity")]
@@ -53,12 +52,6 @@ impl Related<super::subject::Entity> for Entity {
 impl Related<super::srs_data::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::SrsData.def()
-    }
-}
-
-impl Related<super::source::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Sources.def()
     }
 }
 
