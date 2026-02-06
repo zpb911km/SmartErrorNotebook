@@ -13,7 +13,8 @@ pub struct Model {
     pub type_: String,
     #[sea_orm(column_type = "Text")]
     pub file_type: String,
-    pub path: String,
+    #[sea_orm(column_type = "Text")]
+    pub base64_data: String,
     pub hash: String,
     pub created_at: i64,
     pub updated_at: i64,

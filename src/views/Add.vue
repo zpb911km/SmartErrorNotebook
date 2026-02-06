@@ -16,21 +16,26 @@
       @confirm="handleEditConfirm"
     />
 
-    <div class="upload-area" :class="{ 'drag-over': isDragOver }" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false" @drop.prevent="handleDrop">
-      <div class="upload-content" v-if="!imageUrl">
+    <div class="upload-area">
+      <div class="upload-content">
         <div class="upload-icon">📷</div>
-        <p>点击或拖拽上传题目图片</p>
         <div class="upload-buttons">
           <div class="upload-ctn">
             <button class="upload-btn">选择文件</button>
             <input type="file" accept="image/*" @change="handleFileSelect" class="file-input" ref="fileInputRef">
           </div>
-          <button class="upload-btn camera-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">拍照</button>
+          <button class="upload-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
         </div>
       </div>
-      <div class="image-preview" v-else>
-        <img :src="imageUrl" alt="题目图片">
-        <button class="remove-btn" @click="clearImage">✕</button>
+      <div class="image-preview-list" v-if="imageUrls.length > 0">
+        <div class="image-preview-item" v-for="(url, index) in imageUrls" :key="index">
+          <img :src="url" :alt="`题目图片 ${index + 1}`">
+          <div class="image-actions">
+            <button class="action-btn edit-btn" @click="openEdit(url, index)" title="编辑">✎</button>
+            <button class="action-btn remove-btn" @click="removeImage(index)" title="删除">✕</button>
+          </div>
+          <div class="image-index">{{ index + 1 }}</div>
+        </div>
       </div>
     </div>
 
@@ -38,97 +43,96 @@
       <h3>题目信息</h3>
       <div class="form-group">
         <label>科目</label>
-        <select v-model="form.subject">
-          <option value="">请选择科目</option>
-          <option value="math">数学</option>
-          <option value="physics">物理</option>
-          <option value="chemistry">化学</option>
-          <option value="english">英语</option>
-          <option value="chinese">语文</option>
-        </select>
+        <SubjectSelector
+          :currentSubjectId="form.subject"
+          @select="(subject_id) => {form.subject = subject_id}"
+        />
       </div>
 
       <div class="form-group">
-        <label>知识点</label>
-        <input type="text" v-model="form.knowledge" placeholder="例如：函数、力学、语法等">
+        <label>题目</label>
+        <textarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></textarea>  
       </div>
 
       <div class="form-group">
         <label>题型</label>
         <select v-model="form.type">
-          <option value="">请选择题型</option>
-          <option value="choice">选择题</option>
-          <option value="fill">填空题</option>
-          <option value="calc">计算题</option>
-          <option value="essay">论述题</option>
+          <option v-for="type in everyQuestionType" :key="type" :value="type">{{ type }}</option>
         </select>
       </div>
 
       <div class="form-group">
-        <label>难度</label>
-        <div class="difficulty-selector">
-          <button v-for="level in difficultyLevels" :key="level.value"
-                  class="difficulty-btn"
-                  :class="{ active: form.difficulty === level.value }"
-                  @click="form.difficulty = level.value">
-            {{ level.label }}
-          </button>
-        </div>
+        <label>答案</label>
+        <textarea v-model="form.answer" placeholder="请输入答案..." rows="3"></textarea>
       </div>
 
       <div class="form-group">
-        <label>错误原因</label>
-        <select v-model="form.reason">
-          <option value="">请选择错误原因</option>
-          <option value="careless">粗心大意</option>
-          <option value="concept">概念不清</option>
-          <option value="method">方法错误</option>
-          <option value="calculation">计算错误</option>
-          <option value="other">其他</option>
-        </select>
+        <label>解析</label>
+        <textarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></textarea>
       </div>
 
       <div class="form-group">
-        <label>备注</label>
-        <textarea v-model="form.note" placeholder="添加备注或笔记..." rows="3"></textarea>
+        <label>错题小记</label>
+        <textarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></textarea>
       </div>
-    </div>
 
-    <div class="ai-suggestion" v-if="aiResult">
-      <h3>AI 分析结果</h3>
-      <div class="suggestion-item">
-        <span class="suggestion-label">识别科目：</span>
-        <span class="suggestion-value">{{ aiResult.subject }}</span>
+      <div class="form-group">
+        <label>来源</label>
+        <SourceSelector
+          :currentSourceId="form.source"
+          :subjectId="form.subject"
+          @select="(source) => selectedSource = source"
+        />
       </div>
-      <div class="suggestion-item">
-        <span class="suggestion-label">知识点：</span>
-        <span class="suggestion-value">{{ aiResult.knowledge }}</span>
+
+      <div class="form-group">
+        <label>错因</label>
+        <ErrorTagSelector
+          :currentTags="form.error_tags"
+          @select="(tags) => {form.error_tags = tags}"
+        />
       </div>
-      <div class="suggestion-item">
-        <span class="suggestion-label">错因分析：</span>
-        <span class="suggestion-value">{{ aiResult.reason }}</span>
-      </div>
-      <div class="suggestion-item">
-        <span class="suggestion-label">解题建议：</span>
-        <span class="suggestion-value">{{ aiResult.suggestion }}</span>
+
+      <div class="form-group">
+        <label>SRS 预设</label>
+        <SRSPresetSelector
+          :currentPresetId="currentPresetId"
+          @select="handlePresetSelect"
+        />
       </div>
     </div>
 
     <div class="action-buttons">
       <button class="btn cancel" @click="resetForm">取消</button>
-      <button class="btn save" @click="saveError">保存</button>
+      <button class="btn save" @click="saveError" :disabled="isSaving">保存</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
+import SubjectSelector from '../components/SubjectSelector.vue'
+import SourceSelector from '../components/SourceSelector.vue'
+import ErrorTagSelector from '../components/ErrorTagSelector.vue'
+import SRSPresetSelector from '../components/SRSPresetSelector.vue'
+import { QuestionType } from '../types'
+import { createErrorQuestion } from '../apis/errorQuestions'
+import { createErrorTagsForQuestion } from '../apis/errorTags'
+import { createSRSData } from '../apis/srsData'
+import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
+import { showInfo, showError, showDebug } from '../utils/notification'
+import { getOrCreateSourceId } from '../apis/sources'
 
-const isDragOver = ref(false)
-const imageUrl = ref('')
-const fileInputRef = ref<HTMLInputElement | null>(null)
+const imageUrls = ref<string[]>([])
+const isSaving = ref(false)
+
+const selectedSource = ref<{
+    book: string;
+    chapter: string | undefined;
+    knowledge: string | undefined;
+  } | null>(null)
 
 // 相机相关状态
 const showCamera = ref(false)
@@ -137,33 +141,49 @@ const cameraDisabled = ref(false)
 // 图片编辑相关状态
 const showEdit = ref(false)
 const editImageData = ref('')
+const editingImageIndex = ref<number>(-1)
+
+// SRS预设相关状态
+const currentPresetId = ref('')
+const selectedPreset = ref(null)
+
+// 题型
+const everyQuestionType = Object.values(QuestionType)
 
 const form = ref({
+  // base info
   subject: '',
-  knowledge: '',
+  prompt: '',
   type: '',
-  difficulty: 'medium',
-  reason: '',
-  note: ''
+  answer: '',
+  analysis: '',
+  error_note: '',
+  // source info
+  source: '',
+  // error tag info
+  error_tags: [] as Array<{ name: string; color: string }>,
+  // SRS info
+  difficulty: 0,
+  mastery: 0
 })
 
-const difficultyLevels = [
-  { label: '简单', value: 'easy' },
-  { label: '中等', value: 'medium' },
-  { label: '困难', value: 'hard' }
-]
-
-const aiResult = ref({
-  subject: '数学',
-  knowledge: '函数',
-  reason: '概念不清',
-  suggestion: '建议复习函数的定义域和值域相关概念'
+const currentSource = computed(() => {
+  return {
+    subject_id: form.value.subject,
+    ...selectedSource.value,
+  }
 })
 
-// 打开文件选择
-const openFileInput = () => {
-  fileInputRef.value?.click()
-}
+onMounted(() => {
+  // 获取相机权限
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(() => {
+      cameraDisabled.value = false
+    })
+    .catch(() => {
+      disableCamera()
+    });
+})
 
 // 处理文件选择
 const handleFileSelect = (e: Event) => {
@@ -171,23 +191,15 @@ const handleFileSelect = (e: Event) => {
   if (target.files && target.files[0]) {
     const file = target.files[0]
     const imageData = URL.createObjectURL(file)
-    openEdit(imageData)
+    openEdit(imageData, -1) // -1 表示添加新图片
   }
+  // 重置 input 以便再次选择同一文件
+  target.value = ''
 }
 
-// 处理拖拽
-const handleDrop = (e: DragEvent) => {
-  isDragOver.value = false
-  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
-    const file = e.dataTransfer.files[0]
-    const imageData = URL.createObjectURL(file)
-    openEdit(imageData)
-  }
-}
-
-// 清除图片
-const clearImage = () => {
-  imageUrl.value = ''
+// 移除图片
+const removeImage = (index: number) => {
+  imageUrls.value.splice(index, 1)
 }
 
 // 打开相机
@@ -209,12 +221,13 @@ const disableCamera = () => {
 // 相机拍照
 const handleCameraCapture = (imageData: string) => {
   showCamera.value = false
-  openEdit(imageData)
+  openEdit(imageData, -1) // -1 表示添加新图片
 }
 
 // 打开图片编辑
-const openEdit = (imageData: string) => {
+const openEdit = (imageData: string, index: number) => {
   editImageData.value = imageData
+  editingImageIndex.value = index
   showEdit.value = true
 }
 
@@ -228,28 +241,155 @@ const handleEditClose = () => {
 const handleEditConfirm = (imageData: string) => {
   showEdit.value = false
   editImageData.value = ''
-  imageUrl.value = imageData
+  if (editingImageIndex.value === -1) {
+    // 添加新图片
+    imageUrls.value.push(imageData)
+  } else {
+    // 替换指定索引的图片
+    imageUrls.value[editingImageIndex.value] = imageData
+  }
+  editingImageIndex.value = -1
+}
+
+// 处理SRS预设选择
+const handlePresetSelect = (preset: any) => {
+  selectedPreset.value = preset
+  currentPresetId.value = preset.id
+  form.value.difficulty = preset.difficulty
+  form.value.mastery = preset.mastery
 }
 
 // 重置表单
 const resetForm = () => {
   form.value = {
+    // base info
     subject: '',
-    knowledge: '',
+    prompt: '',
     type: '',
-    difficulty: 'medium',
-    reason: '',
-    note: ''
+    answer: '',
+    analysis: '',
+    error_note: '',
+    // source info
+    source: '',
+    // error tag info
+    error_tags: [],
+    // SRS info
+    difficulty: 0,
+    mastery: 0
   }
-  imageUrl.value = ''
+  imageUrls.value = []
+  currentPresetId.value = ''
+  selectedPreset.value = null
 }
 
 // 保存错题
-const saveError = () => {
-  console.log('保存错题', form.value)
-  alert('错题保存成功！')
-  resetForm()
+const saveError = async () => {
+  // debug
+  form.value = JSON.parse(`{"subject":"e0aebeff-1960-4a64-9465-3bd110a72e0b","prompt":"hgfd","type":"判断题","answer":"fds","analysis":"fdsgee","error_note":"xvc","source":"ad3c98f3-5145-439f-b884-6643f610a06c","error_tags":[{"name":"fdsg","color":"#4d5177"},{"name":"cxvb","color":"#41bc1e"}],"difficulty":0.3,"mastery":0.7}`)
+  // 验证必填字段
+  if (!form.value.subject) {
+    showError('错误', '请选择科目')
+    return
+  }
+  
+  if (!form.value.prompt) {
+    showError('错误', '请输入题目')
+    return
+  }
+  
+  if (!form.value.type) {
+    showError('错误', '请选择题型')
+    return
+  }
+  
+  if (imageUrls.value.length === 0) {
+    showError('错误', '请至少添加一张图片')
+    return
+  }
+  
+  isSaving.value = true
+  showDebug('保存中...', form.value)
+  
+  try {
+    // 1. 创建错题
+    const errorQuestion = await createErrorQuestion({
+      user_id: 'current_user', // TODO: 从用户状态获取
+      subject_id: form.value.subject,
+      source_id: form.value.source || undefined,
+      prompt: form.value.prompt,
+      type: form.value.type as QuestionType,
+      answer: form.value.answer || undefined,
+      analysis: form.value.analysis || undefined,
+      error_note: form.value.error_note || undefined,
+    });
+    
+    // 2. 批量创建错因标签
+    if (form.value.error_tags.length > 0) {
+      await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags);
+      showDebug('创建错因标签成功', form.value.error_tags);
+    }
+    
+    // 3. 创建SRS数据
+    await createSRSData(
+      errorQuestion.id,
+      form.value.difficulty,
+      form.value.mastery
+    );
+    showDebug('创建SRS数据成功', { difficulty: form.value.difficulty, mastery: form.value.mastery });
+    
+    // 4. 批量上传图片
+    if (imageUrls.value.length > 0) {
+      showDebug('开始上传图片...', `共 ${imageUrls.value.length} 张`);
+      
+      const attachmentsData = await Promise.all(
+        imageUrls.value.map(async (url, index) => {
+          try {
+            const base64Data = await blobUrlToBase64(url);
+            return {
+              question_id: errorQuestion.id,
+              type_: 'original',
+              file_type: 'image',
+              base64_data: base64Data,
+            };
+          } catch (error) {
+            console.error(`转换图片 ${index + 1} 失败:`, error);
+            throw error;
+          }
+        })
+      );
+      
+      await createAttachmentsForQuestion(errorQuestion.id, attachmentsData);
+      showDebug('上传图片成功', `共 ${attachmentsData.length} 张`);
+    }
+    
+    showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
+    // 重置表单
+    resetForm()
+  } catch (error) {
+    console.error('保存错题失败:', error)
+    showError('错误', '保存错题失败: ' + error)
+  } finally {
+    isSaving.value = false
+  }
 }
+
+watch(currentSource, async (newSource) => {
+  if (newSource.book) {
+    const subjectId = newSource.subject_id === ''? undefined : newSource.subject_id;
+    showDebug('正在获取来源ID...', newSource);
+    await getOrCreateSourceId({
+      subject_id: subjectId,
+      book: newSource.book,
+      chapter: newSource.chapter === ''? undefined : newSource.chapter,
+      knowledge: newSource.knowledge === ''? undefined : newSource.knowledge,
+    }).then(sourceId => {
+      form.value.source = sourceId;
+      showDebug('获取来源ID成功', sourceId);
+    }).catch(error => {
+      showError('添加失败', '添加来源失败' + error);
+    });
+  }
+})
 </script>
 
 <style scoped>
@@ -310,16 +450,6 @@ const saveError = () => {
   color: var(--primary-color);
 }
 
-.upload-btn.camera-btn {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-.upload-btn.camera-btn:hover {
-  background: #1565c0;
-}
-
 .file-input {
   position: absolute;
   top: 0;
@@ -330,31 +460,81 @@ const saveError = () => {
   cursor: pointer;
 }
 
-.image-preview {
+.image-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.image-preview-item {
   position: relative;
-}
-
-.image-preview img {
-  max-width: 100%;
-  max-height: 300px;
   border-radius: 8px;
+  overflow: hidden;
+  background: var(--input-bg);
 }
 
-.remove-btn {
+.image-preview-item img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.image-actions {
   position: absolute;
   top: 8px;
   right: 8px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.image-preview-item:hover .image-actions {
+  opacity: 1;
+}
+
+.action-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
   color: white;
-  font-size: 18px;
+  font-size: 16px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.3s;
+}
+
+.action-btn.edit-btn {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.action-btn.edit-btn:hover {
+  background: var(--primary-color);
+}
+
+.action-btn.remove-btn {
+  background: rgba(220, 53, 69, 0.8);
+}
+
+.action-btn.remove-btn:hover {
+  background: #dc3545;
+}
+
+.image-index {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .form-section {

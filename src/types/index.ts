@@ -2,10 +2,13 @@
 
 // 定义枚举类型
 enum QuestionType {
-  MultipleChoice = "multiple_choice",
-  ShortAnswer = "short_answer",
-  TrueFalse = "true_false",
-  // 其他题型可以继续添加
+  MultipleChoice = "多选题",
+  ShortAnswer = "简答题",
+  TrueFalse = "判断题",
+  SigleChoice = "单选题",
+  FillInTheBlank = "填空题",
+  Essay = "论述题",
+  Calculation = "计算题",
 }
 
 enum AttachmentType {
@@ -21,8 +24,9 @@ enum FileType {
 // 定义各个接口
 interface ErrorQuestion {
   id: string; // uuid
-  userid: string; // uuid
-  subjectid: string; // uuid
+  user_id: string; // 用户ID
+  subject_id: string; // uuid
+  source_id?: string; // uuid
   prompt: string; // 题干
   type: QuestionType; // 题型
   answer?: string; // 标准答案
@@ -41,7 +45,7 @@ interface SRSData {
 
 interface Source {
   id: string; // uuid
-  question_id: string; // uuid
+  question_id?: string; // uuid
   subject_id?: string; // uuid
   book?: string; // 书名
   chapter?: string; // 章节名
@@ -61,7 +65,7 @@ interface Attachment {
   question_id: string; // uuid
   type: string; // 附件意义
   file_type: string; // 文件类型
-  path: string; // 文件相对路径
+  base64_data: string; // base64编码的文件数据
   hash: string; // 文件哈希
 }
 

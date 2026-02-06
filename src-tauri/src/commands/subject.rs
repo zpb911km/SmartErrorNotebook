@@ -42,9 +42,10 @@ pub async fn create_subject(
 ) -> Result<subject::Model, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
+    let id = Uuid::new_v4();
 
     let new_subject = subject::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(id.to_string()),
         name: Set(input.name),
         color: Set(input.color),
         created_at: Set(now),
@@ -55,8 +56,12 @@ pub async fn create_subject(
         sync_hash: Set(None),
     };
 
-    let subject = new_subject.insert(db).await.map_err(|e| e.to_string())?;
-
+    let _ = new_subject.insert(db).await;
+    let subject = Subject::find_by_id(id.to_string())
+        .one(db)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Subject not found")?;
     Ok(subject)
 }
 
