@@ -44,8 +44,8 @@
       <div class="form-group">
         <label>科目</label>
         <SubjectSelector
-          :currentSubjectId="form.subject"
-          @select="(subject_id) => {form.subject = subject_id}"
+          v-model="form.subject"
+          @select="handleSubjectSelect"
         />
       </div>
 
@@ -81,7 +81,7 @@
         <SourceSelector
           :currentSourceId="form.source"
           :subjectId="form.subject"
-          @select="(source) => selectedSource = source"
+          @select="(source_id) => {form.source = source_id; console.log('source_id:', source_id);}"
         />
       </div>
 
@@ -129,10 +129,10 @@ const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
 
 const selectedSource = ref<{
-    book: string;
-    chapter: string | undefined;
-    knowledge: string | undefined;
-  } | null>(null)
+  book: string;
+  chapter: string | undefined;
+  knowledge: string | undefined;
+} | null>(null)
 
 // 相机相关状态
 const showCamera = ref(false)
@@ -165,13 +165,6 @@ const form = ref({
   // SRS info
   difficulty: 0,
   mastery: 0
-})
-
-const currentSource = computed(() => {
-  return {
-    subject_id: form.value.subject,
-    ...selectedSource.value,
-  }
 })
 
 onMounted(() => {
@@ -251,6 +244,13 @@ const handleEditConfirm = (imageData: string) => {
   editingImageIndex.value = -1
 }
 
+// 处理科目选择
+const handleSubjectSelect = (subjectId: string) => {
+  console.log('handleSubjectSelect', subjectId)
+  form.value.subject = subjectId
+  form.value.source = ''
+}
+
 // 处理SRS预设选择
 const handlePresetSelect = (preset: any) => {
   selectedPreset.value = preset
@@ -280,12 +280,11 @@ const resetForm = () => {
   imageUrls.value = []
   currentPresetId.value = ''
   selectedPreset.value = null
+  selectedSource.value = null
 }
 
 // 保存错题
 const saveError = async () => {
-  // debug
-  form.value = JSON.parse(`{"subject":"e0aebeff-1960-4a64-9465-3bd110a72e0b","prompt":"hgfd","type":"判断题","answer":"fds","analysis":"fdsgee","error_note":"xvc","source":"ad3c98f3-5145-439f-b884-6643f610a06c","error_tags":[{"name":"fdsg","color":"#4d5177"},{"name":"cxvb","color":"#41bc1e"}],"difficulty":0.3,"mastery":0.7}`)
   // 验证必填字段
   if (!form.value.subject) {
     showError('错误', '请选择科目')
@@ -326,7 +325,6 @@ const saveError = async () => {
     // 2. 批量创建错因标签
     if (form.value.error_tags.length > 0) {
       await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags);
-      showDebug('创建错因标签成功', form.value.error_tags);
     }
     
     // 3. 创建SRS数据
@@ -335,12 +333,9 @@ const saveError = async () => {
       form.value.difficulty,
       form.value.mastery
     );
-    showDebug('创建SRS数据成功', { difficulty: form.value.difficulty, mastery: form.value.mastery });
-    
+
     // 4. 批量上传图片
     if (imageUrls.value.length > 0) {
-      showDebug('开始上传图片...', `共 ${imageUrls.value.length} 张`);
-      
       const attachmentsData = await Promise.all(
         imageUrls.value.map(async (url, index) => {
           try {
@@ -359,7 +354,6 @@ const saveError = async () => {
       );
       
       await createAttachmentsForQuestion(errorQuestion.id, attachmentsData);
-      showDebug('上传图片成功', `共 ${attachmentsData.length} 张`);
     }
     
     showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
@@ -373,23 +367,27 @@ const saveError = async () => {
   }
 }
 
-watch(currentSource, async (newSource) => {
-  if (newSource.book) {
-    const subjectId = newSource.subject_id === ''? undefined : newSource.subject_id;
-    showDebug('正在获取来源ID...', newSource);
-    await getOrCreateSourceId({
-      subject_id: subjectId,
-      book: newSource.book,
-      chapter: newSource.chapter === ''? undefined : newSource.chapter,
-      knowledge: newSource.knowledge === ''? undefined : newSource.knowledge,
-    }).then(sourceId => {
-      form.value.source = sourceId;
-      showDebug('获取来源ID成功', sourceId);
-    }).catch(error => {
-      showError('添加失败', '添加来源失败' + error);
-    });
-  }
-})
+// watch(currentSource, async (newSource) => {
+//   if (newSource.book) {
+//     if (!newSource.subject_id || newSource.subject_id === '') {
+//       showError('添加失败', '请选择科目');
+//       return;
+//     }
+//     const subjectId = newSource.subject_id;
+//     showDebug('正在获取来源ID...', newSource);
+//     await getOrCreateSourceId({
+//       subject_id: subjectId,
+//       book: newSource.book,
+//       chapter: newSource.chapter === ''? undefined : newSource.chapter,
+//       knowledge: newSource.knowledge === ''? undefined : newSource.knowledge,
+//     }).then(sourceId => {
+//       form.value.source = sourceId;
+//       showDebug('获取来源ID成功', sourceId);
+//     }).catch(error => {
+//       showError('添加失败', '添加来源失败' + error);
+//     });
+//   }
+// })
 </script>
 
 <style scoped>
