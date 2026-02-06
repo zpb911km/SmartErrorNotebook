@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { getSources, getBooks, getChapters, getKnowledges, createSource, getOrCreateSourceId, getSource } from '../apis/sources';
 import { Source } from '../types';
-import { showError, showInfo } from '../utils/notification';
+import { showError, showWarning } from '../utils/notification';
 
 const selectedSource = ref<Source | null>(null);
 const isExpanded = ref(false);
@@ -31,14 +31,14 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', source: {
-    book: string;
-    chapter: string | undefined;
-    knowledge: string | undefined;
-  }): void;
+  (e: 'select', source_id: string): void;
 }>();
 
-// 先定义所有函数
+
+const atLeastOneSelected = () => {
+  return `${selectedBook.value || ''} ${selectedChapter.value || ''} ${selectedKnowledge.value || ''}`.trim().length > 0;
+};
+
 const resetSelection = () => {
   selectedBook.value = '';
   selectedChapter.value = '';
@@ -68,6 +68,7 @@ const handleAddBook = () => {
   selectedBook.value = newBook.value;
   newBook.value = '';
   showAddBookInput.value = false;
+  addAllToBackend();
 };
 
 const handleAddChapter = () => {
@@ -77,6 +78,7 @@ const handleAddChapter = () => {
   selectedChapter.value = newChapter.value;
   newChapter.value = '';
   showAddChapterInput.value = false;
+  addAllToBackend();
 };
 
 const handleAddKnowledge = () => {
@@ -86,11 +88,25 @@ const handleAddKnowledge = () => {
   selectedKnowledge.value = newKnowledge.value;
   newKnowledge.value = '';
   showAddKnowledgeInput.value = false;
+  addAllToBackend();
 };
 
+const addAllToBackend = async () => {
+  if (props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
+    await getOrCreateSourceId({
+      subject_id: props.subjectId,
+      book: selectedBook.value,
+      chapter: selectedChapter.value === ''? undefined : selectedChapter.value,
+      knowledge: selectedKnowledge.value === ''? undefined : selectedKnowledge.value,
+    }).catch(error => {
+      showError('添加失败', '添加来源失败' + error);
+    });
+  }
+}
+
 const selectedText = computed(() => {
-  if (selectedBook || selectedChapter || selectedKnowledge) {
-    return `${selectedBook.value || ''} ${selectedChapter.value || ''} ${selectedKnowledge.value || ''}`.trim() || '请选择来源';
+  if (atLeastOneSelected()) {
+    return `${selectedBook.value || ''} ${selectedChapter.value || ''} ${selectedKnowledge.value || ''}`.trim();
   }
   return '请选择来源';
 });
@@ -128,17 +144,6 @@ const loadSourceById = async (sourceId: string) => {
     }
   } catch (error) {
     console.error('获取来源失败：', error);
-  }
-};
-
-const onSelectorClicked = () => {
-  isExpanded.value = !isExpanded.value;
-  if ((selectedBook || selectedChapter || selectedKnowledge) && !isExpanded.value) {
-    emit('select', {
-      book: selectedBook.value,
-      chapter: selectedChapter.value,
-      knowledge: selectedKnowledge.value,
-    })
   }
 };
 
@@ -193,15 +198,42 @@ watch(
   }, { immediate: true }
 );
 
+watch(isExpanded, async (newVal) => {
+  if (!props.subjectId && newVal) {
+    isExpanded.value = false;
+    showWarning('请选择科目', '请选择科目后再选择来源。')
+  }
+  if (newVal) {
+    resetSelection();
+    loadBooks();
+  }
+  let sourceId = "";
+  if (!newVal && props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
+    await getOrCreateSourceId({
+      subject_id: props.subjectId,
+      book: selectedBook.value,
+      chapter: selectedChapter.value === ''? undefined : selectedChapter.value,
+      knowledge: selectedKnowledge.value === ''? undefined : selectedKnowledge.value,
+    }).then((id) => {
+      sourceId = id;
+    }).catch(error => {
+      showError('添加失败', '添加来源失败' + error);
+    });
+  }
+  if (sourceId) {
+    emit('select', sourceId);
+  }
+})
+
 onMounted(() => {
-  selectedSource.value = null;
+  resetSelection();
 });
 </script>
 
 <template>
   <div class="source-selector">
     <!-- 选择器触发按钮 -->
-    <div class="selector-trigger" @click="onSelectorClicked()" :class="{ 'expanded': isExpanded }">
+    <div class="selector-trigger" @click="isExpanded=!isExpanded" :class="{ 'expanded': isExpanded }">
       <span class="selected-text">
         {{ selectedText }}
       </span>

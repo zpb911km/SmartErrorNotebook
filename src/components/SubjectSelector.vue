@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import { createSubject, getSubjects } from '../apis/subjects';
 import { Subject } from '../types';
 import { showInfo } from '../utils/notification';
+import { p } from 'vue-router/dist/router-CWoNjPRp.mjs';
 
 const getRandomRGBColor = () => {
   const r = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
@@ -22,7 +23,7 @@ const newSubject = ref<Subject>({
 });
 
 const props = defineProps<{
-  currentSubjectId: string;
+  modelValue: string;
 }>();
 
 const emit = defineEmits<{
@@ -30,7 +31,7 @@ const emit = defineEmits<{
 }>();
 
 watch(
-  () => props.currentSubjectId,
+  () => props.modelValue,
   (newVal) => {
     if (newVal === '') {
       selectedSubject.value = null;
@@ -64,16 +65,34 @@ const handleAddSubject = () => {
     .then((data) => {
       console.log(data)
       showInfo('添加成功', '科目添加成功');
-      subjects.value.push(newSubject.value);
-      selectedSubject.value = newSubject.value;
+      subjects.value.push({...data});
+      selectedSubject.value = {...data};
       showAddSubject.value = false;
       isExpanded.value = false;
-      emit('select', newSubject.value.id);
+      newSubject.value = {
+        id: '',
+        name: '',
+        color: getRandomRGBColor(),
+      };
+      emit('select', selectedSubject.value.id);
     })
     .catch(error => {
       console.error('创建科目失败：', error);
     });
 };
+
+watch(isExpanded, (newVal) => {
+  if (newVal) {
+    getSubjects()
+      .then(data => {
+        subjects.value = data;
+      })
+      .catch(error => {
+        console.error('获取科目失败：', error);
+      });
+    selectedSubject.value = null;
+  }
+})
 
 onMounted(() => {
   getSubjects()

@@ -28,10 +28,10 @@ pub async fn create_error_tags_for_question(
 ) -> Result<Vec<error_tag::Model>, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
-    let id = Uuid::new_v4().to_string();
     let mut created_tags = Vec::new();
-
+    
     for tag_info in input.tags {
+        let id = Uuid::new_v4().to_string();
         let new_tag = error_tag::ActiveModel {
             id: Set(id.clone()),
             question_id: Set(input.question_id.clone()),
@@ -50,7 +50,7 @@ pub async fn create_error_tags_for_question(
             .await;
 
         // 将ActiveModel转换为Model
-        let tag_model = ErrorTag::find_by_id(id.clone())
+        let tag_model = ErrorTag::find_by_id(id)
             .one(db)
             .await
             .map_err(|e: sea_orm::DbErr| e.to_string())?

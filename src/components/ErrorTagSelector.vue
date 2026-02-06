@@ -83,6 +83,12 @@ const handleAddErrorTag = () => {
     name: newErrorTag.value.name,
     color: newErrorTag.value.color,
   });
+  errorTags.value.push({
+    id: '',
+    question_id: '',
+    name: newErrorTag.value.name,
+    color: newErrorTag.value.color,
+  });
   
   emit('select', [...selectedTags.value]);
   showAddErrorTag.value = false;
@@ -104,6 +110,18 @@ const removeTag = (index: number) => {
   selectedTags.value.splice(index, 1);
   emit('select', [...selectedTags.value]);
 };
+
+watch(isExpanded, (newVal) => {
+  if (newVal) {
+    getErrorTags()
+      .then(data => {
+        errorTags.value = data;
+      })
+      .catch(error => {
+        console.error('获取错因标签失败：', error);
+      });
+  }
+})
 
 onMounted(() => {
   getErrorTags()
