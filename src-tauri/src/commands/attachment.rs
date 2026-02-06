@@ -43,14 +43,15 @@ pub async fn create_attachment(
         sync_hash: Set(None),
     };
 
-    let saved_attachment = new_attachment
-        .save(db)
+    let _ = new_attachment
+        .insert(db)
+        .await;
+
+    let attachment_model = Attachment::find_by_id(id)
+        .one(db)
         .await
-        .map_err(|e: sea_orm::DbErr| e.to_string())?;
-
-    // 将ActiveModel转换为Model
-    let attachment_model: attachment::Model = saved_attachment.try_into().map_err(|e: sea_orm::DbErr| e.to_string())?;
-
+        .map_err(|e: sea_orm::DbErr| e.to_string())?
+        .ok_or("Attachment not found".to_string())?;
     Ok(attachment_model)
 }
 

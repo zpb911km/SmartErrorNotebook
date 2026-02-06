@@ -13,7 +13,12 @@ export async function createErrorTagsForQuestion(
   questionId: string,
   tags: Array<{ name: string; color: string }>
 ): Promise<ErrorTags[]> {
-  return await invoke('create_error_tags_for_question', { questionId, tags });
+  return await invoke('create_error_tags_for_question', {
+    input: {
+      question_id: questionId, 
+      tags: tags 
+    }
+  });
 }
 
 export async function updateErrorTag(errorTag: ErrorTags): Promise<ErrorTags> {

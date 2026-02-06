@@ -1,11 +1,11 @@
 // SRS数据相关命令
 
 use crate::AppState;
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::srs_data;
+use crate::database::entities::{srs_data, prelude::SrsData};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct CreateSRSDataInput {
@@ -22,9 +22,10 @@ pub async fn create_srs_data(
 ) -> Result<srs_data::Model, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
+    let id = Uuid::new_v4().to_string();
 
     let new_srs_data = srs_data::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(id.clone()),
         question_id: Set(input.question_id),
         difficulty: Set(input.difficulty),
         mastery: Set(input.mastery),
@@ -37,13 +38,16 @@ pub async fn create_srs_data(
         sync_hash: Set(None),
     };
 
-    let saved_srs_data = new_srs_data
-        .save(db)
-        .await
-        .map_err(|e: sea_orm::DbErr| e.to_string())?;
+    let _ = new_srs_data.clone()
+        .insert(db)
+        .await;
 
     // 将ActiveModel转换为Model
-    let srs_model: srs_data::Model = saved_srs_data.try_into().map_err(|e: sea_orm::DbErr| e.to_string())?;
+    let srs_model: srs_data::Model = SrsData::find_by_id(id)
+        .one(db)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("srs添加不成功".to_string())?;
 
     Ok(srs_model)
 }

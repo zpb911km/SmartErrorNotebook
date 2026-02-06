@@ -43,6 +43,7 @@ pub fn run() {
             commands::get_question_stats,
             // Error Tag
             commands::create_error_tags_for_question,
+            commands::get_error_tags,
             // SRS Data
             commands::create_srs_data,
             // Attachment

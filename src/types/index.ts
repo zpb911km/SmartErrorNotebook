@@ -24,7 +24,7 @@ enum FileType {
 // 定义各个接口
 interface ErrorQuestion {
   id: string; // uuid
-  userid: string; // 用户ID
+  user_id: string; // 用户ID
   subject_id: string; // uuid
   source_id?: string; // uuid
   prompt: string; // 题干

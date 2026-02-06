@@ -16,7 +16,7 @@ export async function createAttachment(
 
 export async function createAttachmentsForQuestion(
   questionId: string,
-  attachments: Omit<CreateAttachmentInput, 'question_id'>[]
+  attachments: CreateAttachmentInput[]
 ): Promise<Attachment[]> {
   return await invoke('create_attachments_for_question', {
     questionId,

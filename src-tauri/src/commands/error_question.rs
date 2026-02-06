@@ -1,17 +1,23 @@
 // 错题相关命令
 
 use crate::AppState;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, PaginatorTrait};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
+};
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::{prelude::{Subject, ErrorQuestion}, error_question};
+use crate::database::entities::{
+    error_question,
+    prelude::{ErrorQuestion, Subject},
+};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct CreateQuestionInput {
-    pub userid: String,
-    pub subjectid: String,
-    pub sourceid: Option<String>,
+    pub user_id: String,
+    pub subject_id: String,
+    pub source_id: Option<String>,
     pub prompt: String,
     #[serde(rename = "type")]
     pub type_: String,
@@ -23,7 +29,7 @@ pub struct CreateQuestionInput {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct UpdateQuestionInput {
     pub id: String,
-    pub subjectid: Option<String>,
+    pub subject_id: Option<String>,
     pub prompt: Option<String>,
     #[serde(rename = "type")]
     pub type_: Option<String>,
@@ -34,7 +40,7 @@ pub struct UpdateQuestionInput {
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct QuestionFilter {
-    pub subjectid: Option<String>,
+    pub subject_id: Option<String>,
     pub search: Option<String>,
     pub limit: Option<u64>,
     pub offset: Option<u64>,
@@ -49,11 +55,10 @@ pub async fn get_questions(
     let db = state.db.as_ref();
     let filter = filter.unwrap_or_default();
 
-    let mut query = ErrorQuestion::find()
-        .filter(error_question::Column::DeletedAt.is_null());
+    let mut query = ErrorQuestion::find().filter(error_question::Column::DeletedAt.is_null());
 
     // 按科目筛选
-    if let Some(subject_id) = filter.subjectid {
+    if let Some(subject_id) = filter.subject_id {
         query = query.filter(error_question::Column::Subjectid.eq(subject_id));
     }
 
@@ -61,9 +66,10 @@ pub async fn get_questions(
     if let Some(search) = filter.search {
         let pattern = format!("%{}%", search);
         query = query.filter(
-            error_question::Column::Prompt.like(&pattern)
+            error_question::Column::Prompt
+                .like(&pattern)
                 .or(error_question::Column::Analysis.like(&pattern))
-                .or(error_question::Column::ErrorNote.like(&pattern))
+                .or(error_question::Column::ErrorNote.like(&pattern)),
         );
     }
 
@@ -111,7 +117,7 @@ pub async fn create_question(
     let id = Uuid::new_v4().to_string();
 
     // 验证科目是否存在
-    let _ = Subject::find_by_id(input.subjectid.clone())
+    let _ = Subject::find_by_id(input.subject_id.clone())
         .one(db)
         .await
         .map_err(|e| e.to_string())?
@@ -119,9 +125,9 @@ pub async fn create_question(
 
     let new_question = error_question::ActiveModel {
         id: Set(id.clone()),
-        userid: Set(input.userid),
-        subjectid: Set(input.subjectid),
-        sourceid: Set(input.sourceid),
+        userid: Set(input.user_id),
+        subjectid: Set(input.subject_id),
+        sourceid: Set(input.source_id),
         prompt: Set(input.prompt),
         type_: Set(input.type_),
         answer: Set(input.answer),
@@ -135,7 +141,7 @@ pub async fn create_question(
         sync_hash: Set(None),
     };
 
-    new_question.save(db).await.map_err(|e| e.to_string())?;
+    let _ = new_question.insert(db).await;
 
     let question = ErrorQuestion::find_by_id(id)
         .one(db)
@@ -163,7 +169,7 @@ pub async fn update_question(
 
     let mut question: error_question::ActiveModel = question.into();
 
-    if let Some(subjectid) = input.subjectid {
+    if let Some(subjectid) = input.subject_id {
         // 验证科目是否存在
         let _ = Subject::find_by_id(subjectid.clone())
             .one(db)
@@ -192,17 +198,17 @@ pub async fn update_question(
     question.version = Set(question.version.unwrap() + 1);
     question.sync_status = Set("pending".to_string());
 
-    let question = question.update(db).await.map_err(|e| e.to_string())?;
+    let question = question.update(db).await.map_err(|e| {
+        eprintln!("更新错题失败: {}", e);
+        format!("更新错题失败: {}", e)
+    })?;
 
     Ok(question)
 }
 
 /// 删除错题（软删除）
 #[tauri::command]
-pub async fn delete_question(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_question(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
@@ -226,9 +232,7 @@ pub async fn delete_question(
 
 /// 获取错题统计
 #[tauri::command]
-pub async fn get_question_stats(
-    state: State<'_, AppState>,
-) -> Result<QuestionStats, String> {
+pub async fn get_question_stats(state: State<'_, AppState>) -> Result<QuestionStats, String> {
     let db = state.db.as_ref();
 
     let total = ErrorQuestion::find()
@@ -237,9 +241,7 @@ pub async fn get_question_stats(
         .await
         .map_err(|e| e.to_string())?;
 
-    let stats = QuestionStats {
-        total,
-    };
+    let stats = QuestionStats { total };
 
     Ok(stats)
 }

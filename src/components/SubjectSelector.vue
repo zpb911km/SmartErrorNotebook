@@ -88,12 +88,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="add-subject-container" v-if="showAddSubject">
-    <input v-model="newSubject.name" type="text" placeholder="请输入科目名称"></input>
-    <input v-model="newSubject.color" type="color" title="选择颜色" :style="{ backgroundColor: newSubject.color }"></input>
-    <button @click="handleAddSubject" class="confirm">添加</button>
-    <button @click="showAddSubject = false" class="cancel">取消</button>
-  </div>
   <div class="subject-selector">
     <!-- 选择器触发按钮 -->
     <div class="selector-trigger" @click="isExpanded = !isExpanded" :class="{ 'expanded': isExpanded }">
@@ -114,8 +108,14 @@ onMounted(() => {
           <span class="option-name">{{ subject.name }}</span>
           <div class="color-indicator" :style="{ backgroundColor: subject.color }"></div>
         </div>
-        <div class="subject-option">
-          <span class="option-name" @click="showAddSubject = true">+ 添加新科目</span>
+        <div v-if="!showAddSubject" class="subject-option" @click="showAddSubject = true">
+          <span class="option-name">+ 添加新科目</span>
+        </div>
+        <div class="add-subject-container" v-if="showAddSubject">
+          <input v-model="newSubject.name" type="text" placeholder="请输入科目名称"></input>
+          <input v-model="newSubject.color" type="color" title="选择颜色" :style="{ backgroundColor: newSubject.color }"></input>
+          <button @click="handleAddSubject" class="confirm">添加</button>
+          <button @click="showAddSubject = false" class="cancel">取消</button>
         </div>
         <div v-if="subjects.length === 0" class="no-options">
           暂无科目数据
@@ -128,7 +128,7 @@ onMounted(() => {
 <style scoped>
 .subject-selector {
   position: relative;
-  width: 200px;
+  width: 100%;
   font-family: var(--font-family-base);
 }
 
@@ -245,10 +245,7 @@ onMounted(() => {
 }
 
 .add-subject-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  width: 50%;
   z-index: var(--z-modal);
   display: flex;
   align-items: center;

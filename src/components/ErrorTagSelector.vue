@@ -117,12 +117,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="add-error-tag-container" v-if="showAddErrorTag">
-    <input v-model="newErrorTag.name" type="text" placeholder="请输入错因名称"></input>
-    <input v-model="newErrorTag.color" type="color" title="选择颜色" :style="{ backgroundColor: newErrorTag.color }"></input>
-    <button @click="handleAddErrorTag" class="confirm">添加</button>
-    <button @click="showAddErrorTag = false" class="cancel">取消</button>
-  </div>
   <div class="error-tag-selector">
     <!-- 已选标签展示 -->
     <div class="selected-tags" v-if="selectedTags.length > 0">
@@ -165,8 +159,14 @@ onMounted(() => {
           </div>
           <div class="color-indicator" :style="{ backgroundColor: errorTag.color }"></div>
         </div>
-        <div class="error-tag-option">
-          <span class="option-name" @click="showAddErrorTag = true">+ 添加新错因</span>
+        <div  v-if="!showAddErrorTag" class="error-tag-option" @click="showAddErrorTag = true">
+          <span class="option-name">+ 添加新错因</span>
+        </div>
+        <div class="add-error-tag-container" v-if="showAddErrorTag">
+          <input v-model="newErrorTag.name" type="text" placeholder="请输入错因名称"></input>
+          <input v-model="newErrorTag.color" type="color" title="选择颜色" :style="{ backgroundColor: newErrorTag.color }"></input>
+          <button @click="handleAddErrorTag" class="confirm">添加</button>
+          <button @click="showAddErrorTag = false" class="cancel">取消</button>
         </div>
         <div v-if="errorTags.length === 0" class="no-options">
           暂无错因标签数据
@@ -360,10 +360,7 @@ onMounted(() => {
 }
 
 .add-error-tag-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  width: 50%;
   z-index: var(--z-modal);
   display: flex;
   align-items: center;

@@ -7,8 +7,10 @@ export async function createSRSData(
   mastery: number
 ): Promise<SRSData> {
   return await invoke('create_srs_data', {
-    questionId,
-    difficulty,
-    mastery,
+    input: {
+      question_id: questionId,
+      difficulty,
+      mastery,
+    },
   });
 }

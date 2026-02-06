@@ -1,11 +1,12 @@
 // 错因标签相关命令
 
 use crate::AppState;
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use serde::de::value::Error;
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::error_tag;
+use crate::database::entities::{error_tag, prelude::ErrorTag};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct TagInfo {
@@ -27,12 +28,12 @@ pub async fn create_error_tags_for_question(
 ) -> Result<Vec<error_tag::Model>, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
-
+    let id = Uuid::new_v4().to_string();
     let mut created_tags = Vec::new();
 
     for tag_info in input.tags {
         let new_tag = error_tag::ActiveModel {
-            id: Set(Uuid::new_v4().to_string()),
+            id: Set(id.clone()),
             question_id: Set(input.question_id.clone()),
             name: Set(tag_info.name),
             color: Set(tag_info.color),
@@ -44,15 +45,33 @@ pub async fn create_error_tags_for_question(
             sync_hash: Set(None),
         };
 
-        let saved_tag = new_tag
-            .save(db)
-            .await
-            .map_err(|e: sea_orm::DbErr| e.to_string())?;
+        let _ = new_tag
+            .insert(db)
+            .await;
 
         // 将ActiveModel转换为Model
-        let tag_model: error_tag::Model = saved_tag.try_into().map_err(|e: sea_orm::DbErr| e.to_string())?;
+        let tag_model = ErrorTag::find_by_id(id.clone())
+            .one(db)
+            .await
+            .map_err(|e: sea_orm::DbErr| e.to_string())?
+            .ok_or("没有成功添加".to_string())?;
+
         created_tags.push(tag_model);
     }
 
     Ok(created_tags)
+}
+
+
+/// 获取全部的错因标签
+#[tauri::command]
+pub async fn get_error_tags(
+    state: State<'_, AppState>,
+) -> Result<Vec<error_tag::Model>, String> {
+    let db = state.db.as_ref();
+    let tags = ErrorTag::find()
+        .all(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?;
+    Ok(tags)
 }

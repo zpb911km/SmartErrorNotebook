@@ -284,6 +284,8 @@ const resetForm = () => {
 
 // 保存错题
 const saveError = async () => {
+  // debug
+  form.value = JSON.parse(`{"subject":"e0aebeff-1960-4a64-9465-3bd110a72e0b","prompt":"hgfd","type":"判断题","answer":"fds","analysis":"fdsgee","error_note":"xvc","source":"ad3c98f3-5145-439f-b884-6643f610a06c","error_tags":[{"name":"fdsg","color":"#4d5177"},{"name":"cxvb","color":"#41bc1e"}],"difficulty":0.3,"mastery":0.7}`)
   // 验证必填字段
   if (!form.value.subject) {
     showError('错误', '请选择科目')
@@ -311,14 +313,14 @@ const saveError = async () => {
   try {
     // 1. 创建错题
     const errorQuestion = await createErrorQuestion({
-      userid: 'current_user', // TODO: 从用户状态获取
+      user_id: 'current_user', // TODO: 从用户状态获取
       subject_id: form.value.subject,
-      source_id: form.value.source,
+      source_id: form.value.source || undefined,
       prompt: form.value.prompt,
       type: form.value.type as QuestionType,
-      answer: form.value.answer,
-      analysis: form.value.analysis,
-      error_note: form.value.error_note,
+      answer: form.value.answer || undefined,
+      analysis: form.value.analysis || undefined,
+      error_note: form.value.error_note || undefined,
     });
     
     // 2. 批量创建错因标签
@@ -344,8 +346,9 @@ const saveError = async () => {
           try {
             const base64Data = await blobUrlToBase64(url);
             return {
+              question_id: errorQuestion.id,
               type_: 'original',
-              file_type: 'image/png',
+              file_type: 'image',
               base64_data: base64Data,
             };
           } catch (error) {
@@ -364,7 +367,7 @@ const saveError = async () => {
     resetForm()
   } catch (error) {
     console.error('保存错题失败:', error)
-    showError('错误', '保存错题失败: ' + (error as Error).message)
+    showError('错误', '保存错题失败: ' + error)
   } finally {
     isSaving.value = false
   }

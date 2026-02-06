@@ -5,7 +5,7 @@ import { QuestionType, AttachmentType, FileType, ErrorQuestion, SRSData, Source,
 
 export const mockErrorQuestion1: ErrorQuestion = {
   id: uuidv4(),
-  userid: uuidv4(),
+  user_id: uuidv4(),
   subject_id: uuidv4(),
   prompt: "什么是JavaScript?",
   type: QuestionType.ShortAnswer,
@@ -18,7 +18,7 @@ export const mockErrorQuestion1: ErrorQuestion = {
 
 export const mockErrorQuestion2: ErrorQuestion = {
   id: uuidv4(),
-  userid: mockErrorQuestion1.userid,
+  user_id: mockErrorQuestion1.user_id,
   subject_id: mockErrorQuestion1.subject_id,
   prompt: "解释一下闭包。",
   type: QuestionType.ShortAnswer,
