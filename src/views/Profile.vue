@@ -74,12 +74,44 @@
           </div>
         </div>
       </div>
+
+      <!-- AI接口信息 -->
+      <div class="ai-section">
+        <div class="ai-card">
+          <div class="ai-header">
+            <div class="ai-header-content">
+              <div class="ai-icon">🤖</div>
+              <h3>AI 助手</h3>
+            </div>
+            <label class="ai-toggle">
+              <input type="checkbox" v-model="aiStatus.enabled" @change="toggleAIStatus">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="ai-info">
+            <div class="ai-token">
+              <span class="token-label">剩余 Token:</span>
+              <span class="token-value">{{ aiStatus.remainingTokens }}</span>
+              <button class="recharge-btn" @click="openRechargeDialog">充值</button>
+            </div>
+            <div class="ai-model">
+              <span class="model-label">接入 AI:</span>
+              <select v-model="aiStatus.modelName" class="model-select" @change="changeModel">
+                <option value="GPT-4">GPT-4</option>
+                <option value="GPT-3.5 Turbo">GPT-3.5 Turbo</option>
+                <option value="Claude 3">Claude 3</option>
+                <option value="Gemini Pro">Gemini Pro</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 
 // 统计数据
 const overview = ref({
@@ -120,6 +152,29 @@ const getPieStyle = (item: any, index: number) => {
 const getBarHeight = (count: number) => {
   const max = Math.max(...weeklyStats.value.map(item => item.count))
   return (count / max) * 100
+}
+
+// 注入全局AI状态
+const aiStatus = inject('aiState')
+
+// AI功能方法
+const toggleAIStatus = () => {
+  console.log('AI状态已切换为:', aiStatus.value.enabled ? '开启' : '关闭')
+  // 这里可以添加实际的状态切换逻辑
+}
+
+const openRechargeDialog = () => {
+  console.log('打开充值对话框')
+  // 这里可以添加实际的充值逻辑
+  // 模拟充值操作
+  const rechargeAmount = 1000
+  aiStatus.value.remainingTokens += rechargeAmount
+  console.log(`已充值 ${rechargeAmount} Token，当前余额: ${aiStatus.value.remainingTokens}`)
+}
+
+const changeModel = () => {
+  console.log('模型已切换为:', aiStatus.value.modelName)
+  // 这里可以添加实际的模型切换逻辑
 }
 </script>
 
@@ -324,6 +379,170 @@ const getBarHeight = (count: number) => {
   font-size: 12px;
   color: var(--text-primary);
   margin-bottom: 4px;
+}
+
+.ai-section {
+  margin-top: 20px;
+}
+
+.ai-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #9c27b0;
+}
+
+.ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.ai-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-icon {
+  font-size: 24px;
+}
+
+.ai-header h3 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* AI开关样式 */
+.ai-toggle {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.ai-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #9c27b0;
+}
+
+input:focus + .toggle-slider {
+  box-shadow: 0 0 1px #9c27b0;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.ai-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-token, .ai-model {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* 充值按钮样式 */
+.recharge-btn {
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.recharge-btn:hover {
+  background: #f57c00;
+  transform: translateY(-1px);
+}
+
+/* 模型选择样式 */
+.model-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.model-select:hover {
+  border-color: var(--primary-color);
+}
+
+.model-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.status-label, .token-label, .model-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.status-value, .token-value, .model-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ai-status.active .status-value {
+  color: #4caf50;
+}
+
+.ai-status:not(.active) .status-value {
+  color: #f44336;
+}
+
+.token-value {
+  color: #ff9800;
+}
+
+.model-value {
+  color: #2196f3;
 }
 
 /* 响应式设计 */
