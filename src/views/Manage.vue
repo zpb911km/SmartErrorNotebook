@@ -3,8 +3,8 @@
     <div class="filter-bar">
       <!-- 自定义科目选择器 -->
       <div class="custom-subject-selector" 
-           @mouseleave="hideKnowledgePanel"
-           ref="subjectSelectorRef">
+           ref="subjectSelectorRef"
+           @mouseleave="handleSubjectMouseLeave">
         <div 
           class="subject-select-trigger"
           @click="toggleSubjectDropdown"
@@ -18,6 +18,7 @@
         <div 
           v-show="showSubjectDropdown" 
           class="subject-dropdown"
+          @mouseenter="cancelHideTimer"
         >
           <div 
             class="dropdown-item"
@@ -29,28 +30,37 @@
           <div 
             v-for="subject in userSubjects" 
             :key="subject.id" 
-            class="dropdown-item"
+            class="dropdown-item subject-item"
             :class="{ active: filters.subject === subject.name }"
-            @mouseenter="setCurrentHoverSubject(subject)"
             @click="selectSubject(subject.name)"
+            @mouseenter="showKnowledgeMenu(subject.name, $event)"
+            @mouseleave="scheduleHideKnowledgeMenu"
           >
             {{ subject.name }}
           </div>
         </div>
         
-        <!-- 知识点悬浮面板 -->
+        <!-- 知识点悬浮菜单 -->
         <div 
-          v-if="showKnowledgeList && currentHoverSubject" 
+          v-show="showKnowledgePanel && currentHoverSubject && currentSubjectKnowledges.length > 0"
           class="knowledge-panel"
           :style="knowledgePanelStyle"
+          @mouseenter="cancelHideTimer"
+          @mouseleave="scheduleHideKnowledgeMenu"
         >
-          <div class="knowledge-panel-header">
-            <span class="subject-name">{{ currentHoverSubject.name }}的知识点</span>
-            <button class="close-btn" @click="hideKnowledgePanel">×</button>
+          <div class="panel-header">
+            <span class="panel-title">{{ currentHoverSubject }} 知识点</span>
           </div>
-          <div class="knowledge-list">
+          <div class="panel-content">
             <div 
-              v-for="knowledge in subjectKnowledges" 
+              class="knowledge-item"
+              :class="{ active: filters.knowledge === '' }"
+              @click="selectKnowledge('')"
+            >
+              全部知识点
+            </div>
+            <div 
+              v-for="knowledge in currentSubjectKnowledges" 
               :key="knowledge"
               class="knowledge-item"
               :class="{ active: filters.knowledge === knowledge }"
@@ -58,12 +68,11 @@
             >
               {{ knowledge }}
             </div>
-            <div v-if="subjectKnowledges.length === 0" class="no-knowledge">
-              暂无知识点数据
-            </div>
           </div>
         </div>
       </div>
+
+      <!-- 移除独立的知识点选择器，集成到科目选择器中 -->
 
       <select v-model="filters.status" class="filter-select">
         <option value="">全部状态</option>
@@ -143,13 +152,15 @@ const filters = ref({
 
 // 下拉菜单状态
 const showSubjectDropdown = ref(false)
+const showKnowledgePanel = ref(false) // 改为悬浮面板
 const selectedSubjectText = ref('全部科目')
+const selectedKnowledgeText = ref('全部知识点')
 
 // 悬浮面板相关状态
-const showKnowledgeList = ref(false)
-const currentHoverSubject = ref<any>(null)
 const subjectSelectorRef = ref<HTMLElement | null>(null)
-const knowledgePanelStyle = ref({})
+const currentHoverSubject = ref<string>('') // 当前悬停的科目
+const knowledgePanelStyle = ref({}) // 知识点面板样式
+let hidePanelTimer = ref<number | null>(null) // 隐藏定时器
 
 // 搜索框闪烁状态
 const isSearchBlinking = ref(false)
@@ -159,6 +170,60 @@ let blinkTimer: number | null = null
 // 切换科目下拉菜单
 const toggleSubjectDropdown = () => {
   showSubjectDropdown.value = !showSubjectDropdown.value
+  // 如果打开科目下拉，关闭知识点下拉
+  if (showSubjectDropdown.value) {
+    showKnowledgeDropdown.value = false
+  }
+}
+
+// 显示知识点菜单（悬停触发）
+const showKnowledgeMenu = (subjectName: string, event: MouseEvent) => {
+  // 取消之前的隐藏定时器
+  cancelHideTimer()
+  
+  currentHoverSubject.value = subjectName
+  showKnowledgePanel.value = true
+  
+  // 计算知识点面板位置
+  nextTick(() => {
+    const subjectItem = event.target as HTMLElement
+    const rect = subjectItem.getBoundingClientRect()
+    const containerRect = subjectSelectorRef.value?.getBoundingClientRect()
+    
+    if (containerRect) {
+      knowledgePanelStyle.value = {
+        top: `${rect.top - containerRect.top}px`,
+        left: `${rect.width}px`
+      }
+    }
+  })
+}
+
+// 安排隐藏知识点菜单
+const scheduleHideKnowledgeMenu = () => {
+  if (hidePanelTimer.value) {
+    clearTimeout(hidePanelTimer.value)
+  }
+  hidePanelTimer.value = window.setTimeout(() => {
+    showKnowledgePanel.value = false
+    currentHoverSubject.value = ''
+  }, 300) // 300ms延迟隐藏
+}
+
+// 取消隐藏定时器
+const cancelHideTimer = () => {
+  if (hidePanelTimer.value) {
+    clearTimeout(hidePanelTimer.value)
+    hidePanelTimer.value = null
+  }
+}
+
+// 处理科目选择器鼠标离开
+const handleSubjectMouseLeave = () => {
+  // 只有当知识点面板不显示时才关闭科目下拉
+  if (!showKnowledgePanel.value) {
+    showSubjectDropdown.value = false
+  }
 }
 
 // 选择科目
@@ -166,10 +231,28 @@ const selectSubject = (subjectName: string) => {
   filters.value.subject = subjectName
   selectedSubjectText.value = subjectName || '全部科目'
   showSubjectDropdown.value = false
+  showKnowledgePanel.value = false
+  currentHoverSubject.value = ''
   // 如果选择了"全部科目"，清除知识点筛选
   if (!subjectName) {
     filters.value.knowledge = ''
+    selectedKnowledgeText.value = '全部知识点'
   }
+}
+
+// 选择知识点
+const selectKnowledge = (knowledge: string) => {
+  filters.value.knowledge = knowledge
+  selectedKnowledgeText.value = knowledge || '全部知识点'
+  showKnowledgePanel.value = false
+  currentHoverSubject.value = ''
+  showSubjectDropdown.value = false
+}
+
+// 清除知识点筛选
+const clearKnowledgeFilter = () => {
+  filters.value.knowledge = ''
+  selectedKnowledgeText.value = '全部知识点'
 }
 
 // 获取当前用户拥有的科目（基于错题数据）
@@ -179,11 +262,14 @@ const userSubjects = computed(() => {
 })
 
 // 获取当前悬停科目的知识点列表
-const subjectKnowledges = computed(() => {
+const currentSubjectKnowledges = computed(() => {
   if (!currentHoverSubject.value) return []
   
+  const subjectId = testSubjects.find(s => s.name === currentHoverSubject.value)?.id
+  if (!subjectId) return []
+  
   const subjectQuestions = testErrorQuestions.filter(
-    eq => eq.subject_id === currentHoverSubject.value.id
+    eq => eq.subject_id === subjectId
   )
   
   const knowledgeSet = new Set<string>()
@@ -196,45 +282,6 @@ const subjectKnowledges = computed(() => {
   
   return Array.from(knowledgeSet).sort()
 })
-
-// 显示知识点面板
-const showKnowledgePanel = async () => {
-  await nextTick()
-  if (subjectSelectorRef.value) {
-    const rect = subjectSelectorRef.value.getBoundingClientRect()
-    knowledgePanelStyle.value = {
-      top: `${rect.top}px`,
-      left: `${rect.right}px`,
-      minWidth: '200px',
-      zIndex: '1001'
-    }
-    showKnowledgeList.value = true
-  }
-}
-
-// 隐藏知识点面板
-const hideKnowledgePanel = () => {
-  showKnowledgeList.value = false
-  currentHoverSubject.value = null
-}
-
-// 设置当前悬停的科目
-const setCurrentHoverSubject = (subject: any) => {
-  currentHoverSubject.value = subject
-  showKnowledgePanel()
-}
-
-// 选择知识点进行筛选
-const selectKnowledge = (knowledge: string) => {
-  filters.value.knowledge = knowledge
-  hideKnowledgePanel()
-  showSubjectDropdown.value = false
-}
-
-// 清除知识点筛选
-const clearKnowledgeFilter = () => {
-  filters.value.knowledge = ''
-}
 
 // 停止闪烁
 const stopBlinking = () => {
@@ -266,6 +313,7 @@ const handleTriggerBlink = () => {
 const handleClickOutside = (event: MouseEvent) => {
   if (subjectSelectorRef.value && !subjectSelectorRef.value.contains(event.target as Node)) {
     showSubjectDropdown.value = false
+    showKnowledgeDropdown.value = false
   }
 }
 
@@ -283,6 +331,10 @@ onMounted(() => {
 onUnmounted(() => {
   if (blinkTimer) {
     clearTimeout(blinkTimer)
+  }
+  // 清除隐藏定时器
+  if (hidePanelTimer.value) {
+    clearTimeout(hidePanelTimer.value)
   }
   window.removeEventListener('trigger-search-blink', handleTriggerBlink)
   document.removeEventListener('click', handleClickOutside)
@@ -428,7 +480,6 @@ const viewError = (error: any) => {
   console.log('查看错题:', error)
   // 这里可以跳转到错题详情页面
 }
-
 </script>
 
 <style scoped>
@@ -503,6 +554,70 @@ const viewError = (error: any) => {
   overflow-y: auto;
 }
 
+/* 知识点悬浮面板样式 */
+.knowledge-panel {
+  position: absolute;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 101;
+  min-width: 150px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.panel-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--hover-bg);
+}
+
+.panel-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.panel-content {
+  padding: 4px 0;
+}
+
+.knowledge-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.knowledge-item:hover {
+  background: var(--hover-bg);
+  border-left-color: var(--primary-color);
+}
+
+.knowledge-item.active {
+  background: var(--primary-light);
+  border-left-color: var(--primary-color);
+  font-weight: 500;
+}
+
+.subject-item {
+  position: relative;
+}
+
+.subject-item::after {
+  content: '▶';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
 .dropdown-item {
   padding: 10px 12px;
   cursor: pointer;
@@ -521,6 +636,13 @@ const viewError = (error: any) => {
   background: var(--primary-light);
   border-left-color: var(--primary-color);
   font-weight: 500;
+}
+
+.no-knowledge {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .filter-select {
@@ -574,99 +696,6 @@ const viewError = (error: any) => {
     border-color: var(--primary-color);
     box-shadow: 0 0 8px rgba(25, 118, 210, 0.5);
   }
-}
-
-/* 知识点悬浮面板样式 */
-.knowledge-panel {
-  position: fixed;
-  z-index: 1000;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.knowledge-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--hover-bg);
-}
-
-.subject-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.close-btn:hover {
-  background: var(--border-color);
-  color: var(--text-primary);
-}
-
-.knowledge-list {
-  padding: 8px 0;
-}
-
-.knowledge-item {
-  padding: 10px 16px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-primary);
-  transition: all 0.2s;
-  border-left: 3px solid transparent;
-}
-
-.knowledge-item:hover {
-  background: var(--hover-bg);
-  border-left-color: var(--primary-color);
-}
-
-.knowledge-item.active {
-  background: var(--primary-light);
-  border-left-color: var(--primary-color);
-  font-weight: 500;
-}
-
-.no-knowledge {
-  padding: 16px;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.clear-knowledge-btn {
-  padding: 8px 12px;
-  background: var(--warning-color);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.clear-knowledge-btn:hover {
-  background: var(--warning-dark);
 }
 
 .error-list {
