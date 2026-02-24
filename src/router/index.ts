@@ -30,10 +30,18 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '复习计划' }
   },
   {
-    path: '/review-detail',
+    path: '/review/:id',
     name: 'ReviewDetail',
     component: () => import('../views/Review-Detail.vue'),
-    meta: { title: '复习详情' }
+    meta: { title: '复习详情' },
+    props: true
+  },
+  {
+    path: '/manage/detail/:id',
+    name: 'ManageDetail',
+    component: () => import('../views/Manage-Detail.vue'),
+    meta: { title: '错题详情' },
+    props: true
   },
   {
     path: '/stats',

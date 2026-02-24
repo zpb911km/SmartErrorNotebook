@@ -138,10 +138,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { testErrorQuestions, testSubjects, testSources, getDataUtils } from '../types/testdata'
 
 const route = useRoute()
+const router = useRouter()
 
 const filters = ref({
   subject: '',
@@ -152,7 +153,7 @@ const filters = ref({
 
 // 下拉菜单状态
 const showSubjectDropdown = ref(false)
-const showKnowledgePanel = ref(false) // 改为悬浮面板
+const showKnowledgePanel = ref(false) // 知识点悬浮面板
 const selectedSubjectText = ref('全部科目')
 const selectedKnowledgeText = ref('全部知识点')
 
@@ -170,9 +171,10 @@ let blinkTimer: number | null = null
 // 切换科目下拉菜单
 const toggleSubjectDropdown = () => {
   showSubjectDropdown.value = !showSubjectDropdown.value
-  // 如果打开科目下拉，关闭知识点下拉
+  // 如果打开科目下拉，关闭知识点面板
   if (showSubjectDropdown.value) {
-    showKnowledgeDropdown.value = false
+    showKnowledgePanel.value = false
+    currentHoverSubject.value = ''
   }
 }
 
@@ -313,7 +315,8 @@ const handleTriggerBlink = () => {
 const handleClickOutside = (event: MouseEvent) => {
   if (subjectSelectorRef.value && !subjectSelectorRef.value.contains(event.target as Node)) {
     showSubjectDropdown.value = false
-    showKnowledgeDropdown.value = false
+    showKnowledgePanel.value = false
+    currentHoverSubject.value = ''
   }
 }
 
@@ -478,8 +481,10 @@ const getStatusValue = (questionId: string): string => {
 // 查看错题详情
 const viewError = (error: any) => {
   console.log('查看错题:', error)
-  // 这里可以跳转到错题详情页面
+  // 跳转到错题详情页面
+  router.push(`/manage/detail/${error.id}`)
 }
+
 </script>
 
 <style scoped>
