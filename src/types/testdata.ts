@@ -101,6 +101,31 @@ export const testSources: Source[] = [
     book: '数据结构与算法分析',
     chapter: '第三章 栈和队列',
     knowledge: '栈的应用'
+  },
+  // 新增的无机化学题目来源
+  {
+    id: 'src_006',
+    question_id: 'eq_006',
+    subject_id: 'sub_chemistry_001',
+    book: '无机化学（第五版）',
+    chapter: '第六章 金属元素化学',
+    knowledge: '金属与酸的置换反应'
+  },
+  {
+    id: 'src_007',
+    question_id: 'eq_007',
+    subject_id: 'sub_chemistry_001',
+    book: '无机化学（第五版）',
+    chapter: '第四章 元素周期律',
+    knowledge: '金属性递变规律'
+  },
+  {
+    id: 'src_008',
+    question_id: 'eq_008',
+    subject_id: 'sub_chemistry_001',
+    book: '无机化学（第五版）',
+    chapter: '第八章 酸碱平衡',
+    knowledge: '强碱溶液pH计算'
   }
 ]
 
@@ -160,6 +185,40 @@ export const testErrorQuestions: ErrorQuestion[] = [
     answer: '结果为29。使用两个栈分别存储操作数和运算符，按照运算符优先级进行计算。',
     analysis: '这是栈的经典应用，通过维护操作数栈和运算符栈来实现表达式求值',
     error_note: '没有正确处理运算符优先级，导致计算顺序错误'
+  },
+  // 新增的无机化学题目
+  {
+    id: 'eq_006',
+    user_id: 'user_001',
+    subject_id: 'sub_chemistry_001',
+    source_id: 'src_006',
+    prompt: '写出下列反应的化学方程式：锌与稀盐酸反应制取氢气',
+    type: QuestionType.ShortAnswer,
+    answer: 'Zn + 2HCl → ZnCl₂ + H₂↑',
+    analysis: '这是一个典型的金属与酸反应制取氢气的置换反应。锌失去电子变成Zn²⁺，H⁺得到电子变成H₂气体。',
+    error_note: '忘记配平化学方程式，氢原子数目不守恒'
+  },
+  {
+    id: 'eq_007',
+    user_id: 'user_001',
+    subject_id: 'sub_chemistry_001',
+    source_id: 'src_007',
+    prompt: '比较Na、Mg、Al三种元素的金属性强弱，并说明判断依据',
+    type: QuestionType.ShortAnswer,
+    answer: '金属性强弱：Na > Mg > Al。判断依据：在同一周期中，从左到右金属性逐渐减弱；原子半径越大，失电子能力越强。',
+    analysis: '根据元素周期律，在同一周期中，随着原子序数增加，金属性逐渐减弱。这与原子结构中电子层数相同但核电荷数增加有关。',
+    error_note: '混淆了金属性和非金属性的概念，判断依据不充分'
+  },
+  {
+    id: 'eq_008',
+    user_id: 'user_001',
+    subject_id: 'sub_chemistry_001',
+    source_id: 'src_008',
+    prompt: '计算0.1mol/L的NaOH溶液的pH值',
+    type: QuestionType.Calculation,
+    answer: 'pOH = -log[OH⁻] = -log(0.1) = 1，pH = 14 - pOH = 13',
+    analysis: 'NaOH是强碱，完全电离。先计算pOH，再利用pH + pOH = 14的关系求得pH值。',
+    error_note: '忘记了强碱完全电离的特性，计算过程出现错误'
   }
 ]
 
@@ -204,6 +263,31 @@ export const testSRSData: SRSData[] = [
     mastery: 20,
     lastreviewed_at: Date.now() - 10 * 24 * 60 * 60 * 1000, // 10天前
     review_count: 1
+  },
+  // 新增的无机化学题目SRS数据
+  {
+    id: 'srs_006',
+    question_id: 'eq_006',
+    difficulty: 2,
+    mastery: 55,
+    lastreviewed_at: Date.now() - 3 * 24 * 60 * 60 * 1000, // 3天前
+    review_count: 2
+  },
+  {
+    id: 'srs_007',
+    question_id: 'eq_007',
+    difficulty: 3,
+    mastery: 45,
+    lastreviewed_at: Date.now() - 4 * 24 * 60 * 60 * 1000, // 4天前
+    review_count: 2
+  },
+  {
+    id: 'srs_008',
+    question_id: 'eq_008',
+    difficulty: 2,
+    mastery: 70,
+    lastreviewed_at: Date.now() - 1 * 24 * 60 * 60 * 1000, // 1天前
+    review_count: 3
   }
 ]
 
@@ -244,6 +328,31 @@ export const testErrorTags: ErrorTags[] = [
     question_id: 'eq_005',
     name: '算法理解不深',
     color: '#03A9F4'
+  },
+  // 新增的无机化学题目标签
+  {
+    id: 'tag_007',
+    question_id: 'eq_006',
+    name: '化学方程式配平错误',
+    color: '#E91E63'
+  },
+  {
+    id: 'tag_008',
+    question_id: 'eq_007',
+    name: '概念混淆',
+    color: '#FF5722'
+  },
+  {
+    id: 'tag_009',
+    question_id: 'eq_007',
+    name: '理论理解不透彻',
+    color: '#9C27B0'
+  },
+  {
+    id: 'tag_010',
+    question_id: 'eq_008',
+    name: '计算步骤错误',
+    color: '#FF9800'
   }
 ]
 

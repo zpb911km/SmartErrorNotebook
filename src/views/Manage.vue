@@ -96,8 +96,18 @@
     <div class="error-list">
       <div v-for="error in filteredErrors" :key="error.id" class="error-card" @click="viewError(error)">
         <div class="error-header">
-          <span class="subject-tag">{{ getSubjectName(error.subject_id) }}</span>
-          <span class="difficulty-tag">{{ getDifficultyLevel(error.type) }}</span>
+          <span 
+            class="subject-tag" 
+            :style="getSubjectStyle(error.subject_id)"
+          >
+            {{ getSubjectName(error.subject_id) }}
+          </span>
+          <span 
+            class="difficulty-tag" 
+            :class="getDifficultyLevel(error.id).class"
+          >
+            {{ getDifficultyLevel(error.id).level }}
+          </span>
         </div>
         <div class="error-content">{{ error.prompt }}</div>
         <div class="error-source" v-if="getErrorSource(error.id)">
@@ -296,10 +306,10 @@ const filteredErrors = computed(() => {
       if (!source || source.knowledge !== filters.value.knowledge) return false
     }
     
-    // 状态过滤 - 这里需要根据实际情况调整
+    // 状态过滤 - 使用真实的状态值进行比较
     if (filters.value.status) {
-      const statusText = getStatusText(error.id)
-      if (statusText !== filters.value.status) return false
+      const statusValue = getStatusValue(error.id)
+      if (statusValue !== filters.value.status) return false
     }
     
     // 关键词过滤 - 搜索题干内容
@@ -315,19 +325,62 @@ const getSubjectName = (subjectId: string): string => {
   return subject ? subject.name : '未知科目'
 }
 
+// 辅助函数：根据科目ID获取样式
+const getSubjectStyle = (subjectId: string) => {
+  const subject = getDataUtils.getSubjectById(subjectId)
+  if (!subject || !subject.color) return {}
+  
+  // 计算对比色（简化版）
+  const bgColor = subject.color
+  // 确保颜色格式正确
+  if (!/^#[0-9A-F]{6}$/i.test(bgColor)) return {}
+  
+  // 简单的亮度判断来决定文字颜色
+  const r = parseInt(bgColor.slice(1, 3), 16)
+  const g = parseInt(bgColor.slice(3, 5), 16)
+  const b = parseInt(bgColor.slice(5, 7), 16)
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000
+  const textColor = brightness > 128 ? '#333333' : '#ffffff'
+  
+  return {
+    backgroundColor: bgColor,
+    color: textColor,
+    border: 'none'
+  }
+}
+
 // 辅助函数：获取错题的来源信息
 const getErrorSource = (questionId: string) => {
   return getDataUtils.getSourceByQuestionId(questionId)
 }
 
-// 辅助函数：根据题型获取难度等级
-const getDifficultyLevel = (type: string): string => {
-  const difficultyMap: Record<string, string> = {
-    '计算题': '中等',
-    '翻译题': '简单',
-    '简答题': '中等'
+// 辅助函数：根据题目ID获取难度等级（基于SRS数据）
+const getDifficultyLevel = (questionId: string): { level: string; class: string } => {
+  const srsData = getDataUtils.getSRSByQuestionId(questionId)
+  
+  if (!srsData) {
+    // 如果没有SRS数据，回退到基于题型的判断
+    const errorQuestion = testErrorQuestions.find(eq => eq.id === questionId)
+    if (errorQuestion) {
+      const typeMap: Record<string, { level: string; class: string }> = {
+        '计算题': { level: '中等', class: 'medium' },
+        '翻译题': { level: '简单', class: 'easy' },
+        '简答题': { level: '中等', class: 'medium' }
+      }
+      return typeMap[errorQuestion.type] || { level: '中等', class: 'medium' }
+    }
+    return { level: '中等', class: 'medium' }
   }
-  return difficultyMap[type] || '中等'
+  
+  // 基于SRS的difficulty字段（1-4）来判断难度
+  const difficultyMap: Record<number, { level: string; class: string }> = {
+    1: { level: '简单', class: 'easy' },
+    2: { level: '中等', class: 'medium' },
+    3: { level: '困难', class: 'hard' },
+    4: { level: '极难', class: 'very-hard' }
+  }
+  
+  return difficultyMap[srsData.difficulty] || { level: '中等', class: 'medium' }
 }
 
 // 辅助函数：格式化日期显示
@@ -340,11 +393,34 @@ const formatDate = (id: string): string => {
   return date.toLocaleDateString('zh-CN')
 }
 
-// 辅助函数：获取状态文本
-const getStatusText = (id: string): string => {
-  const idNum = parseInt(id.split('_')[1])
-  const statuses = ['待复习', '已复习', '已掌握', '待复习']
-  return statuses[(idNum - 1) % statuses.length]
+// 辅助函数：获取状态文本 - 基于SRS数据的真实状态
+const getStatusText = (questionId: string): string => {
+  const srsData = getDataUtils.getSRSByQuestionId(questionId)
+  if (!srsData) return '待复习'
+  
+  // 根据掌握程度(mastery)判断状态
+  if (srsData.mastery >= 80) {
+    return '已掌握'
+  } else if (srsData.mastery >= 50) {
+    return '已复习'
+  } else {
+    return '待复习'
+  }
+}
+
+// 辅助函数：获取状态值 - 用于过滤比较
+const getStatusValue = (questionId: string): string => {
+  const srsData = getDataUtils.getSRSByQuestionId(questionId)
+  if (!srsData) return 'pending'
+  
+  // 根据掌握程度返回对应的过滤值
+  if (srsData.mastery >= 80) {
+    return 'mastered'
+  } else if (srsData.mastery >= 50) {
+    return 'reviewed'
+  } else {
+    return 'pending'
+  }
 }
 
 // 查看错题详情
@@ -625,25 +701,7 @@ const viewError = (error: any) => {
   font-weight: 500;
 }
 
-.subject-tag.math {
-  background: #e3f2fd;
-  color: #1976d2;
-}
-
-.subject-tag.physics {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.subject-tag.chemistry {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.subject-tag.english {
-  background: #e8f5e9;
-  color: #43a047;
-}
+/* 移除硬编码的科目颜色样式，现在使用动态样式绑定 */
 
 .difficulty-tag {
   padding: 4px 8px;
@@ -665,6 +723,11 @@ const viewError = (error: any) => {
 .difficulty-tag.hard {
   background: #ffebee;
   color: #c62828;
+}
+
+.difficulty-tag.very-hard {
+  background: #f3e5f5;
+  color: #7b1fa2;
 }
 
 .error-content {
