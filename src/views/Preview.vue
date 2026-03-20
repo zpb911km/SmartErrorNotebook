@@ -87,8 +87,12 @@ const reviewWeak = (item: any) => {
 
 <style scoped>
 .preview-page {
-  padding: 20px;
-  padding-bottom: 80px;
+  padding: 40px 20px;
+  padding-bottom: 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 /* 最近错题样式 (来自 Home) */

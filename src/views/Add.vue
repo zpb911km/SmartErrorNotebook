@@ -12,6 +12,7 @@
     <ImageEditor 
       :visible="showEdit" 
       :imageData="editImageData"
+      :autoDetect="autoDetect"
       @close="handleEditClose"
       @confirm="handleEditConfirm"
     />
@@ -142,6 +143,7 @@ const cameraDisabled = ref(false)
 const showEdit = ref(false)
 const editImageData = ref('')
 const editingImageIndex = ref<number>(-1)
+const autoDetect = ref(false)
 
 // SRS预设相关状态
 const currentPresetId = ref('')
@@ -184,7 +186,7 @@ const handleFileSelect = (e: Event) => {
   if (target.files && target.files[0]) {
     const file = target.files[0]
     const imageData = URL.createObjectURL(file)
-    openEdit(imageData, -1) // -1 表示添加新图片
+    openEdit(imageData, -1, true) // -1 表示添加新图片，true 表示自动识别
   }
   // 重置 input 以便再次选择同一文件
   target.value = ''
@@ -214,14 +216,18 @@ const disableCamera = () => {
 // 相机拍照
 const handleCameraCapture = (imageData: string) => {
   showCamera.value = false
-  openEdit(imageData, -1) // -1 表示添加新图片
+  openEdit(imageData, -1, true) // -1 表示添加新图片，true 表示自动识别
 }
 
 // 打开图片编辑
-const openEdit = (imageData: string, index: number) => {
+const openEdit = (imageData: string, index: number, shouldAutoDetect: boolean = false) => {
+  console.log('Add.vue openEdit, shouldAutoDetect:', shouldAutoDetect)
   editImageData.value = imageData
   editingImageIndex.value = index
   showEdit.value = true
+  // 传递自动识别标志
+  autoDetect.value = shouldAutoDetect
+  console.log('Add.vue autoDetect.value:', autoDetect.value)
 }
 
 // 图片编辑关闭
@@ -392,8 +398,12 @@ const saveError = async () => {
 
 <style scoped>
 .add-page {
-  padding: 20px;
+  padding: 40px 20px;
   padding-bottom: 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .upload-ctn {

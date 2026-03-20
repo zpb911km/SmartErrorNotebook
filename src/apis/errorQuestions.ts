@@ -8,3 +8,9 @@ export async function createErrorQuestion(
     input: request,
   });
 }
+
+export async function getQuestions(filter?: any): Promise<ErrorQuestion[]> {
+  return invoke('get_questions', {
+    filter,
+  });
+}
