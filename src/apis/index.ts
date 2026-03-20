@@ -1,14 +1,22 @@
-import { invoke } from "@tauri-apps/api/core";
-import { mockErrorQuestion1 } from "../types/mock";
-import { ErrorQuestion } from "../types";
+/**
+ * APIs 模块
+ * 统一导出所有 API 接口
+ */
 
-async function greetWithName(name: string): Promise<string> {
-    return await invoke("greet", { name });
-}
+// 科目相关
+export * from './subjects';
 
-async function getErrorQuestionByName(name: string): Promise<ErrorQuestion> {
-    // 先使用假数据
-    return mockErrorQuestion1;
-}
+// 错题相关
+export * from './errorQuestions';
 
-export { greetWithName, getErrorQuestionByName };
+// 错因标签相关
+export * from './errorTags';
+
+// SRS 数据相关
+export * from './srsData';
+
+// 附件相关
+export * from './attachments';
+
+// 来源相关
+export * from './sources';
