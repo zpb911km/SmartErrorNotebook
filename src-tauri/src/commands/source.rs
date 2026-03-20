@@ -52,8 +52,7 @@ pub async fn get_sources(
     let db = state.db.as_ref();
     let filter = filter.unwrap_or_default();
 
-    let mut query = Source::find()
-        .filter(source::Column::DeletedAt.is_null());
+    let mut query = Source::find().filter(source::Column::DeletedAt.is_null());
 
     // 按科目筛选
     if let Some(subject_id) = filter.subject_id {
@@ -66,10 +65,7 @@ pub async fn get_sources(
 }
 
 #[tauri::command]
-pub async fn get_source(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<source::Model, String> {
+pub async fn get_source(state: State<'_, AppState>, id: String) -> Result<source::Model, String> {
     let db = state.db.as_ref();
 
     let source = Source::find_by_id(id)
@@ -263,10 +259,7 @@ pub async fn update_source(
 
 /// 删除来源(软删除)
 #[tauri::command]
-pub async fn delete_source(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_source(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
     use sea_orm::ActiveModelTrait;
@@ -295,33 +288,32 @@ pub async fn delete_source(
 pub async fn get_or_create_source_id(
     state: State<'_, AppState>,
     input: CreateSourceInput,
-) -> Result<String, String> { 
+) -> Result<String, String> {
     let db = state.db.as_ref();
     let input_copy = input.clone();
-    
+
     // 构建查询条件，对 None 值特殊处理
-    let mut query = Source::find()
-        .filter(source::Column::DeletedAt.is_null()); // 只查询未删除的记录
-    
+    let mut query = Source::find().filter(source::Column::DeletedAt.is_null()); // 只查询未删除的记录
+
     if let Some(ref subject_id) = input.subject_id {
         query = query.filter(source::Column::SubjectId.eq(subject_id));
     } else {
         // 如果输入值为 None，过滤数据库中也为 NULL 的记录
         query = query.filter(source::Column::SubjectId.is_null());
     }
-    
+
     if let Some(ref book) = input.book {
         query = query.filter(source::Column::Book.eq(book));
     } else {
         query = query.filter(source::Column::Book.is_null());
     }
-    
+
     if let Some(ref chapter) = input.chapter {
         query = query.filter(source::Column::Chapter.eq(chapter));
     } else {
         query = query.filter(source::Column::Chapter.is_null());
     }
-    
+
     if let Some(ref knowledge) = input.knowledge {
         query = query.filter(source::Column::Knowledge.eq(knowledge));
     } else {
@@ -329,7 +321,7 @@ pub async fn get_or_create_source_id(
     }
 
     let source = query.one(db).await.map_err(|e| e.to_string())?;
-    
+
     match source {
         Some(source) => Ok(source.id),
         None => {

@@ -5,7 +5,7 @@ use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::{srs_data, prelude::SrsData};
+use crate::database::entities::{prelude::SrsData, srs_data};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct CreateSRSDataInput {
@@ -38,9 +38,7 @@ pub async fn create_srs_data(
         sync_hash: Set(None),
     };
 
-    let _ = new_srs_data.clone()
-        .insert(db)
-        .await;
+    let _ = new_srs_data.clone().insert(db).await;
 
     // 将ActiveModel转换为Model
     let srs_model: srs_data::Model = SrsData::find_by_id(id)

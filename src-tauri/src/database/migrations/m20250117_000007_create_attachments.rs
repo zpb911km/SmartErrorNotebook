@@ -13,24 +13,47 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Attachments::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Attachments::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Attachments::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Attachments::QuestionId).string().not_null())
                     .col(ColumnDef::new(Attachments::Type).text().not_null())
                     .col(ColumnDef::new(Attachments::FileType).text().not_null())
                     .col(ColumnDef::new(Attachments::Path).string().not_null())
                     .col(ColumnDef::new(Attachments::Hash).string().not_null())
-                    .col(ColumnDef::new(Attachments::CreatedAt).big_integer().not_null())
-                    .col(ColumnDef::new(Attachments::UpdatedAt).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(Attachments::CreatedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Attachments::UpdatedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Attachments::DeletedAt).big_integer())
-                    .col(ColumnDef::new(Attachments::Version).integer().not_null().default(0))
-                    .col(ColumnDef::new(Attachments::SyncStatus).string().not_null().default("synced"))
+                    .col(
+                        ColumnDef::new(Attachments::Version)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Attachments::SyncStatus)
+                            .string()
+                            .not_null()
+                            .default("synced"),
+                    )
                     .col(ColumnDef::new(Attachments::SyncHash).string())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_attachments_error_questions")
                             .from(Attachments::Table, Attachments::QuestionId)
                             .to(ErrorQuestions::Table, ErrorQuestions::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
