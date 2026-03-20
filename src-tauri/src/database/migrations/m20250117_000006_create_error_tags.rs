@@ -13,22 +13,45 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ErrorTags::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ErrorTags::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(ErrorTags::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(ErrorTags::QuestionId).string().not_null())
                     .col(ColumnDef::new(ErrorTags::Name).string().not_null())
                     .col(ColumnDef::new(ErrorTags::Color).string().not_null())
-                    .col(ColumnDef::new(ErrorTags::CreatedAt).big_integer().not_null())
-                    .col(ColumnDef::new(ErrorTags::UpdatedAt).big_integer().not_null())
+                    .col(
+                        ColumnDef::new(ErrorTags::CreatedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ErrorTags::UpdatedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ErrorTags::DeletedAt).big_integer())
-                    .col(ColumnDef::new(ErrorTags::Version).integer().not_null().default(0))
-                    .col(ColumnDef::new(ErrorTags::SyncStatus).string().not_null().default("synced"))
+                    .col(
+                        ColumnDef::new(ErrorTags::Version)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(ErrorTags::SyncStatus)
+                            .string()
+                            .not_null()
+                            .default("synced"),
+                    )
                     .col(ColumnDef::new(ErrorTags::SyncHash).string())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_error_tags_error_questions")
                             .from(ErrorTags::Table, ErrorTags::QuestionId)
                             .to(ErrorQuestions::Table, ErrorQuestions::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )

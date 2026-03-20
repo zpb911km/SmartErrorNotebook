@@ -13,23 +13,62 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(SrsData::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(SrsData::Id).string().not_null().primary_key())
-                    .col(ColumnDef::new(SrsData::QuestionId).string().not_null().unique_key())
-                    .col(ColumnDef::new(SrsData::Difficulty).float().not_null().default(2.5))
-                    .col(ColumnDef::new(SrsData::Mastery).float().not_null().default(0.0))
-                    .col(ColumnDef::new(SrsData::LastreviewedAt).big_integer().not_null())
-                    .col(ColumnDef::new(SrsData::ReviewCount).integer().not_null().default(0))
+                    .col(
+                        ColumnDef::new(SrsData::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(SrsData::QuestionId)
+                            .string()
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(
+                        ColumnDef::new(SrsData::Difficulty)
+                            .float()
+                            .not_null()
+                            .default(2.5),
+                    )
+                    .col(
+                        ColumnDef::new(SrsData::Mastery)
+                            .float()
+                            .not_null()
+                            .default(0.0),
+                    )
+                    .col(
+                        ColumnDef::new(SrsData::LastreviewedAt)
+                            .big_integer()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(SrsData::ReviewCount)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .col(ColumnDef::new(SrsData::CreatedAt).big_integer().not_null())
                     .col(ColumnDef::new(SrsData::UpdatedAt).big_integer().not_null())
-                    .col(ColumnDef::new(SrsData::Version).integer().not_null().default(0))
-                    .col(ColumnDef::new(SrsData::SyncStatus).string().not_null().default("synced"))
+                    .col(
+                        ColumnDef::new(SrsData::Version)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(SrsData::SyncStatus)
+                            .string()
+                            .not_null()
+                            .default("synced"),
+                    )
                     .col(ColumnDef::new(SrsData::SyncHash).string())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_srs_data_error_questions")
                             .from(SrsData::Table, SrsData::QuestionId)
                             .to(ErrorQuestions::Table, ErrorQuestions::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )

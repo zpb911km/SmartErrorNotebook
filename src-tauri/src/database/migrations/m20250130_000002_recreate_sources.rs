@@ -18,7 +18,12 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Sources::Table)
-                    .col(ColumnDef::new(Sources::Id).string().not_null().primary_key())
+                    .col(
+                        ColumnDef::new(Sources::Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Sources::QuestionId).string()) // 可选，无外键约束
                     .col(ColumnDef::new(Sources::SubjectId).string()) // 可选，无外键约束
                     .col(ColumnDef::new(Sources::Book).string())
@@ -27,8 +32,18 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Sources::CreatedAt).big_integer().not_null())
                     .col(ColumnDef::new(Sources::UpdatedAt).big_integer().not_null())
                     .col(ColumnDef::new(Sources::DeletedAt).big_integer())
-                    .col(ColumnDef::new(Sources::Version).integer().not_null().default(0))
-                    .col(ColumnDef::new(Sources::SyncStatus).string().not_null().default("synced"))
+                    .col(
+                        ColumnDef::new(Sources::Version)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Sources::SyncStatus)
+                            .string()
+                            .not_null()
+                            .default("synced"),
+                    )
                     .col(ColumnDef::new(Sources::SyncHash).string())
                     .to_owned(),
             )

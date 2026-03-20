@@ -43,9 +43,7 @@ pub async fn create_attachment(
         sync_hash: Set(None),
     };
 
-    let _ = new_attachment
-        .insert(db)
-        .await;
+    let _ = new_attachment.insert(db).await;
 
     let attachment_model = Attachment::find_by_id(id)
         .one(db)
@@ -93,10 +91,7 @@ pub async fn get_attachments_by_question(
 
 /// 删除附件（软删除）
 #[tauri::command]
-pub async fn delete_attachment(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_attachment(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
@@ -113,7 +108,10 @@ pub async fn delete_attachment(
     attachment.version = Set(attachment.version.unwrap() + 1);
     attachment.sync_status = Set("pending".to_string());
 
-    attachment.update(db).await.map_err(|e: sea_orm::DbErr| e.to_string())?;
+    attachment
+        .update(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?;
 
     Ok(())
 }

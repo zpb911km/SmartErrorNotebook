@@ -29,7 +29,7 @@ pub async fn create_error_tags_for_question(
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
     let mut created_tags = Vec::new();
-    
+
     for tag_info in input.tags {
         let id = Uuid::new_v4().to_string();
         let new_tag = error_tag::ActiveModel {
@@ -45,9 +45,7 @@ pub async fn create_error_tags_for_question(
             sync_hash: Set(None),
         };
 
-        let _ = new_tag
-            .insert(db)
-            .await;
+        let _ = new_tag.insert(db).await;
 
         // 将ActiveModel转换为Model
         let tag_model = ErrorTag::find_by_id(id)
@@ -62,12 +60,9 @@ pub async fn create_error_tags_for_question(
     Ok(created_tags)
 }
 
-
 /// 获取全部的错因标签
 #[tauri::command]
-pub async fn get_error_tags(
-    state: State<'_, AppState>,
-) -> Result<Vec<error_tag::Model>, String> {
+pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag::Model>, String> {
     let db = state.db.as_ref();
     let tags = ErrorTag::find()
         .all(db)

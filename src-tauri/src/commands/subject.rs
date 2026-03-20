@@ -100,10 +100,7 @@ pub async fn update_subject(
 
 /// 删除科目（软删除）
 #[tauri::command]
-pub async fn delete_subject(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_subject(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
