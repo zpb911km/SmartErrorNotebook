@@ -86,30 +86,6 @@
         </div>
       </div>
     </div>
-
-    <!-- AI接口信息 -->
-    <div class="ai-section">
-      <div class="ai-card">
-        <div class="ai-header">
-          <div class="ai-icon">🤖</div>
-          <h3>AI 助手</h3>
-        </div>
-        <div class="ai-info">
-          <div class="ai-status" :class="{ active: aiStatus.enabled }">
-            <span class="status-label">状态:</span>
-            <span class="status-value">{{ aiStatus.enabled ? '已开启' : '已关闭' }}</span>
-          </div>
-          <div class="ai-token">
-            <span class="token-label">剩余 Token:</span>
-            <span class="token-value">{{ aiStatus.remainingTokens }}</span>
-          </div>
-          <div class="ai-model">
-            <span class="model-label">接入 AI:</span>
-            <span class="model-value">{{ aiStatus.modelName }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -138,9 +114,6 @@ const recentActivities = ref([
 
 // 学习提示
 const dailyTip = ref('定期复习是巩固知识的最佳方法。研究表明，间隔重复学习比集中学习更有效。')
-
-// 注入全局AI状态
-const aiStatus = inject('aiState')
 </script>
 
 <style scoped>

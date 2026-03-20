@@ -74,44 +74,12 @@
           </div>
         </div>
       </div>
-
-      <!-- AI接口信息 -->
-      <div class="ai-section">
-        <div class="ai-card">
-          <div class="ai-header">
-            <div class="ai-header-content">
-              <div class="ai-icon">🤖</div>
-              <h3>AI 助手</h3>
-            </div>
-            <label class="ai-toggle">
-              <input type="checkbox" v-model="aiStatus.enabled" @change="toggleAIStatus">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="ai-info">
-            <div class="ai-token">
-              <span class="token-label">剩余 Token:</span>
-              <span class="token-value">{{ aiStatus.remainingTokens }}</span>
-              <button class="recharge-btn" @click="openRechargeDialog">充值</button>
-            </div>
-            <div class="ai-model">
-              <span class="model-label">接入 AI:</span>
-              <select v-model="aiStatus.modelName" class="model-select" @change="changeModel">
-                <option value="GPT-4">GPT-4</option>
-                <option value="GPT-3.5 Turbo">GPT-3.5 Turbo</option>
-                <option value="Claude 3">Claude 3</option>
-                <option value="Gemini Pro">Gemini Pro</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject } from 'vue'
+import { ref } from 'vue'
 
 // 统计数据
 const overview = ref({
@@ -152,29 +120,6 @@ const getPieStyle = (item: any, index: number) => {
 const getBarHeight = (count: number) => {
   const max = Math.max(...weeklyStats.value.map(item => item.count))
   return (count / max) * 100
-}
-
-// 注入全局AI状态
-const aiStatus = inject('aiState')
-
-// AI功能方法
-const toggleAIStatus = () => {
-  console.log('AI状态已切换为:', aiStatus.value.enabled ? '开启' : '关闭')
-  // 这里可以添加实际的状态切换逻辑
-}
-
-const openRechargeDialog = () => {
-  console.log('打开充值对话框')
-  // 这里可以添加实际的充值逻辑
-  // 模拟充值操作
-  const rechargeAmount = 1000
-  aiStatus.value.remainingTokens += rechargeAmount
-  console.log(`已充值 ${rechargeAmount} Token，当前余额: ${aiStatus.value.remainingTokens}`)
-}
-
-const changeModel = () => {
-  console.log('模型已切换为:', aiStatus.value.modelName)
-  // 这里可以添加实际的模型切换逻辑
 }
 </script>
 
