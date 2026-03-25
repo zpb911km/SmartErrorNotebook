@@ -3,7 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import { createSubject, getSubjects } from '../apis/subjects';
 import { Subject } from '../types';
 import { showInfo } from '../utils/notification';
-import { p } from 'vue-router/dist/router-CWoNjPRp.mjs';
+
 
 const getRandomRGBColor = () => {
   const r = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');

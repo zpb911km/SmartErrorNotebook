@@ -100,7 +100,6 @@
         @mousedown="handleMouseDown"
         @mousemove="handleMouseMove"
         @mouseup="handleMouseUp"
-        @mouseleave="handleMouseUp"
         @touchstart="handleTouchStart"
         @touchmove="handleTouchMove"
         @touchend="handleTouchEnd"
@@ -122,6 +121,7 @@ import { ref, watch, nextTick, computed } from 'vue'
 interface Props {
   visible: boolean
   imageData: string
+  autoDetect?: boolean
 }
 
 interface Emits {
@@ -208,6 +208,7 @@ const cropInfo = computed(() => {
 
 // 监听 visible 变化
 watch(() => props.visible, async (newVal) => {
+  console.log('ImageEditor visible changed:', newVal, 'autoDetect:', props.autoDetect)
   if (newVal && props.imageData) {
     await loadImage()
   }
@@ -215,6 +216,7 @@ watch(() => props.visible, async (newVal) => {
 
 // 加载图片
 const loadImage = () => {
+  console.log('ImageEditor loadImage, autoDetect:', props.autoDetect)
   const img = new Image()
   img.onload = () => {
     originalImage.value = img
@@ -230,6 +232,14 @@ const loadImage = () => {
     nextTick(() => {
       initCanvas()
       initCropCorners()
+      
+      // 如果需要自动识别，延迟执行以确保Canvas初始化完成
+      if (props.autoDetect) {
+        console.log('自动识别开始执行')
+        setTimeout(() => {
+          autoDetectRegion()
+        }, 500)
+      }
     })
   }
   img.src = props.imageData
@@ -290,8 +300,8 @@ const drawCanvas = () => {
   // 绘制图片
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
   
-  // 如果是裁剪工具，绘制裁剪框
-  if (currentTool.value === 'crop') {
+  // 如果是裁剪工具或自动识别工具，绘制裁剪框
+  if (currentTool.value === 'crop' || currentTool.value === 'auto-detect') {
     drawCropOverlay(ctx, canvas)
   }
 }
@@ -362,32 +372,22 @@ const screenToCanvas = (screenX: number, screenY: number) => {
   return { x, y }
 }
 
-// 鼠标事件处理
-const handleMouseDown = (e: MouseEvent) => {
-  if (currentTool.value === 'crop') {
-    const { x, y } = screenToCanvas(e.clientX, e.clientY)
-    
-    corners.value.forEach((corner, index) => {
-      const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
-      if (distance <= pointRadius) {
-        draggingCorner.value = index
-      }
-    })
-  } else {
-    isPanning.value = true
-    lastPanPos.value = { x: e.clientX, y: e.clientY }
-  }
-}
-
-const handleMouseMove = (e: MouseEvent) => {
+// 全局鼠标事件处理函数
+const handleGlobalMouseMove = (e: MouseEvent) => {
   if (currentTool.value === 'crop' && draggingCorner.value !== null) {
     const { x, y } = screenToCanvas(e.clientX, e.clientY)
     
-    const clampedX = Math.max(0, Math.min(x, canvasRef.value!.width))
-    const clampedY = Math.max(0, Math.min(y, canvasRef.value!.height))
-    
-    corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
-    drawCanvas()
+    // 限制调节点在图片范围内
+    if (canvasRef.value) {
+      const width = canvasRef.value.width
+      const height = canvasRef.value.height
+      
+      const clampedX = Math.max(0, Math.min(x, width))
+      const clampedY = Math.max(0, Math.min(y, height))
+      
+      corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
+      drawCanvas()
+    }
   } else if (isPanning.value) {
     const dx = e.clientX - lastPanPos.value.x
     const dy = e.clientY - lastPanPos.value.y
@@ -401,9 +401,59 @@ const handleMouseMove = (e: MouseEvent) => {
   }
 }
 
-const handleMouseUp = () => {
+const handleGlobalMouseUp = () => {
+  // 移除全局事件监听器
+  window.removeEventListener('mousemove', handleGlobalMouseMove)
+  window.removeEventListener('mouseup', handleGlobalMouseUp)
+  
+  // 限制调节点在图片范围内
+  if (canvasRef.value) {
+    const width = canvasRef.value.width
+    const height = canvasRef.value.height
+    
+    corners.value = corners.value.map((corner) => {
+      return {
+        x: Math.max(0, Math.min(corner.x, width)),
+        y: Math.max(0, Math.min(corner.y, height))
+      }
+    })
+    
+    drawCanvas()
+  }
+  
   draggingCorner.value = null
   isPanning.value = false
+}
+
+// 鼠标事件处理
+const handleMouseDown = (e: MouseEvent) => {
+  if (currentTool.value === 'crop') {
+    const { x, y } = screenToCanvas(e.clientX, e.clientY)
+    
+    corners.value.forEach((corner, index) => {
+      const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
+      if (distance <= pointRadius) {
+        draggingCorner.value = index
+        // 添加全局事件监听器
+        window.addEventListener('mousemove', handleGlobalMouseMove)
+        window.addEventListener('mouseup', handleGlobalMouseUp)
+      }
+    })
+  } else {
+    isPanning.value = true
+    lastPanPos.value = { x: e.clientX, y: e.clientY }
+    // 添加全局事件监听器
+    window.addEventListener('mousemove', handleGlobalMouseMove)
+    window.addEventListener('mouseup', handleGlobalMouseUp)
+  }
+}
+
+const handleMouseMove = (e: MouseEvent) => {
+  // 这个函数现在可以为空，因为我们使用全局事件监听器
+}
+
+const handleMouseUp = () => {
+  // 这个函数现在可以为空，因为我们使用全局事件监听器
 }
 
 // 触摸事件处理
@@ -428,11 +478,17 @@ const handleTouchMove = (e: TouchEvent) => {
     const touch = e.touches[0]
     const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
     
-    const clampedX = Math.max(0, Math.min(x, canvasRef.value!.width))
-    const clampedY = Math.max(0, Math.min(y, canvasRef.value!.height))
-    
-    corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
-    drawCanvas()
+    // 限制调节点在图片范围内
+    if (canvasRef.value) {
+      const width = canvasRef.value.width
+      const height = canvasRef.value.height
+      
+      const clampedX = Math.max(0, Math.min(x, width))
+      const clampedY = Math.max(0, Math.min(y, height))
+      
+      corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
+      drawCanvas()
+    }
   }
 }
 
@@ -472,6 +528,210 @@ const selectTool = (toolId: string) => {
   }
   
   drawCanvas()
+}
+
+// 应用阈值到图像
+const applyThresholdToImage = (imageData: ImageData, threshold: number): ImageData => {
+  const data = imageData.data
+  const result = new ImageData(imageData.width, imageData.height)
+  const resultData = result.data
+  
+  for (let i = 0; i < data.length; i += 4) {
+    const gray = (data[i] + data[i + 1] + data[i + 2]) / 3
+    const value = gray >= threshold ? 255 : 0
+    resultData[i] = value
+    resultData[i + 1] = value
+    resultData[i + 2] = value
+    resultData[i + 3] = 255
+  }
+  
+  return result
+}
+
+// Sobel 边缘检测
+const sobelEdgeDetection = (imageData: ImageData): ImageData => {
+  const data = imageData.data
+  const width = imageData.width
+  const height = imageData.height
+  const result = new ImageData(width, height)
+  const resultData = result.data
+  
+  // Sobel 算子
+  const sobelX = [
+    [-1, 0, 1],
+    [-2, 0, 2],
+    [-1, 0, 1]
+  ]
+  
+  const sobelY = [
+    [-1, -2, -1],
+    [0, 0, 0],
+    [1, 2, 1]
+  ]
+  
+  // 遍历图像像素
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let gx = 0
+      let gy = 0
+      
+      // 应用 Sobel 算子
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) {
+          const idx = ((y + i) * width + (x + j)) * 4
+          const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3
+          gx += gray * sobelX[i + 1][j + 1]
+          gy += gray * sobelY[i + 1][j + 1]
+        }
+      }
+      
+      // 计算梯度幅值
+      const magnitude = Math.sqrt(gx * gx + gy * gy)
+      const value = Math.min(255, magnitude)
+      
+      const resultIdx = (y * width + x) * 4
+      resultData[resultIdx] = value
+      resultData[resultIdx + 1] = value
+      resultData[resultIdx + 2] = value
+      resultData[resultIdx + 3] = 255
+    }
+  }
+  
+  return result
+}
+
+// 洪水填充算法
+const floodFill = (x: number, y: number, width: number, height: number, data: Uint8ClampedArray, visited: boolean[]): {x: number, y: number}[] => {
+  const stack = [{x, y}]
+  const contour: {x: number, y: number}[] = []
+  const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]
+  
+  while (stack.length > 0) {
+    const {x, y} = stack.pop()!
+    const idx = y * width + x
+    
+    if (x < 0 || x >= width || y < 0 || y >= height || visited[idx] || data[idx * 4] <= 128) {
+      continue
+    }
+    
+    visited[idx] = true
+    contour.push({x, y})
+    
+    for (const [dx, dy] of directions) {
+      stack.push({x: x + dx, y: y + dy})
+    }
+  }
+  
+  return contour
+}
+
+// 提取轮廓
+const findContours = (imageData: ImageData): {x: number, y: number}[] => {
+  const data = imageData.data
+  const width = imageData.width
+  const height = imageData.height
+  const visited = new Array(width * height).fill(false)
+  const contours: {x: number, y: number}[] = []
+  
+  // 简单的轮廓提取算法
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4
+      if (data[idx] > 128 && !visited[y * width + x]) {
+        // 找到一个轮廓
+        const contour = floodFill(x, y, width, height, data, visited)
+        if (contour.length > 100) { // 过滤小轮廓
+          contours.push(...contour)
+        }
+      }
+    }
+  }
+  
+  return contours
+}
+
+// 拟合矩形
+const fitRectangle = (points: {x: number, y: number}[]): {x: number, y: number}[] => {
+  if (points.length === 0) return []
+  
+  const minX = Math.min(...points.map(p => p.x))
+  const minY = Math.min(...points.map(p => p.y))
+  const maxX = Math.max(...points.map(p => p.x))
+  const maxY = Math.max(...points.map(p => p.y))
+  
+  return [
+    {x: minX, y: minY},
+    {x: maxX, y: minY},
+    {x: maxX, y: maxY},
+    {x: minX, y: maxY}
+  ]
+}
+
+// 自动识别区域
+const autoDetectRegion = () => {
+  console.log('自动识别开始')
+  if (!canvasRef.value || !currentImage.value) {
+    console.log('Canvas或图像不存在')
+    return
+  }
+  
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    console.log('无法获取Canvas上下文')
+    return
+  }
+  
+  console.log('Canvas尺寸:', canvas.width, 'x', canvas.height)
+  
+  // 绘制当前图像
+  ctx.drawImage(currentImage.value, 0, 0, canvas.width, canvas.height)
+  
+  // 获取图像数据
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  console.log('获取图像数据成功')
+  
+  // 应用二值化增强对比度
+  const thresholdedData = applyThresholdToImage(imageData, 128)
+  console.log('二值化处理完成')
+  
+  // 边缘检测
+  const edgeData = sobelEdgeDetection(thresholdedData)
+  console.log('边缘检测完成')
+  
+  // 提取轮廓
+  const contours = findContours(edgeData)
+  console.log('提取轮廓完成，轮廓点数量:', contours.length)
+  
+  // 拟合矩形
+  const rectangle = fitRectangle(contours)
+  console.log('拟合矩形完成，矩形点数量:', rectangle.length)
+  
+  if (rectangle.length === 4) {
+    console.log('识别到区域:', rectangle)
+    // 调整边界，添加一些 padding
+    const padding = 20
+    const width = canvas.width
+    const height = canvas.height
+    
+    corners.value = rectangle.map((point, index) => {
+      if (index === 0) { // 左上角
+        return { x: Math.max(0, point.x - padding), y: Math.max(0, point.y - padding) }
+      } else if (index === 1) { // 右上角
+        return { x: Math.min(width, point.x + padding), y: Math.max(0, point.y - padding) }
+      } else if (index === 2) { // 右下角
+        return { x: Math.min(width, point.x + padding), y: Math.min(height, point.y + padding) }
+      } else { // 左下角
+        return { x: Math.max(0, point.x - padding), y: Math.min(height, point.y + padding) }
+      }
+    })
+    
+    console.log('调整后的边界:', corners.value)
+    drawCanvas()
+    console.log('绘制完成')
+  } else {
+    console.log('未识别到区域')
+  }
 }
 
 // 重置裁剪

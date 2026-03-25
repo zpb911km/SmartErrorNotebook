@@ -52,6 +52,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { getQuestions } from '../apis/errorQuestions'
+import { getSubjects } from '../apis/subjects'
 
 const route = useRoute()
 
@@ -65,6 +67,9 @@ const filters = ref({
 const isSearchBlinking = ref(false)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 let blinkTimer: number | null = null
+
+// 错题数据
+const errors = ref([])
 
 // 停止闪烁
 const stopBlinking = () => {
@@ -92,6 +97,64 @@ const handleTriggerBlink = () => {
   startBlinking()
 }
 
+// 从数据库获取错题数据
+const fetchErrors = async () => {
+  try {
+    const questions = await getQuestions()
+    const subjects = await getSubjects()
+    
+    // 转换数据格式
+    errors.value = questions.map((question: any) => {
+      const subject = subjects.find((s: any) => s.id === question.subject_id)
+      return {
+        id: question.id,
+        subject: subject ? subject.name.toLowerCase() : 'unknown',
+        subjectName: subject ? subject.name : '未知科目',
+        difficulty: question.difficulty || 'medium',
+        difficultyName: getDifficultyName(question.difficulty),
+        content: question.question_content || '',
+        date: formatDate(question.created_at),
+        status: getStatus(question.review_status),
+        statusText: getStatusText(question.review_status)
+      }
+    })
+  } catch (error) {
+    console.error('获取错题数据失败:', error)
+    errors.value = []
+  }
+}
+
+// 格式化日期
+const formatDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toISOString().split('T')[0]
+}
+
+// 获取难度名称
+const getDifficultyName = (difficulty: string) => {
+  const difficultyMap: Record<string, string> = {
+    'easy': '简单',
+    'medium': '中等',
+    'hard': '困难'
+  }
+  return difficultyMap[difficulty] || '中等'
+}
+
+// 获取状态
+const getStatus = (reviewStatus: number) => {
+  if (reviewStatus >= 3) return 'mastered'
+  if (reviewStatus >= 1) return 'reviewed'
+  return 'pending'
+}
+
+// 获取状态文本
+const getStatusText = (reviewStatus: number) => {
+  if (reviewStatus >= 3) return '已掌握'
+  if (reviewStatus >= 1) return '已复习'
+  return '待复习'
+}
+
 onMounted(() => {
   // 从其他页面跳转过来时检查是否需要闪烁
   if (route.query.focus === 'search') {
@@ -99,6 +162,8 @@ onMounted(() => {
   }
   // 监听自定义事件
   window.addEventListener('trigger-search-blink', handleTriggerBlink)
+  // 加载错题数据
+  fetchErrors()
 })
 
 onUnmounted(() => {
@@ -112,53 +177,6 @@ onUnmounted(() => {
 const onSearchFocus = () => {
   stopBlinking()
 }
-
-const errors = ref([
-  {
-    id: 1,
-    subject: 'math',
-    subjectName: '数学',
-    difficulty: 'medium',
-    difficultyName: '中等',
-    content: '求函数 f(x) = x² - 2x + 1 的最小值',
-    date: '2026-01-15',
-    status: 'pending',
-    statusText: '待复习'
-  },
-  {
-    id: 2,
-    subject: 'physics',
-    subjectName: '物理',
-    difficulty: 'hard',
-    difficultyName: '困难',
-    content: '一个质量为 2kg 的物体从 10m 高处自由落下，求落地时的速度',
-    date: '2026-01-14',
-    status: 'reviewed',
-    statusText: '已复习'
-  },
-  {
-    id: 3,
-    subject: 'english',
-    subjectName: '英语',
-    difficulty: 'easy',
-    difficultyName: '简单',
-    content: '翻译句子：The quick brown fox jumps over the lazy dog',
-    date: '2026-01-13',
-    status: 'mastered',
-    statusText: '已掌握'
-  },
-  {
-    id: 4,
-    subject: 'chemistry',
-    subjectName: '化学',
-    difficulty: 'medium',
-    difficultyName: '中等',
-    content: '写出硫酸的化学式并说明其性质',
-    date: '2026-01-12',
-    status: 'pending',
-    statusText: '待复习'
-  }
-])
 
 const filteredErrors = computed(() => {
   return errors.value.filter(error => {
@@ -176,8 +194,12 @@ const viewError = (error: any) => {
 
 <style scoped>
 .manage-page {
-  padding: 20px;
-  padding-bottom: 80px;
+  padding: 40px 20px;
+  padding-bottom: 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .filter-bar {

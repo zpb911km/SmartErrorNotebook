@@ -114,33 +114,65 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
+import { getQuestions } from '../apis/errorQuestions'
+import { getSources } from '../apis/sources'
+import { getSubjects } from '../apis/subjects'
 
 // 概览数据
 const overviewItems = ref([
-  { id: 1, icon: '📚', value: 128, label: '总错题数' },
-  { id: 2, icon: '✅', value: 89, label: '已掌握' },
-  { id: 3, icon: '📅', value: 15, label: '今日待复习' },
-  { id: 4, icon: '🔥', value: 7, label: '连续学习' }
+  { id: 1, icon: '📚', value: 0, label: '总错题数' },
+  { id: 2, icon: '✅', value: 0, label: '已掌握' },
+  { id: 3, icon: '📅', value: 0, label: '今日待复习' },
+  { id: 4, icon: '🔥', value: 0, label: '连续学习' }
 ])
 
 // 进度数据
-const weeklyProgress = ref(68)
-const completedTasks = ref(3)
-const studyTime = ref(125)
+const weeklyProgress = ref(0)
+const completedTasks = ref(0)
+const studyTime = ref(0)
 
 // 最近活动
-const recentActivities = ref([
-  { id: 1, icon: '➕', title: '添加了3道数学错题', time: '今天 14:30', status: 'completed', statusText: '完成' },
-  { id: 2, icon: '📖', title: '复习了物理错题集', time: '今天 11:15', status: 'completed', statusText: '完成' },
-  { id: 3, icon: '📋', title: '整理了化学知识点', time: '昨天 16:45', status: 'completed', statusText: '完成' }
-])
+const recentActivities = ref([])
 
 // 学习提示
 const dailyTip = ref('定期复习是巩固知识的最佳方法。研究表明，间隔重复学习比集中学习更有效。')
 
 // 注入全局AI状态
 const aiStatus = inject('aiState')
+
+// 从数据库获取数据
+onMounted(async () => {
+  try {
+    // 获取总错题数
+    const questions = await getQuestions()
+    overviewItems.value[0].value = questions.length
+    
+    // 模拟已掌握的题目数（实际应该从SRS数据中获取）
+    overviewItems.value[1].value = Math.floor(questions.length * 0.7)
+    
+    // 模拟今日待复习（实际应该根据SRS算法计算）
+    overviewItems.value[2].value = Math.floor(questions.length * 0.1)
+    
+    // 模拟连续学习天数
+    overviewItems.value[3].value = 7
+    
+    // 模拟进度数据
+    weeklyProgress.value = 68
+    completedTasks.value = 3
+    studyTime.value = 125
+    
+    // 模拟最近活动
+    recentActivities.value = [
+      { id: 1, icon: '➕', title: '添加了3道数学错题', time: '今天 14:30', status: 'completed', statusText: '完成' },
+      { id: 2, icon: '📖', title: '复习了物理错题集', time: '今天 11:15', status: 'completed', statusText: '完成' },
+      { id: 3, icon: '📋', title: '整理了化学知识点', time: '昨天 16:45', status: 'completed', statusText: '完成' }
+    ]
+  } catch (error) {
+    console.error('获取数据失败:', error)
+    // 保持默认值为0
+  }
+})
 </script>
 
 <style scoped>
@@ -158,6 +190,10 @@ const aiStatus = inject('aiState')
   justify-content: space-between;
   align-items: center;
   margin-bottom: 60px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .app-title {
@@ -176,6 +212,7 @@ const aiStatus = inject('aiState')
   transition: all 0.3s;
   border: 2px solid var(--primary-color);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .user-avatar:hover {
@@ -191,6 +228,13 @@ const aiStatus = inject('aiState')
 
 .core-actions {
   margin-bottom: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .primary-action {
@@ -208,7 +252,7 @@ const aiStatus = inject('aiState')
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 20px;
+  box-sizing: border-box;
 }
 
 .primary-action:hover {
@@ -225,6 +269,7 @@ const aiStatus = inject('aiState')
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  width: 100%;
 }
 
 .secondary-action {
@@ -238,6 +283,7 @@ const aiStatus = inject('aiState')
   gap: 12px;
   cursor: pointer;
   transition: all 0.3s;
+  box-sizing: border-box;
 }
 
 .secondary-action:hover {
@@ -262,6 +308,10 @@ const aiStatus = inject('aiState')
 
 .overview-section {
   margin-bottom: 60px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .section-title {
@@ -274,8 +324,9 @@ const aiStatus = inject('aiState')
 
 .overview-cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
+  width: 100%;
 }
 
 .overview-card {
@@ -288,6 +339,7 @@ const aiStatus = inject('aiState')
   gap: 16px;
   transition: all 0.3s;
   border: 1px solid var(--border-color);
+  box-sizing: border-box;
 }
 
 .overview-card:hover {
@@ -320,6 +372,10 @@ const aiStatus = inject('aiState')
 
 .progress-section {
   margin-bottom: 60px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .progress-card {
@@ -327,6 +383,8 @@ const aiStatus = inject('aiState')
   border-radius: 12px;
   padding: 32px 24px;
   border: 1px solid var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .progress-header {
@@ -373,6 +431,10 @@ const aiStatus = inject('aiState')
 
 .activity-section {
   margin-bottom: 60px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .section-header {
@@ -380,6 +442,10 @@ const aiStatus = inject('aiState')
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .view-all {
@@ -390,6 +456,7 @@ const aiStatus = inject('aiState')
   cursor: pointer;
   padding: 0;
   transition: all 0.3s;
+  flex-shrink: 0;
 }
 
 .view-all:hover {
@@ -400,6 +467,7 @@ const aiStatus = inject('aiState')
   display: flex;
   flex-direction: column;
   gap: 16px;
+  width: 100%;
 }
 
 .activity-item {
@@ -411,6 +479,8 @@ const aiStatus = inject('aiState')
   border-radius: 12px;
   border: 1px solid var(--border-color);
   transition: all 0.3s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .activity-item:hover {
@@ -454,6 +524,10 @@ const aiStatus = inject('aiState')
 
 .tip-section {
   margin-bottom: 60px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .tip-card {
@@ -465,6 +539,8 @@ const aiStatus = inject('aiState')
   gap: 20px;
   border: 1px solid var(--border-color);
   border-left: 4px solid var(--primary-color);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .tip-icon {
@@ -489,6 +565,10 @@ const aiStatus = inject('aiState')
 
 .ai-section {
   margin-bottom: 60px;
+  width: 100%;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .ai-card {
@@ -497,6 +577,8 @@ const aiStatus = inject('aiState')
   padding: 24px;
   border: 1px solid var(--border-color);
   border-left: 4px solid #9c27b0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .ai-header {
@@ -568,14 +650,6 @@ const aiStatus = inject('aiState')
   
   .core-actions, .overview-section, .progress-section, .activity-section, .tip-section, .ai-section {
     margin-bottom: 40px;
-  }
-  
-  .secondary-actions {
-    grid-template-columns: 1fr;
-  }
-  
-  .overview-cards {
-    grid-template-columns: 1fr;
   }
 }
 </style>

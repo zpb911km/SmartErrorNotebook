@@ -109,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 // 主题设置
 const theme = ref('light')
@@ -123,7 +123,52 @@ const aiRecommend = ref(false)
 // 主题切换
 const handleThemeChange = () => {
   console.log('主题切换为:', theme.value)
+  applyTheme(theme.value)
+  // 保存主题设置到localStorage
+  localStorage.setItem('theme', theme.value)
 }
+
+// 应用主题
+const applyTheme = (themeValue: string) => {
+  // 移除所有主题类
+  document.body.classList.remove('light-theme', 'dark-theme')
+  
+  if (themeValue === 'light') {
+    document.body.classList.add('light-theme')
+  } else if (themeValue === 'dark') {
+    document.body.classList.add('dark-theme')
+  } else if (themeValue === 'system') {
+    // 跟随系统
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark-theme')
+    } else {
+      document.body.classList.add('light-theme')
+    }
+  }
+}
+
+// 初始化主题
+onMounted(() => {
+  // 从localStorage读取主题设置
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme) {
+    theme.value = savedTheme
+  } else {
+    // 默认跟随系统
+    theme.value = 'system'
+  }
+  // 应用主题
+  applyTheme(theme.value)
+  
+  // 监听系统主题变化
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (theme.value === 'system') {
+        applyTheme('system')
+      }
+    })
+  }
+})
 
 // AI 选项切换
 const handleAiToggle = () => {
@@ -133,8 +178,12 @@ const handleAiToggle = () => {
 
 <style scoped>
 .settings-page {
-  padding: 20px;
-  padding-bottom: 80px;
+  padding: 40px 20px;
+  padding-bottom: 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .settings-section {
