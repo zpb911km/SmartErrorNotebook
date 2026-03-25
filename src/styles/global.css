@@ -96,6 +96,53 @@ button {
   background: none;
 }
 
+/* 深色主题下的按钮边框 */
+body.dark-theme button:not(.btn):not(.action-btn):not(.primary-action):not(.secondary-action):not(.tip-card button):not(.ai-card button) {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md);
+}
+
+/* 深色主题下的核心功能按钮 */
+body.dark-theme .action-btn:not(.primary) {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+body.dark-theme .secondary-action {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+/* 深色主题下的设置页面按钮 */
+body.dark-theme .setting-item button {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+/* 深色主题下的主题选择器 */
+body.dark-theme .theme-select {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+/* 深色主题下的添加错题页面按钮 */
+body.dark-theme .upload-btn {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+body.dark-theme .action-btn {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+body.dark-theme .btn {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+/* 深色主题下的我的页面按钮 */
+body.dark-theme .recharge-btn {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
+body.dark-theme .model-select {
+  border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
+}
+
 input,
 textarea,
 select {

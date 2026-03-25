@@ -83,33 +83,32 @@ import { ref } from 'vue'
 
 // 统计数据
 const overview = ref({
-  total: 128,
-  mastered: 89,
-  accuracy: 72,
-  streak: 7
+  total: 0,
+  mastered: 0,
+  accuracy: 0,
+  streak: 0
 })
 
-const subjectDistribution = ref([
-  { subject: 'math', subjectName: '数学', count: 45 },
-  { subject: 'physics', subjectName: '物理', count: 32 },
-  { subject: 'chemistry', subjectName: '化学', count: 28 },
-  { subject: 'english', subjectName: '英语', count: 23 }
-])
+const subjectDistribution = ref([])
 
-const colors = ['#1976d2', '#e65100', '#7b1fa2', '#43a047']
+const colors = ['#1976d2', '#e65100', '#7b1fa2', '#43a047', '#00bcd4', '#ff9800', '#795548', '#607d8b']
 
 const weeklyStats = ref([
-  { day: '周一', count: 12 },
-  { day: '周二', count: 18 },
-  { day: '周三', count: 15 },
-  { day: '周四', count: 22 },
-  { day: '周五', count: 8 },
-  { day: '周六', count: 25 },
-  { day: '周日', count: 20 }
+  { day: '周一', count: 0 },
+  { day: '周二', count: 0 },
+  { day: '周三', count: 0 },
+  { day: '周四', count: 0 },
+  { day: '周五', count: 0 },
+  { day: '周六', count: 0 },
+  { day: '周日', count: 0 }
 ])
 
+// 注入全局AI状态
+const aiStatus = inject('aiState')
+
 const getPieStyle = (item: any, index: number) => {
-  const total = subjectDistribution.value.reduce((sum, i) => sum + i.count, 0)
+  const total = subjectDistribution.value.reduce((sum: number, i: any) => sum + i.count, 0)
+  if (total === 0) return { background: colors[index], width: '0%' }
   const percent = (item.count / total) * 100
   return {
     background: colors[index],
@@ -119,14 +118,19 @@ const getPieStyle = (item: any, index: number) => {
 
 const getBarHeight = (count: number) => {
   const max = Math.max(...weeklyStats.value.map(item => item.count))
+  if (max === 0) return 0
   return (count / max) * 100
 }
 </script>
 
 <style scoped>
 .profile-page {
-  padding: 20px;
-  padding-bottom: 80px;
+  padding: 40px 20px;
+  padding-bottom: 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
