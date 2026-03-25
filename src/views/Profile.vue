@@ -74,46 +74,12 @@
           </div>
         </div>
       </div>
-
-      <!-- AI接口信息 -->
-      <div class="ai-section">
-        <div class="ai-card">
-          <div class="ai-header">
-            <div class="ai-header-content">
-              <div class="ai-icon">🤖</div>
-              <h3>AI 助手</h3>
-            </div>
-            <label class="ai-toggle">
-              <input type="checkbox" v-model="aiStatus.enabled" @change="toggleAIStatus">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="ai-info">
-            <div class="ai-token">
-              <span class="token-label">剩余 Token:</span>
-              <span class="token-value">{{ aiStatus.remainingTokens }}</span>
-              <button class="recharge-btn" @click="openRechargeDialog">充值</button>
-            </div>
-            <div class="ai-model">
-              <span class="model-label">接入 AI:</span>
-              <select v-model="aiStatus.modelName" class="model-select" @change="changeModel">
-                <option value="GPT-4">GPT-4</option>
-                <option value="GPT-3.5 Turbo">GPT-3.5 Turbo</option>
-                <option value="Claude 3">Claude 3</option>
-                <option value="Gemini Pro">Gemini Pro</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject, onMounted } from 'vue'
-import { getQuestions } from '../apis/errorQuestions'
-import { getSubjects } from '../apis/subjects'
+import { ref } from 'vue'
 
 // 统计数据
 const overview = ref({
@@ -154,68 +120,6 @@ const getBarHeight = (count: number) => {
   const max = Math.max(...weeklyStats.value.map(item => item.count))
   if (max === 0) return 0
   return (count / max) * 100
-}
-
-// 从数据库获取数据
-onMounted(async () => {
-  try {
-    // 获取总错题数
-    const questions = await getQuestions()
-    overview.value.total = questions.length
-    
-    // 模拟已掌握的题目数（实际应该从SRS数据中获取）
-    overview.value.mastered = Math.floor(questions.length * 0.7)
-    
-    // 模拟正确率
-    overview.value.accuracy = 72
-    
-    // 模拟连续学习天数
-    overview.value.streak = 7
-    
-    // 获取科目列表
-    const subjects = await getSubjects()
-    
-    // 模拟科目分布
-    subjectDistribution.value = subjects.map((subject: any, index: number) => ({
-      subject: subject.name.toLowerCase(),
-      subjectName: subject.name,
-      count: Math.floor(Math.random() * 50) + 10
-    }))
-    
-    // 模拟每周学习数据
-    weeklyStats.value = [
-      { day: '周一', count: Math.floor(Math.random() * 30) + 5 },
-      { day: '周二', count: Math.floor(Math.random() * 30) + 5 },
-      { day: '周三', count: Math.floor(Math.random() * 30) + 5 },
-      { day: '周四', count: Math.floor(Math.random() * 30) + 5 },
-      { day: '周五', count: Math.floor(Math.random() * 30) + 5 },
-      { day: '周六', count: Math.floor(Math.random() * 30) + 5 },
-      { day: '周日', count: Math.floor(Math.random() * 30) + 5 }
-    ]
-  } catch (error) {
-    console.error('获取数据失败:', error)
-    // 保持默认值为0
-  }
-})
-
-// AI功能方法
-const toggleAIStatus = () => {
-  console.log('AI状态已切换为:', aiStatus.value.enabled ? '开启' : '关闭')
-  // 这里可以添加实际的状态切换逻辑
-}
-
-const openRechargeDialog = () => {
-  console.log('打开充值对话框')
-  // 这里可以添加实际的充值逻辑
-  // 模拟充值操作
-  const rechargeAmount = 1000
-  aiStatus.value.remainingTokens += rechargeAmount
-  console.log(`已充值 ${rechargeAmount} Token，当前余额: ${aiStatus.value.remainingTokens}`)
-}
-
-const changeModel = () => {
-  console.log('模型已切换为:', aiStatus.value.modelName)
-  // 这里可以添加实际的模型切换逻辑
 }
 </script>
 

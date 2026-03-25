@@ -86,30 +86,6 @@
         </div>
       </div>
     </div>
-
-    <!-- AI接口信息 -->
-    <div class="ai-section">
-      <div class="ai-card">
-        <div class="ai-header">
-          <div class="ai-icon">🤖</div>
-          <h3>AI 助手</h3>
-        </div>
-        <div class="ai-info">
-          <div class="ai-status" :class="{ active: aiStatus.enabled }">
-            <span class="status-label">状态:</span>
-            <span class="status-value">{{ aiStatus.enabled ? '已开启' : '已关闭' }}</span>
-          </div>
-          <div class="ai-token">
-            <span class="token-label">剩余 Token:</span>
-            <span class="token-value">{{ aiStatus.remainingTokens }}</span>
-          </div>
-          <div class="ai-model">
-            <span class="model-label">接入 AI:</span>
-            <span class="model-value">{{ aiStatus.modelName }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -137,42 +113,6 @@ const recentActivities = ref([])
 
 // 学习提示
 const dailyTip = ref('定期复习是巩固知识的最佳方法。研究表明，间隔重复学习比集中学习更有效。')
-
-// 注入全局AI状态
-const aiStatus = inject('aiState')
-
-// 从数据库获取数据
-onMounted(async () => {
-  try {
-    // 获取总错题数
-    const questions = await getQuestions()
-    overviewItems.value[0].value = questions.length
-    
-    // 模拟已掌握的题目数（实际应该从SRS数据中获取）
-    overviewItems.value[1].value = Math.floor(questions.length * 0.7)
-    
-    // 模拟今日待复习（实际应该根据SRS算法计算）
-    overviewItems.value[2].value = Math.floor(questions.length * 0.1)
-    
-    // 模拟连续学习天数
-    overviewItems.value[3].value = 7
-    
-    // 模拟进度数据
-    weeklyProgress.value = 68
-    completedTasks.value = 3
-    studyTime.value = 125
-    
-    // 模拟最近活动
-    recentActivities.value = [
-      { id: 1, icon: '➕', title: '添加了3道数学错题', time: '今天 14:30', status: 'completed', statusText: '完成' },
-      { id: 2, icon: '📖', title: '复习了物理错题集', time: '今天 11:15', status: 'completed', statusText: '完成' },
-      { id: 3, icon: '📋', title: '整理了化学知识点', time: '昨天 16:45', status: 'completed', statusText: '完成' }
-    ]
-  } catch (error) {
-    console.error('获取数据失败:', error)
-    // 保持默认值为0
-  }
-})
 </script>
 
 <style scoped>
