@@ -300,7 +300,6 @@ const saveLLMConfig = () => {
   // 同步更新外部开关状态
   aiEnabled.value = llmConfig.value.enabled
   showLLMConfig.value = false
-  alert('配置已保存')
 }
 
 // 打开 LLM 测试
@@ -347,7 +346,7 @@ const sendTestMessage = async () => {
 
   try {
     // 构建对话历史
-    const history = testMessages.value.filter(msg => msg.role !== 'system')
+    const history = testMessages.value
     
     const response = await llm.chat(history)
     
