@@ -32,7 +32,7 @@
         <div class="image-preview-item" v-for="(url, index) in imageUrls" :key="index">
           <img :src="url" :alt="`题目图片 ${index + 1}`">
           <div class="image-actions">
-            <button class="action-btn edit-btn" @click="openEdit(url, index)" title="编辑">✎</button>
+            <button class="action-btn edit-btn" @click="openEdit(url, index, true)" title="编辑">✎</button>
             <button class="action-btn remove-btn" @click="removeImage(index)" title="删除">✕</button>
           </div>
           <div class="image-index">{{ index + 1 }}</div>

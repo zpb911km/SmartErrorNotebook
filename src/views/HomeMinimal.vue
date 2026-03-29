@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSources } from '../apis/sources'
 import { getSubjects } from '../apis/subjects'

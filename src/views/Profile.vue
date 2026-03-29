@@ -103,9 +103,6 @@ const weeklyStats = ref([
   { day: '周日', count: 0 }
 ])
 
-// 注入全局AI状态
-const aiStatus = inject('aiState')
-
 const getPieStyle = (item: any, index: number) => {
   const total = subjectDistribution.value.reduce((sum: number, i: any) => sum + i.count, 0)
   if (total === 0) return { background: colors[index], width: '0%' }

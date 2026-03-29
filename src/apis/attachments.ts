@@ -27,8 +27,9 @@ export async function createAttachmentsForQuestion(
   questionId: string,
   attachments: CreateAttachmentInput[]
 ): Promise<Attachment[]> {
+  console.log(`questionId: ${questionId}, attachments: ${attachments}`)
   return await invoke('create_attachments_for_question', {
-    question_id: questionId,
+    questionId: questionId,
     attachments,
   });
 }
