@@ -17,18 +17,17 @@
           <span class="custom-select-arrow" :class="{ 'rotated': subjectDropdownVisible }">▼</span>
         </div>
         
-        <!-- 清除筛选按钮 -->
-        <button 
-          v-if="filters.subject_id" 
-          class="clear-filter-btn"
-          @click="clearSubjectFilter"
-          title="清除科目筛选"
-        >
-          ×
-        </button>
-        
         <!-- 向下展开的级联窗口 -->
         <div v-if="subjectDropdownVisible || cascadeVisible" class="cascade-popup">
+          <!-- 关闭按钮 -->
+          <button 
+            class="cascade-close-btn"
+            @click="closeCascadeWindow"
+            title="关闭"
+          >
+            ×
+          </button>
+          
           <!-- 科目列 -->
           <div class="cascade-column">
             <div class="column-title">科目</div>
@@ -38,8 +37,8 @@
                 :key="subject.id"
                 class="cascade-item"
                 :class="{ active: filters.subject_id === subject.id }"
-                @mouseenter="showCascadeMenuForSubject(subject.id)"
-                @click="selectSubject(subject.id)"
+                @mouseenter="!hasClicked && showCascadeMenuForSubject(subject.id)"
+                @click="handleSubjectClick(subject.id)"
               >
                 {{ subject.name }}
                 <span class="arrow-indicator">›</span>
@@ -56,8 +55,8 @@
                 :key="book"
                 class="cascade-item"
                 :class="{ active: filters.book === book }"
-                @mouseenter="showChapters(book)"
-                @click="selectBook(book)"
+                @mouseenter="!hasBookClicked && showChapters(book)"
+                @click="handleBookClick(book)"
               >
                 {{ book || '未分类' }}
                 <span class="arrow-indicator">›</span>
@@ -74,8 +73,8 @@
                 :key="chapter"
                 class="cascade-item"
                 :class="{ active: filters.chapter === chapter }"
-                @mouseenter="showKnowledges(chapter)"
-                @click="selectChapter(chapter)"
+                @mouseenter="!hasChapterClicked && showKnowledges(chapter)"
+                @click="handleChapterClick(chapter)"
               >
                 {{ chapter || '未分类' }}
                 <span class="arrow-indicator">›</span>
@@ -178,6 +177,11 @@ const chapters = ref<string[]>([])
 const knowledges = ref<string[]>([])
 let hideTimer: number | null = null
 
+// 点击状态标记 - 记录用户是否已经点击过某项
+const hasClicked = ref(false)
+const hasBookClicked = ref(false)
+const hasChapterClicked = ref(false)
+
 // 科目下拉框状态
 const subjectDropdownVisible = ref(false)
 
@@ -223,21 +227,40 @@ const selectSubject = (subjectId: string) => {
   }
 }
 
-// 清除科目筛选
-const clearSubjectFilter = () => {
-  filters.value.subject_id = ''
-  filters.value.book = ''
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-  currentSubjectId.value = null
-  currentBook.value = null
+// 处理科目点击 - 设置点击状态并选择科目
+const handleSubjectClick = (subjectId: string) => {
+  hasClicked.value = true
+  selectSubject(subjectId)
+}
+
+// 处理书名点击 - 设置点击状态并选择书名
+const handleBookClick = async (book: string) => {
+  hasBookClicked.value = true
+  hasChapterClicked.value = false
+  
+  // 直接更新书名列数据和下级数据
+  currentBook.value = book
   currentChapter.value = null
-  books.value = []
   chapters.value = []
   knowledges.value = []
-  subjectDropdownVisible.value = false
-  cascadeVisible.value = false
-  fetchData()
+  
+  // 加载该书名的章节
+  if (filters.value.subject_id && book) {
+    try {
+      chapters.value = await getChapters(book, filters.value.subject_id)
+    } catch (error) {
+      console.error('获取章节失败:', error)
+      chapters.value = []
+    }
+  }
+  
+  selectBook(book)
+}
+
+// 处理章节点击 - 设置点击状态并选择章节
+const handleChapterClick = (chapter: string) => {
+  hasChapterClicked.value = true
+  selectChapter(chapter)
 }
 
 // 为指定科目显示级联菜单
@@ -272,7 +295,31 @@ const hideAllMenus = () => {
     currentChapter.value = null
     chapters.value = []
     knowledges.value = []
+    // 重置点击状态
+    hasClicked.value = false
+    hasBookClicked.value = false
+    hasChapterClicked.value = false
   }, 200)
+}
+
+// 手动关闭级联窗口
+const closeCascadeWindow = () => {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+  subjectDropdownVisible.value = false
+  cascadeVisible.value = false
+  currentSubjectId.value = null
+  currentBook.value = null
+  currentChapter.value = null
+  books.value = []
+  chapters.value = []
+  knowledges.value = []
+  // 重置点击状态
+  hasClicked.value = false
+  hasBookClicked.value = false
+  hasChapterClicked.value = false
 }
 
 // 隐藏级联菜单
@@ -325,20 +372,34 @@ const selectBook = (book: string) => {
   filters.value.book = book
   filters.value.chapter = ''
   filters.value.knowledge = ''
-  hideCascadeMenu()
+  // 不隐藏菜单，保持打开状态
 }
 
 // 选择章节
 const selectChapter = (chapter: string) => {
   filters.value.chapter = chapter
   filters.value.knowledge = ''
-  hideCascadeMenu()
+  // 不隐藏菜单，保持打开状态
 }
 
 // 选择知识点
 const selectKnowledge = (knowledge: string) => {
   filters.value.knowledge = knowledge
-  hideCascadeMenu()
+  // 关闭所有菜单
+  subjectDropdownVisible.value = false
+  cascadeVisible.value = false
+  currentSubjectId.value = null
+  currentBook.value = null
+  currentChapter.value = null
+  books.value = []
+  chapters.value = []
+  knowledges.value = []
+  // 重置点击状态
+  hasClicked.value = false
+  hasBookClicked.value = false
+  hasChapterClicked.value = false
+  // 重新加载数据
+  fetchData()
 }
 
 const stopBlinking = () => {
@@ -578,6 +639,33 @@ const viewError = (error: any) => {
   overflow: hidden;
 }
 
+/* 关闭按钮 */
+.cascade-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  z-index: 10;
+}
+
+.cascade-close-btn:hover {
+  background: #ff4d4f;
+  color: white;
+}
+
 @keyframes cascadeSlideDown {
   from {
     opacity: 0;
@@ -624,31 +712,6 @@ const viewError = (error: any) => {
   transform: rotate(180deg);
 }
 
-/* 清除筛选按钮 */
-.clear-filter-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--border-color);
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  padding: 0;
-  margin-left: 4px;
-}
-
-.clear-filter-btn:hover {
-  background: #ff4d4f;
-  border-color: #ff4d4f;
-  color: white;
-}
-
 /* 级联列 */
 .cascade-column {
   flex: 1;
@@ -660,8 +723,13 @@ const viewError = (error: any) => {
   overflow-y: auto;
 }
 
+.cascade-column:first-child {
+  padding-left: 8px;
+}
+
 .cascade-column:last-child {
   border-right: none;
+  padding-right: 40px; /* 为关闭按钮留出空间 */
 }
 
 /* 列标题 */
