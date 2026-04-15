@@ -41,8 +41,6 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            // Greeting
-            commands::greet,
             // Subject
             commands::get_subjects,
             commands::create_subject,
@@ -58,6 +56,10 @@ pub fn run() {
             // Error Tag
             commands::create_error_tags_for_question,
             commands::get_error_tags,
+            commands::delete_error_tag_by_name,
+            commands::update_error_tag_by_name,
+            commands::delete_error_tag_by_id,
+            commands::update_error_tag_by_id,
             // SRS Data
             commands::create_srs_data,
             // Attachment
