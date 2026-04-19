@@ -1,5 +1,19 @@
 <template>
   <div class="manage-page">
+    <!-- 搜索栏 - 第一行 -->
+    <div class="search-bar">
+      <div class="search-box" :class="{ 'blinking': isSearchBlinking }">
+        <input 
+          type="text" 
+          v-model="filters.keyword" 
+          placeholder="搜索错题..."
+          @focus="onSearchFocus"
+          @click="onSearchFocus"
+        >
+      </div>
+    </div>
+
+    <!-- 筛选栏 - 第二行 -->
     <div class="filter-bar">
       <!-- 科目筛选 - 向右展开的级联菜单 -->
       <div 
@@ -100,22 +114,77 @@
         </div>
       </div>
 
-      <select v-model="filters.status" class="filter-select">
+      <select 
+        v-model="filters.status" 
+        class="filter-select"
+        ref="statusSelectRef"
+        @focus="onStatusFocus"
+      >
         <option value="">全部状态</option>
         <option value="pending">待复习</option>
         <option value="reviewed">已复习</option>
         <option value="mastered">已掌握</option>
       </select>
 
-      <div class="search-box" :class="{ 'blinking': isSearchBlinking }">
-        <input 
-          type="text" 
-          v-model="filters.keyword" 
-          placeholder="搜索错题..."
-          @focus="onSearchFocus"
-          @click="onSearchFocus"
-        >
-      </div>
+      <!-- 难度筛选 -->
+      <select 
+        v-model="filters.difficulty" 
+        class="filter-select"
+        ref="difficultySelectRef"
+        @focus="onDifficultyFocus"
+      >
+        <option value="">全部难度</option>
+        <option value="easy">简单</option>
+        <option value="medium">中等</option>
+        <option value="hard">困难</option>
+      </select>
+
+      <!-- 掌握程度筛选 -->
+      <select 
+        v-model="filters.mastery" 
+        class="filter-select"
+        ref="masterySelectRef"
+        @focus="onMasteryFocus"
+      >
+        <option value="">全部掌握程度</option>
+        <option value="unmastered">未掌握 (0-30%)</option>
+        <option value="partial">部分掌握 (30-70%)</option>
+        <option value="mastered">已掌握 (70-100%)</option>
+      </select>
+
+      <!-- 时间范围筛选 -->
+      <select 
+        v-model="filters.date_range" 
+        class="filter-select"
+        ref="dateRangeSelectRef"
+        @focus="onDateRangeFocus"
+      >
+        <option value="all">全部时间</option>
+        <option value="7days">最近7天</option>
+        <option value="30days">最近30天</option>
+        <option value="90days">最近90天</option>
+      </select>
+
+      <!-- 标签筛选 -->
+      <select 
+        v-model="filters.tag" 
+        class="filter-select"
+        ref="tagSelectRef"
+        @focus="onTagFocus"
+      >
+        <option value="">全部标签</option>
+        <option v-for="tag in availableTags" :key="tag" :value="tag">{{ tag }}</option>
+      </select>
+    </div>
+
+    <!-- 已选筛选条件 -->
+    <div v-if="activeFilters.length > 0" class="active-filters">
+      <span class="active-filters-label">已选筛选：</span>
+      <span v-for="filter in activeFilters" :key="filter.key" class="filter-tag">
+        {{ filter.label }}
+        <button @click="removeFilter(filter.key)" class="filter-tag-close">×</button>
+      </span>
+      <button @click="clearAllFilters" class="clear-all-btn">清除所有</button>
     </div>
 
     <div class="error-list">
@@ -145,18 +214,24 @@ import { useRouter, useRoute } from 'vue-router'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
 import { getBooks, getChapters, getKnowledges } from '../apis/sources'
+import { getErrorTags } from '../apis/errorTags'
 import type { Subject } from '../types'
 
 const router = useRouter()
 const route = useRoute()
 
+// 本地筛选状态
 const filters = ref({
   subject_id: '',
   book: '',
   chapter: '',
   knowledge: '',
   status: '',
-  keyword: ''
+  keyword: '',
+  difficulty: '',       // 'easy' | 'medium' | 'hard'
+  mastery: '',          // 'unmastered' | 'partial' | 'mastered'
+  date_range: 'all',    // '7days' | '30days' | '90days' | 'all'
+  tag: ''               // 标签名称
 })
 
 // 搜索框闪烁状态
@@ -166,6 +241,14 @@ let blinkTimer: number | null = null
 // 数据列表 - 使用 any 类型以兼容后端返回的额外字段
 const errors = ref<any[]>([])
 const subjects = ref<Subject[]>([])
+const availableTags = ref<string[]>([])
+
+// 筛选器引用
+const statusSelectRef = ref<HTMLSelectElement>()
+const difficultySelectRef = ref<HTMLSelectElement>()
+const masterySelectRef = ref<HTMLSelectElement>()
+const dateRangeSelectRef = ref<HTMLSelectElement>()
+const tagSelectRef = ref<HTMLSelectElement>()
 
 // 级联菜单状态
 const cascadeVisible = ref(false)
@@ -204,12 +287,66 @@ const toggleSubjectDropdown = () => {
 
 // 显示科目列表
 const showSubjectList = async () => {
+  // 关闭其他筛选器
+  closeAllOtherFilters('subject')
+  
   subjectDropdownVisible.value = true
   // 加载所有科目的书名（如果没有选中具体科目）
   if (!filters.value.subject_id) {
     books.value = []
     chapters.value = []
     knowledges.value = []
+  }
+}
+
+// 状态筛选获得焦点时关闭其他筛选
+const onStatusFocus = () => {
+  closeAllOtherFilters('status')
+}
+
+// 难度筛选获得焦点时关闭其他筛选
+const onDifficultyFocus = () => {
+  closeAllOtherFilters('difficulty')
+}
+
+// 掌握程度筛选获得焦点时关闭其他筛选
+const onMasteryFocus = () => {
+  closeAllOtherFilters('mastery')
+}
+
+// 时间范围筛选获得焦点时关闭其他筛选
+const onDateRangeFocus = () => {
+  closeAllOtherFilters('dateRange')
+}
+
+// 标签筛选获得焦点时关闭其他筛选
+const onTagFocus = () => {
+  closeAllOtherFilters('tag')
+}
+
+// 关闭其他筛选器的通用函数
+const closeAllOtherFilters = (current: string) => {
+  if (current !== 'subject' && subjectDropdownVisible.value) {
+    subjectDropdownVisible.value = false
+    cascadeVisible.value = false
+    hasClicked.value = false
+    hasBookClicked.value = false
+    hasChapterClicked.value = false
+  }
+  if (current !== 'status' && statusSelectRef.value) {
+    statusSelectRef.value.blur()
+  }
+  if (current !== 'difficulty' && difficultySelectRef.value) {
+    difficultySelectRef.value.blur()
+  }
+  if (current !== 'mastery' && masterySelectRef.value) {
+    masterySelectRef.value.blur()
+  }
+  if (current !== 'dateRange' && dateRangeSelectRef.value) {
+    dateRangeSelectRef.value.blur()
+  }
+  if (current !== 'tag' && tagSelectRef.value) {
+    tagSelectRef.value.blur()
   }
 }
 
@@ -430,19 +567,26 @@ const handleTriggerBlink = () => {
 // 从数据库获取数据
 const fetchData = async () => {
   try {
-    // 并行获取科目和错题数据
-    const [subjectsData, questionsData] = await Promise.all([
+    // 并行获取科目、错题和标签数据
+    const [subjectsData, questionsData, tagsData] = await Promise.all([
       getSubjects(),
-      getQuestions()
+      getQuestions(),
+      getErrorTags()
     ])
     
     subjects.value = subjectsData
     // 后端返回的数据包含 created_at 和 updated_at 等额外字段
     errors.value = questionsData as any[]
+    
+    // 提取所有唯一的标签名称
+    const allTags = tagsData as any[]
+    const uniqueTags = [...new Set(allTags.map(tag => tag.name))]
+    availableTags.value = uniqueTags
   } catch (error) {
     console.error('获取数据失败:', error)
     errors.value = []
     subjects.value = []
+    availableTags.value = []
   }
 }
 
@@ -508,6 +652,136 @@ const getSubjectStyle = (subjectId: string) => {
   }
 }
 
+// ============ 新增筛选功能 ============
+
+// 已选筛选条件列表
+const activeFilters = computed(() => {
+  const filters_list = []
+  
+  // 科目
+  if (filters.value.subject_id) {
+    const subject = subjects.value.find(s => s.id === filters.value.subject_id)
+    if (subject) {
+      filters_list.push({ key: 'subject_id', label: subject.name })
+    }
+  }
+  
+  // 状态
+  if (filters.value.status) {
+    const statusMap: Record<string, string> = {
+      pending: '待复习',
+      reviewed: '已复习',
+      mastered: '已掌握'
+    }
+    filters_list.push({ key: 'status', label: statusMap[filters.value.status] })
+  }
+  
+  // 难度
+  if (filters.value.difficulty) {
+    const difficultyMap: Record<string, string> = {
+      easy: '简单',
+      medium: '中等',
+      hard: '困难'
+    }
+    filters_list.push({ key: 'difficulty', label: difficultyMap[filters.value.difficulty] })
+  }
+  
+  // 掌握程度
+  if (filters.value.mastery) {
+    const masteryMap: Record<string, string> = {
+      unmastered: '未掌握',
+      partial: '部分掌握',
+      mastered: '已掌握'
+    }
+    filters_list.push({ key: 'mastery', label: masteryMap[filters.value.mastery] })
+  }
+  
+  // 时间范围
+  if (filters.value.date_range && filters.value.date_range !== 'all') {
+    const dateRangeMap: Record<string, string> = {
+      '7days': '最近7天',
+      '30days': '最近30天',
+      '90days': '最近90天'
+    }
+    filters_list.push({ key: 'date_range', label: dateRangeMap[filters.value.date_range] })
+  }
+  
+  // 标签
+  if (filters.value.tag) {
+    filters_list.push({ key: 'tag', label: filters.value.tag })
+  }
+  
+  // 书名
+  if (filters.value.book) {
+    filters_list.push({ key: 'book', label: filters.value.book })
+  }
+  
+  // 章节
+  if (filters.value.chapter) {
+    filters_list.push({ key: 'chapter', label: filters.value.chapter })
+  }
+  
+  // 知识点
+  if (filters.value.knowledge) {
+    filters_list.push({ key: 'knowledge', label: filters.value.knowledge })
+  }
+  
+  return filters_list
+})
+
+// 移除单个筛选条件
+const removeFilter = (key: string) => {
+  switch (key) {
+    case 'subject_id':
+      filters.value.subject_id = ''
+      filters.value.book = ''
+      filters.value.chapter = ''
+      filters.value.knowledge = ''
+      break
+    case 'status':
+      filters.value.status = ''
+      break
+    case 'difficulty':
+      filters.value.difficulty = ''
+      break
+    case 'mastery':
+      filters.value.mastery = ''
+      break
+    case 'date_range':
+      filters.value.date_range = 'all'
+      break
+    case 'tag':
+      filters.value.tag = ''
+      break
+    case 'book':
+      filters.value.book = ''
+      filters.value.chapter = ''
+      filters.value.knowledge = ''
+      break
+    case 'chapter':
+      filters.value.chapter = ''
+      filters.value.knowledge = ''
+      break
+    case 'knowledge':
+      filters.value.knowledge = ''
+      break
+  }
+}
+
+// 清除所有筛选条件
+const clearAllFilters = () => {
+  filters.value.subject_id = ''
+  filters.value.book = ''
+  filters.value.chapter = ''
+  filters.value.knowledge = ''
+  filters.value.status = ''
+  filters.value.difficulty = ''
+  filters.value.mastery = ''
+  filters.value.date_range = 'all'
+  filters.value.tag = ''
+  filters.value.keyword = ''
+}
+
 onMounted(() => {
   // 从其他页面跳转过来时检查是否需要闪烁
   if (route.query.focus === 'search') {
@@ -549,6 +823,7 @@ const filteredErrors = computed(() => {
         content: question.prompt || '',
         // 后端返回的是秒级时间戳
         date: formatDate(question.updated_at || question.created_at || 0),
+        timestamp: question.updated_at || question.created_at || 0,
         status,
         statusText
       }
@@ -561,6 +836,38 @@ const filteredErrors = computed(() => {
       // 状态筛选
       if (filters.value.status && error.status !== filters.value.status) {
         return false
+      }
+      // 难度筛选
+      if (filters.value.difficulty) {
+        if (filters.value.difficulty === 'easy' && error.difficulty > 1) return false
+        if (filters.value.difficulty === 'medium' && (error.difficulty <= 1 || error.difficulty > 3)) return false
+        if (filters.value.difficulty === 'hard' && error.difficulty <= 3) return false
+      }
+      // 掌握程度筛选
+      if (filters.value.mastery) {
+        // TODO: 从 SRS 数据获取 mastery，目前使用模拟数据
+        const mastery = 50 // 默认值
+        if (filters.value.mastery === 'unmastered' && mastery > 30) return false
+        if (filters.value.mastery === 'partial' && (mastery <= 30 || mastery > 70)) return false
+        if (filters.value.mastery === 'mastered' && mastery <= 70) return false
+      }
+      // 时间范围筛选
+      if (filters.value.date_range && filters.value.date_range !== 'all') {
+        const now = Date.now() / 1000 // 当前秒级时间戳
+        const daysMap: Record<string, number> = {
+          '7days': 7,
+          '30days': 30,
+          '90days': 90
+        }
+        const days = daysMap[filters.value.date_range] || 0
+        const threshold = now - (days * 24 * 60 * 60)
+        if (error.timestamp < threshold) return false
+      }
+      // 标签筛选
+      if (filters.value.tag) {
+        // TODO: 从后端获取错题的标签，目前使用模拟逻辑
+        const hasTag = false // 默认无标签
+        if (!hasTag) return false
       }
       // 关键词搜索
       if (filters.value.keyword) {
@@ -593,12 +900,93 @@ const viewError = (error: any) => {
   margin: 0 auto;
 }
 
+/* 搜索栏 - 第一行 */
+.search-bar {
+  margin-bottom: 12px;
+}
+
+.search-bar .search-box {
+  width: 100%;
+  margin: 0;
+}
+
+.search-bar .search-box input {
+  width: 100%;
+  height: 44px;
+  font-size: 15px;
+}
+
+/* 筛选栏 - 第二行 */
 .filter-bar {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
   align-items: flex-start;
+}
+
+/* 已选筛选条件 */
+.active-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.active-filters-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.filter-tag-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 2px;
+  opacity: 0.8;
+}
+
+.filter-tag-close:hover {
+  opacity: 1;
+}
+
+.clear-all-btn {
+  padding: 4px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.clear-all-btn:hover {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
 .filter-select {
