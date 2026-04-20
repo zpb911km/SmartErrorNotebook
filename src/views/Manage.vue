@@ -198,7 +198,7 @@ const viewError = (error: any) => {
   padding-bottom: 100px;
   background: var(--bg-primary);
   min-height: 100vh;
-  max-width: 800px;
+  max-width: 70%;
   margin: 0 auto;
 }
 

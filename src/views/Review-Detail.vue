@@ -129,8 +129,12 @@ const resetReview = () => {
 
 <style scoped>
 .review-page {
-  padding: 20px;
-  padding-bottom: 80px;
+  padding: 40px 20px;
+  padding-bottom: 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  max-width: 70%;
+  margin: 0 auto;
 }
 
 .progress-section {

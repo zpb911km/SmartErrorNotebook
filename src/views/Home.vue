@@ -75,6 +75,14 @@ const stats = ref({
 .home-page {
   padding: 20px;
   padding-bottom: 80px;
+  max-width: 70%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .home-page {
+    max-width: 100%;
+  }
 }
 
 .header {
