@@ -1,11 +1,8 @@
 <template>
   <div class="home-page minimal">
     <!-- 顶部区域 -->
-    <div class="minimal-header">
+  <div class="minimal-header">
       <h1 class="app-title">智能错题本</h1>
-      <div class="user-avatar" @click="$router.push('/stats')">
-        <img src="https://via.placeholder.com/40" alt="用户头像" class="avatar-image">
-      </div>
     </div>
 
     <!-- 核心功能区 -->
@@ -65,13 +62,13 @@
         <button class="view-all" @click="$router.push('/manage')">查看全部</button>
       </div>
       <div class="activity-list">
-        <div class="activity-item" v-for="activity in recentActivities" :key="activity.id">
-          <div class="activity-icon">{{ activity.icon }}</div>
+        <div class="activity-item" v-for="activity in recentActivities" :key="(activity as any).id">
+          <div class="activity-icon">{{ (activity as any).icon }}</div>
           <div class="activity-content">
-            <div class="activity-title">{{ activity.title }}</div>
-            <div class="activity-time">{{ activity.time }}</div>
+            <div class="activity-title">{{ (activity as any).title }}</div>
+            <div class="activity-time">{{ (activity as any).time }}</div>
           </div>
-          <div class="activity-status" :class="activity.status">{{ activity.status }}</div>
+          <div class="activity-status" :class="(activity as any).status">{{ (activity as any).status }}</div>
         </div>
       </div>
     </div>

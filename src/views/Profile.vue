@@ -1,16 +1,5 @@
 <template>
   <div class="profile-page">
-    <!-- 用户信息卡片 -->
-    <div class="user-card">
-      <div class="avatar-container">
-        <img class="avatar" src="https://via.placeholder.com/100" alt="头像" />
-      </div>
-      <div class="user-info">
-        <div class="nickname">智能错题本用户</div>
-        <div class="student-id">学号: 202501001</div>
-      </div>
-    </div>
-
     <!-- 详细统计页面 -->
     <div class="stats-section">
       <div class="overview-cards">
@@ -49,14 +38,14 @@
         <div class="chart-placeholder">
           <div class="pie-chart">
             <div v-for="(item, index) in subjectDistribution" :key="index" class="pie-segment" :style="getPieStyle(item, index)">
-              <span class="pie-label">{{ item.subject }}</span>
+              <span class="pie-label">{{ (item as any).subjectName }}</span>
             </div>
           </div>
           <div class="legend">
             <div v-for="(item, index) in subjectDistribution" :key="index" class="legend-item">
               <span class="legend-color" :style="{ background: colors[index] }"></span>
-              <span class="legend-label">{{ item.subjectName }}</span>
-              <span class="legend-value">{{ item.count }}题</span>
+              <span class="legend-label">{{ (item as any).subjectName }}</span>
+              <span class="legend-value">{{ (item as any).count }}题</span>
             </div>
           </div>
         </div>
