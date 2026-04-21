@@ -24,6 +24,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '错题管理' }
   },
   {
+    path: '/manage-detail/:id',
+    name: 'ManageDetail',
+    component: () => import('../views/Manage-Detail.vue'),
+    meta: { title: '错题详情管理' }
+  },
+  {
     path: '/review',
     name: 'Preview',
     component: () => import('../views/Preview.vue'),

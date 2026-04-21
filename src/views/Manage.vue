@@ -114,67 +114,213 @@
         </div>
       </div>
 
-      <select 
-        v-model="filters.status" 
-        class="filter-select"
-        ref="statusSelectRef"
-        @focus="onStatusFocus"
-      >
-        <option value="">全部状态</option>
-        <option value="pending">待复习</option>
-        <option value="reviewed">已复习</option>
-        <option value="mastered">已掌握</option>
-      </select>
+      <!-- 状态筛选 -->
+      <div class="filter-select-wrapper">
+        <div 
+          class="custom-select"
+          @click="toggleStatusDropdown"
+        >
+          <div class="custom-select-value">
+            {{ statusText || '全部状态' }}
+          </div>
+          <span class="custom-select-arrow" :class="{ 'rotated': statusDropdownVisible }">▼</span>
+        </div>
+        
+        <div v-if="statusDropdownVisible" class="dropdown-popup">
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.status === '' }"
+            @click="selectStatus('')"
+          >
+            全部状态
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.status === 'pending' }"
+            @click="selectStatus('pending')"
+          >
+            待复习
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.status === 'reviewed' }"
+            @click="selectStatus('reviewed')"
+          >
+            已复习
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.status === 'mastered' }"
+            @click="selectStatus('mastered')"
+          >
+            已掌握
+          </div>
+        </div>
+      </div>
 
       <!-- 难度筛选 -->
-      <select 
-        v-model="filters.difficulty" 
-        class="filter-select"
-        ref="difficultySelectRef"
-        @focus="onDifficultyFocus"
-      >
-        <option value="">全部难度</option>
-        <option value="easy">简单</option>
-        <option value="medium">中等</option>
-        <option value="hard">困难</option>
-      </select>
+      <div class="filter-select-wrapper">
+        <div 
+          class="custom-select"
+          @click="toggleDifficultyDropdown"
+        >
+          <div class="custom-select-value">
+            {{ difficultyText || '全部难度' }}
+          </div>
+          <span class="custom-select-arrow" :class="{ 'rotated': difficultyDropdownVisible }">▼</span>
+        </div>
+        
+        <div v-if="difficultyDropdownVisible" class="dropdown-popup">
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.difficulty === '' }"
+            @click="selectDifficulty('')"
+          >
+            全部难度
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.difficulty === 'easy' }"
+            @click="selectDifficulty('easy')"
+          >
+            简单
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.difficulty === 'medium' }"
+            @click="selectDifficulty('medium')"
+          >
+            中等
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.difficulty === 'hard' }"
+            @click="selectDifficulty('hard')"
+          >
+            困难
+          </div>
+        </div>
+      </div>
 
       <!-- 掌握程度筛选 -->
-      <select 
-        v-model="filters.mastery" 
-        class="filter-select"
-        ref="masterySelectRef"
-        @focus="onMasteryFocus"
-      >
-        <option value="">全部掌握程度</option>
-        <option value="unmastered">未掌握 (0-30%)</option>
-        <option value="partial">部分掌握 (30-70%)</option>
-        <option value="mastered">已掌握 (70-100%)</option>
-      </select>
+      <div class="filter-select-wrapper">
+        <div 
+          class="custom-select"
+          @click="toggleMasteryDropdown"
+        >
+          <div class="custom-select-value">
+            {{ masteryText || '全部掌握程度' }}
+          </div>
+          <span class="custom-select-arrow" :class="{ 'rotated': masteryDropdownVisible }">▼</span>
+        </div>
+        
+        <div v-if="masteryDropdownVisible" class="dropdown-popup">
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.mastery === '' }"
+            @click="selectMastery('')"
+          >
+            全部掌握程度
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.mastery === 'unmastered' }"
+            @click="selectMastery('unmastered')"
+          >
+            未掌握 (0-30%)
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.mastery === 'partial' }"
+            @click="selectMastery('partial')"
+          >
+            部分掌握 (30-70%)
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.mastery === 'mastered' }"
+            @click="selectMastery('mastered')"
+          >
+            已掌握 (70-100%)
+          </div>
+        </div>
+      </div>
 
       <!-- 时间范围筛选 -->
-      <select 
-        v-model="filters.date_range" 
-        class="filter-select"
-        ref="dateRangeSelectRef"
-        @focus="onDateRangeFocus"
-      >
-        <option value="all">全部时间</option>
-        <option value="7days">最近7天</option>
-        <option value="30days">最近30天</option>
-        <option value="90days">最近90天</option>
-      </select>
+      <div class="filter-select-wrapper">
+        <div 
+          class="custom-select"
+          @click="toggleDateRangeDropdown"
+        >
+          <div class="custom-select-value">
+            {{ dateRangeText || '全部时间' }}
+          </div>
+          <span class="custom-select-arrow" :class="{ 'rotated': dateRangeDropdownVisible }">▼</span>
+        </div>
+        
+        <div v-if="dateRangeDropdownVisible" class="dropdown-popup">
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.date_range === 'all' }"
+            @click="selectDateRange('all')"
+          >
+            全部时间
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.date_range === '7days' }"
+            @click="selectDateRange('7days')"
+          >
+            最近7天
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.date_range === '30days' }"
+            @click="selectDateRange('30days')"
+          >
+            最近30天
+          </div>
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.date_range === '90days' }"
+            @click="selectDateRange('90days')"
+          >
+            最近90天
+          </div>
+        </div>
+      </div>
 
       <!-- 标签筛选 -->
-      <select 
-        v-model="filters.tag" 
-        class="filter-select"
-        ref="tagSelectRef"
-        @focus="onTagFocus"
-      >
-        <option value="">全部标签</option>
-        <option v-for="tag in availableTags" :key="tag" :value="tag">{{ tag }}</option>
-      </select>
+      <div class="filter-select-wrapper">
+        <div 
+          class="custom-select"
+          @click="toggleTagDropdown"
+        >
+          <div class="custom-select-value">
+            {{ filters.tag || '全部标签' }}
+          </div>
+          <span class="custom-select-arrow" :class="{ 'rotated': tagDropdownVisible }">▼</span>
+        </div>
+        
+        <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.tag === '' }"
+            @click="selectTag('')"
+          >
+            全部标签
+          </div>
+          <div 
+            v-for="tag in availableTags" 
+            :key="tag"
+            class="dropdown-item"
+            :class="{ active: filters.tag === tag }"
+            @click="selectTag(tag)"
+          >
+            {{ tag }}
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 已选筛选条件 -->
@@ -243,6 +389,9 @@ const errors = ref<any[]>([])
 const subjects = ref<Subject[]>([])
 const availableTags = ref<string[]>([])
 
+// 错题和标签的映射关系（question_id -> 标签名称数组）
+const questionTagsMap = ref<Map<string, string[]>>(new Map())
+
 // 筛选器引用
 const statusSelectRef = ref<HTMLSelectElement>()
 const difficultySelectRef = ref<HTMLSelectElement>()
@@ -268,11 +417,62 @@ const hasChapterClicked = ref(false)
 // 科目下拉框状态
 const subjectDropdownVisible = ref(false)
 
+// 其他筛选器下拉框状态
+const statusDropdownVisible = ref(false)
+const difficultyDropdownVisible = ref(false)
+const masteryDropdownVisible = ref(false)
+const dateRangeDropdownVisible = ref(false)
+const tagDropdownVisible = ref(false)
+
 // 计算选中的科目名称
 const selectedSubjectName = computed(() => {
   if (!filters.value.subject_id) return ''
   const subject = subjects.value.find(s => s.id === filters.value.subject_id)
   return subject?.name || ''
+})
+
+// 计算状态文本
+const statusText = computed(() => {
+  if (!filters.value.status) return ''
+  const statusMap: Record<string, string> = {
+    pending: '待复习',
+    reviewed: '已复习',
+    mastered: '已掌握'
+  }
+  return statusMap[filters.value.status] || ''
+})
+
+// 计算难度文本
+const difficultyText = computed(() => {
+  if (!filters.value.difficulty) return ''
+  const difficultyMap: Record<string, string> = {
+    easy: '简单',
+    medium: '中等',
+    hard: '困难'
+  }
+  return difficultyMap[filters.value.difficulty] || ''
+})
+
+// 计算掌握程度文本
+const masteryText = computed(() => {
+  if (!filters.value.mastery) return ''
+  const masteryMap: Record<string, string> = {
+    unmastered: '未掌握 (0-30%)',
+    partial: '部分掌握 (30-70%)',
+    mastered: '已掌握 (70-100%)'
+  }
+  return masteryMap[filters.value.mastery] || ''
+})
+
+// 计算时间范围文本
+const dateRangeText = computed(() => {
+  if (!filters.value.date_range || filters.value.date_range === 'all') return ''
+  const dateRangeMap: Record<string, string> = {
+    '7days': '最近7天',
+    '30days': '最近30天',
+    '90days': '最近90天'
+  }
+  return dateRangeMap[filters.value.date_range] || ''
 })
 
 // 停止闪烁
@@ -283,6 +483,78 @@ const toggleSubjectDropdown = () => {
   if (!subjectDropdownVisible.value) {
     hideAllMenus()
   }
+  // 关闭其他下拉框
+  closeOtherDropdowns('subject')
+}
+
+// 切换状态下拉框
+const toggleStatusDropdown = () => {
+  statusDropdownVisible.value = !statusDropdownVisible.value
+  closeOtherDropdowns('status')
+}
+
+// 切换难度下拉框
+const toggleDifficultyDropdown = () => {
+  difficultyDropdownVisible.value = !difficultyDropdownVisible.value
+  closeOtherDropdowns('difficulty')
+}
+
+// 切换掌握程度下拉框
+const toggleMasteryDropdown = () => {
+  masteryDropdownVisible.value = !masteryDropdownVisible.value
+  closeOtherDropdowns('mastery')
+}
+
+// 切换时间范围下拉框
+const toggleDateRangeDropdown = () => {
+  dateRangeDropdownVisible.value = !dateRangeDropdownVisible.value
+  closeOtherDropdowns('dateRange')
+}
+
+// 切换标签下拉框
+const toggleTagDropdown = () => {
+  tagDropdownVisible.value = !tagDropdownVisible.value
+  closeOtherDropdowns('tag')
+}
+
+// 关闭其他下拉框
+const closeOtherDropdowns = (current: string) => {
+  if (current !== 'subject') subjectDropdownVisible.value = false
+  if (current !== 'status') statusDropdownVisible.value = false
+  if (current !== 'difficulty') difficultyDropdownVisible.value = false
+  if (current !== 'mastery') masteryDropdownVisible.value = false
+  if (current !== 'dateRange') dateRangeDropdownVisible.value = false
+  if (current !== 'tag') tagDropdownVisible.value = false
+}
+
+// 选择状态
+const selectStatus = (status: string) => {
+  filters.value.status = status
+  statusDropdownVisible.value = false
+}
+
+// 选择难度
+const selectDifficulty = (difficulty: string) => {
+  filters.value.difficulty = difficulty
+  difficultyDropdownVisible.value = false
+}
+
+// 选择掌握程度
+const selectMastery = (mastery: string) => {
+  filters.value.mastery = mastery
+  masteryDropdownVisible.value = false
+}
+
+// 选择时间范围
+const selectDateRange = (dateRange: string) => {
+  filters.value.date_range = dateRange
+  dateRangeDropdownVisible.value = false
+}
+
+// 选择标签
+const selectTag = (tag: string) => {
+  filters.value.tag = tag
+  tagDropdownVisible.value = false
 }
 
 // 显示科目列表
@@ -582,6 +854,19 @@ const fetchData = async () => {
     const allTags = tagsData as any[]
     const uniqueTags = [...new Set(allTags.map(tag => tag.name))]
     availableTags.value = uniqueTags
+    
+    // 构建错题和标签的映射关系
+    const tagMap = new Map<string, string[]>()
+    allTags.forEach((tag: any) => {
+      const questionId = tag.question_id
+      const tagName = tag.name
+      
+      if (!tagMap.has(questionId)) {
+        tagMap.set(questionId, [])
+      }
+      tagMap.get(questionId)!.push(tagName)
+    })
+    questionTagsMap.value = tagMap
   } catch (error) {
     console.error('获取数据失败:', error)
     errors.value = []
@@ -865,8 +1150,9 @@ const filteredErrors = computed(() => {
       }
       // 标签筛选
       if (filters.value.tag) {
-        // TODO: 从后端获取错题的标签，目前使用模拟逻辑
-        const hasTag = false // 默认无标签
+        // 从映射中获取该错题的标签
+        const questionTags = questionTagsMap.value.get(error.id) || []
+        const hasTag = questionTags.includes(filters.value.tag)
         if (!hasTag) return false
       }
       // 关键词搜索
@@ -884,7 +1170,7 @@ const filteredErrors = computed(() => {
 // 查看错题详情
 const viewError = (error: any) => {
   router.push({
-    name: 'Preview',
+    name: 'ManageDetail',
     params: { id: error.id }
   })
 }
@@ -1098,6 +1384,66 @@ const viewError = (error: any) => {
 
 .custom-select-arrow.rotated {
   transform: rotate(180deg);
+}
+
+/* 下拉弹窗 */
+.dropdown-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+
+/* 标签下拉框特殊样式 */
+.tag-dropdown {
+  max-height: 250px;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 下拉项 */
+.dropdown-item {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdown-item:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.dropdown-item.active {
+  background: var(--primary-color);
+  color: white;
+  font-weight: 500;
+}
+
+.dropdown-item:active {
+  transform: scale(0.98);
 }
 
 /* 级联列 */
