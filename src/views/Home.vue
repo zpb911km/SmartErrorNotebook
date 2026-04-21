@@ -14,24 +14,10 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">📅</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.today }}</div>
-          <div class="stat-label">今日待复习</div>
-        </div>
-      </div>
-      <div class="stat-card">
         <div class="stat-icon">✅</div>
         <div class="stat-info">
           <div class="stat-value">{{ stats.mastered }}</div>
           <div class="stat-label">已掌握</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🔥</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.streak }}</div>
-          <div class="stat-label">连续学习</div>
         </div>
       </div>
     </div>
@@ -65,9 +51,7 @@ import { ref } from 'vue'
 
 const stats = ref({
   total: 128,
-  today: 15,
-  mastered: 89,
-  streak: 7
+  mastered: 89
 })
 </script>
 
@@ -75,14 +59,6 @@ const stats = ref({
 .home-page {
   padding: 20px;
   padding-bottom: 80px;
-  max-width: 70%;
-  margin: 0 auto;
-}
-
-@media (max-width: 768px) {
-  .home-page {
-    max-width: 100%;
-  }
 }
 
 .header {
