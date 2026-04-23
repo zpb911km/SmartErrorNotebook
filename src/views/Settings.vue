@@ -97,37 +97,6 @@
           <button class="config-btn" @click="openLLMTest">测试</button>
         </div>
       </div>
-
-      <!-- 其他设置 -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">📱</div>
-          <div class="setting-name">设备管理</div>
-        </div>
-        <div class="setting-action">
-          <span class="arrow-icon">→</span>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">🔔</div>
-          <div class="setting-name">通知设置</div>
-        </div>
-        <div class="setting-action">
-          <span class="arrow-icon">→</span>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">ℹ️</div>
-          <div class="setting-name">关于应用</div>
-        </div>
-        <div class="setting-action">
-          <span class="arrow-icon">→</span>
-        </div>
-      </div>
     </div>
 
     <!-- LLM 配置对话框 -->
