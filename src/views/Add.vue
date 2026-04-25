@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { ref } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
@@ -124,7 +124,6 @@ import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
 import { showInfo, showError, showDebug } from '../utils/notification'
-import { getOrCreateSourceId } from '../apis/sources'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
@@ -167,17 +166,6 @@ const form = ref({
   // SRS info
   difficulty: 0,
   mastery: 0
-})
-
-onMounted(() => {
-  // 获取相机权限
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(() => {
-      cameraDisabled.value = false
-    })
-    .catch(() => {
-      disableCamera()
-    });
 })
 
 // 处理文件选择
