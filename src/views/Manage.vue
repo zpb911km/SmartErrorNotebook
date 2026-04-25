@@ -337,9 +337,14 @@
       <div v-for="error in filteredErrors" :key="error.id" class="error-card" @click="viewError(error)">
         <div class="error-header">
           <span class="subject-tag" :style="getSubjectStyle(error.subject_id)">{{ error.subjectName }}</span>
+          <span v-if="error.book" class="source-tag book-tag">{{ error.book }}</span>
+          <span v-if="error.knowledge" class="source-tag knowledge-tag">{{ error.knowledge }}</span>
           <span class="difficulty-tag" :class="getDifficultyClass(error.difficulty)">{{ error.difficultyName }}</span>
         </div>
         <div class="error-content">{{ truncateContent(error.content, 100) }}</div>
+        <div v-if="error.tags && error.tags.length > 0" class="error-tags">
+          <span v-for="tag in error.tags" :key="tag" class="tag-item">{{ tag }}</span>
+        </div>
         <div class="error-footer">
           <span class="error-date">{{ error.date }}</span>
           <span class="error-status" :class="error.status">{{ error.statusText }}</span>
@@ -1157,7 +1162,9 @@ const filteredErrors = computed(() => {
         // 来源信息
         book: sourceInfo.book,
         chapter: sourceInfo.chapter,
-        knowledge: sourceInfo.knowledge
+        knowledge: sourceInfo.knowledge,
+        // 标签信息
+        tags: questionTagsMap.value.get(question.id) || []
       }
     })
     .filter(error => {
@@ -1706,6 +1713,41 @@ const viewError = (error: any) => {
 .difficulty-tag.hard {
   background: #ffebee;
   color: #c62828;
+}
+
+.source-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.book-tag {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.knowledge-tag {
+  background: #e0f2f1;
+  color: #00796b;
+}
+
+.error-tags {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.tag-item {
+  padding: 3px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .error-content {
