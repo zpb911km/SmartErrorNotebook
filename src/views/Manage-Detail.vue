@@ -63,6 +63,7 @@
             <option value="论述题">论述题</option>
             <option value="计算题">计算题</option>
             <option value="判断题">判断题</option>
+            <option value="">其他</option>
           </select>
         </div>
       </div>
@@ -276,23 +277,35 @@ const showDeleteConfirm = ref(false)
 const fetchErrorDetail = async () => {
   try {
     const question = await getQuestion(errorId.value)
-    errorDetail.value = question as any
+    
+    // 处理后端返回的字段映射（subjectid -> subject_id, sourceid -> source_id 等）
+    const mappedQuestion = {
+      ...question,
+      subject_id: (question as any).subjectid || question.subject_id,
+      source_id: (question as any).sourceid || question.source_id,
+      user_id: (question as any).userid || question.user_id,
+      error_note: (question as any).error_note || '',
+      created_at: (question as any).created_at,
+      updated_at: (question as any).updated_at
+    } as any
+    
+    errorDetail.value = mappedQuestion
     
     // 初始化编辑表单
     editForm.value = {
-      subject_id: question.subject_id,
-      source_id: question.source_id || '',
-      prompt: question.prompt,
-      type: question.type,
-      answer: question.answer || '',
-      analysis: question.analysis || '',
-      error_note: question.error_note || ''
+      subject_id: mappedQuestion.subject_id,
+      source_id: mappedQuestion.source_id || '',
+      prompt: mappedQuestion.prompt,
+      type: (question as any).type_ || mappedQuestion.type,
+      answer: mappedQuestion.answer || '',
+      analysis: mappedQuestion.analysis || '',
+      error_note: mappedQuestion.error_note || ''
     }
     
     // 获取来源信息
-    if (question.source_id) {
+    if (mappedQuestion.source_id) {
       try {
-        sourceInfo.value = await getSource(question.source_id)
+        sourceInfo.value = await getSource(mappedQuestion.source_id)
       } catch (error) {
         console.error('获取来源信息失败:', error)
       }
@@ -329,7 +342,7 @@ const toggleEditMode = () => {
         subject_id: errorDetail.value.subject_id,
         source_id: errorDetail.value.source_id || '',
         prompt: errorDetail.value.prompt,
-        type: errorDetail.value.type,
+        type: (errorDetail.value as any).type_ || errorDetail.value.type,
         answer: errorDetail.value.answer || '',
         analysis: errorDetail.value.analysis || '',
         error_note: errorDetail.value.error_note || ''

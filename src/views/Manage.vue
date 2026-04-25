@@ -359,7 +359,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
-import { getBooks, getChapters, getKnowledges } from '../apis/sources'
+import { getBooks, getChapters, getKnowledges, getSources } from '../apis/sources'
 import { getErrorTags } from '../apis/errorTags'
 import type { Subject } from '../types'
 
@@ -391,6 +391,9 @@ const availableTags = ref<string[]>([])
 
 // 错题和标签的映射关系（question_id -> 标签名称数组）
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
+
+// 错题和来源的映射关系（source_id -> 来源信息）
+const sourceInfoMap = ref<Map<string, any>>(new Map())
 
 // 筛选器引用
 const statusSelectRef = ref<HTMLSelectElement>()
@@ -781,14 +784,16 @@ const selectBook = (book: string) => {
   filters.value.book = book
   filters.value.chapter = ''
   filters.value.knowledge = ''
-  // 不隐藏菜单，保持打开状态
+  // 重新加载数据以应用筛选
+  fetchData()
 }
 
 // 选择章节
 const selectChapter = (chapter: string) => {
   filters.value.chapter = chapter
   filters.value.knowledge = ''
-  // 不隐藏菜单，保持打开状态
+  // 重新加载数据以应用筛选
+  fetchData()
 }
 
 // 选择知识点
@@ -839,11 +844,12 @@ const handleTriggerBlink = () => {
 // 从数据库获取数据
 const fetchData = async () => {
   try {
-    // 并行获取科目、错题和标签数据
-    const [subjectsData, questionsData, tagsData] = await Promise.all([
+    // 并行获取科目、错题、标签和来源数据
+    const [subjectsData, questionsData, tagsData, sourcesData] = await Promise.all([
       getSubjects(),
       getQuestions(),
-      getErrorTags()
+      getErrorTags(),
+      getSources()
     ])
     
     subjects.value = subjectsData
@@ -867,6 +873,34 @@ const fetchData = async () => {
       tagMap.get(questionId)!.push(tagName)
     })
     questionTagsMap.value = tagMap
+    
+    // 构建来源映射（source_id -> 来源信息）
+    const sourceMap = new Map<string, any>()
+    const allSources = sourcesData as any[]
+    
+    console.log('=== 来源数据调试 ===')
+    console.log('所有来源数量:', allSources.length)
+    console.log('所有来源:', allSources)
+    
+    // 按来源 ID 映射（不是 question_id）
+    allSources.forEach((source: any) => {
+      const sourceId = source.id  // 来源表的主键 ID
+      sourceMap.set(sourceId, {
+        book: source.book || '',
+        chapter: source.chapter || '',
+        knowledge: source.knowledge || ''
+      })
+      console.log(`来源 ${sourceId} 的信息:`, {
+        book: source.book,
+        chapter: source.chapter,
+        knowledge: source.knowledge
+      })
+    })
+    
+    console.log('来源映射数量:', sourceMap.size)
+    console.log('====================')
+    
+    sourceInfoMap.value = sourceMap
   } catch (error) {
     console.error('获取数据失败:', error)
     errors.value = []
@@ -1098,6 +1132,15 @@ const filteredErrors = computed(() => {
       const difficulty = getDifficultyLevel(question.id)
       const { status, statusText } = getReviewStatus(question.id)
       
+      // 通过错题的 source_id 获取来源信息
+      // question.sourceid 是来源表的主键 ID
+      const sourceId = question.sourceid
+      const sourceInfo = sourceInfoMap.value.get(sourceId) || {
+        book: '',
+        chapter: '',
+        knowledge: ''
+      }
+      
       return {
         id: question.id,
         subject_id: question.subjectid,
@@ -1110,12 +1153,40 @@ const filteredErrors = computed(() => {
         date: formatDate(question.updated_at || question.created_at || 0),
         timestamp: question.updated_at || question.created_at || 0,
         status,
-        statusText
+        statusText,
+        // 来源信息
+        book: sourceInfo.book,
+        chapter: sourceInfo.chapter,
+        knowledge: sourceInfo.knowledge
       }
     })
     .filter(error => {
+      // 调试信息
+      if (filters.value.book || filters.value.chapter || filters.value.knowledge) {
+        console.log(`错题 ${error.id} 筛选检查:`, {
+          errorBook: error.book,
+          errorChapter: error.chapter,
+          errorKnowledge: error.knowledge,
+          filterBook: filters.value.book,
+          filterChapter: filters.value.chapter,
+          filterKnowledge: filters.value.knowledge
+        })
+      }
+      
       // 科目筛选
       if (filters.value.subject_id && error.subject_id !== filters.value.subject_id) {
+        return false
+      }
+      // 书名筛选
+      if (filters.value.book && error.book !== filters.value.book) {
+        return false
+      }
+      // 章节筛选
+      if (filters.value.chapter && error.chapter !== filters.value.chapter) {
+        return false
+      }
+      // 知识点筛选
+      if (filters.value.knowledge && error.knowledge !== filters.value.knowledge) {
         return false
       }
       // 状态筛选
