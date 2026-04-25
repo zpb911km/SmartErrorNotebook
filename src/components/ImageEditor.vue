@@ -98,8 +98,6 @@
       <canvas 
         ref="canvasRef"
         @mousedown="handleMouseDown"
-        @mousemove="handleMouseMove"
-        @mouseup="handleMouseUp"
         @touchstart="handleTouchStart"
         @touchmove="handleTouchMove"
         @touchend="handleTouchEnd"
@@ -446,14 +444,6 @@ const handleMouseDown = (e: MouseEvent) => {
     window.addEventListener('mousemove', handleGlobalMouseMove)
     window.addEventListener('mouseup', handleGlobalMouseUp)
   }
-}
-
-const handleMouseMove = (e: MouseEvent) => {
-  // 这个函数现在可以为空，因为我们使用全局事件监听器
-}
-
-const handleMouseUp = () => {
-  // 这个函数现在可以为空，因为我们使用全局事件监听器
 }
 
 // 触摸事件处理
@@ -1155,7 +1145,16 @@ const bilinearInterpolation = (imageData: ImageData, x: number, y: number) => {
 // 确认编辑
 const handleConfirm = () => {
   if (!canvasRef.value) return
-  const imageData = canvasRef.value.toDataURL('image/jpeg', 0.9)
+  let imageData = ''
+  if (currentTool.value === "crop") {
+    currentTool.value = "none"
+    // 使用无效工具名称使得重绘canvas时不带有边框
+    drawCanvas()
+    currentTool.value = "crop"
+    imageData = canvasRef.value.toDataURL('image/jpeg', 1.0)
+  } else {
+    imageData = canvasRef.value.toDataURL('image/jpeg', 1.0)
+  }
   emit('confirm', imageData)
 }
 
