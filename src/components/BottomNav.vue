@@ -17,7 +17,7 @@ const navItems = [
   { path: '/add', label: '添加', icon: '➕' },
   { path: '/manage', label: '管理', icon: '📋' },
   { path: '/review', label: '复习', icon: '📖' },
-  { path: '/stats', label: '我的', icon: '👤' },
+  { path: '/stats', label: '我的', icon: '👤' }
 ]
 
 const isActive = (path: string) => {

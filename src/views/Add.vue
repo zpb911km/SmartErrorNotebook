@@ -124,6 +124,7 @@ import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
 import { showInfo, showError, showDebug } from '../utils/notification'
+import { getOrCreateSourceId } from '../apis/sources'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
