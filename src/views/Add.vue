@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
@@ -166,6 +166,17 @@ const form = ref({
   // SRS info
   difficulty: 0,
   mastery: 0
+})
+
+onMounted(() => {
+  // 获取相机权限
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(() => {
+      cameraDisabled.value = false
+    })
+    .catch(() => {
+      disableCamera()
+    });
 })
 
 // 处理文件选择

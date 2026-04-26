@@ -98,6 +98,17 @@
         </div>
       </div>
 
+      <!--- Markdown 渲染测试-->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">📄</div>
+          <div class="setting-name">Markdown 渲染测试</div>
+        </div>
+        <div class="setting-action">
+          <button class="config-btn" @click="$router.push('/markdown-test')">测试</button>
+        </div>
+      </div>
+
       <!-- 其他设置 -->
       <div class="setting-item">
         <div class="setting-info">
