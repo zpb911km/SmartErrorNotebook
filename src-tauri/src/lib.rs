@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 mod commands;
 mod database;
+mod srs;
 
 use database::{establish_connection, init_database};
 use tauri::Manager;
@@ -62,6 +63,10 @@ pub fn run() {
             commands::update_error_tag_by_id,
             // SRS Data
             commands::create_srs_data,
+            commands::get_due_questions,
+            commands::submit_review_result,
+            commands::get_question_srs_status,
+            commands::reset_srs_progress,
             // Attachment
             commands::create_attachment,
             commands::create_attachments_for_question,
