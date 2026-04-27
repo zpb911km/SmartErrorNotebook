@@ -46,6 +46,12 @@ const routes: RouteRecordRaw[] = [
     name: 'Settings',
     component: () => import('../views/Settings.vue'),
     meta: { title: '设置' }
+  },
+  {
+    path: '/markdown-test',
+    name: 'MarkdownTextareaTest',
+    component: () => import('../views/MarkdownTextareaTest.vue'),
+    meta: { title: 'Markdown 组件测试' }
   }
 ]
 
