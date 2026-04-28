@@ -69,7 +69,13 @@ const emit = defineEmits<{
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const renderedMarkdown = computed(() => {
-  return marked.parse(props.modelValue || '', {
+  const normalized = (props.modelValue || '')
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+
+  return marked.parse(normalized, {
     breaks: true,
     gfm: true
   }) as string
