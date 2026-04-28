@@ -101,3 +101,27 @@ export async function getSRSStatus(questionId: string): Promise<SRSCardOutput | 
 export async function resetSRSProgress(questionId: string): Promise<SRSData> {
   return invoke('reset_srs_progress', { questionId });
 }
+
+/**
+ * 获取所有题目的 SRS 状态
+ * @returns 所有题目的 SRS 数据对象
+ */
+export async function getAllSRSStatus(): Promise<SRSData[]> {
+  return invoke('get_all_cards');
+}
+
+export async function getDueCount(): Promise<number> {
+  return invoke('get_due_count');
+}
+
+export async function getSRSStatics(): Promise<{
+  total: number;
+  due_count: number;
+  new_cards: number;
+  avg_stability: number;
+  avg_difficulty: number;
+  total_reviews: number;
+}> {
+  return invoke('get_srs_statics');
+}
+

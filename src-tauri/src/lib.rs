@@ -67,6 +67,10 @@ pub fn run() {
             commands::submit_review_result,
             commands::get_question_srs_status,
             commands::reset_srs_progress,
+            // SRS Tools
+            commands::get_due_count,
+            commands::get_srs_statistics,
+            commands::get_all_cards,
             // Attachment
             commands::create_attachment,
             commands::create_attachments_for_question,

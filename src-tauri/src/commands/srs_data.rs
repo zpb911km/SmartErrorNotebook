@@ -258,3 +258,107 @@ pub async fn reset_srs_progress(
         }
     }
 }
+
+// ==================== Tool/API Functions ====================
+
+/// 获取当前待复习卡片总数
+#[tauri::command]
+pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+
+    let count = all_srs
+        .into_iter()
+        .filter(|srs| {
+            match srs.next_review_at {
+                None => true,
+                Some(next) => now >= next,
+            }
+        })
+        .count() as i32;
+
+    Ok(count)
+}
+
+/// 获取所有 SRS 数据的统计信息
+#[tauri::command]
+pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatistics, String> {
+    let db = state.db.as_ref();
+
+    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+
+    if all_srs.is_empty() {
+        return Ok(SRSStatistics {
+            total: 0,
+            due_count: 0,
+            new_cards: 0,
+            avg_stability: 0.0,
+            avg_difficulty: 0.0,
+            total_reviews: 0,
+        });
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    let mut due_count = 0;
+    let mut new_cards = 0;
+    let mut stability_sum = 0.0;
+    let mut difficulty_sum = 0.0;
+    let mut total_reviews = 0;
+
+    for srs in &all_srs {
+        if srs.next_review_at.is_none() || now >= srs.next_review_at.unwrap() {
+            due_count += 1;
+        }
+        if srs.review_count == 1 {
+            new_cards += 1;
+        }
+        stability_sum += srs.stability as f64;
+        difficulty_sum += srs.difficulty as f64;
+        total_reviews += srs.review_count as i64;
+    }
+
+    Ok(SRSStatistics {
+        total: all_srs.len() as i32,
+        due_count,
+        new_cards,
+        avg_stability: (stability_sum / all_srs.len() as f64) as f32,
+        avg_difficulty: (difficulty_sum / all_srs.len() as f64) as f32,
+        total_reviews,
+    })
+}
+
+/// 获取所有卡片的列表（可用于批量显示）
+#[tauri::command]
+pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutput>, String> {
+    let db = state.db.as_ref();
+    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+
+    Ok(all_srs.into_iter().map(|srs| SRSCardOutput {
+        id: srs.id,
+        question_id: srs.question_id,
+        stability: srs.stability,
+        difficulty: srs.difficulty,
+        next_review_at: srs.next_review_at,
+        last_review_at: srs.last_review_at,
+        review_count: srs.review_count,
+    }).collect())
+}
+
+/// SRS 统计数据输出
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SRSStatistics {
+    /// 总卡片数
+    pub total: i32,
+    /// 待复习数量
+    pub due_count: i32,
+    /// 新卡片数量（review_count=1）
+    pub new_cards: i32,
+    /// 平均稳定性（天）
+    pub avg_stability: f32,
+    /// 平均难度
+    pub avg_difficulty: f32,
+    /// 总复习次数
+    pub total_reviews: i64,
+}

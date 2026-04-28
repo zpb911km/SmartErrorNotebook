@@ -4,7 +4,6 @@ use crate::AppState;
 use sea_orm::ColumnTrait;
 use sea_orm::QueryFilter;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
-use serde::de::value::Error;
 use tauri::State;
 use uuid::Uuid;
 

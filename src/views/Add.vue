@@ -103,11 +103,6 @@
         <label>错因</label>
         <ErrorTagSelector :currentTags="form.error_tags" @select="(tags) => { form.error_tags = tags }" />
       </div>
-
-      <div class="form-group">
-        <label>SRS 预设</label>
-        <SRSPresetSelector :currentPresetId="currentPresetId" @select="handlePresetSelect" />
-      </div>
     </div>
 
     <div class="action-buttons">
@@ -124,7 +119,6 @@ import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import SourceSelector from '../components/SourceSelector.vue'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
-import SRSPresetSelector from '../components/SRSPresetSelector.vue'
 import { QuestionType } from '../types'
 import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
@@ -181,8 +175,7 @@ const form = ref({
   // error tag info
   error_tags: [] as Array<{ name: string; color: string }>,
   // SRS info
-  difficulty: 0,
-  mastery: 0
+  difficulty: 5,
 })
 
 onMounted(() => {
@@ -356,14 +349,6 @@ const handleSubjectSelect = (subjectId: string) => {
   form.value.source = ''
 }
 
-// 处理SRS预设选择
-const handlePresetSelect = (preset: any) => {
-  selectedPreset.value = preset
-  currentPresetId.value = preset.id
-  form.value.difficulty = preset.difficulty
-  form.value.mastery = preset.mastery
-}
-
 // 重置表单
 const resetForm = () => {
   form.value = {
@@ -379,8 +364,7 @@ const resetForm = () => {
     // error tag info
     error_tags: [],
     // SRS info
-    difficulty: 0,
-    mastery: 0
+    difficulty: 5,
   }
   imageUrls.value = []
   currentPresetId.value = ''
@@ -435,8 +419,7 @@ const saveError = async () => {
     // 3. 创建SRS数据
     await createSRSData(
       errorQuestion.id,
-      form.value.difficulty,
-      form.value.mastery
+      form.value.difficulty
     );
 
     // 4. 批量上传图片
@@ -714,30 +697,6 @@ const saveError = async () => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-
-.difficulty-selector {
-  display: flex;
-  gap: 8px;
-}
-
-.difficulty-btn {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.difficulty-btn.active {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
 }
 
 .ai-suggestion {

@@ -3,42 +3,6 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// SRS 模型参数常量
-pub mod config {
-    /// 目标可提取度 (Target Retrievability)
-    pub const TARGET_R: f32 = 0.85;
-
-    /// 稳定性学习率
-    pub const ETA_S: f32 = 0.3;
-
-    /// 难度学习率
-    pub const ETA_D: f32 = 0.05;
-
-    /// 单次稳定性最大放大倍数
-    pub const MAX_S_FACTOR: f32 = 5.0;
-
-    /// 单次稳定性最小缩小比例
-    pub const MIN_S_FACTOR: f32 = 0.5;
-
-    /// 初始稳定性 (天) - 错题默认较低
-    pub const INITIAL_STABILITY: f32 = 3.0;
-
-    /// 初始难度 (适中)
-    pub const INITIAL_DIFFICULTY: f32 = 5.0;
-
-    /// 难度下限
-    pub const MIN_DIFFICULTY: f32 = 1.0;
-
-    /// 难度上限
-    pub const MAX_DIFFICULTY: f32 = 10.0;
-
-    /// 最大复习间隔 (天) - 超过视为永久记忆
-    pub const MAX_INTERVAL_DAYS: i64 = 1000;
-
-    /// 反馈历史记录长度
-    pub const FEEDBACK_HISTORY_LEN: usize = 5;
-}
-
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "srs_data")]
 pub struct Model {

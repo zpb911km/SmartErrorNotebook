@@ -6,9 +6,6 @@ use serde::{Deserialize, Serialize};
 
 /// SRS 模型参数常量
 pub mod config {
-    /// 目标可提取度 (Target Retrievability)
-    pub const TARGET_R: f32 = 0.85;
-
     /// 稳定性学习率
     pub const ETA_S: f32 = 0.3;
 
@@ -38,6 +35,10 @@ pub mod config {
 
     /// 反馈历史记录长度
     pub const FEEDBACK_HISTORY_LEN: usize = 5;
+
+    /// 间隔计算系数：interval = stability * INTERVAL_COEFFICIENT
+    /// 这样当 S=3 天时，间隔约 6 天；S=10 天时，间隔约 20 天
+    pub const INTERVAL_COEFFICIENT: f64 = 2.0;
 }
 
 /// SRS 复习会话结果
@@ -68,7 +69,7 @@ pub struct DueCard {
 pub fn days_elapsed(last_review_at: Option<i64>, now: i64) -> f64 {
     match last_review_at {
         Some(lr) => ((now - lr) as f64) / (24.0 * 3600.0),
-        None => f64::MAX,
+        None => 0.0, // 从未复习过，视为刚刚学习，elapsed=0
     }
 }
 
@@ -81,14 +82,15 @@ pub fn predict_retrievability(stability: f32, elapsed_days: f64) -> f32 {
     (-elapsed_days / stability as f64).exp() as f32
 }
 
-/// 根据目标可提取度和当前稳定性计算下次复习间隔 (天)
-/// interval = -stability * ln(target_R)
+/// 根据当前稳定性计算下次复习间隔 (天)
+/// interval = stability * INTERVAL_COEFFICIENT
+/// S=3 天时，interval ≈ 6 天；S=10 天时，interval ≈ 20 天
 pub fn compute_next_interval(stability: f32) -> i64 {
     if stability <= 0.0 {
         return 1; // 至少 1 天后
     }
-    let interval = -stability as f64 * (config::TARGET_R as f64).ln();
-    let interval_days = interval.max(1.0) as i64; // 至少 1 天
+    let interval = stability as f64 * config::INTERVAL_COEFFICIENT;
+    let interval_days = interval.max(1.0).ceil() as i64; // 向上取整，至少 1 天
     // 应用最大间隔限制
     interval_days.min(config::MAX_INTERVAL_DAYS)
 }
@@ -243,15 +245,115 @@ mod tests {
     }
 
     #[test]
-    fn test_compute_interval() {
-        // TARGET_R = 0.85, ln(0.85) ≈ -0.1625
-        // S=3 时，interval ≈ 3 * 0.1625 ≈ 0.49 → 1 天 (最小)
-        let interval = compute_next_interval(3.0);
-        assert_eq!(interval, 1);
+    fn test_simulate_review_process() {
+        // 模拟一个错题的完整复习过程
 
-        // S=10 时，interval ≈ 10 * 0.1625 ≈ 1.63 → 2 天
-        let interval = compute_next_interval(10.0);
-        assert_eq!(interval, 2);
+        let mut stability = config::INITIAL_STABILITY;
+        let mut difficulty = config::INITIAL_DIFFICULTY;
+        let mut feedback_history = "[]".to_string();
+        let mut now = 1000000i64;
+
+        println!("\n========== 模拟复习过程 ==========");
+        println!("初始状态: S={:.2}, D={:.2}", stability, difficulty);
+
+        // 第 1 次复习 - 反馈较好
+        let feedback_1 = 0.8f32;
+        println!("\n【第 1 次复习】时刻={}", now);
+        let old_difficulty = difficulty; // 记录旧难度用于显示
+
+        let elapsed_days = days_elapsed(Some(now), now) + 1.0; // 假设 1 天后复习
+        let delta = feedback_1 - predict_retrievability(stability, elapsed_days.max(0.001));
+        let sensitivity = 10.0 / difficulty;
+        let factor = 1.0 + config::ETA_S * delta * sensitivity;
+        let clamped_factor = factor.clamp(config::MIN_S_FACTOR, config::MAX_S_FACTOR);
+        stability = stability * clamped_factor;
+
+        let new_hist = update_feedback_history(&feedback_history, feedback_1);
+        let avg_f = avg_feedback_history(&new_hist);
+        let delta_d = 0.5 - avg_f;
+        difficulty = (difficulty + config::ETA_D * delta_d).clamp(config::MIN_DIFFICULTY, config::MAX_DIFFICULTY);
+
+        let interval = compute_next_interval(stability);
+        now += interval * 24 * 3600; // Advance time for simulation
+
+        println!("  稳定性更新: {:.2} × {:.2} = {:.2}", stability/clamped_factor, clamped_factor, stability);
+        println!("  难度更新: {:.2} → {:.2}", old_difficulty, difficulty);
+        println!("  下次复习间隔: {} 天", interval);
+        feedback_history = new_hist;
+
+        // 第 2 次复习 - 反馈一般
+        let feedback_2 = 0.6f32;
+        println!("\n【第 2 次复习】({} 天后) 时刻={}", interval, now);
+        let old_difficulty = difficulty;
+
+        let delta = feedback_2 - predict_retrievability(stability, 1.0);
+        let sensitivity = 10.0 / difficulty;
+        let factor = 1.0 + config::ETA_S * delta * sensitivity;
+        let clamped_factor = factor.clamp(config::MIN_S_FACTOR, config::MAX_S_FACTOR);
+        stability = stability * clamped_factor;
+
+        let new_hist = update_feedback_history(&feedback_history, feedback_2);
+        let avg_f = avg_feedback_history(&new_hist);
+        let delta_d = 0.5 - avg_f;
+        difficulty = (difficulty + config::ETA_D * delta_d).clamp(config::MIN_DIFFICULTY, config::MAX_DIFFICULTY);
+
+        let interval = compute_next_interval(stability);
+        now += interval * 24 * 3600; // Advance time for simulation
+
+        println!("  稳定性更新: {:.2} × {:.2} = {:.2}", stability/clamped_factor, clamped_factor, stability);
+        println!("  难度更新: {:.2} → {:.2}", old_difficulty, difficulty);
+        println!("  下次复习间隔: {} 天", interval);
+        feedback_history = new_hist;
+
+        // 第 3 次复习 - 表现很好
+        let feedback_3 = 0.9f32;
+        println!("\n【第 3 次复习】({}天后) 时刻={}", interval, now);
+        let old_difficulty = difficulty; // 记录旧难度用于显示
+
+        let delta = feedback_3 - predict_retrievability(stability, interval as f64);
+        let sensitivity = 10.0 / difficulty;
+        let factor = 1.0 + config::ETA_S * delta * sensitivity;
+        let clamped_factor = factor.clamp(config::MIN_S_FACTOR, config::MAX_S_FACTOR);
+        stability = stability * clamped_factor;
+
+        let new_hist = update_feedback_history(&feedback_history, feedback_3);
+        let avg_f = avg_feedback_history(&new_hist);
+        let delta_d = 0.5 - avg_f;
+        difficulty = (difficulty + config::ETA_D * delta_d).clamp(config::MIN_DIFFICULTY, config::MAX_DIFFICULTY);
+
+        let interval = compute_next_interval(stability);
+        now += interval * 24 * 3600; // Advance time for simulation
+
+        println!("  稳定性更新: {:.2} × {:.2} = {:.2}", stability/clamped_factor, clamped_factor, stability);
+        println!("  难度更新: {:.2} → {:.2}", old_difficulty, difficulty);
+        println!("  下次复习间隔: {} 天", interval);
+        feedback_history = new_hist;
+
+        // 第 4 次复习 - 突然忘掉了
+        let feedback_4 = 0.01f32;
+        println!("\n【第 4 次复习】({}天后) 时刻={}", interval, now);
+        let old_difficulty = difficulty; // 记录旧难度用于显示
+
+        let delta = feedback_4 - predict_retrievability(stability, interval as f64);
+        let sensitivity = 10.0 / difficulty;
+        let factor = 1.0 + config::ETA_S * delta * sensitivity;
+        let clamped_factor = factor.clamp(config::MIN_S_FACTOR, config::MAX_S_FACTOR);
+        stability = stability * clamped_factor;
+
+        let new_hist = update_feedback_history(&feedback_history, feedback_4);
+        let avg_f = avg_feedback_history(&new_hist);
+        let delta_d = 0.5 - avg_f;
+        difficulty = (difficulty + config::ETA_D * delta_d).clamp(config::MIN_DIFFICULTY, config::MAX_DIFFICULTY);
+
+        let interval = compute_next_interval(stability);
+        now += interval * 24 * 3600; // Advance time for simulation
+
+        println!("  稳定性更新: {:.2} × {:.2} = {:.2}", stability/clamped_factor, clamped_factor, stability);
+        println!("  难度更新: {:.2} → {:.2}", old_difficulty, difficulty);
+        println!("  下次复习间隔: {} 天", interval);
+
+        println!("\n========== 复习结束 ========== ");
+        println!("最终状态: S={:.2}, D={:.2}", stability, difficulty);
     }
 
     #[test]

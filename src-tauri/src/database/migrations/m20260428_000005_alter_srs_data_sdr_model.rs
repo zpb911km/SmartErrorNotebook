@@ -64,15 +64,6 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 enum SrsData {
     Table,
-    Id,
-    QuestionId,
-    Difficulty,
-    ReviewCount,
-    CreatedAt,
-    UpdatedAt,
-    Version,
-    SyncStatus,
-    SyncHash,
     Stability,
     NextReviewAt,
     FeedbackHistory,
