@@ -106,7 +106,6 @@ const fillComplexSample = () => {
 ---
 
 ## 3. 代码块
-
 \`\`\`ts
 type ErrorRecord = {
   id: string

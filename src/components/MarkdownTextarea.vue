@@ -19,6 +19,8 @@
 import { computed, ref } from 'vue'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
 marked.use(
@@ -27,6 +29,18 @@ marked.use(
     output: 'html'
   })
 )
+
+const renderer = new marked.Renderer()
+renderer.code = ({ text, lang }) => {
+  const language = lang ?? ''
+  const highlighted = language && hljs.getLanguage(language)
+    ? hljs.highlight(text, { language }).value
+    : hljs.highlightAuto(text).value
+  const langClass = language ? `language-${language}` : ''
+  return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
+}
+
+marked.use({ renderer })
 
 defineOptions({
   inheritAttrs: false
@@ -139,22 +153,21 @@ defineExpose({
 }
 
 .markdown-body :deep(code) {
-  background: var(--input-bg);
+  background: rgba(25, 118, 210, 0.12);
   padding: 2px 6px;
-  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
 .markdown-body :deep(pre) {
-  background: var(--input-bg);
+  background: #0f172a;
   padding: 10px;
-  border-radius: 8px;
   overflow-x: auto;
 }
 
 .markdown-body :deep(pre code) {
   background: transparent;
   padding: 0;
+  color: #e2e8f0;
 }
 
 .markdown-body :deep(ul),
