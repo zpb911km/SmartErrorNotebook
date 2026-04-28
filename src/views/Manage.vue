@@ -6,7 +6,7 @@
         <input 
           type="text" 
           v-model="filters.keyword" 
-          placeholder="搜索错题..."
+          placeholder="搜索错题、科目、书名、知识点、标签..."
           @focus="onSearchFocus"
           @click="onSearchFocus"
         >
@@ -23,7 +23,6 @@
         <div 
           class="custom-select"
           @click="toggleSubjectDropdown"
-          @mouseenter="showSubjectList"
         >
           <div class="custom-select-value">
             {{ selectedSubjectName || '全部科目' }}
@@ -51,7 +50,6 @@
                 :key="subject.id"
                 class="cascade-item"
                 :class="{ active: filters.subject_id === subject.id }"
-                @mouseenter="!hasClicked && showCascadeMenuForSubject(subject.id)"
                 @click="handleSubjectClick(subject.id)"
               >
                 {{ subject.name }}
@@ -69,7 +67,6 @@
                 :key="book"
                 class="cascade-item"
                 :class="{ active: filters.book === book }"
-                @mouseenter="!hasBookClicked && showChapters(book)"
                 @click="handleBookClick(book)"
               >
                 {{ book || '未分类' }}
@@ -87,7 +84,6 @@
                 :key="chapter"
                 class="cascade-item"
                 :class="{ active: filters.chapter === chapter }"
-                @mouseenter="!hasChapterClicked && showKnowledges(chapter)"
                 @click="handleChapterClick(chapter)"
               >
                 {{ chapter || '未分类' }}
@@ -297,7 +293,7 @@
           @click="toggleTagDropdown"
         >
           <div class="custom-select-value">
-            {{ filters.tag || '全部标签' }}
+            {{ selectedTagsText || '全部标签' }}
           </div>
           <span class="custom-select-arrow" :class="{ 'rotated': tagDropdownVisible }">▼</span>
         </div>
@@ -305,8 +301,8 @@
         <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
           <div 
             class="dropdown-item"
-            :class="{ active: filters.tag === '' }"
-            @click="selectTag('')"
+            :class="{ active: filters.tags.length === 0 }"
+            @click="clearTags"
           >
             全部标签
           </div>
@@ -314,9 +310,10 @@
             v-for="tag in availableTags" 
             :key="tag"
             class="dropdown-item"
-            :class="{ active: filters.tag === tag }"
-            @click="selectTag(tag)"
+            :class="{ active: filters.tags.includes(tag) }"
+            @click="toggleTag(tag)"
           >
+            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
             {{ tag }}
           </div>
         </div>
@@ -382,7 +379,7 @@ const filters = ref({
   difficulty: '',       // 'easy' | 'medium' | 'hard'
   mastery: '',          // 'unmastered' | 'partial' | 'mastered'
   date_range: 'all',    // '7days' | '30days' | '90days' | 'all'
-  tag: ''               // 标签名称
+  tags: [] as string[]  // 标签名称数组（多选）
 })
 
 // 搜索框闪烁状态
@@ -559,9 +556,35 @@ const selectDateRange = (dateRange: string) => {
   dateRangeDropdownVisible.value = false
 }
 
-// 选择标签
+// 计算选中的标签文本
+const selectedTagsText = computed(() => {
+  if (filters.value.tags.length === 0) return ''
+  if (filters.value.tags.length === 1) return filters.value.tags[0]
+  return `${filters.value.tags[0]} +${filters.value.tags.length - 1}`
+})
+
+// 切换标签选择
+const toggleTag = (tag: string) => {
+  const index = filters.value.tags.indexOf(tag)
+  if (index > -1) {
+    filters.value.tags.splice(index, 1)
+  } else {
+    filters.value.tags.push(tag)
+  }
+}
+
+// 清空所有标签选择
+const clearTags = () => {
+  filters.value.tags = []
+}
+
+// 选择标签（保留向后兼容）
 const selectTag = (tag: string) => {
-  filters.value.tag = tag
+  if (tag === '') {
+    filters.value.tags = []
+  } else {
+    filters.value.tags = [tag]
+  }
   tagDropdownVisible.value = false
 }
 
@@ -571,6 +594,7 @@ const showSubjectList = async () => {
   closeAllOtherFilters('subject')
   
   subjectDropdownVisible.value = true
+  cascadeVisible.value = true
   // 加载所有科目的书名（如果没有选中具体科目）
   if (!filters.value.subject_id) {
     books.value = []
@@ -647,6 +671,8 @@ const selectSubject = (subjectId: string) => {
 // 处理科目点击 - 设置点击状态并选择科目
 const handleSubjectClick = (subjectId: string) => {
   hasClicked.value = true
+  hasBookClicked.value = false
+  hasChapterClicked.value = false
   selectSubject(subjectId)
 }
 
@@ -674,10 +700,39 @@ const handleBookClick = async (book: string) => {
   selectBook(book)
 }
 
-// 处理章节点击 - 设置点击状态并选择章节
-const handleChapterClick = (chapter: string) => {
+// 处理章节点击 - 设置点击状态并显示知识点
+const handleChapterClick = async (chapter: string) => {
+  console.log('=== 点击章节 ===')
+  console.log('章节名称:', chapter)
+  console.log('当前科目ID:', filters.value.subject_id)
+  console.log('当前书名:', currentBook.value)
+  
   hasChapterClicked.value = true
-  selectChapter(chapter)
+  
+  // 更新当前章节
+  currentChapter.value = chapter
+  filters.value.chapter = chapter
+  filters.value.knowledge = ''
+  
+  // 加载该章节的知识点
+  if (filters.value.subject_id && currentBook.value && chapter) {
+    try {
+      console.log('开始获取知识点...')
+      knowledges.value = await getKnowledges(currentBook.value, chapter, filters.value.subject_id)
+      console.log('加载知识点成功:', knowledges.value)
+      console.log('知识点数量:', knowledges.value.length)
+    } catch (error) {
+      console.error('获取知识点失败:', error)
+      knowledges.value = []
+    }
+  } else {
+    console.log('缺少必要参数，无法获取知识点')
+    knowledges.value = []
+  }
+  
+  // 重新加载数据以应用章节筛选
+  console.log('重新加载数据...')
+  fetchData()
 }
 
 // 为指定科目显示级联菜单
@@ -1031,8 +1086,11 @@ const activeFilters = computed(() => {
   }
   
   // 标签
-  if (filters.value.tag) {
-    filters_list.push({ key: 'tag', label: filters.value.tag })
+  if (filters.value.tags.length > 0) {
+    const label = filters.value.tags.length === 1 
+      ? filters.value.tags[0] 
+      : `${filters.value.tags[0]} +${filters.value.tags.length - 1}`
+    filters_list.push({ key: 'tags', label })
   }
   
   // 书名
@@ -1074,8 +1132,8 @@ const removeFilter = (key: string) => {
     case 'date_range':
       filters.value.date_range = 'all'
       break
-    case 'tag':
-      filters.value.tag = ''
+    case 'tags':
+      filters.value.tags = []
       break
     case 'book':
       filters.value.book = ''
@@ -1102,7 +1160,7 @@ const clearAllFilters = () => {
   filters.value.difficulty = ''
   filters.value.mastery = ''
   filters.value.date_range = 'all'
-  filters.value.tag = ''
+  filters.value.tags = []
   filters.value.keyword = ''
 }
 
@@ -1227,18 +1285,51 @@ const filteredErrors = computed(() => {
         if (error.timestamp < threshold) return false
       }
       // 标签筛选
-      if (filters.value.tag) {
+      if (filters.value.tags.length > 0) {
         // 从映射中获取该错题的标签
         const questionTags = questionTagsMap.value.get(error.id) || []
-        const hasTag = questionTags.includes(filters.value.tag)
-        if (!hasTag) return false
+        // 只要包含任意一个选中的标签即可
+        const hasAnyTag = filters.value.tags.some(tag => questionTags.includes(tag))
+        if (!hasAnyTag) return false
       }
-      // 关键词搜索
+      // 关键词搜索 - 多维匹配
       if (filters.value.keyword) {
-        const keyword = filters.value.keyword.toLowerCase()
-        const content = error.content.toLowerCase()
-        if (!content.includes(keyword)) {
-          return false
+        const keyword = filters.value.keyword.toLowerCase().trim()
+        if (keyword) {
+          console.log('=== 搜索关键词 ===', keyword)
+          
+          // 匹配错题内容
+          const contentMatch = error.content.toLowerCase().includes(keyword)
+          console.log('内容匹配:', contentMatch)
+          
+          // 匹配科目名称
+          const subjectMatch = error.subjectName.toLowerCase().includes(keyword)
+          console.log('科目匹配:', subjectMatch, error.subjectName)
+          
+          // 匹配书名
+          const bookMatch = error.book?.toLowerCase().includes(keyword) || false
+          console.log('书名匹配:', bookMatch, error.book)
+          
+          // 匹配章节
+          const chapterMatch = error.chapter?.toLowerCase().includes(keyword) || false
+          console.log('章节匹配:', chapterMatch, error.chapter)
+          
+          // 匹配知识点
+          const knowledgeMatch = error.knowledge?.toLowerCase().includes(keyword) || false
+          console.log('知识点匹配:', knowledgeMatch, error.knowledge)
+          
+          // 匹配标签
+          const tags = error.tags || []
+          const tagMatch = tags.some(tag => tag.toLowerCase().includes(keyword))
+          console.log('标签匹配:', tagMatch, tags)
+          
+          // 只要任意一个维度匹配即可
+          const isMatch = contentMatch || subjectMatch || bookMatch || chapterMatch || knowledgeMatch || tagMatch
+          console.log('最终匹配结果:', isMatch)
+          
+          if (!isMatch) {
+            return false
+          }
         }
       }
       return true
@@ -1369,6 +1460,7 @@ const viewError = (error: any) => {
   position: relative;
   flex: 1;
   min-width: 100px;
+  z-index: 1;
 }
 
 /* 向下展开的级联弹窗 */
@@ -1383,9 +1475,8 @@ const viewError = (error: any) => {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   display: flex;
   gap: 0;
-  z-index: 1000;
-  min-width: 600px;
-  max-width: 800px;
+  z-index: 1001;
+  width: fit-content;
   max-height: 500px;
   animation: cascadeSlideDown 0.2s ease-out;
   overflow: hidden;
@@ -1475,7 +1566,7 @@ const viewError = (error: any) => {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: 1001;
   max-height: 300px;
   overflow-y: auto;
   animation: dropdownFadeIn 0.2s ease-out;
@@ -1484,6 +1575,16 @@ const viewError = (error: any) => {
 /* 标签下拉框特殊样式 */
 .tag-dropdown {
   max-height: 250px;
+}
+
+/* 复选框样式 */
+.checkbox {
+  display: inline-block;
+  width: 16px;
+  margin-right: 8px;
+  color: var(--primary-color);
+  font-weight: bold;
+  text-align: center;
 }
 
 @keyframes dropdownFadeIn {
@@ -1526,13 +1627,13 @@ const viewError = (error: any) => {
 
 /* 级联列 */
 .cascade-column {
-  flex: 1;
-  min-width: 150px;
-  max-width: 200px;
+  flex: 0 0 160px;
+  width: 160px;
   border-right: 1px solid var(--border-color);
   padding: 8px 0;
   max-height: 500px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .cascade-column:first-child {
