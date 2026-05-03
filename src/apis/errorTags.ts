@@ -29,5 +29,16 @@ export async function createErrorTagsForQuestion(
   });
 }
 
+/**
+ * 获取所有唯一的错因标签名称列表
+ * @returns 不重复的标签名称数组
+ */
+export async function getAllUniqueTags(): Promise<string[]> {
+  const allTags = await invoke('get_error_tags');
+  const tagNames = (allTags as ErrorTags[]).map(tag => tag.name);
+  // 去重
+  return [...new Set(tagNames)];
+}
+
 // 注意：以下接口后端暂未实现
 // - deleteErrorTag
