@@ -72,6 +72,51 @@
       <div class="content-section">
         <div class="section-title">题目内容</div>
         
+        <!-- 题目图片展示 -->
+        <div v-if="(isEditing ? tempQuestionImages.length : questionImages.length) > 0" class="images-gallery">
+          <div class="gallery-title">题目图片（点击预览）</div>
+          <div class="image-grid">
+            <div 
+              v-for="(image, index) in (isEditing ? tempQuestionImages : questionImages)" 
+              :key="image.id || `temp-${index}`" 
+              class="image-item"
+            >
+              <img 
+                :src="buildImageSrc(image)" 
+                :alt="'题目图片'" 
+                class="question-image"
+                @click="previewImage(image)"
+              >
+              <button 
+                v-if="isEditing"
+                class="delete-image-btn"
+                @click.stop="deleteTempImage(image)"
+                title="删除图片"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 添加图片按钮（仅编辑模式） -->
+        <div v-if="isEditing" class="upload-section">
+          <button 
+            class="btn-add-images"
+            @click="triggerImageUpload"
+          >
+            📷 添加图片
+          </button>
+          <input 
+            ref="imageInput" 
+            type="file" 
+            accept="image/*" 
+            multiple
+            style="display: none;"
+            @change="handleImageSelect"
+          />
+        </div>
+        
         <div class="form-group">
           <label>题干</label>
           <textarea 
@@ -240,7 +285,8 @@ import {
 import { getSubjects } from '../apis/subjects'
 import { getSource } from '../apis/sources'
 import { getErrorTags } from '../apis/errorTags'
-import type { ErrorQuestion, Subject, Source, ErrorTags as ErrorTagType } from '../types'
+import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment } from '../apis/attachments'
+import type { ErrorQuestion, Subject, Source, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
 
 const router = useRouter()
@@ -255,6 +301,17 @@ const subjects = ref<Subject[]>([])
 const sourceInfo = ref<Source | null>(null)
 const errorTags = ref<ErrorTagType[]>([])
 const srsData = ref<any>(null)
+const questionImages = ref<Attachment[]>([])
+const answerImages = ref<Attachment[]>([])
+
+// 图片上传相关
+const imageInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+
+// 临时图片列表（用于编辑时的暂存）
+const tempQuestionImages = ref<Attachment[]>([])
+const imagesToDelete = ref<string[]>([]) // 待删除的图片ID列表
+const imagesToAdd = ref<File[]>([]) // 待添加的文件列表
 
 // 编辑状态
 const isEditing = ref(false)
@@ -319,6 +376,29 @@ const fetchErrorDetail = async () => {
       console.error('获取标签失败:', error)
     }
     
+    // 获取题目图片
+    try {
+      console.log('开始获取题目附件...')
+      console.log('错题ID:', errorId.value)
+      
+      if (!errorId.value) {
+        console.error('错题ID为空，无法获取附件')
+        return
+      }
+      
+      const attachments = await getAttachmentsByQuestion(errorId.value)
+      console.log('获取到的附件:', attachments)
+      
+      // 分类图片和答案图片（注意：后端字段名是 type_ 不是 type）
+      questionImages.value = attachments.filter((att: any) => att.type_ === 'original')
+      answerImages.value = attachments.filter((att: any) => att.type_ === 'answer')
+      
+      console.log('题目图片数量:', questionImages.value.length)
+      console.log('答案图片数量:', answerImages.value.length)
+    } catch (error) {
+      console.error('获取题目图片失败:', error)
+    }
+    
   } catch (error) {
     console.error('获取错题详情失败:', error)
   }
@@ -348,6 +428,15 @@ const toggleEditMode = () => {
         error_note: errorDetail.value.error_note || ''
       }
     }
+    // 清空临时图片数据
+    tempQuestionImages.value = []
+    imagesToDelete.value = []
+    imagesToAdd.value = []
+  } else {
+    // 进入编辑模式，初始化临时列表
+    tempQuestionImages.value = [...questionImages.value]
+    imagesToDelete.value = []
+    imagesToAdd.value = []
   }
   isEditing.value = !isEditing.value
 }
@@ -358,14 +447,60 @@ const saveChanges = async () => {
   
   saving.value = true
   try {
+    // 1. 更新题目基本信息
     await updateQuestion({
       id: errorId.value,
       ...editForm.value
     })
+    console.log('题目基本信息保存成功')
     
-    // 重新获取详情
+    // 2. 处理图片删除
+    if (imagesToDelete.value.length > 0) {
+      console.log('开始删除', imagesToDelete.value.length, '张图片')
+      for (const imageId of imagesToDelete.value) {
+        await deleteAttachment(imageId)
+        console.log('已删除图片:', imageId)
+      }
+    }
+    
+    // 3. 处理图片添加
+    if (imagesToAdd.value.length > 0) {
+      console.log('开始上传', imagesToAdd.value.length, '张新图片')
+      const attachments = []
+      
+      for (const file of imagesToAdd.value) {
+        console.log('转换文件:', file.name)
+        const base64Data = await fileToBase64(file)
+        
+        let fileType = 'png'
+        if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+          fileType = 'jpeg'
+        } else if (file.type === 'image/webp') {
+          fileType = 'webp'
+        } else if (file.type === 'image/gif') {
+          fileType = 'gif'
+        }
+        
+        attachments.push({
+          question_id: errorId.value,
+          type_: 'original',
+          file_type: fileType,
+          base64_data: base64Data
+        })
+      }
+      
+      await createAttachmentsForQuestion(errorId.value, attachments)
+      console.log('新图片上传成功')
+    }
+    
+    // 4. 重新获取详情（包括最新的图片）
     await fetchErrorDetail()
     isEditing.value = false
+    
+    // 清空临时数据
+    tempQuestionImages.value = []
+    imagesToDelete.value = []
+    imagesToAdd.value = []
     
     // 显示成功提示
     alert('保存成功！')
@@ -426,6 +561,164 @@ const handleSourceSelect = (sourceId: string) => {
   } else {
     sourceInfo.value = null
   }
+}
+
+// 构建图片src
+const buildImageSrc = (attachment: any) => {
+  console.log('构建图片URL:', attachment)
+  try {
+    // 如果是临时图片（包含原始文件引用）
+    if (attachment._file) {
+      return URL.createObjectURL(attachment._file)
+    }
+    
+    // 根据文件类型确定MIME类型
+    let mimeType = 'image/png'
+    if (attachment.file_type === 'jpeg' || attachment.file_type === 'jpg') {
+      mimeType = 'image/jpeg'
+    } else if (attachment.file_type === 'webp') {
+      mimeType = 'image/webp'
+    } else if (attachment.file_type === 'gif') {
+      mimeType = 'image/gif'
+    }
+    
+    // 使用 base64ToBlobUrl 或构建 data URL
+    return buildDataUrl(attachment.base64_data, mimeType)
+  } catch (error) {
+    console.error('构建图片URL失败:', error)
+    return ''
+  }
+}
+
+// 预览图片
+const previewImage = (attachment: any) => {
+  console.log('预览图片:', attachment)
+  const imageUrl = buildImageSrc(attachment)
+  
+  if (!imageUrl) {
+    console.error('图片URL为空，无法预览')
+    alert('图片加载失败')
+    return
+  }
+  
+  console.log('预览图片URL:', imageUrl.substring(0, 50) + '...')
+  
+  try {
+    // 在新窗口打开图片
+    const newWindow = window.open('', '_blank', 'width=1200,height=800')
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>图片预览</title>
+          <style>
+            body {
+              margin: 0;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              background: #1a1a1a;
+              overflow: auto;
+            }
+            img {
+              max-width: 95%;
+              max-height: 95vh;
+              object-fit: contain;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            }
+          </style>
+        </head>
+        <body>
+          <img src="${imageUrl}" alt="图片预览">
+        </body>
+        </html>
+      `)
+      newWindow.document.close()
+      console.log('预览窗口已打开')
+    } else {
+      console.error('无法打开预览窗口，可能被浏览器拦截')
+      alert('无法打开预览窗口，请检查浏览器弹窗设置')
+    }
+  } catch (error) {
+    console.error('预览图片失败:', error)
+    alert('预览图片失败: ' + error)
+  }
+}
+
+// 触发图片选择
+const triggerImageUpload = () => {
+  console.log('触发图片选择')
+  if (imageInput.value) {
+    imageInput.value.click()
+  }
+}
+
+// 处理图片选择 - 只添加到临时列表
+const handleImageSelect = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  
+  if (!files || files.length === 0) {
+    console.log('未选择文件')
+    return
+  }
+  
+  console.log('选择了', files.length, '个文件')
+  
+  try {
+    // 将文件添加到待添加列表
+    for (let i = 0; i < files.length; i++) {
+      imagesToAdd.value.push(files[i])
+      console.log(`添加文件到临时列表:`, files[i].name)
+    }
+    
+    // 创建临时的 Attachment 对象用于显示
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const tempAttachment: any = {
+        id: `temp-${Date.now()}-${i}`,
+        question_id: errorId.value,
+        type_: 'original',
+        file_type: file.type.split('/')[1] || 'png',
+        base64_data: '', // 稍后在保存时转换
+        name: file.name,
+        _file: file // 保存原始文件引用
+      }
+      tempQuestionImages.value.push(tempAttachment)
+    }
+    
+    console.log('临时图片列表:', tempQuestionImages.value.length, '个')
+    alert(`已添加 ${files.length} 张图片，请点击“保存修改”生效`)
+  } catch (error) {
+    console.error('处理图片失败:', error)
+    alert('处理图片失败，请重试')
+  } finally {
+    // 清空 input，允许重复选择同一文件
+    if (target) {
+      target.value = ''
+    }
+  }
+}
+
+// 删除临时图片
+const deleteTempImage = (image: any) => {
+  if (!confirm('确定要删除这张图片吗？')) {
+    return
+  }
+  
+  console.log('删除临时图片:', image.id)
+  
+  // 如果是已有图片（有真实ID），加入待删除列表
+  if (image.id && !image.id.startsWith('temp-')) {
+    imagesToDelete.value.push(image.id)
+    console.log('标记为待删除:', image.id)
+  }
+  
+  // 从临时列表中移除
+  tempQuestionImages.value = tempQuestionImages.value.filter(img => img.id !== image.id)
+  console.log('删除成功，剩余图片:', tempQuestionImages.value.length, '个')
 }
 
 onMounted(() => {
@@ -579,6 +872,130 @@ onMounted(() => {
 .form-textarea {
   resize: vertical;
   line-height: 1.6;
+}
+
+/* 图片展示区域 */
+.images-gallery {
+  margin-bottom: 20px;
+}
+
+.gallery-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.upload-section {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.btn-add-images {
+  width: 100%;
+  padding: 12px 20px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-add-images:hover {
+  background: #1565c0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.image-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  background: var(--bg-secondary);
+  aspect-ratio: 3/2;
+  border: 2px solid transparent;
+}
+
+.image-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  border-color: var(--primary-color);
+}
+
+/* 删除图片按钮 */
+.delete-image-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(244, 67, 54, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 10;
+  padding: 0;
+}
+
+.image-item:hover .delete-image-btn {
+  opacity: 1;
+}
+
+.delete-image-btn:hover {
+  background: rgba(244, 67, 54, 1);
+  transform: scale(1.1);
+}
+
+.question-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: white;
+}
+
+.image-item::after {
+  content: ' 点击预览';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.image-item:hover::after {
+  opacity: 1;
 }
 
 /* 来源信息 */
