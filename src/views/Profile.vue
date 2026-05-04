@@ -35,7 +35,7 @@
 
       <div class="chart-section">
         <h3>科目分布</h3>
-        <div class="chart-placeholder">
+        <div class="chart-placeholder" v-if="subjectDistribution.length > 0">
           <div class="pie-chart">
             <div v-for="(item, index) in subjectDistribution" :key="index" class="pie-segment" :style="getPieStyle(item, index)">
               <span class="pie-label">{{ (item as any).subjectName }}</span>
@@ -48,6 +48,12 @@
               <span class="legend-value">{{ (item as any).count }}题</span>
             </div>
           </div>
+        </div>
+        <div v-else class="empty-state">
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="empty-icon" stroke="currentColor" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter">
+            <path d="M24 5v6m7 1 4-4m-18 4-4-4m28.5 22H28s-1 3-4 3-4-3-4-3H6.5M40 41H8a2 2 0 0 1-2-2v-8.46a2 2 0 0 1 .272-1.007l6.15-10.54A2 2 0 0 1 14.148 18H33.85a2 2 0 0 1 1.728.992l6.149 10.541A2 2 0 0 1 42 30.541V39a2 2 0 0 1-2 2Z"></path>
+          </svg>
+          <div class="empty-description">暂无数据</div>
         </div>
       </div>
 
@@ -222,6 +228,28 @@ const getBarHeight = (count: number) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+  margin: 20px 0;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.empty-description {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .pie-chart {
