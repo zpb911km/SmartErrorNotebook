@@ -25,7 +25,7 @@
             <button class="upload-btn">选择文件</button>
             <input type="file" accept="image/*" @change="handleFileSelect" class="file-input" ref="fileInputRef">
           </div>
-          <button class="upload-btn" @click="openCamera" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
+          <button class="upload-btn" @click="handlePhotoClick" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
         </div>
       </div>
       <div class="image-preview-list" v-if="imageUrls.length > 0">
@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
@@ -124,7 +124,6 @@ import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
 import { showInfo, showError, showDebug } from '../utils/notification'
-import { getOrCreateSourceId } from '../apis/sources'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
@@ -169,17 +168,6 @@ const form = ref({
   mastery: 0
 })
 
-onMounted(() => {
-  // 获取相机权限
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(() => {
-      cameraDisabled.value = false
-    })
-    .catch(() => {
-      disableCamera()
-    });
-})
-
 // 处理文件选择
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -197,9 +185,19 @@ const removeImage = (index: number) => {
   imageUrls.value.splice(index, 1)
 }
 
-// 打开相机
-const openCamera = () => {
-  showCamera.value = true
+// 点击拍照按钮时打开相机
+const handlePhotoClick = async () => {
+  if (cameraDisabled.value) {
+    return
+  }
+
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true })
+    cameraDisabled.value = false
+    showCamera.value = true
+  } catch {
+    disableCamera()
+  }
 }
 
 // 相机关闭
@@ -207,10 +205,25 @@ const handleCameraClose = () => {
   showCamera.value = false
 }
 
+watch(showCamera, async (visible) => {
+  if (visible && cameraDisabled.value) {
+    await ensureCameraAvailable()
+  }
+})
+
 // 禁用相机
 const disableCamera = () => {
   showCamera.value = false
   cameraDisabled.value = true
+}
+
+const ensureCameraAvailable = async () => {
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true })
+    cameraDisabled.value = false
+  } catch {
+    disableCamera()
+  }
 }
 
 // 相机拍照
