@@ -192,7 +192,8 @@ const handlePhotoClick = async () => {
   }
 
   try {
-    await navigator.mediaDevices.getUserMedia({ video: true })
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+    stream.getTracks().forEach(track => track.stop())
     cameraDisabled.value = false
     showCamera.value = true
   } catch {
@@ -202,7 +203,7 @@ const handlePhotoClick = async () => {
 
 // 相机关闭
 const handleCameraClose = () => {
-  showCamera.value = false
+  closeCameraImmediately()
 }
 
 watch(showCamera, async (visible) => {
@@ -213,8 +214,12 @@ watch(showCamera, async (visible) => {
 
 // 禁用相机
 const disableCamera = () => {
-  showCamera.value = false
+  closeCameraImmediately()
   cameraDisabled.value = true
+}
+
+const closeCameraImmediately = () => {
+  showCamera.value = false
 }
 
 const ensureCameraAvailable = async () => {
@@ -228,7 +233,7 @@ const ensureCameraAvailable = async () => {
 
 // 相机拍照
 const handleCameraCapture = (imageData: string) => {
-  showCamera.value = false
+  closeCameraImmediately()
   openEdit(imageData, -1, true) // -1 表示添加新图片，true 表示自动识别
 }
 
