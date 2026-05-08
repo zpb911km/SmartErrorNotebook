@@ -68,5 +68,16 @@ pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag:
         .all(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
-    Ok(tags)
+    
+    // 按名称去重，只保留每个名称的第一个标签
+    let unique_tags: Vec<error_tag::Model> = tags
+        .into_iter()
+        .fold(std::collections::HashMap::new(), |mut acc, tag| {
+            acc.entry(tag.name.clone()).or_insert(tag);
+            acc
+        })
+        .into_values()
+        .collect();
+    
+    Ok(unique_tags)
 }

@@ -6,19 +6,24 @@
 
 // ==================== 类型定义 ====================
 
-/**
- * 消息角色类型
- */
 export type MessageRole = "system" | "user" | "assistant";
 
-/**
- * 聊天消息
- */
+export interface TextContent {
+  type: "text";
+  text: string;
+}
+
+export interface ImageContent {
+  type: "image_url";
+  image_url: {
+    url: string;  // 可以是 base64 或公开 URL
+    detail?: "low" | "high" | "auto";  // 可选，默认 auto
+  };
+}
+
 export interface ChatMessage {
-  /** 消息角色 */
   role: MessageRole;
-  /** 消息内容 */
-  content: string;
+  content: string | Array<TextContent | ImageContent>;
 }
 
 /**
@@ -197,6 +202,12 @@ export class LLMService {
     };
 
     try {
+      // 调试日志：打印请求体
+      console.log("=== LLM 请求 ===");
+      console.log("API URL:", apiUrl);
+      console.log("Request Body:", JSON.stringify(requestBody, null, 2));
+      console.log("===============");
+
       // 发送请求
       const response = await fetch(apiUrl, {
         method: "POST",

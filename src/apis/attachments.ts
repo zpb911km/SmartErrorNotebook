@@ -42,7 +42,7 @@ export async function createAttachmentsForQuestion(
 export async function getAttachmentsByQuestion(
   questionId: string
 ): Promise<Attachment[]> {
-  return await invoke('get_attachments_by_question', { question_id: questionId });
+  return await invoke('get_attachments_by_question', { questionId });
 }
 
 /**
