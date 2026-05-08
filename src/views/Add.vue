@@ -16,8 +16,7 @@
             <button class="upload-btn">选择文件</button>
             <input type="file" accept="image/*" @change="handleFileSelect" class="file-input" ref="fileInputRef">
           </div>
-          <button class="upload-btn" @click="openCamera" :disabled="cameraDisabled"
-            :hidden="cameraDisabled">📷拍照</button>
+          <button class="upload-btn" @click="handlePhotoClick" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
         </div>
       </div>
       <div class="image-preview-list" v-if="imageUrls.length > 0">
@@ -118,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, watch } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
@@ -130,9 +129,7 @@ import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
-import { showInfo, showError, showDebug, showSuccess } from '../utils/notification'
-import { inquiryAIAddInfo } from '../utils/inquiry'
-import { getSubjects } from '../apis'
+import { showInfo, showError, showDebug } from '../utils/notification'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
@@ -185,100 +182,6 @@ const form = ref({
   mastery: 0
 })
 
-onMounted(() => {
-  // 获取相机权限
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(() => {
-      cameraDisabled.value = false
-    })
-    .catch(() => {
-      disableCamera()
-    });
-})
-
-// 查询AI建议
-const inquiryAI = async () => {
-  // 重置所有加载状态
-  subjectLoading.value = true
-  promptLoading.value = true
-  typeLoading.value = true
-  answerLoading.value = true
-  analysisLoading.value = true
-  aiButtonLoading.value = true
-
-  // 创建所有查询的Promise
-  const subjectPromise = inquiryAIAddInfo(imageUrls.value, ['subject'])
-    .then(result => {
-      const subjectName = result[0]?.parsedContent?.subject || ''
-      if (subjectName) {
-        return getSubjects().then(subjects => {
-          const subj = subjects.find(i => i.name === subjectName)
-          if (subj) {
-            form.value.subject = subj.id
-          }
-          return subjectName
-        }).catch(error => {
-          console.error('获取科目列表失败:', error)
-          return ''
-        })
-      }
-      return ''
-    })
-    .finally(() => {
-      subjectLoading.value = false
-    })
-
-  const promptPromise = inquiryAIAddInfo(imageUrls.value, ['question_text'])
-    .then(result => {
-      form.value.prompt = result[0]?.parsedContent?.markdown || ''
-    })
-    .finally(() => {
-      promptLoading.value = false
-    })
-
-  const typePromise = inquiryAIAddInfo(imageUrls.value, ['question_type'])
-    .then(result => {
-      form.value.type = result[0]?.parsedContent?.questionType || ''
-    })
-    .finally(() => {
-      typeLoading.value = false
-    })
-
-  const answerPromise = inquiryAIAddInfo(imageUrls.value, ['answer'])
-    .then(result => {
-      form.value.answer = result[0]?.parsedContent?.answer || ''
-    })
-    .finally(() => {
-      answerLoading.value = false
-    })
-
-  const analysisPromise = inquiryAIAddInfo(imageUrls.value, ['analysis'])
-    .then(result => {
-      form.value.analysis = result[0]?.parsedContent?.analysis || ''
-    })
-    .finally(() => {
-      analysisLoading.value = false
-    })
-
-  try {
-    // 等待所有查询完成
-    await Promise.all([subjectPromise, promptPromise, typePromise, answerPromise, analysisPromise])
-    console.log('AI查询完成，表单已更新:', {
-      subject: form.value.subject,
-      prompt: form.value.prompt.substring(0, 50) + '...',
-      type: form.value.type,
-      answer: form.value.answer.substring(0, 50) + '...',
-      analysis: form.value.analysis.substring(0, 50) + '...'
-    })
-    showSuccess('获取成功', '已自动填充题目信息')
-  } catch (error) {
-    console.error('AI查询失败:', error)
-    showError('错误', 'AI查询失败: ' + error)
-  } finally {
-    aiButtonLoading.value = false
-  }
-}
-
 // 处理文件选择
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
@@ -296,25 +199,55 @@ const removeImage = (index: number) => {
   imageUrls.value.splice(index, 1)
 }
 
-// 打开相机
-const openCamera = () => {
-  showCamera.value = true
+// 点击拍照按钮时打开相机
+const handlePhotoClick = async () => {
+  if (cameraDisabled.value) {
+    return
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+    stream.getTracks().forEach(track => track.stop())
+    cameraDisabled.value = false
+    showCamera.value = true
+  } catch {
+    disableCamera()
+  }
 }
 
 // 相机关闭
 const handleCameraClose = () => {
-  showCamera.value = false
+  closeCameraImmediately()
 }
+
+watch(showCamera, async (visible) => {
+  if (visible && cameraDisabled.value) {
+    await ensureCameraAvailable()
+  }
+})
 
 // 禁用相机
 const disableCamera = () => {
-  showCamera.value = false
+  closeCameraImmediately()
   cameraDisabled.value = true
+}
+
+const closeCameraImmediately = () => {
+  showCamera.value = false
+}
+
+const ensureCameraAvailable = async () => {
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true })
+    cameraDisabled.value = false
+  } catch {
+    disableCamera()
+  }
 }
 
 // 相机拍照
 const handleCameraCapture = (imageData: string) => {
-  showCamera.value = false
+  closeCameraImmediately()
   openEdit(imageData, -1, true) // -1 表示添加新图片，true 表示自动识别
 }
 
