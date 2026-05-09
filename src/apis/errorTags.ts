@@ -4,11 +4,30 @@ import { ErrorTags } from '../types';
 // ==================== API 接口 ====================
 
 /**
- * 获取所有错因标签
+ * 获取所有不重复的错因标签
  * @returns 错因标签列表
  */
 export async function getErrorTags(): Promise<ErrorTags[]> {
   return await invoke('get_error_tags');
+}
+
+/**
+ * 获取所有错因标签
+ * @returns 错因标签列表
+ */
+export async function getFullErrorTags(): Promise<ErrorTags[]> {
+  return await invoke('get_full_error_tags');
+}
+
+/**
+ * 根据题目ID获取错因标签
+ * @param questionId 错题ID
+ * @returns 错因标签列表
+ */
+export async function getErrorTagByQuestionId(questionId: string): Promise<ErrorTags[]> {
+  return await invoke("get_error_tags_for_question", {
+    questionId: questionId
+  });
 }
 
 /**
@@ -70,6 +89,7 @@ export async function updateErrorTagById(tagId: string, name: string, color: str
     new_tag_color: color
   });
 }
+/*
  * 获取所有唯一的错因标签名称列表
  * @returns 不重复的标签名称数组
  */

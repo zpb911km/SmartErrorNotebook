@@ -290,6 +290,7 @@ const handlePhotoClick = async () => {
     cameraDisabled.value = false
     showCamera.value = true
   } catch {
+    showError('错误', '没有相机权限')
     disableCamera()
   }
 }
@@ -417,7 +418,7 @@ const saveError = async () => {
   isSaving.value = true
   showDebug('保存中...', form.value)
 
-  try {
+  // try {
     // 1. 创建错题
     const errorQuestion = await createErrorQuestion({
       user_id: 'current_user', // TODO: 从用户状态获取
@@ -466,12 +467,12 @@ const saveError = async () => {
     showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
     // 重置表单
     resetForm()
-  } catch (error) {
-    console.error('保存错题失败:', error)
-    showError('错误', '保存错题失败: ' + error)
-  } finally {
-    isSaving.value = false
-  }
+  // } catch (error) {
+  //   console.error('保存错题失败:', error)
+  //   showError('错误', '保存错题失败: ' + error)
+  // } finally {
+  //   isSaving.value = false
+  // }
 }
 
 // watch(currentSource, async (newSource) => {

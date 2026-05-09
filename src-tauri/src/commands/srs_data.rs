@@ -70,14 +70,14 @@ pub async fn create_srs_data(
     let id = Uuid::new_v4().to_string();
 
     // 验证错题是否存在（通过验证 SRS 数据是否存在）
-    if SrsData::find()
+    if !SrsData::find()
         .filter(srs_data::Column::QuestionId.eq(input.question_id.clone()))
         .one(db)
         .await
         .map_err(|e| e.to_string())?
         .is_none()
     {
-        return Err(format!("Question not found: {}", input.question_id));
+        return Err(format!("SrsData is exist: {}", input.question_id));
     }
 
     let new_srs_data = srs_data::ActiveModel {
@@ -86,7 +86,7 @@ pub async fn create_srs_data(
         stability: Set(config::INITIAL_STABILITY),
         difficulty: Set(input.difficulty.unwrap_or(config::INITIAL_DIFFICULTY)),
         next_review_at: Set(Some(now + 24 * 3600)), // 默认 1 天后
-        last_review_at: Set(Some(now)),
+        lastreviewed_at: Set(Some(now)),
         review_count: Set(1),
         feedback_history: Set("[]".to_string()),
         created_at: Set(now),
@@ -96,7 +96,7 @@ pub async fn create_srs_data(
         sync_hash: Set(None),
     };
 
-    new_srs_data.insert(db).await.map_err(|e| e.to_string())?;
+    let _ = new_srs_data.insert(db).await;
 
     // 获取创建的记录
     let srs_model = SrsData::find_by_id(id)
@@ -145,7 +145,7 @@ pub async fn get_due_questions(
         stability: srs.stability,
         difficulty: srs.difficulty,
         next_review_at: srs.next_review_at,
-        last_review_at: srs.last_review_at,
+        last_review_at: srs.lastreviewed_at,
         review_count: srs.review_count,
     }).collect())
 }
@@ -175,7 +175,7 @@ pub async fn submit_review_result(
     update_model.stability = Set(result.new_stability);
     update_model.difficulty = Set(result.new_difficulty);
     update_model.next_review_at = Set(Some(result.next_review_at));
-    update_model.last_review_at = Set(Some(now));
+    update_model.lastreviewed_at = Set(Some(now));
     update_model.review_count = Set(srs_model.review_count + 1);
     update_model.feedback_history = Set(update_feedback_history(&srs_model.feedback_history, input.feedback));
     update_model.updated_at = Set(now);
@@ -211,7 +211,7 @@ pub async fn get_question_srs_status(
         stability: srs.stability,
         difficulty: srs.difficulty,
         next_review_at: srs.next_review_at,
-        last_review_at: srs.last_review_at,
+        last_review_at: srs.lastreviewed_at,
         review_count: srs.review_count,
     }))
 }
@@ -239,7 +239,7 @@ pub async fn reset_srs_progress(
             update_model.stability = Set(config::INITIAL_STABILITY);
             update_model.difficulty = Set(config::INITIAL_DIFFICULTY);
             update_model.next_review_at = Set(Some(now));
-            update_model.last_review_at = Set(Some(now));
+            update_model.lastreviewed_at = Set(Some(now));
             update_model.review_count = Set(1);
             update_model.feedback_history = Set("[]".to_string());
             update_model.updated_at = Set(now);
@@ -341,7 +341,7 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
         stability: srs.stability,
         difficulty: srs.difficulty,
         next_review_at: srs.next_review_at,
-        last_review_at: srs.last_review_at,
+        last_review_at: srs.lastreviewed_at,
         review_count: srs.review_count,
     }).collect())
 }

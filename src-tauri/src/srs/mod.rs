@@ -168,7 +168,7 @@ pub fn review_card(card: &srs_data::Model, now: i64, feedback: f32) -> Result<Re
 
     // === 普通反馈处理 ===
 
-    let elapsed_days = days_elapsed(card.last_review_at, now);
+    let elapsed_days = days_elapsed(card.lastreviewed_at, now);
     let r_pred = predict_retrievability(card.stability, elapsed_days);
     let delta = feedback - r_pred;
 
@@ -218,7 +218,7 @@ pub fn initialize_srs(now: i64) -> srs_data::ActiveModel {
         stability: Set(config::INITIAL_STABILITY),
         difficulty: Set(config::INITIAL_DIFFICULTY),
         next_review_at: Set(Some(now_ts + 1 * 24 * 3600)), // 默认 1 天后
-        last_review_at: Set(Some(now_ts)),
+        lastreviewed_at: Set(Some(now_ts)),
         review_count: Set(1),
         feedback_history: Set("[]".to_string()),
         created_at: Set(now_ts),
@@ -367,7 +367,7 @@ mod tests {
             stability: 3.0,
             difficulty: 5.0,
             next_review_at: None,
-            last_review_at: Some(now - 100),
+            lastreviewed_at: Some(now - 100),
             review_count: 1,
             feedback_history: "[]".to_string(),
             created_at: now,

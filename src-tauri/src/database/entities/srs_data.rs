@@ -30,7 +30,7 @@ pub struct Model {
 
     /// 上次复习时间戳 (秒)
     /// None 表示尚未进行过复习
-    pub last_review_at: Option<i64>,
+    pub lastreviewed_at: Option<i64>,
 
     // === 统计信息 ===
 

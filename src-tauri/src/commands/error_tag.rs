@@ -83,6 +83,31 @@ pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag:
     Ok(unique_tags)
 }
 
+#[tauri::command]
+pub async fn get_full_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag::Model>, String> {
+    let db = state.db.as_ref();
+    let tags = ErrorTag::find()
+        .all(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?;
+    Ok(tags)
+}
+
+// 获取单一题目的错因标签
+#[tauri::command]
+pub async fn get_error_tags_for_question(
+    state: State<'_, AppState>,
+    question_id: String,
+) -> Result<Vec<error_tag::Model>, String> {
+    let db = state.db.as_ref();
+    let tags = ErrorTag::find()
+        .filter(error_tag::Column::QuestionId.eq(question_id))
+        .all(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?;
+    Ok(tags)
+}
+
 // 删除错因标签: 删除错因记录中标签等于给定名称的全部记录
 #[tauri::command]
 pub async fn delete_error_tag_by_name(

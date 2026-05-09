@@ -57,6 +57,8 @@ pub fn run() {
             // Error Tag
             commands::create_error_tags_for_question,
             commands::get_error_tags,
+            commands::get_full_error_tags,
+            commands::get_error_tags_for_question,
             commands::delete_error_tag_by_name,
             commands::update_error_tag_by_name,
             commands::delete_error_tag_by_id,
