@@ -38,9 +38,9 @@
         <button v-if="!aiButtonLoading" @click="inquiryAI()" :disabled="aiButtonLoading" class="ai-btn">
           AI 查询
         </button>
-        <div class="loading-spinner" v-if="aiButtonLoading">
+        <!-- <div class="loading-spinner" v-if="aiButtonLoading">
           <div class="spinner"></div>
-        </div>
+        </div> -->
       </div>
       <h3>题目信息</h3>
       <div class="form-group" :class="{ 'loading': subjectLoading }">
@@ -56,7 +56,7 @@
 
       <div class="form-group" :class="{ 'loading': promptLoading }">
         <label>题目</label>
-        <textarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></textarea>  
+        <MarkdownTextarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></MarkdownTextarea>  
         <div class="loading-spinner" v-if="promptLoading">
           <div class="spinner"></div>
         </div>
@@ -74,7 +74,7 @@
 
       <div class="form-group" :class="{ 'loading': answerLoading }">
         <label>答案</label>
-        <textarea v-model="form.answer" placeholder="请输入答案..." rows="3"></textarea>
+        <MarkdownTextarea v-model="form.answer" placeholder="请输入答案..." rows="3"></MarkdownTextarea>
         <div class="loading-spinner" v-if="answerLoading">
           <div class="spinner"></div>
         </div>
@@ -82,7 +82,7 @@
 
       <div class="form-group" :class="{ 'loading': analysisLoading }">
         <label>解析</label>
-        <textarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></textarea>
+        <MarkdownTextarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></MarkdownTextarea>
         <div class="loading-spinner" v-if="analysisLoading">
           <div class="spinner"></div>
         </div>
@@ -90,7 +90,7 @@
 
       <div class="form-group">
         <label>错题小记</label>
-        <textarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></textarea>
+        <MarkdownTextarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></MarkdownTextarea>
       </div>
 
       <div class="form-group">
@@ -127,6 +127,7 @@ import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachmen
 import { showInfo, showError, showDebug, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
+import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
@@ -223,7 +224,7 @@ const inquiryAI = async () => {
 
   const promptPromise = inquiryAIAddInfo(imageUrls.value, ['question_text'])
     .then(result => {
-      form.value.prompt = result[0]?.parsedContent?.markdown || ''
+      form.value.prompt = result[0]?.parsedContent || ''
     })
     .finally(() => {
       promptLoading.value = false
@@ -239,7 +240,7 @@ const inquiryAI = async () => {
 
   const answerPromise = inquiryAIAddInfo(imageUrls.value, ['answer'])
     .then(result => {
-      form.value.answer = result[0]?.parsedContent?.answer || ''
+      form.value.answer = result[0]?.parsedContent || ''
     })
     .finally(() => {
       answerLoading.value = false
@@ -247,7 +248,7 @@ const inquiryAI = async () => {
 
   const analysisPromise = inquiryAIAddInfo(imageUrls.value, ['analysis'])
     .then(result => {
-      form.value.analysis = result[0]?.parsedContent?.analysis || ''
+      form.value.analysis = result[0]?.parsedContent || ''
     })
     .finally(() => {
       analysisLoading.value = false
@@ -258,10 +259,10 @@ const inquiryAI = async () => {
     await Promise.all([subjectPromise, promptPromise, typePromise, answerPromise, analysisPromise])
     console.log('AI查询完成，表单已更新:', {
       subject: form.value.subject,
-      prompt: form.value.prompt.substring(0, 50) + '...',
+      prompt: form.value.prompt,
       type: form.value.type,
-      answer: form.value.answer.substring(0, 50) + '...',
-      analysis: form.value.analysis.substring(0, 50) + '...'
+      answer: form.value.answer,
+      analysis: form.value.analysis
     })
     showSuccess('获取成功', '已自动填充题目信息')
   } catch (error) {
