@@ -106,7 +106,6 @@ const fillComplexSample = () => {
 ---
 
 ## 3. 代码块
-
 \`\`\`ts
 type ErrorRecord = {
   id: string
@@ -160,11 +159,19 @@ ORDER BY wrong_count DESC;
 
 行内公式： $f(x)=x^2-2x+1=(x-1)^2$
 
+行内公式（LaTeX 括号）： \\(\\sqrt{a^2+b^2}\\)
+
 块级公式：
 
 $$
 \\min f(x) = \\min (x-1)^2 = 0, \\quad x=1
 $$
+
+块级公式（LaTeX 括号）：
+
+\\[
+E=mc^2
+\\]
 
 再来一个积分：
 
@@ -186,7 +193,11 @@ $$
 
 - [x] 预览区是否正常渲染
 - [x] 数学公式是否正确显示
-- [x] 表格与任务列表样式是否可读`
+- [x] 表格与任务列表样式是否可读
+
+<s>删除线测试</s>
+<mark>高亮内容测试</mark>`
+
 }
 
 const clearAll = () => {

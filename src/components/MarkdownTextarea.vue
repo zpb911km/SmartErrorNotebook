@@ -1,24 +1,71 @@
 <template>
-  <div class="markdown-textarea">
-    <textarea
-      ref="textareaRef"
-      v-bind="$attrs"
-      :class="['markdown-textarea__input', textareaClass]"
-      :value="modelValue"
-      @input="handleInput"
-    ></textarea>
+  <div class="markdown-textarea" :class="{ 'is-previewing': viewMode === 'preview' }">
+    <div class="markdown-textarea__toolbar">
+      <div class="markdown-textarea__hint"></div>
+    </div>
 
-    <div v-if="showPreview" :class="['markdown-textarea__preview', previewClass]">
-      <div v-if="previewTitle" class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-      <div class="markdown-textarea__preview-content markdown-body" v-html="renderedMarkdown"></div>
+    <div v-if="viewMode === 'edit'" class="markdown-textarea__stage">
+      <textarea
+        ref="textareaRef"
+        v-bind="$attrs"
+        :class="['markdown-textarea__input', textareaClass]"
+        :value="modelValue"
+        @input="handleInput"
+        @scroll="handleScroll"
+        @keydown="handleKeydown"
+      ></textarea>
+
+      <div v-if="showPreview" class="markdown-textarea__preview-pane">
+        <div class="markdown-textarea__preview-header">
+          <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
+          <button type="button" class="markdown-textarea__mode-switch" @click="toggleViewMode">
+            {{ viewMode === 'edit' ? '专注预览' : '编辑' }}
+          </button>
+        </div>
+        <div ref="previewRef" class="markdown-textarea__preview-body markdown-body" :class="previewClass">
+          <div v-if="previewSegments.length === 0" class="markdown-textarea__preview-empty">
+            预览会随编辑内容滚动自动对齐
+          </div>
+          <div
+            v-for="segment in previewSegments"
+            :key="segment.id"
+            :ref="(el: any) => setSegmentRef(segment.id, el)"
+            class="markdown-textarea__preview-segment"
+            :class="{ 'is-active': segment.id === activeSegmentId }"
+            v-html="segment.html"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="showPreview" class="markdown-textarea__preview-only">
+      <div class="markdown-textarea__preview-header markdown-textarea__preview-header--single">
+        <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
+        <button type="button" class="markdown-textarea__mode-switch" @click="toggleViewMode">
+          编辑
+        </button>
+      </div>
+      <div class="markdown-textarea__preview-body markdown-body" :class="previewClass">
+        <div v-if="previewSegments.length === 0" class="markdown-textarea__preview-empty">
+          当前没有可预览内容
+        </div>
+        <div
+          v-for="segment in previewSegments"
+          :key="segment.id"
+          class="markdown-textarea__preview-segment"
+          v-html="segment.html"
+        ></div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
 marked.use(
@@ -28,9 +75,18 @@ marked.use(
   })
 )
 
-defineOptions({
-  inheritAttrs: false
-})
+const renderer = new marked.Renderer()
+renderer.code = ({ text, lang }) => {
+  const language = lang ?? ''
+  const highlighted = language && hljs.getLanguage(language)
+    ? hljs.highlight(text, { language }).value
+    : hljs.highlightAuto(text).value
+  const langClass = language ? `language-${language}` : ''
+  return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
+}
+marked.use({ renderer })
+
+defineOptions({ inheritAttrs: false })
 
 interface Props {
   modelValue?: string
@@ -38,6 +94,7 @@ interface Props {
   previewTitle?: string
   textareaClass?: string
   previewClass?: string
+  defaultViewMode?: 'edit' | 'preview'
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -45,20 +102,45 @@ const props = withDefaults(defineProps<Props>(), {
   showPreview: true,
   previewTitle: 'Markdown 预览',
   textareaClass: '',
-  previewClass: ''
+  previewClass: '',
+  defaultViewMode: 'preview'
 })
 
-const emit = defineEmits<{
-  (event: 'update:modelValue', value: string): void
-}>()
+const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>()
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const previewRef = ref<HTMLDivElement | null>(null)
+const viewMode = ref<'edit' | 'preview'>(props.defaultViewMode)
+const activeSegmentId = ref('segment-0')
+const segmentRefs = new Map<string, HTMLElement>()
+
+watch(() => props.defaultViewMode, (value) => {
+  viewMode.value = value
+})
 
 const renderedMarkdown = computed(() => {
-  return marked.parse(props.modelValue || '', {
-    breaks: true,
-    gfm: true
-  }) as string
+  const normalized = (props.modelValue || '')
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+
+  return marked.parse(normalized, { breaks: true, gfm: true }) as string
+})
+
+const previewSegments = computed(() => {
+  const html = renderedMarkdown.value
+  if (!html) return []
+
+  const parts = html
+    .split(/(?=<h[1-6]|<blockquote|<pre|<ul|<ol|<p|<table)/g)
+    .map(part => part.trim())
+    .filter(Boolean)
+
+  return parts.map((htmlPart, index) => ({
+    id: `segment-${index}`,
+    html: htmlPart
+  }))
 })
 
 const handleInput = (event: Event) => {
@@ -70,12 +152,91 @@ const focus = () => textareaRef.value?.focus()
 const blur = () => textareaRef.value?.blur()
 const select = () => textareaRef.value?.select()
 
-defineExpose({
-  focus,
-  blur,
-  select,
-  el: textareaRef
+const setSegmentRef = (id: string, el: Element | null) => {
+  if (el instanceof HTMLElement) {
+    segmentRefs.set(id, el)
+  }
+}
+
+const syncPreviewToEditor = () => {
+  if (!textareaRef.value || !previewRef.value || !props.showPreview) return
+
+  const text = textareaRef.value.value || ''
+  const lines = text.split('\n')
+  const lineHeight = parseFloat(getComputedStyle(textareaRef.value).lineHeight || '20')
+  const scrollTop = textareaRef.value.scrollTop
+  const currentLine = Math.max(0, Math.floor(scrollTop / lineHeight))
+  const percentage = lines.length > 1 ? currentLine / Math.max(lines.length - 1, 1) : 0
+
+  const segmentIndex = Math.min(
+    previewSegments.value.length - 1,
+    Math.max(0, Math.floor(percentage * Math.max(previewSegments.value.length - 1, 0)))
+  )
+  const segment = previewSegments.value[segmentIndex]
+  if (!segment) return
+
+  activeSegmentId.value = segment.id
+  const segmentEl = segmentRefs.get(segment.id)
+  segmentEl?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+}
+
+const handleScroll = () => {
+  if (viewMode.value === 'edit') {
+    syncPreviewToEditor()
+  }
+}
+
+const toggleViewMode = async () => {
+  if (!props.showPreview) return
+
+  viewMode.value = viewMode.value === 'edit' ? 'preview' : 'edit'
+  await nextTick()
+  if (viewMode.value === 'edit') {
+    await focusAtStart()
+    syncPreviewToEditor()
+  }
+}
+
+const returnToEdit = async () => {
+  if (!props.showPreview) return
+  viewMode.value = 'edit'
+  await nextTick()
+  await focusAtStart()
+  syncPreviewToEditor()
+}
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && props.showPreview) {
+    event.preventDefault()
+    toggleViewMode()
+    return
+  }
+
+  if (event.key === 'Escape' && props.showPreview) {
+    event.preventDefault()
+    returnToEdit()
+  }
+}
+
+let rafId = 0
+const scheduleSync = () => {
+  cancelAnimationFrame(rafId)
+  rafId = requestAnimationFrame(syncPreviewToEditor)
+}
+
+watch(() => props.modelValue, () => {
+  scheduleSync()
 })
+
+onMounted(() => {
+  scheduleSync()
+})
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(rafId)
+})
+
+defineExpose({ focus, blur, select, el: textareaRef })
 </script>
 
 <style scoped>
@@ -85,8 +246,43 @@ defineExpose({
   gap: 12px;
 }
 
+.markdown-textarea__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.markdown-textarea__hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.markdown-textarea__mode-switch {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.markdown-textarea__mode-switch:hover {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.markdown-textarea__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
 .markdown-textarea__input {
   width: 100%;
+  min-height: 360px;
   padding: 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -102,26 +298,62 @@ defineExpose({
   border-color: var(--primary-color);
 }
 
-.markdown-textarea__preview {
+.markdown-textarea__preview-pane,
+.markdown-textarea__preview-only {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--card-bg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
 }
 
-.markdown-textarea__preview-title {
-  padding: 8px 12px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.markdown-textarea__preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
-.markdown-textarea__preview-content {
+.markdown-textarea__preview-header--single {
+  justify-content: space-between;
+}
+
+.markdown-textarea__preview-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.markdown-textarea__preview-header--single {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.markdown-textarea__preview-body {
   padding: 12px;
+  overflow: auto;
   line-height: 1.6;
   font-size: 14px;
   color: var(--text-primary);
   word-break: break-word;
+}
+
+.markdown-textarea__preview-empty {
+  padding: 24px 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.markdown-textarea__preview-segment {
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.markdown-textarea__preview-segment.is-active {
+  background: rgba(25, 118, 210, 0.08);
 }
 
 .markdown-body :deep(h1),
@@ -139,22 +371,21 @@ defineExpose({
 }
 
 .markdown-body :deep(code) {
-  background: var(--input-bg);
+  background: rgba(25, 118, 210, 0.12);
   padding: 2px 6px;
-  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
 .markdown-body :deep(pre) {
-  background: var(--input-bg);
+  background: #0f172a;
   padding: 10px;
-  border-radius: 8px;
   overflow-x: auto;
 }
 
 .markdown-body :deep(pre code) {
   background: transparent;
   padding: 0;
+  color: #e2e8f0;
 }
 
 .markdown-body :deep(ul),
@@ -185,5 +416,15 @@ defineExpose({
 .markdown-body :deep(td) {
   border: 1px solid var(--border-color);
   padding: 6px 8px;
+}
+
+@media (max-width: 960px) {
+  .markdown-textarea__stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+.markdown-textarea__preview-only {
+  margin-top: 12px;
 }
 </style>
