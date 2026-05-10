@@ -6,7 +6,9 @@ use tauri::State;
 use uuid::Uuid;
 
 use crate::database::entities::{prelude::SrsData, srs_data};
-use crate::srs::{config, review_card, update_feedback_history};
+use crate::srs::{
+    config, days_elapsed, predict_retrievability, review_card, update_feedback_history,
+};
 
 // ==================== Input/Output Types ====================
 
@@ -38,6 +40,7 @@ pub struct SRSCardOutput {
     pub question_id: String,
     pub stability: f32,
     pub difficulty: f32,
+    pub recall_rate: f32,
     pub next_review_at: Option<i64>,
     pub last_review_at: Option<i64>,
     pub review_count: i32,
@@ -54,6 +57,23 @@ pub struct ReviewOutput {
     pub new_difficulty: f32,
     /// 建议的下次复习时间戳 (秒)
     pub next_review_at: i64,
+}
+
+/// SRS 统计数据输出
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SRSStatistics {
+    /// 总卡片数
+    pub total: i32,
+    /// 待复习数量
+    pub due_count: i32,
+    /// 新卡片数量（review_count=1）
+    pub new_cards: i32,
+    /// 平均稳定性（天）
+    pub avg_stability: f32,
+    /// 平均难度
+    pub avg_difficulty: f32,
+    /// 总复习次数
+    pub total_reviews: i64,
 }
 
 // ==================== Command Functions ====================
@@ -126,7 +146,7 @@ pub async fn get_due_questions(
         .into_iter()
         .filter(|srs| {
             match srs.next_review_at {
-                None => true, // 未安排复习，视为待复习
+                None => true,              // 未安排复习，视为待复习
                 Some(next) => now >= next, // 已过下次复习时间
             }
         })
@@ -139,15 +159,22 @@ pub async fn get_due_questions(
     due_cards.truncate(limit as usize);
 
     // 转换为输出格式
-    Ok(due_cards.into_iter().map(|srs| SRSCardOutput {
-        id: srs.id,
-        question_id: srs.question_id,
-        stability: srs.stability,
-        difficulty: srs.difficulty,
-        next_review_at: srs.next_review_at,
-        last_review_at: srs.lastreviewed_at,
-        review_count: srs.review_count,
-    }).collect())
+    Ok(due_cards
+        .into_iter()
+        .map(|srs| SRSCardOutput {
+            id: srs.id,
+            question_id: srs.question_id,
+            stability: srs.stability,
+            difficulty: srs.difficulty,
+            recall_rate: predict_retrievability(
+                srs.stability,
+                days_elapsed(srs.lastreviewed_at, now),
+            ),
+            next_review_at: srs.next_review_at,
+            last_review_at: srs.lastreviewed_at,
+            review_count: srs.review_count,
+        })
+        .collect())
 }
 
 /// 提交复习结果并更新 SRS 状态
@@ -177,7 +204,10 @@ pub async fn submit_review_result(
     update_model.next_review_at = Set(Some(result.next_review_at));
     update_model.lastreviewed_at = Set(Some(now));
     update_model.review_count = Set(srs_model.review_count + 1);
-    update_model.feedback_history = Set(update_feedback_history(&srs_model.feedback_history, input.feedback));
+    update_model.feedback_history = Set(update_feedback_history(
+        &srs_model.feedback_history,
+        input.feedback,
+    ));
     update_model.updated_at = Set(now);
     update_model.version = Set(srs_model.version + 1);
 
@@ -205,14 +235,32 @@ pub async fn get_question_srs_status(
         .await
         .map_err(|e| e.to_string())?;
 
-    Ok(srs_model.map(|srs| SRSCardOutput {
-        id: srs.id,
-        question_id: srs.question_id,
-        stability: srs.stability,
-        difficulty: srs.difficulty,
-        next_review_at: srs.next_review_at,
-        last_review_at: srs.lastreviewed_at,
-        review_count: srs.review_count,
+    // let elapsed_days = if let Some(last_review_at) = srs_model.as_ref().and_then(|srs| srs.lastreviewed_at) {
+    //     days_elapsed(Some(last_review_at), chrono::Utc::now().timestamp())
+    // } else {
+    //     -1.0
+    // };
+
+    // let recall_percentage = if let Some(srs) = srs_model.as_ref() {
+    //     predict_retrievability(srs.stability, elapsed_days)
+    // } else {
+    //     -1.0
+    // };
+
+    Ok(srs_model.map(|srs| {
+        let elapsed_days = days_elapsed(srs.lastreviewed_at, chrono::Utc::now().timestamp());
+        let recall_rate = predict_retrievability(srs.stability, elapsed_days);
+
+        SRSCardOutput {
+            id: srs.id,
+            question_id: srs.question_id,
+            stability: srs.stability,
+            difficulty: srs.difficulty,
+            recall_rate: recall_rate,
+            next_review_at: srs.next_review_at,
+            last_review_at: srs.lastreviewed_at,
+            review_count: srs.review_count,
+        }
     }))
 }
 
@@ -251,10 +299,14 @@ pub async fn reset_srs_progress(
         }
         None => {
             // 如果不存在，创建新的
-            create_srs_data(state, CreateSRSDataInput {
-                question_id,
-                difficulty: None,
-            }).await
+            create_srs_data(
+                state,
+                CreateSRSDataInput {
+                    question_id,
+                    difficulty: None,
+                },
+            )
+            .await
         }
     }
 }
@@ -271,11 +323,9 @@ pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
 
     let count = all_srs
         .into_iter()
-        .filter(|srs| {
-            match srs.next_review_at {
-                None => true,
-                Some(next) => now >= next,
-            }
+        .filter(|srs| match srs.next_review_at {
+            None => true,
+            Some(next) => now >= next,
         })
         .count() as i32;
 
@@ -335,30 +385,20 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
     let db = state.db.as_ref();
     let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
 
-    Ok(all_srs.into_iter().map(|srs| SRSCardOutput {
-        id: srs.id,
-        question_id: srs.question_id,
-        stability: srs.stability,
-        difficulty: srs.difficulty,
-        next_review_at: srs.next_review_at,
-        last_review_at: srs.lastreviewed_at,
-        review_count: srs.review_count,
-    }).collect())
-}
-
-/// SRS 统计数据输出
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct SRSStatistics {
-    /// 总卡片数
-    pub total: i32,
-    /// 待复习数量
-    pub due_count: i32,
-    /// 新卡片数量（review_count=1）
-    pub new_cards: i32,
-    /// 平均稳定性（天）
-    pub avg_stability: f32,
-    /// 平均难度
-    pub avg_difficulty: f32,
-    /// 总复习次数
-    pub total_reviews: i64,
+    Ok(all_srs
+        .into_iter()
+        .map(|srs| SRSCardOutput {
+            id: srs.id,
+            question_id: srs.question_id,
+            stability: srs.stability,
+            difficulty: srs.difficulty,
+            recall_rate: predict_retrievability(
+                srs.stability,
+                days_elapsed(srs.lastreviewed_at, chrono::Utc::now().timestamp()),
+            ),
+            next_review_at: srs.next_review_at,
+            last_review_at: srs.lastreviewed_at,
+            review_count: srs.review_count,
+        })
+        .collect())
 }

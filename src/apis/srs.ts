@@ -29,18 +29,6 @@ export interface SubmitReviewInput {
 }
 
 /**
- * SRS 卡片信息输出
- */
-export interface SRSCardOutput extends Omit<SRSData, 'mastery' | 'lastreviewed_at'> {
-  /** 稳定性（天）*/
-  stability: number;
-  /** 下次复习时间戳（秒）*/
-  next_review_at: number | null;
-  /** 上次复习时间戳（秒）*/
-  last_review_at: number | null;
-}
-
-/**
  * 复习结果输出
  */
 export interface ReviewOutput {
@@ -71,7 +59,7 @@ export async function initSRS(input: CreateSRSInput): Promise<SRSData> {
  * @param limit 返回数量限制（可选，默认 30）
  * @returns 待复习题目列表
  */
-export async function getDueQuestions(limit?: number): Promise<SRSCardOutput[]> {
+export async function getDueQuestions(limit?: number): Promise<SRSData[]> {
   return invoke('get_due_questions', { limit });
 }
 
@@ -89,7 +77,7 @@ export async function submitReviewResult(input: SubmitReviewInput): Promise<Revi
  * @param questionId 错题 ID
  * @returns SRS 数据对象，不存在则返回 undefined
  */
-export async function getSRSStatus(questionId: string): Promise<SRSCardOutput | undefined> {
+export async function getSRSStatus(questionId: string): Promise<SRSData | undefined> {
   return invoke('get_question_srs_status', { questionId });
 }
 
