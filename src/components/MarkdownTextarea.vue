@@ -118,29 +118,35 @@ watch(() => props.defaultViewMode, (value) => {
   viewMode.value = value
 })
 
-const renderedMarkdown = computed(() => {
-  const normalized = (props.modelValue || '')
+const normalizeMarkdown = (value: string) => {
+  return (value || '')
     .replace(/\\\[/g, '$$')
     .replace(/\\\]/g, '$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
+}
 
+const renderMarkdown = (value: string) => {
+  const normalized = normalizeMarkdown(value)
   return marked.parse(normalized, { breaks: true, gfm: true }) as string
-})
+}
+
+const focusAtStart = async () => {
+  await nextTick()
+  const el = textareaRef.value
+  if (!el) return
+  el.setSelectionRange(0, 0)
+  el.focus()
+}
 
 const previewSegments = computed(() => {
-  const html = renderedMarkdown.value
+  const html = renderMarkdown(props.modelValue || '')
   if (!html) return []
 
-  const parts = html
-    .split(/(?=<h[1-6]|<blockquote|<pre|<ul|<ol|<p|<table)/g)
-    .map(part => part.trim())
-    .filter(Boolean)
-
-  return parts.map((htmlPart, index) => ({
-    id: `segment-${index}`,
-    html: htmlPart
-  }))
+  return [{
+    id: 'segment-0',
+    html
+  }]
 })
 
 const handleInput = (event: Event) => {
