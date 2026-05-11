@@ -35,17 +35,12 @@
         <!-- 来源信息 -->
         <div class="form-group">
           <label>来源信息</label>
-          <div class="source-info">
-            <div v-if="sourceInfo" class="source-display">
-              <span v-if="sourceInfo.book">{{ sourceInfo.book }}</span>
-              <span v-if="sourceInfo.chapter"> > {{ sourceInfo.chapter }}</span>
-              <span v-if="sourceInfo.knowledge"> > {{ sourceInfo.knowledge }}</span>
-              <span v-if="!sourceInfo.book && !sourceInfo.chapter && !sourceInfo.knowledge">未设置</span>
-            </div>
-            <button v-if="isEditing" class="btn-small" @click="openSourceSelector">
-              修改来源
-            </button>
-          </div>
+          <SourceSelector 
+            :disable="!isEditing"
+            :currentSourceId="editForm.source_id || ''"
+            :subjectId="editForm.subject_id"
+            @select="handleSourceSelect"
+          />
         </div>
 
         <!-- 题型 -->
@@ -232,23 +227,6 @@
       <p>加载中...</p>
     </div>
 
-    <!-- 来源选择器弹窗 -->
-    <div v-if="showSourceSelector" class="modal-overlay source-modal-overlay" @click="showSourceSelector = false">
-      <div class="modal-content source-modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>选择来源</h3>
-          <button class="close-btn" @click="showSourceSelector = false">×</button>
-        </div>
-        <div class="modal-body source-modal-body">
-          <SourceSelector 
-            :currentSourceId="editForm.source_id || ''"
-            :subjectId="editForm.subject_id"
-            @select="handleSourceSelect"
-          />
-        </div>
-      </div>
-    </div>
-
     <!-- 确认删除弹窗 -->
     <div v-if="showDeleteConfirm" class="modal-overlay">
       <div class="modal-content confirm-modal">
@@ -283,10 +261,9 @@ import {
   deleteQuestion 
 } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
-import { getSource } from '../apis/sources'
-import { getErrorTagByQuestionId, getErrorTags } from '../apis/errorTags'
+import { getErrorTagByQuestionId } from '../apis/errorTags'
 import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment } from '../apis/attachments'
-import type { ErrorQuestion, Subject, Source, ErrorTags as ErrorTagType, Attachment } from '../types'
+import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
 
 const router = useRouter()
@@ -298,7 +275,6 @@ const errorId = computed(() => route.params.id as string)
 // 数据状态
 const errorDetail = ref<ErrorQuestion & { created_at?: number; updated_at?: number } | null>(null)
 const subjects = ref<Subject[]>([])
-const sourceInfo = ref<Source | null>(null)
 const errorTags = ref<ErrorTagType[]>([])
 const srsData = ref<any>(null)
 const questionImages = ref<Attachment[]>([])
@@ -306,7 +282,6 @@ const answerImages = ref<Attachment[]>([])
 
 // 图片上传相关
 const imageInput = ref<HTMLInputElement | null>(null)
-const uploading = ref(false)
 
 // 临时图片列表（用于编辑时的暂存）
 const tempQuestionImages = ref<Attachment[]>([])
@@ -327,7 +302,6 @@ const editForm = ref({
 })
 
 // 弹窗状态
-const showSourceSelector = ref(false)
 const showDeleteConfirm = ref(false)
 
 // 获取错题详情
@@ -351,23 +325,14 @@ const fetchErrorDetail = async () => {
     // 初始化编辑表单
     editForm.value = {
       subject_id: mappedQuestion.subject_id,
-      source_id: mappedQuestion.source_id || '',
+      source_id: mappedQuestion.source_id,
       prompt: mappedQuestion.prompt,
       type: (question as any).type_ || mappedQuestion.type,
       answer: mappedQuestion.answer || '',
       analysis: mappedQuestion.analysis || '',
       error_note: mappedQuestion.error_note || ''
     }
-    
-    // 获取来源信息
-    if (mappedQuestion.source_id) {
-      try {
-        sourceInfo.value = await getSource(mappedQuestion.source_id)
-      } catch (error) {
-        console.error('获取来源信息失败:', error)
-      }
-    }
-    
+
     // 获取标签
     try {
       const allTags = await getErrorTagByQuestionId(errorId.value)
@@ -542,25 +507,9 @@ const goBack = () => {
   router.back()
 }
 
-// 打开来源选择器
-const openSourceSelector = () => {
-  showSourceSelector.value = true
-}
-
 // 处理来源选择
 const handleSourceSelect = (sourceId: string) => {
   editForm.value.source_id = sourceId
-  showSourceSelector.value = false
-  // 重新获取来源信息
-  if (sourceId) {
-    getSource(sourceId).then(source => {
-      sourceInfo.value = source
-    }).catch(error => {
-      console.error('获取来源信息失败:', error)
-    })
-  } else {
-    sourceInfo.value = null
-  }
 }
 
 // 构建图片src

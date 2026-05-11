@@ -501,7 +501,6 @@ const saveError = async () => {
 <style scoped>
 .add-page {
   padding: 40px 20px;
-  padding-bottom: 100px;
   background: var(--bg-primary);
   min-height: 100vh;
   max-width: 800px;
