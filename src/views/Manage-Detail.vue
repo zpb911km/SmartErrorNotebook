@@ -285,7 +285,7 @@ import {
 import { getSubjects } from '../apis/subjects'
 import { getSource } from '../apis/sources'
 import { getErrorTagByQuestionId, getErrorTags } from '../apis/errorTags'
-import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment } from '../apis/attachments'
+import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment, base64ToArrayBuffer } from '../apis/attachments'
 import type { ErrorQuestion, Subject, Source, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
 
@@ -471,7 +471,7 @@ const saveChanges = async () => {
       for (const file of imagesToAdd.value) {
         console.log('转换文件:', file.name)
         const base64Data = await fileToBase64(file)
-        
+
         let fileType = 'png'
         if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
           fileType = 'jpeg'
@@ -480,7 +480,7 @@ const saveChanges = async () => {
         } else if (file.type === 'image/gif') {
           fileType = 'gif'
         }
-        
+
         attachments.push({
           question_id: errorId.value,
           type_: 'original',

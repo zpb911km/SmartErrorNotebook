@@ -122,7 +122,7 @@ import { QuestionType } from '../types'
 import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
-import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
+import { createAttachmentsForQuestion, blobUrlToBase64, base64ToArrayBuffer } from '../apis/attachments'
 import { showInfo, showError, showDebug, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
@@ -418,7 +418,7 @@ const saveError = async () => {
   isSaving.value = true
   showDebug('保存中...', form.value)
 
-  // try {
+  try {
     // 1. 创建错题
     const errorQuestion = await createErrorQuestion({
       user_id: 'current_user', // TODO: 从用户状态获取
@@ -463,39 +463,13 @@ const saveError = async () => {
 
       await createAttachmentsForQuestion(errorQuestion.id, attachmentsData);
     }
-
     showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
     // 重置表单
     resetForm()
-  // } catch (error) {
-  //   console.error('保存错题失败:', error)
-  //   showError('错误', '保存错题失败: ' + error)
-  // } finally {
-  //   isSaving.value = false
-  // }
+  } finally {
+    isSaving.value = false
+  }
 }
-
-// watch(currentSource, async (newSource) => {
-//   if (newSource.book) {
-//     if (!newSource.subject_id || newSource.subject_id === '') {
-//       showError('添加失败', '请选择科目');
-//       return;
-//     }
-//     const subjectId = newSource.subject_id;
-//     showDebug('正在获取来源ID...', newSource);
-//     await getOrCreateSourceId({
-//       subject_id: subjectId,
-//       book: newSource.book,
-//       chapter: newSource.chapter === ''? undefined : newSource.chapter,
-//       knowledge: newSource.knowledge === ''? undefined : newSource.knowledge,
-//     }).then(sourceId => {
-//       form.value.source = sourceId;
-//       showDebug('获取来源ID成功', sourceId);
-//     }).catch(error => {
-//       showError('添加失败', '添加来源失败' + error);
-//     });
-//   }
-// })
 </script>
 
 <style scoped>
