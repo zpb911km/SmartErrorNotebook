@@ -45,16 +45,6 @@ export interface ReviewOutput {
 // ==================== API Functions ====================
 
 /**
- * 为错题初始化 SRS 数据
- * 应在添加错题时调用，作为第一次复习
- * @param input 初始化参数
- * @returns 创建的 SRS 数据对象
- */
-export async function initSRS(input: CreateSRSInput): Promise<SRSData> {
-  return invoke('create_srs_data', { input });
-}
-
-/**
  * 获取待复习的题目列表
  * @param limit 返回数量限制（可选，默认 30）
  * @returns 待复习题目列表
