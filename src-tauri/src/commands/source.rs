@@ -23,6 +23,20 @@ pub struct UpdateSourceInput {
     pub knowledge: Option<String>,
 }
 
+// 用于同步的 UPSERT 输入
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UpsertSourceInput {
+    pub id: String,
+    pub version: i32,
+    pub status: String,
+    pub deleted_at: Option<i64>,
+    pub question_id: Option<String>,
+    pub subject_id: Option<String>,
+    pub book: Option<String>,
+    pub chapter: Option<String>,
+    pub knowledge: Option<String>,
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SourceFilter {
     pub subject_id: Option<String>,
@@ -329,4 +343,59 @@ pub async fn get_or_create_source_id(
             Ok(source.id)
         }
     }
+}
+
+/// UPSERT: 根据 ID 插入或更新来源（用于同步）
+#[tauri::command]
+pub async fn upsert_source(
+    state: State<'_, AppState>,
+    input: UpsertSourceInput,
+) -> Result<(), String> {
+    use crate::database::entities::source as src;
+    use sea_orm::{ActiveModelTrait, Set};
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    // 检查记录是否存在
+    let existing = src::Entity::find_by_id(input.id.clone())
+        .one(db)
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(model) = existing {
+        // 更新现有记录
+        let mut active_model: source::ActiveModel = model.into();
+        active_model.question_id = Set(input.question_id);
+        active_model.subject_id = Set(input.subject_id);
+        active_model.book = Set(input.book);
+        active_model.chapter = Set(input.chapter);
+        active_model.knowledge = Set(input.knowledge);
+        active_model.updated_at = Set(now);
+        active_model.version = Set(input.version + 1);
+        active_model.sync_status = Set(input.status);
+        active_model.deleted_at = Set(input.deleted_at);
+
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    } else {
+        // 插入新记录
+        let new_source = source::ActiveModel {
+            id: Set(input.id),
+            question_id: Set(input.question_id),
+            subject_id: Set(input.subject_id),
+            book: Set(input.book),
+            chapter: Set(input.chapter),
+            knowledge: Set(input.knowledge),
+            created_at: Set(now),
+            updated_at: Set(now),
+            deleted_at: Set(input.deleted_at),
+            version: Set(input.version),
+            sync_status: Set(input.status),
+            sync_hash: Set(None),
+        };
+
+        new_source.insert(db).await.map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

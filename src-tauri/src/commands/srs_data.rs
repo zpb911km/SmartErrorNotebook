@@ -21,6 +21,21 @@ pub struct CreateSRSDataInput {
     pub difficulty: Option<f32>,
 }
 
+// 用于同步的 UPSERT 输入
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UpsertSRSDataInput {
+    pub id: String,
+    pub version: i32,
+    pub status: String,
+    pub question_id: String,
+    pub stability: f32,
+    pub difficulty: f32,
+    pub next_review_at: Option<i64>,
+    pub lastreviewed_at: Option<i64>,
+    pub review_count: i32,
+    pub feedback_history: String,
+}
+
 /// 提交复习结果的输入参数
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SubmitReviewInput {
@@ -401,4 +416,60 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
             review_count: srs.review_count,
         })
         .collect())
+}
+
+/// UPSERT: 根据 ID 插入或更新 SRS 数据（用于同步）
+#[tauri::command]
+pub async fn upsert_srs_data(
+    state: State<'_, AppState>,
+    input: UpsertSRSDataInput,
+) -> Result<(), String> {
+    use crate::database::entities::srs_data as srs;
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    // 检查记录是否存在
+    let existing = srs::Entity::find_by_id(input.id.clone())
+        .one(db)
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(model) = existing {
+        // 更新现有记录
+        let mut active_model: srs_data::ActiveModel = model.into();
+        active_model.question_id = Set(input.question_id);
+        active_model.stability = Set(input.stability);
+        active_model.difficulty = Set(input.difficulty);
+        active_model.next_review_at = Set(input.next_review_at);
+        active_model.lastreviewed_at = Set(input.lastreviewed_at);
+        active_model.review_count = Set(input.review_count);
+        active_model.feedback_history = Set(input.feedback_history);
+        active_model.updated_at = Set(now);
+        active_model.version = Set(input.version + 1);
+        active_model.sync_status = Set(input.status);
+
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    } else {
+        // 插入新记录
+        let new_srs = srs_data::ActiveModel {
+            id: Set(input.id),
+            question_id: Set(input.question_id),
+            stability: Set(input.stability),
+            difficulty: Set(input.difficulty),
+            next_review_at: Set(input.next_review_at),
+            lastreviewed_at: Set(input.lastreviewed_at),
+            review_count: Set(input.review_count),
+            feedback_history: Set(input.feedback_history),
+            created_at: Set(now),
+            updated_at: Set(now),
+            version: Set(input.version),
+            sync_status: Set(input.status),
+            sync_hash: Set(None),
+        };
+
+        new_srs.insert(db).await.map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }

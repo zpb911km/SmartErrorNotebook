@@ -20,6 +20,17 @@ pub struct UpdateSubjectInput {
     pub color: Option<String>,
 }
 
+// 用于同步的 UPSERT 输入
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UpsertSubjectInput {
+    pub id: String,
+    pub version: i32,
+    pub status: String,
+    pub deleted_at: Option<i64>,
+    pub name: String,
+    pub color: Option<String>,
+}
+
 /// 获取所有科目
 #[tauri::command]
 pub async fn get_subjects(state: State<'_, AppState>) -> Result<Vec<subject::Model>, String> {
@@ -118,6 +129,54 @@ pub async fn delete_subject(state: State<'_, AppState>, id: String) -> Result<()
     subject.sync_status = Set("pending".to_string());
 
     subject.update(db).await.map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// UPSERT: 根据 ID 插入或更新科目（用于同步）
+#[tauri::command]
+pub async fn upsert_subject(
+    state: State<'_, AppState>,
+    input: UpsertSubjectInput,
+) -> Result<(), String> {
+    use crate::database::entities::subject as sub;
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    // 检查记录是否存在
+    let existing = sub::Entity::find_by_id(input.id.clone())
+        .one(db)
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(model) = existing {
+        // 更新现有记录
+        let mut active_model: subject::ActiveModel = model.into();
+        active_model.name = Set(input.name);
+        active_model.color = Set(input.color);
+        active_model.updated_at = Set(now);
+        active_model.version = Set(input.version + 1);
+        active_model.sync_status = Set(input.status);
+        active_model.deleted_at = Set(input.deleted_at);
+
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    } else {
+        // 插入新记录
+        let new_subject = subject::ActiveModel {
+            id: Set(input.id),
+            name: Set(input.name),
+            color: Set(input.color),
+            created_at: Set(now),
+            updated_at: Set(now),
+            deleted_at: Set(input.deleted_at),
+            version: Set(input.version),
+            sync_status: Set(input.status),
+            sync_hash: Set(None),
+        };
+
+        new_subject.insert(db).await.map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }

@@ -141,3 +141,71 @@ pub async fn delete_attachment(state: State<'_, AppState>, id: String) -> Result
 
     Ok(())
 }
+
+// 用于同步的 UPSERT 输入
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UpsertAttachmentInput {
+    pub id: String,
+    pub version: i32,
+    pub status: String,
+    pub deleted_at: Option<i64>,
+    pub question_id: String,
+    pub type_: String,
+    pub file_type: String,
+    pub base64_data: String,
+    pub hash: String,
+}
+
+/// UPSERT: 根据 ID 插入或更新附件（用于同步）
+#[tauri::command]
+pub async fn upsert_attachment(
+    state: State<'_, AppState>,
+    input: UpsertAttachmentInput,
+) -> Result<(), String> {
+    use crate::database::entities::attachment as att;
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    // 检查记录是否存在
+    let existing = att::Entity::find_by_id(input.id.clone())
+        .one(db)
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(model) = existing {
+        // 更新现有记录
+        let mut active_model: attachment::ActiveModel = model.into();
+        active_model.question_id = Set(input.question_id);
+        active_model.type_ = Set(input.type_);
+        active_model.file_type = Set(input.file_type);
+        active_model.base64_data = Set(input.base64_data.into_bytes());
+        active_model.hash = Set(input.hash);
+        active_model.updated_at = Set(now);
+        active_model.version = Set(input.version + 1);
+        active_model.sync_status = Set(input.status);
+        active_model.deleted_at = Set(input.deleted_at);
+
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    } else {
+        // 插入新记录
+        let new_attachment = attachment::ActiveModel {
+            id: Set(input.id),
+            question_id: Set(input.question_id),
+            type_: Set(input.type_),
+            file_type: Set(input.file_type),
+            base64_data: Set(input.base64_data.into_bytes()),
+            hash: Set(input.hash),
+            created_at: Set(now),
+            updated_at: Set(now),
+            deleted_at: Set(input.deleted_at),
+            version: Set(input.version),
+            sync_status: Set(input.status),
+            sync_hash: Set(None),
+        };
+
+        new_attachment.insert(db).await.map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}

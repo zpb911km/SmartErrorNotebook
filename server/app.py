@@ -56,6 +56,7 @@ class Record(db.Model):
     __tablename__ = 'records'
 
     id = db.Column(db.String(64), primary_key=True)  # 记录 ID（UUID）
+    table_name = db.Column(db.String(64), nullable=False, index=True)  # 表名，用于识别记录类型
     auth_key = db.Column(db.String(64), nullable=False, index=True)  # 用户标识
 
     # 同步字段
@@ -74,6 +75,7 @@ class Record(db.Model):
         """转换为客户端格式（不含 auth_key）"""
         return {
             'id': self.id,
+            'table_name': self.table_name,
             'version': self.version,
             'status': self.status,
             'deleted_at': self.deleted_at,
@@ -82,10 +84,11 @@ class Record(db.Model):
         }
 
     @classmethod
-    def from_client_dict(cls, record_dict, auth_key):
+    def from_client_dict(cls, record_dict, auth_key, table_name):
         """从客户端字典创建记录（用于更新时保留原 ID）"""
         return cls(
             id=record_dict['id'],
+            table_name=table_name,
             auth_key=auth_key,
             version=record_dict.get('version', 0),
             status=record_dict.get('status', 'synced'),
@@ -95,12 +98,13 @@ class Record(db.Model):
         )
 
     @classmethod
-    def from_new_dict(cls, record_dict, auth_key):
+    def from_new_dict(cls, record_dict, auth_key, table_name):
         """从客户端字典创建新记录（生成新 ID）"""
         new_id = str(uuid.uuid4())
         now = int(datetime.now().timestamp() * 1000)
         return cls(
             id=new_id,
+            table_name=table_name,
             auth_key=auth_key,
             version=record_dict.get('version', 0),
             status=record_dict.get('status', 'synced'),
@@ -162,7 +166,7 @@ def get_all_sync_data():
     if not user:
         return jsonify({'error': 'Invalid auth_key'}), 401
 
-    # 获取用户所有记录
+    # 获取用户所有记录（包含 table_name 用于前端识别）
     records = Record.query.filter_by(auth_key=auth_key).all()
 
     return jsonify({
@@ -180,6 +184,7 @@ def upload_single_record(record_id):
 
     Request Body:
         auth_key: 用户认证 key
+        table_name: 表名 (error_questions, subjects, srs_data, attachments, error_tags, sources)
         version: 版本号
         status: 状态 (synced/pending)
         deleted_at: 软删除时间戳 (可选)
@@ -190,11 +195,15 @@ def upload_single_record(record_id):
     """
     data = request.get_json()
     auth_key = data.get('auth_key')
+    table_name = data.get('table_name')  # 新增：表名
     client_version = data.get('version', 0)
     client_status = data.get('status', 'synced')
 
     if not auth_key:
         return jsonify({'error': 'Missing auth_key'}), 400
+
+    if not table_name:
+        return jsonify({'error': 'Missing table_name'}), 400
 
     # 验证 auth_key
     user = UserAuth.query.filter_by(auth_key=auth_key).first()
@@ -205,7 +214,7 @@ def upload_single_record(record_id):
 
     try:
         # 检查记录是否存在
-        existing = Record.query.filter_by(id=record_id, auth_key=auth_key).first()
+        existing = Record.query.filter_by(id=record_id, auth_key=auth_key, table_name=table_name).first()
 
         if existing:
             # 记录已存在 - 执行冲突检测
@@ -234,6 +243,7 @@ def upload_single_record(record_id):
             # 记录不存在：创建新记录（新建或从其他设备拉取后的上传）
             new_record = Record(
                 id=record_id,
+                table_name=table_name,
                 auth_key=auth_key,
                 version=data.get('version', 0) + 1,
                 status=data.get('status', 'synced'),

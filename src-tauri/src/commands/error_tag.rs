@@ -21,6 +21,18 @@ pub struct CreateErrorTagsForQuestionInput {
     pub tags: Vec<TagInfo>,
 }
 
+// 用于同步的 UPSERT 输入
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UpsertErrorTagInput {
+    pub id: String,
+    pub version: i32,
+    pub status: String,
+    pub deleted_at: Option<i64>,
+    pub question_id: String,
+    pub name: String,
+    pub color: String,
+}
+
 /// 为指定题目批量创建错因标签
 #[tauri::command]
 pub async fn create_error_tags_for_question(
@@ -152,6 +164,56 @@ pub async fn update_error_tag_by_name(
     }
 }
 
+/// UPSERT: 根据 ID 插入或更新错因标签（用于同步）
+#[tauri::command]
+pub async fn upsert_error_tag(
+    state: State<'_, AppState>,
+    input: UpsertErrorTagInput,
+) -> Result<(), String> {
+    use crate::database::entities::error_tag as tag;
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    // 检查记录是否存在
+    let existing = tag::Entity::find_by_id(input.id.clone())
+        .one(db)
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(model) = existing {
+        // 更新现有记录
+        let mut active_model: error_tag::ActiveModel = model.into();
+        active_model.question_id = Set(input.question_id);
+        active_model.name = Set(input.name);
+        active_model.color = Set(input.color);
+        active_model.updated_at = Set(now);
+        active_model.version = Set(input.version + 1);
+        active_model.sync_status = Set(input.status);
+        active_model.deleted_at = Set(input.deleted_at);
+
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    } else {
+        // 插入新记录
+        let new_tag = error_tag::ActiveModel {
+            id: Set(input.id),
+            question_id: Set(input.question_id),
+            name: Set(input.name),
+            color: Set(input.color),
+            created_at: Set(now),
+            updated_at: Set(now),
+            deleted_at: Set(input.deleted_at),
+            version: Set(input.version),
+            sync_status: Set(input.status),
+            sync_hash: Set(None),
+        };
+
+        new_tag.insert(db).await.map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
 // 删除错因记录,通过id定位
 #[tauri::command]
 pub async fn delete_error_tag_by_id(
@@ -197,3 +259,4 @@ pub async fn update_error_tag_by_id(
         Err(e) => Err(e.to_string()),
     }
 }
+
