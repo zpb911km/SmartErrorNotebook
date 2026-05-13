@@ -9,9 +9,9 @@
     <div class="carousel-section">
       <div class="arco-carousel arco-carousel-indicator-position-bottom" style="width: 100%; height: 200px; margin-bottom: 30px;">
         <div class="arco-carousel-slide arco-carousel-horizontal">
-          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 0, 'arco-carousel-item-next': currentSlide === 2, 'arco-carousel-item-prev': currentSlide === 1 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(54, 77, 121); color: white; text-align: center; line-height: 200px; font-size: 30px;">1</div>
-          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 1, 'arco-carousel-item-next': currentSlide === 0, 'arco-carousel-item-prev': currentSlide === 2 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(0, 168, 84); color: white; text-align: center; line-height: 200px; font-size: 30px;">2</div>
-          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 2, 'arco-carousel-item-next': currentSlide === 1, 'arco-carousel-item-prev': currentSlide === 0 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(245, 34, 45); color: white; text-align: center; line-height: 200px; font-size: 30px;">3</div>
+          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 0, 'arco-carousel-item-next': currentSlide === 2, 'arco-carousel-item-prev': currentSlide === 1 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(54, 77, 121); color: white; text-align: center; line-height: 200px; font-size: 30px;">欢迎使用智能错题本</div>
+          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 1, 'arco-carousel-item-next': currentSlide === 0, 'arco-carousel-item-prev': currentSlide === 2 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(0, 168, 84); color: white; text-align: center; line-height: 200px; font-size: 30px;">好好学习，天天向上！</div>
+          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 2, 'arco-carousel-item-next': currentSlide === 1, 'arco-carousel-item-prev': currentSlide === 0 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(245, 34, 45); color: white; text-align: center; line-height: 200px; font-size: 30px;">不要把梦想埋没！</div>
         </div>
         <div class="swiper-pagination swiper-pagination-clickable swiper-pagination-bullets">
           <span data-index="0" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 0 }" tabindex="0" role="button" aria-label="Go to slide 1"></span>
@@ -283,9 +283,19 @@ onUnmounted(() => {
 }
 
 .arco-carousel-item {
-  flex: 0 0 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
+  opacity: 0;
   transition: all 0.5s cubic-bezier(0.34, 0.69, 0.1, 1);
+  pointer-events: none;
+}
+
+.arco-carousel-item.arco-carousel-item-current {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 /* Swiper Pagination */
