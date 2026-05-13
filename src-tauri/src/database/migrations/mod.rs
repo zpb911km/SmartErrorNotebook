@@ -12,6 +12,8 @@ mod m20250130_000002_recreate_sources;
 mod m20250130_000003_alter_attachments_base64;
 mod m20250206_000001_add_sourceid_to_error_questions;
 mod m20260428_000005_alter_srs_data_sdr_model;
+mod m20260512_000001_alter_attachments_base64_to_blob;
+mod m20260512_000002_alter_errorquestion_prompt_to_text;
 
 pub struct Migrator;
 
@@ -29,6 +31,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250130_000003_alter_attachments_base64::Migration),
             Box::new(m20250206_000001_add_sourceid_to_error_questions::Migration),
             Box::new(m20260428_000005_alter_srs_data_sdr_model::Migration),
+            Box::new(m20260512_000001_alter_attachments_base64_to_blob::Migration),
+            Box::new(m20260512_000002_alter_errorquestion_prompt_to_text::Migration),
         ]
     }
 }

@@ -11,6 +11,7 @@ pub struct Model {
     pub userid: String,
     pub subjectid: String,
     pub sourceid: Option<String>,
+    #[sea_orm(column_type = "Text")]
     pub prompt: String,
     pub type_: String,
     #[sea_orm(column_type = "Text")]

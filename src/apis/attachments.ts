@@ -3,6 +3,7 @@ import {
   Attachment,
   CreateAttachmentInput,
 } from '../types';
+import { compressImageIfTooLarge } from '../utils/imageCompression';
 
 // ==================== API 接口 ====================
 
@@ -14,7 +15,27 @@ import {
 export async function createAttachment(
   input: CreateAttachmentInput
 ): Promise<Attachment> {
-  return await invoke('create_attachment', { input });
+  // 阻塞式图片压缩（等待压缩完成）
+  let compressedBase64Data = input.base64_data;
+  const base64 = input.base64_data.startsWith('data:')
+    ? input.base64_data.split(',')[1]
+    : input.base64_data;
+
+  if (base64) {
+    const compressed = await compressImageIfTooLarge(input.base64_data);
+    if (compressed !== input.base64_data) {
+      console.log(`[图片压缩] 题目 ${input.question_id} 的图片从 ${Math.round(input.base64_data.length / 1024)}KB 压缩至 ${Math.round(compressed.length / 1024)}KB`);
+      compressedBase64Data = compressed;
+    }
+  }
+
+  // 使用压缩后的数据创建附件
+  const updatedInput: CreateAttachmentInput = {
+    ...input,
+    base64_data: compressedBase64Data,
+  };
+
+  return await invoke('create_attachment', { input: updatedInput });
 }
 
 /**
@@ -27,10 +48,30 @@ export async function createAttachmentsForQuestion(
   questionId: string,
   attachments: CreateAttachmentInput[]
 ): Promise<Attachment[]> {
-  console.log(`questionId: ${questionId}, attachments: ${attachments}`)
+  // 阻塞式批量图片压缩（等待所有压缩完成）
+  const compressedAttachments = await Promise.all(
+    attachments.map(async (att) => {
+      const base64 = att.base64_data.startsWith('data:')
+        ? att.base64_data.split(',')[1]
+        : att.base64_data;
+
+      if (base64) {
+        const compressed = await compressImageIfTooLarge(att.base64_data);
+        if (compressed !== att.base64_data) {
+          console.log(
+            `[图片压缩] 题目 ${questionId} 的附件从 ${Math.round(att.base64_data.length / 1024)}KB 压缩至 ${Math.round(compressed.length / 1024)}KB`
+          );
+          return { ...att, base64_data: compressed };
+        }
+      }
+      return att;
+    })
+  );
+
+  console.log(`questionId: ${questionId}, attachments: `, compressedAttachments);
   return await invoke('create_attachments_for_question', {
     questionId: questionId,
-    attachments,
+    attachments: compressedAttachments,
   });
 }
 
@@ -55,6 +96,20 @@ export async function deleteAttachment(id: string): Promise<void> {
 }
 
 // ==================== 工具函数 ====================
+
+/**
+ * 将 base64 字符串转换为 Uint8Array
+ * @param base64 base64 编码的字符串
+ * @returns Uint8Array 字节数组
+ */
+export function base64ToArrayBuffer(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
 
 /**
  * 将 File 对象转换为 base64 字符串
