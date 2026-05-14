@@ -220,9 +220,7 @@ def upload_single_record(record_id):
     """
     data = request.get_json()
     auth_key = data.get('auth_key')
-    table_name = data.get('table_name')  # 新增：表名
-    client_version = data.get('version', 0)
-    client_status = data.get('status', 'synced')
+    table_name = data.get('table_name')
 
     if not auth_key:
         return jsonify({'error': 'Missing auth_key'}), 400
@@ -242,19 +240,8 @@ def upload_single_record(record_id):
         existing = Record.query.filter_by(id=record_id, auth_key=auth_key, table_name=table_name).first()
 
         if existing:
-            # 记录已存在 - 执行冲突检测
-            # 协议：只有当 local.status == 'pending' 且 (remote 不存在 OR local.version == remote.version) 时才允许推送
-            if client_status == 'pending' and client_version != existing.version:
-                # CONFLICT: 客户端是 pending 状态但版本不匹配
-                return jsonify({
-                    'success': False,
-                    'conflict': True,
-                    'error': f'Conflict: client version {client_version} does not match server version {existing.version}',
-                    'server_version': existing.version,
-                }), 409
-
-            # 无冲突：更新版本并覆盖数据
-            existing.version = existing.version + 1
+            # 客户端已决策，直接覆盖
+            existing.version = data.get('version', 0)
             existing.status = 'synced'
             existing.deleted_at = data.get('deleted_at')
             existing.data = data['data']

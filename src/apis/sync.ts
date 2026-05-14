@@ -66,14 +66,12 @@ export interface ConflictInfo {
 }
 
 /** 冲突解决方案 */
-export type ConflictResolution = 'keep_local' | 'keep_remote' | 'merge';
+export type ConflictResolution = 'keep_local' | 'keep_remote';
 
 /** 解决后的冲突记录 */
 export interface ResolvedConflict {
   id: string;
   resolution: ConflictResolution;
-  final_data?: object; // merge 时需要
-  final_deleted_at?: number | null;
 }
 
 // ==================== 进度类型 ====================
@@ -357,32 +355,6 @@ export async function uploadRecords(
   }
 
   return results;
-}
-
-/**
- * 解决冲突 - 根据用户选择生成最终数据
- */
-export function resolveConflict(
-  conflict: ConflictInfo,
-  resolution: ConflictResolution
-): ResolvedConflict {
-  return {
-    id: conflict.id,
-    resolution,
-    final_deleted_at:
-      resolution === 'keep_local' ? (conflict.local_deleted ? null : Date.now()) : (conflict.server_deleted ? Date.now() : null),
-  };
-}
-
-/**
- * 应用冲突解决结果
- */
-export async function applyConflictResolution(resolved: ResolvedConflict[]): Promise<void> {
-  for (const res of resolved) {
-    await invoke('apply_conflict_resolution', {
-      resolution: res,
-    });
-  }
 }
 
 /**

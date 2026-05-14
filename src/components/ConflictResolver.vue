@@ -1,12 +1,9 @@
 <template>
   <Teleport to="body">
     <div v-show="show" class="conflict-overlay">
-      <!-- 背景遮罩 -->
       <div class="conflict-overlay__mask" @click.self="handleBackgroundClick"></div>
 
-      <!-- 冲突列表卡片 -->
       <div class="conflict-card">
-        <!-- 标题栏 -->
         <div class="conflict-card__header">
           <h2 class="conflict-card__title">发现 {{ conflicts.length }} 个需要同步的冲突</h2>
           <p class="conflict-card__desc">
@@ -14,21 +11,26 @@
           </p>
         </div>
 
-        <!-- 冲突列表 -->
         <div class="conflict-list">
           <ConflictItem
             v-for="conflict in conflicts"
             :key="conflict.id"
             :conflict="conflict"
-            :resolved-id="resolvedIds"
+            :resolved-choice="resolvedMap.get(conflict.id)?.resolution ?? null"
             @resolve="handleResolve"
           />
         </div>
 
-        <!-- 操作按钮 -->
         <div class="conflict-card__footer">
           <button class="btn btn--outline" @click="handleSkip">
             跳过 (保持本地)
+          </button>
+          <button
+            v-if="resolvedMap.size > 0"
+            class="btn btn--confirm"
+            @click="confirmResolved"
+          >
+            确认已选 ({{ resolvedMap.size }})
           </button>
           <button class="btn btn--primary" @click="handleAllRemote">
             全部使用服务端版本
@@ -45,9 +47,7 @@ import type { ConflictInfo, ResolvedConflict } from '../apis/sync';
 import ConflictItem from './ConflictItem.vue';
 
 interface Props {
-  /** 是否显示 */
   modelValue: boolean;
-  /** 冲突列表 */
   conflicts: ConflictInfo[];
 }
 
@@ -57,53 +57,56 @@ const emit = defineEmits<{
   (e: 'resolve', resolutions: ResolvedConflict[]): void;
 }>();
 
-const resolvedIds = ref<Set<string>>(new Set());
+const resolvedMap = ref<Map<string, ResolvedConflict>>(new Map());
 
 const show = computed(() => props.modelValue && props.conflicts.length > 0);
 
 const handleResolve = (conflictId: string, resolution: ResolvedConflict) => {
-  resolvedIds.value.add(conflictId);
-  emit('resolve', [resolution]);
+  resolvedMap.value.set(conflictId, resolution);
+  // force reactivity
+  resolvedMap.value = new Map(resolvedMap.value);
+};
+
+const confirmResolved = () => {
+  if (resolvedMap.value.size > 0) {
+    emit('resolve', Array.from(resolvedMap.value.values()));
+  }
+  emit('update:modelValue', false);
 };
 
 const handleSkip = () => {
-  // 跳过所有未解决的冲突 - 保持本地版本
-  const skipped: ResolvedConflict[] = props.conflicts
-    .filter((c) => !resolvedIds.value.has(c.id))
-    .map((c) => ({
-      id: c.id,
-      resolution: 'keep_local' as const,
-      final_deleted_at: null,
-    }));
-
-  if (skipped.length > 0) {
-    emit('resolve', skipped);
-  }
-
+  const all: ResolvedConflict[] = [
+    // already resolved items
+    ...Array.from(resolvedMap.value.values()),
+    // unresolved ones → keep_local
+    ...props.conflicts
+      .filter((c) => !resolvedMap.value.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        resolution: 'keep_local' as const,
+      })),
+  ];
+  if (all.length > 0) emit('resolve', all);
   emit('update:modelValue', false);
 };
 
 const handleAllRemote = () => {
-  // 使用服务端的版本
-  const allRemote: ResolvedConflict[] = props.conflicts
-    .filter((c) => !resolvedIds.value.has(c.id))
-    .map((c) => ({
-      id: c.id,
-      resolution: 'keep_remote' as const,
-      final_deleted_at: c.server_deleted ? Date.now() : null,
-    }));
-
-  if (allRemote.length > 0) {
-    emit('resolve', allRemote);
-  }
-
+  const all: ResolvedConflict[] = [
+    ...Array.from(resolvedMap.value.values()),
+    ...props.conflicts
+      .filter((c) => !resolvedMap.value.has(c.id))
+      .map((c) => ({
+        id: c.id,
+        resolution: 'keep_remote' as const,
+      })),
+  ];
+  if (all.length > 0) emit('resolve', all);
   emit('update:modelValue', false);
 };
 
 const handleBackgroundClick = () => {
-  // 点击背景也可以关闭（但不会自动处理冲突）
-  if (resolvedIds.value.size === props.conflicts.length) {
-    emit('update:modelValue', false);
+  if (resolvedMap.value.size === props.conflicts.length) {
+    confirmResolved();
   }
 };
 </script>
@@ -203,5 +206,14 @@ const handleBackgroundClick = () => {
 
 .btn--primary:hover {
   background: #2563eb;
+}
+
+.btn--confirm {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btn--confirm:hover {
+  background: #059669;
 }
 </style>

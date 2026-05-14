@@ -130,7 +130,7 @@ import { handshake, getAllSyncData, uploadRecords, applyPullRecords, getAllLocal
 import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord, SyncRecordHeader } from '../apis/sync'
 import SyncOverlay from '../components/SyncOverlay.vue'
 import ConflictResolver from '../components/ConflictResolver.vue'
-import { showError, showInfo, showSuccess } from '../utils/notification'
+import { showError, showSuccess } from '../utils/notification'
 
 const AUTH_STORAGE_KEY = 'auth_key'
 const URL_STORAGE_KEY = 'sync_server_url'
@@ -319,6 +319,7 @@ const handleSync = async () => {
     if (result.conflicts.length > 0) {
       syncProgress.value.phase = 'resolving_conflicts'
       conflictsToResolve.value = result.conflicts
+      showConflictResolver.value = true
       return
     }
 
@@ -382,24 +383,51 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
   showProgress.value = true
 
   try {
-    for (const resolution of resolutions) {
-      await invoke('apply_conflict_resolution', { resolution })
+    const conflicts = handshakeResult.value?.conflicts || []
+    if (!conflicts.length || !handshakeResult.value) {
+      showError('没有待解决的冲突', 'error')
+      return
     }
 
-    const [allLocal, remoteRecords] = await Promise.all([
-      getAllLocalRecords(),
-      getAllSyncData(authKey.value),
-    ])
+    const remoteRecords = await getAllSyncData(authKey.value)
+    const resolvedPush: string[] = []
 
-    const newResult = handshake(allLocal, remoteRecords)
-    handshakeResult.value = newResult
+    for (const res of resolutions) {
+      const conflict = conflicts.find(c => c.id === res.id)
+      if (!conflict) continue
 
-    if (newResult.push_list.length > 0 || newResult.pull_list.length > 0) {
-      await doSync(newResult, authKey.value)
-      showSuccess('同步完成', 'success')
-    } else {
-      showInfo('所有冲突已解决，无需同步', 'info')
+      const newVersion = Math.max(conflict.local_version, conflict.server_version) + 1
+
+      if (res.resolution === 'keep_local') {
+        // 保留本地：更新本地 version = max+1, status = 'synced'，推送到服务端
+        await invoke('set_record_sync_status_version', {
+          recordId: res.id,
+          status: 'synced',
+          version: newVersion,
+        })
+        resolvedPush.push(res.id)
+      } else {
+        // 保留服务端：下载服务端数据，本地设置 version = max+1，再推送更新服务端 version
+        const fullRecord = await downloadRecord(res.id, authKey.value)
+        await applyPullRecords([fullRecord])
+        await invoke('set_record_sync_status_version', {
+          recordId: res.id,
+          status: 'synced',
+          version: newVersion,
+        })
+        resolvedPush.push(res.id)
+      }
     }
+
+    // 合并原有的 push/pull 列表
+    const merged: SyncHandshakeResult = {
+      push_list: [...handshakeResult.value.push_list, ...resolvedPush],
+      pull_list: [...handshakeResult.value.pull_list],
+      conflicts: [],
+    }
+
+    await doSync(merged, authKey.value)
+    showSuccess('同步完成', 'success')
     refreshSyncStats()
   } catch (e) {
     console.error('Conflict resolution failed:', e)

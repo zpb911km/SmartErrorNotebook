@@ -1,29 +1,26 @@
 <template>
   <div class="conflict-item">
-    <!-- 记录预览 -->
-    <div class="conflict-item__preview" :class="{ 'conflict-item__preview--selected': selected }">
+    <div class="conflict-item__preview">
       <div class="conflict-item__header">
-        <span class="conflict-item__type">错题 #{{ id.slice(0, 8) }}</span>
+        <span class="conflict-item__type">{{ tableName || '记录' }}</span>
         <span class="conflict-item__versions">
           本地 v{{ localVersion }} vs 服务端 v{{ serverVersion }}
         </span>
       </div>
 
-      <!-- 内容摘要 -->
       <div class="conflict-item__body">
         <div class="conflict-section">
           <h4 class="conflict-section__title">本地版本</h4>
-          <p class="conflict-section__content">{{ localPreview }}</p>
+          <pre class="conflict-section__content json-preview">{{ localPreviewText }}</pre>
         </div>
         <div class="divider"></div>
         <div class="conflict-section">
           <h4 class="conflict-section__title">服务端版本</h4>
-          <p class="conflict-section__content">{{ serverPreview }}</p>
+          <pre class="conflict-section__content json-preview">{{ serverPreviewText }}</pre>
         </div>
       </div>
     </div>
 
-    <!-- 操作按钮 -->
     <div class="conflict-item__actions" v-if="!resolved">
       <button class="btn btn--local" @click="handleResolve('keep_local')">
         保留本地版本
@@ -33,60 +30,90 @@
       </button>
     </div>
 
-    <!-- 已解决状态 -->
     <div v-else class="conflict-item__resolved">
       <span class="resolved-badge">
-        {{ resolvedChoice === 'keep_local' ? '已保留本地版本' : '已使用服务端版本' }}
+        {{ currentChoice === 'keep_local' ? '已选择: 本地版本' : '已选择: 服务端版本' }}
       </span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import type { ConflictInfo } from '../apis/sync';
+import { ref, computed, onMounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+import { downloadRecord } from '../apis/sync'
+import type { ConflictInfo, ResolvedConflict } from '../apis/sync'
+
+const PREVIEW_MAX_LENGTH = 50
 
 interface Props {
-  conflict: ConflictInfo;
-  resolvedId: Set<string>;
+  conflict: ConflictInfo
+  resolvedChoice: 'keep_local' | 'keep_remote' | null
 }
 
-const props = defineProps<Props>();
+const props = defineProps<Props>()
 const emit = defineEmits<{
-  (e: 'resolve', id: string, resolution: { id: string; resolution: string; final_deleted_at?: number | null }): void;
-}>();
+  (e: 'resolve', id: string, resolution: ResolvedConflict): void
+}>()
 
-const id = computed(() => props.conflict.id);
-const localVersion = computed(() => props.conflict.local_version);
-const serverVersion = computed(() => props.conflict.server_version);
-const selected = computed(() => false); // 暂时不使用选中状态
+const localVersion = computed(() => props.conflict.local_version)
+const serverVersion = computed(() => props.conflict.server_version)
+const resolved = computed(() => props.resolvedChoice !== null)
+const currentChoice = computed(() => props.resolvedChoice)
 
-const localPreview = computed(() => {
-  // TODO: 从本地数据库获取实际内容预览
-  return '(查看完整内容请打开编辑)';
-});
+// ---------- 数据加载 ----------
+const tableName = ref('')
+const localRaw = ref<any>(null)
+const serverRaw = ref<any>(null)
 
-const serverPreview = computed(() => {
-  // TODO: 从服务端数据中获取预览
-  return '(来自其他设备)';
-});
+onMounted(async () => {
+  // 加载本地数据
+  try {
+    const local = await invoke<any>('get_record_for_upload', { recordId: props.conflict.id })
+    localRaw.value = local.data
+    tableName.value = local.table_name
+  } catch { /* ignore */ }
 
-const resolved = computed(() => props.resolvedId.has(props.conflict.id));
-const resolvedChoice = ref<'keep_local' | 'keep_remote' | null>(null);
+  // 加载服务端数据
+  const authKey = localStorage.getItem('auth_key') || ''
+  if (authKey) {
+    try {
+      const server = await downloadRecord(props.conflict.id, authKey)
+      serverRaw.value = server.data
+      if (!tableName.value) tableName.value = server.table_name
+    } catch { /* ignore */ }
+  }
+})
 
+// ---------- 格式化展示 ----------
+function formatPreview(obj: any): string {
+  if (!obj) return '(无数据)'
+  const cleaned = { ...obj }
+  // 附件中的 base64_data 不展示
+  if (tableName.value === 'attachments' && 'base64_data' in cleaned) {
+    cleaned.base64_data = '[base64 omitted]'
+  }
+  return Object.entries(cleaned)
+    .map(([key, val]) => {
+      const str = typeof val === 'object' ? JSON.stringify(val) : String(val)
+      const truncated = str.length > PREVIEW_MAX_LENGTH
+        ? str.slice(0, PREVIEW_MAX_LENGTH) + '...'
+        : str
+      return `${key}: ${truncated}`
+    })
+    .join('\n')
+}
+
+const localPreviewText = computed(() => formatPreview(localRaw.value))
+const serverPreviewText = computed(() => formatPreview(serverRaw.value))
+
+// ---------- 选择 ----------
 const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
-  const finalDeletedAt =
-    choice === 'keep_local'
-      ? (props.conflict.local_deleted ? null : Date.now())
-      : (props.conflict.server_deleted ? Date.now() : null);
-
-  resolvedChoice.value = choice;
   emit('resolve', props.conflict.id, {
     id: props.conflict.id,
     resolution: choice,
-    final_deleted_at: finalDeletedAt,
-  });
-};
+  })
+}
 </script>
 
 <style scoped>
@@ -105,15 +132,10 @@ const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
   border-color: #d1d5db;
 }
 
-/* 预览区域 */
 .conflict-item__preview {
   background: #f9fafb;
   border-radius: 8px;
   overflow: hidden;
-}
-
-.conflict-item__preview--selected {
-  background: #eff6ff;
 }
 
 .conflict-item__header {
@@ -130,6 +152,7 @@ const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
   font-weight: 600;
   color: #6b7280;
   text-transform: uppercase;
+  font-family: monospace;
 }
 
 .conflict-item__versions {
@@ -139,19 +162,21 @@ const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
 }
 
 .conflict-item__body {
+  display: flex;
   padding: 1rem;
+  gap: 1rem;
+  min-height: 60px;
 }
 
 .divider {
   width: 2px;
-  height: 2rem;
   background: #e5e7eb;
-  margin: 0 1rem;
+  flex-shrink: 0;
 }
 
-/* 冲突段 */
 .conflict-section {
   flex: 1;
+  min-width: 0;
 }
 
 .conflict-section__title {
@@ -162,14 +187,18 @@ const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
   text-transform: uppercase;
 }
 
-.conflict-section__content {
-  font-size: 0.875rem;
-  color: #374151;
+.json-preview {
+  font-size: 0.75rem;
+  font-family: monospace;
   line-height: 1.5;
+  color: #374151;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
-/* 操作按钮 */
 .conflict-item__actions {
   display: flex;
   gap: 0.75rem;
@@ -204,7 +233,6 @@ const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
   background: #2563eb;
 }
 
-/* 已解决状态 */
 .conflict-item__resolved {
   display: flex;
   justify-content: center;
