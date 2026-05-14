@@ -88,50 +88,26 @@ const prompts: PromptItem[] = [
   {
     tag: "question_text",
     text: `**请提取图片中的题干内容,以Markdown格式返回.**
-    
 这是一些题目和答案的图片,注意区分题干,手写作答,和答案的图片.
 其中,请观察带有题干信息的图片(一般是前一张或若干张图片,题干包含问题,选项,补充信息,示意图等).
 题干只是学生做题时可以看见的部分,不包括图片中的答案和手写信息.
-请提取图片中的题干内容,以Markdown格式返回.`,
+注意公式使用\`$\`或者\`$$\`包裹
+请提取图片中的题干内容.`,
     required: true,
     priority: 1,
-    outputFormat: "json",
-    jsonSchema: JSON.stringify({
-      type: "object",
-      properties: {
-        markdown: {
-          type: "string",
-          description: "题干"
-        },
-        confidence: {
-          type: "number",
-          description: "置信度（0-1之间）"
-        }
-      },
-      required: ["markdown", "confidence"]
-    }, null, 2)
+    outputFormat: "text",
+    jsonSchema: ""
   },
   {
     tag: "analysis",
     text: `这是一些题目和答案的图片,请观察全部图片.
-请分析错题的错误原因.以Markdown格式返回.`,
+请分析错题的错误原因.
+你无需照抄图片内容,只需要切中要害进行分析即可,或者给更高深而精悍的点拨
+以Markdown格式返回.`,
     required: true,
     priority: 3,
-    outputFormat: "json",
-    jsonSchema: JSON.stringify({
-      type: "object",
-      properties: {
-        analysis: {
-          type: "string",
-          description: "错误原因分析"
-        },
-        confidence: {
-          type: "number",
-          description: "置信度（0-1之间）"
-        }
-      },
-      required: ["analysis", "confidence"]
-    }, null, 2)
+    outputFormat: "text",
+    jsonSchema: ""
   },
   {
     tag: "question_type",
@@ -156,24 +132,13 @@ const prompts: PromptItem[] = [
     tag: "answer",
     text: `这是一些题目和答案的图片,请观察全部图片,并区分题干,手写作答,答案的图片.
 如果存在答案的图片,请提取图片中的答案和解析内容,并以Markdown格式返回;
-否则,尝试作答并给出该题的正确答案和解析,以Markdown格式返回.`,
+否则,尝试作答并给出该题的正确答案和解析,标注**"AI生成答案"**,以Markdown格式返回.
+注意**只**输出图片中*答案*和*解析*部分的原样内容,不用给出*题干*;
+注意公式使用\`$\`或者\`$$\`包裹`,
     required: true,
     priority: 2,
-    outputFormat: "json",
-    jsonSchema: JSON.stringify({
-      type: "object",
-      properties: {
-        answer: {
-          type: "string",
-          description: "答案"
-        },
-        confidence: {
-          type: "number",
-          description: "置信度（0-1之间）"
-        }
-      },
-      required: ["answer", "confidence"]
-    }, null, 2)
+    outputFormat: "text",
+    jsonSchema: ""
   },
 //   {
 //     tag: "source",
@@ -358,13 +323,14 @@ export const inquiryAIAddInfo = async (
             });
             break;
           }
-        }
-
-        // 检查响应是否包含"没有提供图片"等错误信息
-        if (response.includes("没有提供图片") || response.includes("无法提取图片") || response.includes("上下文没有")) {
-          console.warn(`[${prompt.tag}] AI 报告未收到图片，进行重试...`);
-          retryCount++;
-          continue;
+        } else {
+          console.log(`[${prompt.tag}] 纯文本结果:`, response);
+          parsedContent = response.replace(/\\\\/g, "\\")
+                      .replace(/\$\$/g, "<math-block>")
+                      .replace(/\$/g, "<math-inline>")
+                      .replace(/<math-block>/g, " $$ ")
+                      .replace(/<math-inline>/g, " $ ");
+          console.log(`替换后结果: ${parsedContent}`); // 添加这行来调试                                  
         }
 
         // 保存结果

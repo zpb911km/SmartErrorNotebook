@@ -362,7 +362,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
 import { getBooks, getChapters, getKnowledges, getSources } from '../apis/sources'
-import { getErrorTags } from '../apis/errorTags'
+import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
 import type { Subject } from '../types'
 
 const router = useRouter()
@@ -908,7 +908,7 @@ const fetchData = async () => {
     const [subjectsData, questionsData, tagsData, sourcesData] = await Promise.all([
       getSubjects(),
       getQuestions(),
-      getErrorTags(),
+      getFullErrorTags(),
       getSources()
     ])
     
@@ -922,6 +922,7 @@ const fetchData = async () => {
     availableTags.value = uniqueTags
     
     // 构建错题和标签的映射关系
+    console.log(allTags)
     const tagMap = new Map<string, string[]>()
     allTags.forEach((tag: any) => {
       const questionId = tag.question_id
@@ -933,6 +934,7 @@ const fetchData = async () => {
       tagMap.get(questionId)!.push(tagName)
     })
     questionTagsMap.value = tagMap
+    console.log('tagMap:', tagMap)
     
     // 构建来源映射（source_id -> 来源信息）
     const sourceMap = new Map<string, any>()

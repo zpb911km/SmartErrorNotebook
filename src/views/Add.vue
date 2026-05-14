@@ -37,9 +37,9 @@
         <button v-if="!aiButtonLoading" @click="inquiryAI()" :disabled="aiButtonLoading" class="ai-btn">
           AI 查询
         </button>
-        <div class="loading-spinner" v-if="aiButtonLoading">
+        <!-- <div class="loading-spinner" v-if="aiButtonLoading">
           <div class="spinner"></div>
-        </div>
+        </div> -->
       </div>
       <h3>题目信息</h3>
       <div class="form-group" :class="{ 'loading': subjectLoading }">
@@ -55,7 +55,7 @@
 
       <div class="form-group" :class="{ 'loading': promptLoading }">
         <label>题目</label>
-        <textarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></textarea>  
+        <MarkdownTextarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></MarkdownTextarea>  
         <div class="loading-spinner" v-if="promptLoading">
           <div class="spinner"></div>
         </div>
@@ -73,7 +73,7 @@
 
       <div class="form-group" :class="{ 'loading': answerLoading }">
         <label>答案</label>
-        <textarea v-model="form.answer" placeholder="请输入答案..." rows="3"></textarea>
+        <MarkdownTextarea v-model="form.answer" placeholder="请输入答案..." rows="3"></MarkdownTextarea>
         <div class="loading-spinner" v-if="answerLoading">
           <div class="spinner"></div>
         </div>
@@ -81,7 +81,7 @@
 
       <div class="form-group" :class="{ 'loading': analysisLoading }">
         <label>解析</label>
-        <textarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></textarea>
+        <MarkdownTextarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></MarkdownTextarea>
         <div class="loading-spinner" v-if="analysisLoading">
           <div class="spinner"></div>
         </div>
@@ -89,7 +89,7 @@
 
       <div class="form-group">
         <label>错题小记</label>
-        <textarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></textarea>
+        <MarkdownTextarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></MarkdownTextarea>
       </div>
 
       <div class="form-group">
@@ -101,11 +101,6 @@
       <div class="form-group">
         <label>错因</label>
         <ErrorTagSelector :currentTags="form.error_tags" @select="(tags) => { form.error_tags = tags }" />
-      </div>
-
-      <div class="form-group">
-        <label>SRS 预设</label>
-        <SRSPresetSelector :currentPresetId="currentPresetId" @select="handlePresetSelect" />
       </div>
     </div>
 
@@ -123,13 +118,15 @@ import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import SourceSelector from '../components/SourceSelector.vue'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
-import SRSPresetSelector from '../components/SRSPresetSelector.vue'
 import { QuestionType } from '../types'
 import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
-import { showInfo, showError, showDebug } from '../utils/notification'
+import { showInfo, showError, showDebug, showSuccess } from '../utils/notification'
+import { inquiryAIAddInfo } from '../utils/inquiry'
+import { getSubjects } from '../apis'
+import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
@@ -178,9 +175,91 @@ const form = ref({
   // error tag info
   error_tags: [] as Array<{ name: string; color: string }>,
   // SRS info
-  difficulty: 0,
-  mastery: 0
+  difficulty: 5,
 })
+
+// 查询AI建议
+const inquiryAI = async () => {
+  // 重置所有加载状态
+  subjectLoading.value = true
+  promptLoading.value = true
+  typeLoading.value = true
+  answerLoading.value = true
+  analysisLoading.value = true
+  aiButtonLoading.value = true
+
+  // 创建所有查询的Promise
+  const subjectPromise = inquiryAIAddInfo(imageUrls.value, ['subject'])
+    .then(result => {
+      const subjectName = result[0]?.parsedContent?.subject || ''
+      if (subjectName) {
+        return getSubjects().then(subjects => {
+          const subj = subjects.find(i => i.name === subjectName)
+          if (subj) {
+            form.value.subject = subj.id
+          }
+          return subjectName
+        }).catch(error => {
+          console.error('获取科目列表失败:', error)
+          return ''
+        })
+      }
+      return ''
+    })
+    .finally(() => {
+      subjectLoading.value = false
+    })
+
+  const promptPromise = inquiryAIAddInfo(imageUrls.value, ['question_text'])
+    .then(result => {
+      form.value.prompt = result[0]?.parsedContent || ''
+    })
+    .finally(() => {
+      promptLoading.value = false
+    })
+
+  const typePromise = inquiryAIAddInfo(imageUrls.value, ['question_type'])
+    .then(result => {
+      form.value.type = result[0]?.parsedContent?.questionType || ''
+    })
+    .finally(() => {
+      typeLoading.value = false
+    })
+
+  const answerPromise = inquiryAIAddInfo(imageUrls.value, ['answer'])
+    .then(result => {
+      form.value.answer = result[0]?.parsedContent || ''
+    })
+    .finally(() => {
+      answerLoading.value = false
+    })
+
+  const analysisPromise = inquiryAIAddInfo(imageUrls.value, ['analysis'])
+    .then(result => {
+      form.value.analysis = result[0]?.parsedContent || ''
+    })
+    .finally(() => {
+      analysisLoading.value = false
+    })
+
+  try {
+    // 等待所有查询完成
+    await Promise.all([subjectPromise, promptPromise, typePromise, answerPromise, analysisPromise])
+    console.log('AI查询完成，表单已更新:', {
+      subject: form.value.subject,
+      prompt: form.value.prompt,
+      type: form.value.type,
+      answer: form.value.answer,
+      analysis: form.value.analysis
+    })
+    showSuccess('获取成功', '已自动填充题目信息')
+  } catch (error) {
+    console.error('AI查询失败:', error)
+    showError('错误', 'AI查询失败: ' + error)
+  } finally {
+    aiButtonLoading.value = false
+  }
+}
 
 // 处理文件选择
 const handleFileSelect = (e: Event) => {
@@ -211,6 +290,7 @@ const handlePhotoClick = async () => {
     cameraDisabled.value = false
     showCamera.value = true
   } catch {
+    showError('错误', '没有相机权限')
     disableCamera()
   }
 }
@@ -289,14 +369,6 @@ const handleSubjectSelect = (subjectId: string) => {
   form.value.source = ''
 }
 
-// 处理SRS预设选择
-const handlePresetSelect = (preset: any) => {
-  selectedPreset.value = preset
-  currentPresetId.value = preset.id
-  form.value.difficulty = preset.difficulty
-  form.value.mastery = preset.mastery
-}
-
 // 重置表单
 const resetForm = () => {
   form.value = {
@@ -312,8 +384,7 @@ const resetForm = () => {
     // error tag info
     error_tags: [],
     // SRS info
-    difficulty: 0,
-    mastery: 0
+    difficulty: 5,
   }
   imageUrls.value = []
   currentPresetId.value = ''
@@ -347,7 +418,7 @@ const saveError = async () => {
   isSaving.value = true
   showDebug('保存中...', form.value)
 
-  try {
+  // try {
     // 1. 创建错题
     const errorQuestion = await createErrorQuestion({
       user_id: 'current_user', // TODO: 从用户状态获取
@@ -368,8 +439,7 @@ const saveError = async () => {
     // 3. 创建SRS数据
     await createSRSData(
       errorQuestion.id,
-      form.value.difficulty,
-      form.value.mastery
+      form.value.difficulty
     );
 
     // 4. 批量上传图片
@@ -397,12 +467,12 @@ const saveError = async () => {
     showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
     // 重置表单
     resetForm()
-  } catch (error) {
-    console.error('保存错题失败:', error)
-    showError('错误', '保存错题失败: ' + error)
-  } finally {
-    isSaving.value = false
-  }
+  // } catch (error) {
+  //   console.error('保存错题失败:', error)
+  //   showError('错误', '保存错题失败: ' + error)
+  // } finally {
+  //   isSaving.value = false
+  // }
 }
 
 // watch(currentSource, async (newSource) => {
@@ -647,30 +717,6 @@ const saveError = async () => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-
-.difficulty-selector {
-  display: flex;
-  gap: 8px;
-}
-
-.difficulty-btn {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.difficulty-btn.active {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
 }
 
 .ai-suggestion {

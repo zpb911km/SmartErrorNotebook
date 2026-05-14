@@ -37,7 +37,7 @@ enum FileType {
  * 错题筛选条件
  */
 interface QuestionFilter {
-  /** 科目ID（可选） */
+  /** 科目 ID（可选） */
   subject_id?: string;
   /** 搜索关键词（可选，会在题干、解析、错题笔记中搜索） */
   search?: string;
@@ -51,9 +51,9 @@ interface QuestionFilter {
  * 更新错题的输入参数
  */
 interface UpdateQuestionInput {
-  /** 错题ID */
+  /** 错题 ID */
   id: string;
-  /** 科目ID（可选） */
+  /** 科目 ID（可选） */
   subject_id?: string;
   /** 题干（可选） */
   prompt?: string;
@@ -81,7 +81,7 @@ interface QuestionStats {
  * 创建来源的输入参数
  */
 interface CreateSourceInput {
-  /** 科目ID（可选） */
+  /** 科目 ID（可选） */
   subject_id?: string;
   /** 书名（可选） */
   book?: string;
@@ -95,9 +95,9 @@ interface CreateSourceInput {
  * 更新来源的输入参数
  */
 interface UpdateSourceInput {
-  /** 来源ID */
+  /** 来源 ID */
   id: string;
-  /** 科目ID（可选） */
+  /** 科目 ID（可选） */
   subject_id?: string;
   /** 书名（可选） */
   book?: string;
@@ -111,7 +111,7 @@ interface UpdateSourceInput {
  * 来源筛选条件
  */
 interface SourceFilter {
-  /** 科目ID（可选） */
+  /** 科目 ID（可选） */
   subject_id?: string;
 }
 
@@ -121,13 +121,13 @@ interface SourceFilter {
  * 错题实体
  */
 interface ErrorQuestion {
-  /** 错题ID（uuid） */
+  /** 错题 ID（uuid）*/
   id: string;
-  /** 用户ID（uuid） */
+  /** 用户 ID（uuid）*/
   user_id: string;
-  /** 科目ID（uuid） */
+  /** 科目 ID（uuid）*/
   subject_id: string;
-  /** 来源ID（uuid，可选） */
+  /** 来源 ID（uuid，可选）*/
   source_id?: string;
   /** 题干 */
   prompt: string;
@@ -142,32 +142,36 @@ interface ErrorQuestion {
 }
 
 /**
- * SRS（间隔重复学习）数据实体
+ * SRS（间隔重复学习）数据实体 - 基于连续反馈的 SDR 模型
  */
 interface SRSData {
-  /** SRS数据ID（uuid） */
+  /** SRS 数据 ID（uuid）*/
   id: string;
-  /** 错题ID（uuid） */
+  /** 错题 ID（uuid）*/
   question_id: string;
-  /** 难度 */
+  /** 稳定性（Stability）：单位天，表示记忆强度 */
+  stability: number;
+  /** 难度（Difficulty）：[1.0, 10.0] */
   difficulty: number;
-  /** 掌握程度（百分比） */
-  mastery: number;
-  /** 最后复习时间戳 */
-  lastreviewed_at: number;
+  /** 下次复习时间戳（秒，可选）*/
+  next_review_at: number | null;
+  /** 上次复习时间戳（秒，可选）*/
+  last_review_at: number | null;
   /** 复习次数 */
   review_count: number;
+  /** 最近最多 5 次反馈记录（JSON 数组字符串）*/
+  feedback_history: string;
 }
 
 /**
  * 来源实体
  */
 interface Source {
-  /** 来源ID（uuid） */
+  /** 来源 ID（uuid）*/
   id: string;
-  /** 错题ID（uuid，可选） */
+  /** 错题 ID（uuid，可选） */
   question_id?: string;
-  /** 科目ID（uuid，可选） */
+  /** 科目 ID（uuid，可选） */
   subject_id?: string;
   /** 书名 */
   book?: string;
@@ -183,9 +187,9 @@ interface Source {
  * 错因标签实体
  */
 interface ErrorTags {
-  /** 标签ID（uuid） */
+  /** 标签 ID（uuid）*/
   id: string;
-  /** 错题ID（uuid） */
+  /** 错题 ID（uuid）*/
   question_id: string;
   /** 错因名称 */
   name: string;
@@ -197,15 +201,15 @@ interface ErrorTags {
  * 附件实体
  */
 interface Attachment {
-  /** 附件ID（uuid） */
+  /** 附件 ID（uuid）*/
   id: string;
-  /** 错题ID（uuid） */
+  /** 错题 ID（uuid）*/
   question_id: string;
   /** 附件类型（original/answer） */
   type: string;
-  /** 文件类型（img等） */
+  /** 文件类型（img 等）*/
   file_type: string;
-  /** base64编码的文件数据 */
+  /** base64 编码的文件数据 */
   base64_data: string;
   /** 文件哈希 */
   hash: string;
@@ -215,7 +219,7 @@ interface Attachment {
  * 科目实体
  */
 interface Subject {
-  /** 科目ID（uuid，主键） */
+  /** 科目 ID（uuid，主键）*/
   id: string;
   /** 科目名称（同一用户下唯一） */
   name: string;
@@ -231,19 +235,19 @@ interface UserConfig {
   username: string;
   /** 邮箱 */
   email: string;
-  /** 学号（长度为8） */
+  /** 学号（长度为 8）*/
   student_num: string;
   /** 手机号（可选） */
   phone?: string;
-  /** 头像（base64图像，可选） */
+  /** 头像（base64 图像，可选） */
   avatar?: string;
   /** 主题（可选） */
   theme?: string;
   /** 密码哈希（可选） */
   password_hash?: string;
-  /** AI接口地址（可选） */
+  /** AI 接口地址（可选） */
   ai_base_url?: string;
-  /** AI密钥（可选） */
+  /** AI 密钥（可选） */
   ai_key?: string;
   /** 是否同步 */
   sync: boolean;
@@ -255,13 +259,13 @@ interface UserConfig {
  * 创建附件的输入参数
  */
 interface CreateAttachmentInput {
-  /** 错题ID */
+  /** 错题 ID */
   question_id: string;
   /** 附件类型 */
   type_: string;
   /** 文件类型 */
   file_type: string;
-  /** base64数据 */
+  /** base64 数据 */
   base64_data: string;
 }
 

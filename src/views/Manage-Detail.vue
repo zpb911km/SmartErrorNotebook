@@ -284,7 +284,7 @@ import {
 } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
 import { getSource } from '../apis/sources'
-import { getErrorTags } from '../apis/errorTags'
+import { getErrorTagByQuestionId, getErrorTags } from '../apis/errorTags'
 import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment } from '../apis/attachments'
 import type { ErrorQuestion, Subject, Source, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
@@ -370,8 +370,8 @@ const fetchErrorDetail = async () => {
     
     // 获取标签
     try {
-      const allTags = await getErrorTags()
-      errorTags.value = (allTags as ErrorTagType[]).filter(tag => tag.question_id === errorId.value)
+      const allTags = await getErrorTagByQuestionId(errorId.value)
+      errorTags.value = allTags
     } catch (error) {
       console.error('获取标签失败:', error)
     }

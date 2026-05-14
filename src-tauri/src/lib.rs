@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 mod commands;
 mod database;
+mod srs;
 
 use database::{establish_connection, init_database};
 use tauri::Manager;
@@ -41,8 +42,6 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            // Greeting
-            commands::greet,
             // Subject
             commands::get_subjects,
             commands::create_subject,
@@ -58,8 +57,22 @@ pub fn run() {
             // Error Tag
             commands::create_error_tags_for_question,
             commands::get_error_tags,
+            commands::get_full_error_tags,
+            commands::get_error_tags_for_question,
+            commands::delete_error_tag_by_name,
+            commands::update_error_tag_by_name,
+            commands::delete_error_tag_by_id,
+            commands::update_error_tag_by_id,
             // SRS Data
             commands::create_srs_data,
+            commands::get_due_questions,
+            commands::submit_review_result,
+            commands::get_question_srs_status,
+            commands::reset_srs_progress,
+            // SRS Tools
+            commands::get_due_count,
+            commands::get_srs_statistics,
+            commands::get_all_cards,
             // Attachment
             commands::create_attachment,
             commands::create_attachments_for_question,
