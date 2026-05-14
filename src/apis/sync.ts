@@ -82,13 +82,30 @@ export interface SyncProgress {
 
 // ==================== API 接口函数 ====================
 
-const SYNC_SERVER_BASE_URL = 'http://localhost:5000';
+function getBaseUrl(): string {
+  return localStorage.getItem('sync_server_url') || 'http://localhost:5000';
+}
+
+/**
+ * 检测服务器是否在线
+ */
+export async function checkServerHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${getBaseUrl()}/health`);
+    console.log('Server health:', res);
+    if (!res.ok) return false;
+    const data: { status: string } = await res.json();
+    return data.status === 'ok';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 验证 auth_key
  */
 export async function validateAuthKey(auth_key: string): Promise<boolean> {
-  const res = await fetch(`${SYNC_SERVER_BASE_URL}/api/auth/validate`, {
+  const res = await fetch(`${getBaseUrl()}/api/auth/validate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ auth_key }),
@@ -102,7 +119,7 @@ export async function validateAuthKey(auth_key: string): Promise<boolean> {
  */
 export async function getAllSyncData(auth_key: string): Promise<ServerRecord[]> {
   const res = await fetch(
-    `${SYNC_SERVER_BASE_URL}/api/sync/get_all_sync_data?auth_key=${encodeURIComponent(auth_key)}`
+    `${getBaseUrl()}/api/sync/get_all_sync_data?auth_key=${encodeURIComponent(auth_key)}`
   );
   if (!res.ok) {
     throw new Error(`Failed to fetch sync data: ${res.statusText}`);
@@ -120,7 +137,7 @@ export async function uploadRecord(
   auth_key: string
 ): Promise<UploadRecordResponse> {
   const res = await fetch(
-    `${SYNC_SERVER_BASE_URL}/api/sync/upload/${record_id}`,
+    `${getBaseUrl()}/api/sync/upload/${record_id}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,7 +155,7 @@ export async function downloadRecord(
   auth_key: string
 ): Promise<ServerRecord> {
   const res = await fetch(
-    `${SYNC_SERVER_BASE_URL}/api/sync/download/${record_id}?auth_key=${encodeURIComponent(auth_key)}`
+    `${getBaseUrl()}/api/sync/download/${record_id}?auth_key=${encodeURIComponent(auth_key)}`
   );
   if (!res.ok) {
     throw new Error(`Failed to download record: ${res.statusText}`);
@@ -184,25 +201,15 @@ export function handshake(
     const local_status = local_rec.status;
     const local_version = local_rec.version;
 
-    // 查找对应的远程记录（需要从原始数据中匹配）
-    let server_rec: ServerRecord | undefined;
-    for (const rec of remote_records) {
-      if (rec.id === rec_id && /* 假设其他字段也能匹配 */ true) {
-        server_rec = rec;
-        break;
-      }
-    }
-    const remote_exists = server_rec !== undefined;
+    // 查找对应的远程记录
+    const server_rec = remote_records.find((rec) => rec.id === rec_id);
 
-    if (remote_exists) {
+    if (server_rec) {
       const server_version = server_rec.version;
 
-      // 条件：local.status == 'pending' && (remote not exists || local.version == remote.version)
       if (local_status === 'pending' && local_version === server_version) {
-        // 可以推送
         result.push_list.push(rec_id);
       } else {
-        // CONFLICT
         result.conflicts.push({
           id: rec_id,
           local_version,
@@ -253,7 +260,7 @@ export function handshake(
  */
 export async function applyPullRecords(records: ServerRecord[]): Promise<void> {
   for (const rec of records) {
-    const { table_name, id, version, status, deleted_at, updated_at, data } = rec;
+    const { table_name, id, version, status, deleted_at, data } = rec;
 
     switch (table_name) {
       case 'error_questions':

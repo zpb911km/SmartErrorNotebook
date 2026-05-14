@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type { ConflictInfo, ResolvedConflict } from '../apis/sync';
 import ConflictItem from './ConflictItem.vue';
 

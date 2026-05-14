@@ -4,9 +4,9 @@
 支持错题记录的多设备同步，通过 auth_key 进行用户识别和分片。
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import uuid
 import os
 
@@ -114,6 +114,20 @@ class Record(db.Model):
             updated_at=now,
         )
 
+
+# ==================== CORS ====================
+
+@app.after_request
+def cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+    return response
+
+@app.before_request
+def handle_preflight():
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
 
 # ==================== 路由 ====================
 
@@ -297,7 +311,68 @@ def health_check():
     return jsonify({'status': 'ok'})
 
 
-# ==================== 初始化 ====================
+# ==================== 管理后台 ====================
+
+def calc_admin_code():
+    """生成当前时间的 4 位动态验证码"""
+    tz = timezone(timedelta(hours=8))
+    now = datetime.now(tz)
+    h, m, d = now.hour, now.minute, now.day
+    return f"{h + m}{d:02d}"
+
+
+@app.route('/admin', methods=['GET'])
+def admin_page():
+    """管理后台页面"""
+    return render_template('admin.html')
+
+
+@app.route('/api/admin/verify', methods=['POST'])
+def admin_verify():
+    """验证管理动态码"""
+    data = request.get_json() or {}
+    return jsonify({'valid': data.get('code') == calc_admin_code()})
+
+
+@app.route('/api/admin/keys', methods=['GET', 'POST'])
+def admin_keys():
+    """管理授权码（需 X-Admin-Code 头验证）"""
+    if request.headers.get('X-Admin-Code') != calc_admin_code():
+        return jsonify({'error': 'Invalid admin code'}), 401
+
+    if request.method == 'GET':
+        users = UserAuth.query.order_by(UserAuth.created_at.desc()).all()
+        return jsonify({'keys': [u.to_dict() for u in users]})
+
+    # POST: 生成新授权码
+    auth_key = str(uuid.uuid4())
+    user = UserAuth(auth_key=auth_key)
+    try:
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'auth_key': auth_key}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/admin/keys/<key_id>', methods=['DELETE'])
+def admin_delete_key(key_id):
+    """删除授权码"""
+    if request.headers.get('X-Admin-Code') != calc_admin_code():
+        return jsonify({'error': 'Invalid admin code'}), 401
+
+    user = db.session.get(UserAuth, key_id)
+    if not user:
+        return jsonify({'error': 'Key not found'}), 404
+
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 def init_db():
     """初始化数据库"""
     with app.app_context():

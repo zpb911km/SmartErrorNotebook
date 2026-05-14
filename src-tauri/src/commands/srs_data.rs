@@ -446,7 +446,7 @@ pub async fn upsert_srs_data(
         active_model.review_count = Set(input.review_count);
         active_model.feedback_history = Set(input.feedback_history);
         active_model.updated_at = Set(now);
-        active_model.version = Set(input.version + 1);
+        active_model.version = Set(input.version);
         active_model.sync_status = Set(input.status);
 
         active_model.update(db).await.map_err(|e| e.to_string())?;

@@ -182,7 +182,7 @@ pub async fn upsert_attachment(
         active_model.base64_data = Set(input.base64_data.into_bytes());
         active_model.hash = Set(input.hash);
         active_model.updated_at = Set(now);
-        active_model.version = Set(input.version + 1);
+        active_model.version = Set(input.version);
         active_model.sync_status = Set(input.status);
         active_model.deleted_at = Set(input.deleted_at);
 

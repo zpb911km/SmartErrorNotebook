@@ -46,8 +46,10 @@ pub struct UpsertQuestionInput {
     pub status: String,
     pub deleted_at: Option<i64>,
     pub userid: String,
-    pub subject_id: String,
-    pub source_id: Option<String>,
+    #[serde(alias = "subject_id")]
+    pub subjectid: String,
+    #[serde(alias = "source_id")]
+    pub sourceid: Option<String>,
     pub prompt: String,
     #[serde(rename = "type")]
     pub type_: String,
@@ -290,15 +292,15 @@ pub async fn upsert_error_question(
     if let Some(model) = existing {
         // 更新现有记录
         let mut active_model: error_question::ActiveModel = model.into();
-        active_model.subjectid = Set(input.subject_id);
-        active_model.sourceid = Set(input.source_id);
+        active_model.subjectid = Set(input.subjectid);
+        active_model.sourceid = Set(input.sourceid);
         active_model.prompt = Set(input.prompt);
         active_model.type_ = Set(input.type_);
         active_model.answer = Set(input.answer);
         active_model.analysis = Set(input.analysis);
         active_model.error_note = Set(input.error_note);
         active_model.updated_at = Set(now);
-        active_model.version = Set(input.version + 1);
+        active_model.version = Set(input.version);
         active_model.sync_status = Set(input.status);
         active_model.deleted_at = Set(input.deleted_at);
 
@@ -308,8 +310,8 @@ pub async fn upsert_error_question(
         let new_question = error_question::ActiveModel {
             id: Set(input.id),
             userid: Set(input.userid),
-            subjectid: Set(input.subject_id),
-            sourceid: Set(input.source_id),
+            subjectid: Set(input.subjectid),
+            sourceid: Set(input.sourceid),
             prompt: Set(input.prompt),
             type_: Set(input.type_),
             answer: Set(input.answer),

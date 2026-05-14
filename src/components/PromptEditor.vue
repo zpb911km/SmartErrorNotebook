@@ -300,7 +300,7 @@ const restoreDefault = async (tag: string) => {
   margin-bottom: 12px;
 }
 
-.custom-prompt-input >>> .markdown-textarea__input {
+.custom-prompt-input :deep(.markdown-textarea__input) {
   min-height: 200px;
   font-family: 'SF Mono', Monaco, 'Courier New', monospace;
   font-size: 13px;
