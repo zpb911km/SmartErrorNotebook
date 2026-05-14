@@ -37,3 +37,5 @@ src-tauri/Cargo.toml
 .lingma/rules/Understanding.md
 .lingma/skills/code-review/SKILL.md
 src-tauri/Cargo.toml
+openspec/*
+.cursor/*
