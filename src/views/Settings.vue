@@ -120,120 +120,122 @@
         </div>
       </div>
 
-    <!-- LLM 配置对话框 -->
-    <div v-if="showLLMConfig" class="modal-overlay" @click="closeLLMConfig">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>LLM 配置</h3>
-          <button class="close-btn" @click="closeLLMConfig">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Base URL</label>
-            <input
-              v-model="llmConfig.baseUrl"
-              type="text"
-              placeholder="https://api.openai.com"
-              class="form-input"
-            />
+      <!-- LLM 配置对话框 -->
+      <div v-if="showLLMConfig" class="modal-overlay" @click="closeLLMConfig">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <h3>LLM 配置</h3>
+            <button class="close-btn" @click="closeLLMConfig">×</button>
           </div>
-          <div class="form-group">
-            <label>API Key</label>
-            <input
-              v-model="llmConfig.apiKey"
-              type="password"
-              placeholder="sk-..."
-              class="form-input"
-            />
-          </div>
-          <div class="form-group">
-            <label>Model</label>
-            <input
-              v-model="llmConfig.model"
-              type="text"
-              placeholder="gpt-3.5-turbo"
-              class="form-input"
-            />
-          </div>
-          <div class="form-group">
-            <label>启用 LLM</label>
-            <div class="toggle-switch">
-              <input type="checkbox" v-model="llmConfig.enabled" id="llmEnabledToggle" />
-              <label for="llmEnabledToggle" class="toggle-label"></label>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Base URL</label>
+              <input
+                v-model="llmConfig.baseUrl"
+                type="text"
+                placeholder="https://api.openai.com"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input
+                v-model="llmConfig.apiKey"
+                type="password"
+                placeholder="sk-..."
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label>Model</label>
+              <input
+                v-model="llmConfig.model"
+                type="text"
+                placeholder="gpt-3.5-turbo"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label>启用 LLM</label>
+              <div class="toggle-switch">
+                <input type="checkbox" v-model="llmConfig.enabled" id="llmEnabledToggle" />
+                <label for="llmEnabledToggle" class="toggle-label"></label>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closeLLMConfig">取消</button>
-          <button class="btn btn-primary" @click="saveLLMConfig">保存</button>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeLLMConfig">取消</button>
+            <button class="btn btn-primary" @click="saveLLMConfig">保存</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- LLM 测试对话框 -->
-    <div v-if="showLLMTest" class="modal-overlay" @click="closeLLMTest">
-      <div class="modal test-modal" @click.stop>
-        <div class="modal-header">
-          <h3>LLM 测试</h3>
-          <button class="close-btn" @click="closeLLMTest">×</button>
-        </div>
-        <div class="modal-body test-body">
-          <div class="test-status">
-            <span :class="['status-dot', testStatus]"></span>
-            <span class="status-text">{{ getStatusText() }}</span>
+
+      <!-- LLM 测试对话框 -->
+      <div v-if="showLLMTest" class="modal-overlay" @click="closeLLMTest">
+        <div class="modal test-modal" @click.stop>
+          <div class="modal-header">
+            <h3>LLM 测试</h3>
+            <button class="close-btn" @click="closeLLMTest">×</button>
           </div>
-          <div class="chat-container">
-            <div class="chat-messages" ref="chatMessages">
-              <div
-                v-for="(msg, index) in testMessages"
-                :key="index"
-                :class="['message', msg.role]"
-              >
-                <div class="message-content">{{ msg.content }}</div>
-              </div>
-              <div v-if="isSending" class="message assistant">
-                <div class="message-content loading">
-                  <span></span><span></span><span></span>
+          <div class="modal-body test-body">
+            <div class="test-status">
+              <span :class="['status-dot', testStatus]"></span>
+              <span class="status-text">{{ getStatusText() }}</span>
+            </div>
+            <div class="chat-container">
+              <div class="chat-messages" ref="chatMessages">
+                <div
+                  v-for="(msg, index) in testMessages"
+                  :key="index"
+                  :class="['message', msg.role]"
+                >
+                  <div class="message-content">{{ msg.content }}</div>
+                </div>
+                <div v-if="isSending" class="message assistant">
+                  <div class="message-content loading">
+                    <span></span><span></span><span></span>
+                  </div>
                 </div>
               </div>
+              <div class="chat-input">
+                <input
+                  v-model="testInput"
+                  type="text"
+                  placeholder="输入测试消息..."
+                  @keypress.enter="sendTestMessage"
+                  :disabled="isSending"
+                />
+                <button
+                  @click="sendTestMessage"
+                  :disabled="isSending || !testInput.trim()"
+                  class="send-btn"
+                >
+                  发送
+                </button>
+              </div>
             </div>
-            <div class="chat-input">
-              <input
-                v-model="testInput"
-                type="text"
-                placeholder="输入测试消息..."
-                @keypress.enter="sendTestMessage"
-                :disabled="isSending"
-              />
-              <button
-                @click="sendTestMessage"
-                :disabled="isSending || !testInput.trim()"
-                class="send-btn"
-              >
-                发送
-              </button>
-            </div>
+            <button class="clear-chat-btn" @click="clearTestChat">清空对话</button>
           </div>
-          <button class="clear-chat-btn" @click="clearTestChat">清空对话</button>
         </div>
       </div>
-    </div>
 
-    <!-- 提示词编辑器对话框 -->
-    <div v-if="showPromptEditor" class="modal-overlay" @click="closePromptEditor">
-      <div class="modal large-modal" @click.stop>
-        <div class="modal-header">
-          <h3>AI 提示词设置</h3>
-          <button class="close-btn" @click="closePromptEditor">×</button>
-        </div>
-        <div class="modal-body">
-          <p class="prompt-description">
-            自定义 AI 提取题目信息时使用的提示词。修改后点击保存即可生效。
-          </p>
-          <PromptEditor />
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="closePromptEditor">关闭</button>
+      <!-- 提示词编辑器对话框 -->
+      <div v-if="showPromptEditor" class="modal-overlay" @click="closePromptEditor">
+        <div class="modal large-modal" @click.stop>
+          <div class="modal-header">
+            <h3>AI 提示词设置</h3>
+            <button class="close-btn" @click="closePromptEditor">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="prompt-description">
+              自定义 AI 提取题目信息时使用的提示词。修改后点击保存即可生效。
+            </p>
+            <PromptEditor />
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closePromptEditor">关闭</button>
+          </div>
         </div>
       </div>
     </div>
@@ -304,14 +306,6 @@ const applyTheme = (themeValue: string) => {
   }
 }
 
-// 主题切换
-const handleThemeChange = () => {
-  console.log('主题切换为:', theme.value)
-  applyTheme(theme.value)
-  // 保存主题设置到localStorage
-  localStorage.setItem('theme', theme.value)
-}
-
 // 系统主题变化处理
 const handleSystemThemeChange = () => {
   console.log('系统主题变化事件触发，当前 theme.value:', theme.value, 'localStorage 中的值:', localStorage.getItem('theme'))
@@ -324,29 +318,6 @@ const handleSystemThemeChange = () => {
     applyTheme(theme.value)
   }
 }
-
-// AI 选项
-const aiEnabled = ref(false)
-const aiAnalysis = ref(true)
-const aiReview = ref(true)
-const aiRecommend = ref(false)
-
-// LLM 配置对话框
-const showLLMConfig = ref(false)
-const llmConfig = ref({
-  baseUrl: '',
-  apiKey: '',
-  model: '',
-  enabled: false
-})
-
-// LLM 测试对话框
-const showLLMTest = ref(false)
-const testStatus = ref<'idle' | 'success' | 'error'>('idle')
-const testMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
-const testInput = ref('')
-const isSending = ref(false)
-const chatMessages = ref<HTMLElement | null>(null)
 
 // AI 选项切换
 const handleAiToggle = () => {
