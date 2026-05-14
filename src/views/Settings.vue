@@ -98,6 +98,17 @@
         </div>
       </div>
 
+        <!-- AI 提示词设置 -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">✏️</div>
+          <div class="setting-name">AI 提示词设置</div>
+        </div>
+        <div class="setting-action">
+          <button class="config-btn" @click="showPromptEditor = true">编辑</button>
+        </div>
+      </div>
+
       <!--- Markdown 渲染测试-->
       <div class="setting-item">
         <div class="setting-info">
@@ -207,14 +218,70 @@
         </div>
       </div>
     </div>
+
+    <!-- 提示词编辑器对话框 -->
+    <div v-if="showPromptEditor" class="modal-overlay" @click="closePromptEditor">
+      <div class="modal large-modal" @click.stop>
+        <div class="modal-header">
+          <h3>AI 提示词设置</h3>
+          <button class="close-btn" @click="closePromptEditor">×</button>
+        </div>
+        <div class="modal-body">
+          <p class="prompt-description">
+            自定义 AI 提取题目信息时使用的提示词。修改后点击保存即可生效。
+          </p>
+          <PromptEditor />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" @click="closePromptEditor">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { llm } from '../services'
+import PromptEditor from '../components/PromptEditor.vue'
 
-// 主题设置
+// AI 选项
+const aiEnabled = ref(false)
+const aiAnalysis = ref(true)
+const aiReview = ref(true)
+const aiRecommend = ref(false)
+
+// LLM 配置对话框
+const showLLMConfig = ref(false)
+const llmConfig = ref({
+  baseUrl: '',
+  apiKey: '',
+  model: '',
+  enabled: false
+})
+
+// LLM 测试对话框
+const showLLMTest = ref(false)
+const testStatus = ref<'idle' | 'success' | 'error'>('idle')
+const testMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+const testInput = ref('')
+const isSending = ref(false)
+const chatMessages = ref<HTMLElement | null>(null)
+
+// 提示词编辑器
+const showPromptEditor = ref(false)
+
+const closePromptEditor = () => {
+  showPromptEditor.value = false
+}
+
+// 主题切换
+const handleThemeChange = () => {
+  console.log('主题切换为:', theme.value)
+  applyTheme(theme.value)
+  // 保存主题设置到localStorage
+  localStorage.setItem('theme', theme.value)
+}
 const theme = ref(localStorage.getItem('theme') || 'system')
 console.log('初始化 theme 值:', theme.value, 'localStorage 中的值:', localStorage.getItem('theme'))
 
@@ -911,6 +978,20 @@ input:checked + .toggle-label:before {
 
 .clear-chat-btn:hover {
   background: var(--border-color);
+}
+
+/* 提示词编辑器对话框 */
+.large-modal {
+  width: 95%;
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+.prompt-description {
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 /* 响应式设计 */

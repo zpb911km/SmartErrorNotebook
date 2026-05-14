@@ -96,13 +96,33 @@ defineExpose({
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  background: var(--card-bg);
   min-width: 300px;
   max-width: 100%;
   animation: slideInRight 0.3s ease-out;
-  border-left: 4px solid #ccc;
+  border-left: 4px solid var(--primary-color);
+}
+
+.notification--info {
+  border-left-color: var(--info-color);
+}
+
+.notification--success {
+  border-left-color: var(--success-color);
+}
+
+.notification--warning {
+  border-left-color: var(--warning-color);
+}
+
+.notification--error {
+  border-left-color: var(--danger-color);
+}
+
+.notification--debug {
+  border-left-color: var(--secondary-color);
 }
 
 .notification--info {
@@ -139,27 +159,27 @@ defineExpose({
 }
 
 .notification__title {
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #333;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
 }
 
 .notification__message {
-  font-size: 0.9em;
-  color: #666;
-  line-height: 1.4;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
 }
 
 .notification__close {
   cursor: pointer;
   font-size: 1.5em;
   padding: 0 5px;
-  color: #999;
+  color: var(--text-disabled);
   user-select: none;
 }
 
 .notification__close:hover {
-  color: #333;
+  color: var(--text-secondary);
 }
 
 /* 过渡动画 */

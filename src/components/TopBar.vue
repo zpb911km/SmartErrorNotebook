@@ -10,6 +10,14 @@
       <button class="icon-btn" @click="handleSearch" v-if="showSearch">
         <span>🔍</span>
       </button>
+      <button class="icon-btn" @click="handleSync" v-if="showSync">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+          <path d="M16 16h5v5"/>
+        </svg>
+      </button>
       <button class="icon-btn" @click="handleSettings" v-if="showSettings">
         <span>⚙️</span>
       </button>
@@ -24,6 +32,7 @@ interface Props {
   title?: string
   showBack?: boolean
   showSearch?: boolean
+  showSync?: boolean
   showSettings?: boolean
 }
 
@@ -31,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
   title: '智能错题本',
   showBack: false,
   showSearch: true,
+  showSync: true,
   showSettings: true
 })
 
@@ -42,12 +52,14 @@ const goBack = () => {
 
 const handleSearch = () => {
   if (router.currentRoute.value.path === '/manage') {
-    // 已在管理页面，触发自定义事件
     window.dispatchEvent(new CustomEvent('trigger-search-blink'))
   } else {
-    // 跳转到管理页面，带上闪烁标记
     router.push({ path: '/manage', query: { focus: 'search' } })
   }
+}
+
+const handleSync = () => {
+  router.push('/sync')
 }
 
 const handleSettings = () => {
@@ -130,7 +142,7 @@ const handleSettings = () => {
   background: var(--input-bg);
 }
 
-@media (max-width: 768px) { 
+@media (max-width: 768px) {
   .top-bar {
     height: calc(56px + env(safe-area-inset-top));
   }

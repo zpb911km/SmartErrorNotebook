@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::database::entities::{attachment, prelude::Attachment};
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct CreateAttachmentInput {
     pub question_id: String,
     pub type_: String,
@@ -15,25 +15,51 @@ pub struct CreateAttachmentInput {
     pub base64_data: String,
 }
 
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct AttachmentInterface {
+    pub id: String,
+    pub question_id: String,
+    pub type_: String,
+    pub file_type: String,
+    pub base64_data: String,
+    pub hash: String,
+}
+
+impl AttachmentInterface { 
+    fn from_model(model: attachment::Model) -> Self {
+        Self {
+            id: model.id,
+            question_id: model.question_id,
+            type_: model.type_,
+            file_type: model.file_type,
+            base64_data: String::from_utf8(model.base64_data).unwrap_or_else(|_| String::from("")),
+            hash: model.hash,
+        }
+    }
+}
+
 /// 为指定题目创建附件
 #[tauri::command]
 pub async fn create_attachment(
     state: State<'_, AppState>,
     input: CreateAttachmentInput,
-) -> Result<attachment::Model, String> {
+) -> Result<AttachmentInterface, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
     // 使用UUID的前8位作为简单的hash标识
     let id = Uuid::new_v4().to_string();
     let hash = id[..8].to_string();
-
+    println!("Created attachment id: {}", id);
+    println!("attachment data length: {} bytes", input.base64_data.len());
+    println!("attachment data(first 100 words): {}", &input.base64_data[..100]);
     let new_attachment = attachment::ActiveModel {
         id: Set(id.clone()),
         question_id: Set(input.question_id),
         type_: Set(input.type_),
         file_type: Set(input.file_type),
-        base64_data: Set(input.base64_data),
+        base64_data: Set(input.base64_data.into_bytes()),
         hash: Set(hash),
         created_at: Set(now),
         updated_at: Set(now),
@@ -43,14 +69,14 @@ pub async fn create_attachment(
         sync_hash: Set(None),
     };
 
-    let _ = new_attachment.insert(db).await;
-
+    let ist = new_attachment.insert(db).await;
+    println!("Created attachment: {:#?}", ist);
     let attachment_model = Attachment::find_by_id(id)
         .one(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?
         .ok_or("Attachment not found".to_string())?;
-    Ok(attachment_model)
+    Ok(AttachmentInterface::from_model(attachment_model))
 }
 
 /// 批量为指定题目创建附件
@@ -59,7 +85,7 @@ pub async fn create_attachments_for_question(
     state: State<'_, AppState>,
     question_id: String,
     attachments: Vec<CreateAttachmentInput>,
-) -> Result<Vec<attachment::Model>, String> {
+) -> Result<Vec<AttachmentInterface>, String> {
     let mut created_attachments = Vec::new();
 
     for mut input in attachments {
@@ -76,7 +102,7 @@ pub async fn create_attachments_for_question(
 pub async fn get_attachments_by_question(
     state: State<'_, AppState>,
     question_id: String,
-) -> Result<Vec<attachment::Model>, String> {
+) -> Result<Vec<AttachmentInterface>, String> {
     let db = state.db.as_ref();
 
     let attachments = Attachment::find()
@@ -86,7 +112,7 @@ pub async fn get_attachments_by_question(
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
 
-    Ok(attachments)
+    Ok(attachments.into_iter().map(|m| AttachmentInterface::from_model(m)).collect())
 }
 
 /// 删除附件（软删除）
@@ -112,6 +138,74 @@ pub async fn delete_attachment(state: State<'_, AppState>, id: String) -> Result
         .update(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
+
+    Ok(())
+}
+
+// 用于同步的 UPSERT 输入
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct UpsertAttachmentInput {
+    pub id: String,
+    pub version: i32,
+    pub status: String,
+    pub deleted_at: Option<i64>,
+    pub question_id: String,
+    pub type_: String,
+    pub file_type: String,
+    pub base64_data: Vec<u8>,
+    pub hash: String,
+}
+
+/// UPSERT: 根据 ID 插入或更新附件（用于同步）
+#[tauri::command]
+pub async fn upsert_attachment(
+    state: State<'_, AppState>,
+    input: UpsertAttachmentInput,
+) -> Result<(), String> {
+    use crate::database::entities::attachment as att;
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    // 检查记录是否存在
+    let existing = att::Entity::find_by_id(input.id.clone())
+        .one(db)
+        .await
+        .map_err(|e| format!("Query failed: {}", e))?;
+
+    if let Some(model) = existing {
+        // 更新现有记录
+        let mut active_model: attachment::ActiveModel = model.into();
+        active_model.question_id = Set(input.question_id);
+        active_model.type_ = Set(input.type_);
+        active_model.file_type = Set(input.file_type);
+        active_model.base64_data = Set(input.base64_data);
+        active_model.hash = Set(input.hash);
+        active_model.updated_at = Set(now);
+        active_model.version = Set(input.version);
+        active_model.sync_status = Set("synced".to_string());
+        active_model.deleted_at = Set(input.deleted_at);
+
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    } else {
+        // 插入新记录
+        let new_attachment = attachment::ActiveModel {
+            id: Set(input.id),
+            question_id: Set(input.question_id),
+            type_: Set(input.type_),
+            file_type: Set(input.file_type),
+            base64_data: Set(input.base64_data),
+            hash: Set(input.hash),
+            created_at: Set(now),
+            updated_at: Set(now),
+            deleted_at: Set(input.deleted_at),
+            version: Set(input.version),
+            sync_status: Set("synced".to_string()),
+            sync_hash: Set(None),
+        };
+
+        let _ = new_attachment.insert(db).await;
+    }
 
     Ok(())
 }

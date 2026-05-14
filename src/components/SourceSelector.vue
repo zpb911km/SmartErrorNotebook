@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { getSources, getBooks, getChapters, getKnowledges, createSource, getOrCreateSourceId, getSource } from '../apis/sources';
+import { computed, ref, watch } from 'vue';
+import { getBooks, getChapters, getKnowledges, getOrCreateSourceId, getSource } from '../apis/sources';
 import { Source } from '../types';
 import { showError, showWarning } from '../utils/notification';
 
 const selectedSource = ref<Source | null>(null);
 const isExpanded = ref(false);
+const dropdownPosition = ref<'auto' | 'up' | 'down'>('auto');
 
 // 分层选择的数据
 const books = ref<string[]>([]);
@@ -28,6 +29,7 @@ const newKnowledge = ref<string>('');
 const props = defineProps<{
   currentSourceId: string;
   subjectId?: string;
+  disable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -106,7 +108,8 @@ const addAllToBackend = async () => {
 
 const selectedText = computed(() => {
   if (atLeastOneSelected()) {
-    return `${selectedBook.value || ''} ${selectedChapter.value || ''} ${selectedKnowledge.value || ''}`.trim();
+    console.log("selected:", selectedBook.value, selectedChapter.value, selectedKnowledge.value)
+    return `${selectedBook.value || ''} ${selectedChapter.value? '>': ''} ${selectedChapter.value || ''} ${selectedKnowledge.value? '>': ''} ${selectedKnowledge.value || ''}`.trim();
   }
   return '请选择来源';
 });
@@ -131,6 +134,7 @@ const loadSourceById = async (sourceId: string) => {
     if (props.subjectId) {
       books.value = await getBooks(props.subjectId);
     }
+    console.log("data:", selectedBook.value, selectedChapter.value, selectedKnowledge.value)
     // 预加载下一级数据
     if (source.book) {
       getChapters(source.book).then(data => {
@@ -154,8 +158,8 @@ watch(selectedBook, (newBook) => {
     getChapters(newBook)
       .then(data => {
         chapters.value = data;
-        selectedChapter.value = '';
-        selectedKnowledge.value = '';
+        selectedChapter.value = selectedChapter.value === undefined? '': selectedChapter.value;
+        selectedKnowledge.value = selectedKnowledge.value === undefined? '': selectedKnowledge.value;
         showAddChapterInput.value = false;
         showAddKnowledgeInput.value = false;
       })
@@ -172,7 +176,7 @@ watch(selectedChapter, (newChapter) => {
     getKnowledges(selectedBook.value, newChapter)
       .then(data => {
         knowledges.value = data;
-        selectedKnowledge.value = '';
+        selectedKnowledge.value = selectedKnowledge.value === undefined? '': selectedKnowledge.value;
         showAddKnowledgeInput.value = false;
       })
       .catch(error => {
@@ -194,6 +198,7 @@ watch(
 watch(
   () => props.currentSourceId,
   (newVal) => {
+    console.log('currentSourceId changed:', newVal)
     loadSourceById(newVal);
   }, { immediate: true }
 );
@@ -225,15 +230,48 @@ watch(isExpanded, async (newVal) => {
   }
 })
 
-onMounted(() => {
-  resetSelection();
-});
+// 处理触发器点击：如果按钮在下半屏则向上弹出，否则向下弹出
+const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
+  // disable
+  if (props.disable && props.disable === true) {
+    e.preventDefault();
+    return;
+  }
+
+  // 先切换展开状态
+  isExpanded.value = !isExpanded.value;
+
+  // 只在下半屏才设为向上弹出，默认向下
+  if (isExpanded.value) {
+    // 获取正确的触发器元素（可能是事件冒泡后的子元素）
+    const triggerElement = (e.target as HTMLElement).closest('.selector-trigger') as HTMLElement;
+    if (triggerElement) {
+      const rect = triggerElement.getBoundingClientRect();
+      dropdownPosition.value = rect.top < window.innerHeight / 2 ? 'down' : 'up';
+    }
+    resetSelection();
+    loadBooks();
+  } else {
+    if (props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
+      await getOrCreateSourceId({
+        subject_id: props.subjectId,
+        book: selectedBook.value,
+        chapter: selectedChapter.value === ''? undefined : selectedChapter.value,
+        knowledge: selectedKnowledge.value === ''? undefined : selectedKnowledge.value,
+      }).then((id) => {
+        emit('select', id);
+      }).catch(error => {
+        showError('添加失败', '添加来源失败' + error);
+      });
+    }
+  }
+};
 </script>
 
 <template>
   <div class="source-selector">
     <!-- 选择器触发按钮 -->
-    <div class="selector-trigger" @click="isExpanded=!isExpanded" :class="{ 'expanded': isExpanded }">
+    <div class="selector-trigger" @click="handleTriggerClick" :class="{ 'expanded': isExpanded }">
       <span class="selected-text">
         {{ selectedText }}
       </span>
@@ -246,7 +284,7 @@ onMounted(() => {
 
     <!-- 多列下拉面板 -->
     <transition name="slide-down">
-      <div v-if="isExpanded" class="dropdown-container">
+      <div v-if="isExpanded" :class="['dropdown-container', dropdownPosition]">
         <div class="columns-container">
           <!-- 第一列：书名 -->
           <div class="column">
@@ -302,12 +340,12 @@ onMounted(() => {
                 {{ knowledge }}
               </div>
             </div>
+            <div v-if="knowledges.length === 0" class="empty-hint">
+              暂无数据
+            </div>
             <div class="column-add" v-if="showAddKnowledgeInput">
               <input v-model="newKnowledge" type="text" placeholder="新知识点" @keyup.enter="handleAddKnowledge">
               <button @click="handleAddKnowledge" class="add-btn">确定</button>
-            </div>
-            <div v-if="knowledges.length === 0" class="empty-hint">
-              暂无数据
             </div>
           </div>
         </div>
@@ -367,16 +405,25 @@ onMounted(() => {
 
 .dropdown-container {
   position: absolute;
-  top: 100%;
   left: 0;
   right: 0;
   z-index: var(--z-dropdown);
-  margin-top: 5px;
   background-color: var(--card-bg);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+  /* 默认向下 */
+  top: 100%;
+  margin-top: 5px;
+}
+
+/* 向上弹出 */
+.dropdown-container.up {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 5px;
 }
 
 .columns-container {
@@ -384,6 +431,7 @@ onMounted(() => {
   min-height: 300px;
   max-height: 400px;
 }
+
 
 .column {
   flex: 1;
@@ -409,7 +457,7 @@ onMounted(() => {
 .column-title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
-  color: var(--gray-700);
+  color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -474,6 +522,7 @@ onMounted(() => {
   font-size: var(--font-size-sm);
   background-color: var(--input-bg);
   color: var(--text-primary);
+  width: 80%;
 }
 
 .column-add input:focus {
@@ -506,7 +555,7 @@ onMounted(() => {
   font-size: var(--font-size-sm);
 }
 
-/* 下拉动画 */
+/* 向下弹出动画（默认） */
 .slide-down-enter-active {
   transition: all var(--transition-base);
 }
@@ -519,5 +568,17 @@ onMounted(() => {
 .slide-down-leave-to {
   opacity: 0;
   transform: translateY(-10px);
+}
+
+/* 向上弹出的动画 */
+.dropdown-container.up.slide-down-enter-from,
+.dropdown-container.up.slide-down-leave-to {
+  transform: translateY(10px);
+}
+
+@media (max-width: 300px) { 
+  .columns-container {
+    display: block;
+  }
 }
 </style>

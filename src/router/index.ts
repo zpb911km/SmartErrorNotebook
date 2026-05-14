@@ -54,6 +54,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '设置' }
   },
   {
+    path: '/sync',
+    name: 'Sync',
+    component: () => import('../views/Sync.vue'),
+    meta: { title: '同步' }
+  },
+  {
     path: '/markdown-test',
     name: 'MarkdownTextareaTest',
     component: () => import('../views/MarkdownTextareaTest.vue'),

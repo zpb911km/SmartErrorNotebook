@@ -42,17 +42,24 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            // Sync
+            commands::get_all_pending_records,
+            commands::get_record_for_upload,
+            commands::set_record_sync_status_version,
+            commands::get_all_records,
             // Subject
             commands::get_subjects,
             commands::create_subject,
             commands::update_subject,
             commands::delete_subject,
+            commands::upsert_subject,
             // Error Question
             commands::get_questions,
             commands::get_question,
             commands::create_question,
             commands::update_question,
             commands::delete_question,
+            commands::upsert_error_question,
             commands::get_question_stats,
             // Error Tag
             commands::create_error_tags_for_question,
@@ -63,12 +70,14 @@ pub fn run() {
             commands::update_error_tag_by_name,
             commands::delete_error_tag_by_id,
             commands::update_error_tag_by_id,
+            commands::upsert_error_tag,
             // SRS Data
             commands::create_srs_data,
             commands::get_due_questions,
             commands::submit_review_result,
             commands::get_question_srs_status,
             commands::reset_srs_progress,
+            commands::upsert_srs_data,
             // SRS Tools
             commands::get_due_count,
             commands::get_srs_statistics,
@@ -78,6 +87,7 @@ pub fn run() {
             commands::create_attachments_for_question,
             commands::get_attachments_by_question,
             commands::delete_attachment,
+            commands::upsert_attachment,
             // Source
             commands::get_sources,
             commands::get_books,
@@ -87,7 +97,8 @@ pub fn run() {
             commands::update_source,
             commands::delete_source,
             commands::get_source,
-            commands::get_or_create_source_id
+            commands::get_or_create_source_id,
+            commands::upsert_source,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

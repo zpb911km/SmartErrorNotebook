@@ -153,6 +153,8 @@ interface SRSData {
   stability: number;
   /** 难度（Difficulty）：[1.0, 10.0] */
   difficulty: number;
+  /** 预测召回率 */
+  recall_rate: number;
   /** 下次复习时间戳（秒，可选）*/
   next_review_at: number | null;
   /** 上次复习时间戳（秒，可选）*/
