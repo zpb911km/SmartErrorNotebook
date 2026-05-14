@@ -97,7 +97,17 @@
           <button class="config-btn" @click="openLLMTest">测试</button>
         </div>
       </div>
-    </div>
+
+      <!--- Markdown 渲染测试-->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">📄</div>
+          <div class="setting-name">Markdown 渲染测试</div>
+        </div>
+        <div class="setting-action">
+          <button class="config-btn" @click="$router.push('/markdown-test')">测试</button>
+        </div>
+      </div>
 
     <!-- LLM 配置对话框 -->
     <div v-if="showLLMConfig" class="modal-overlay" @click="closeLLMConfig">
