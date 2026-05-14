@@ -477,7 +477,6 @@ const saveError = async () => {
   padding: 40px 20px;
   background: var(--bg-primary);
   min-height: 100vh;
-  max-width: 800px;
   margin: 0 auto;
 }
 

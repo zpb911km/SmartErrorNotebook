@@ -5,6 +5,34 @@
       <p class="subtitle">让每一次错误，都成为进步的阶梯</p>
     </div>
 
+    <!-- 轮播组件 -->
+    <div class="carousel-section">
+      <div class="arco-carousel arco-carousel-indicator-position-bottom" style="width: 100%; height: 200px; margin-bottom: 30px;">
+        <div class="arco-carousel-slide arco-carousel-horizontal">
+          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 0, 'arco-carousel-item-next': currentSlide === 2, 'arco-carousel-item-prev': currentSlide === 1 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(54, 77, 121); color: white; text-align: center; line-height: 200px; font-size: 30px;">欢迎使用智能错题本</div>
+          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 1, 'arco-carousel-item-next': currentSlide === 0, 'arco-carousel-item-prev': currentSlide === 2 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(0, 168, 84); color: white; text-align: center; line-height: 200px; font-size: 30px;">好好学习，天天向上！</div>
+          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 2, 'arco-carousel-item-next': currentSlide === 1, 'arco-carousel-item-prev': currentSlide === 0 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(245, 34, 45); color: white; text-align: center; line-height: 200px; font-size: 30px;">不要把梦想埋没！</div>
+        </div>
+        <div class="swiper-pagination swiper-pagination-clickable swiper-pagination-bullets">
+          <span data-index="0" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 0 }" tabindex="0" role="button" aria-label="Go to slide 1"></span>
+          <span data-index="1" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 1 }" tabindex="0" role="button" aria-label="Go to slide 2"></span>
+          <span data-index="2" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 2 }" tabindex="0" role="button" aria-label="Go to slide 3"></span>
+        </div>
+        <div class="arco-carousel-arrow">
+          <div class="arco-carousel-arrow-left">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" class="arco-icon arco-icon-left" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter">
+              <path d="M32 8.4 16.444 23.956 32 39.513"></path>
+            </svg>
+          </div>
+          <div class="arco-carousel-arrow-right">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" class="arco-icon arco-icon-right" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter">
+              <path d="m16 39.513 15.556-15.557L16 8.4"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="stats-cards">
       <div class="stat-card">
         <div class="stat-icon">📚</div>
@@ -14,24 +42,10 @@
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">📅</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.today }}</div>
-          <div class="stat-label">今日待复习</div>
-        </div>
-      </div>
-      <div class="stat-card">
         <div class="stat-icon">✅</div>
         <div class="stat-info">
           <div class="stat-value">{{ stats.mastered }}</div>
           <div class="stat-label">已掌握</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🔥</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.streak }}</div>
-          <div class="stat-label">连续学习</div>
         </div>
       </div>
     </div>
@@ -39,7 +53,7 @@
     <div class="quick-actions">
       <h2>快捷操作</h2>
       <div class="action-grid">
-        <button class="action-btn primary" @click="$router.push('/add')">
+        <button class="action-btn" @click="$router.push('/add')">
           <span class="btn-icon">➕</span>
           <span>添加错题</span>
         </button>
@@ -61,13 +75,69 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const stats = ref({
   total: 128,
-  today: 15,
-  mastered: 89,
-  streak: 7
+  mastered: 89
+})
+
+// 轮播组件逻辑
+const currentSlide = ref(0)
+const slideCount = 3
+let carouselInterval: number | null = null
+
+const nextSlide = () => {
+  currentSlide.value = (currentSlide.value + 1) % slideCount
+  updateSlideClasses()
+}
+
+const prevSlide = () => {
+  currentSlide.value = (currentSlide.value - 1 + slideCount) % slideCount
+  updateSlideClasses()
+}
+
+const goToSlide = (index: number) => {
+  currentSlide.value = index
+  updateSlideClasses()
+}
+
+const updateSlideClasses = () => {
+  const slides = document.querySelectorAll('.arco-carousel-item')
+  slides.forEach((slide, index) => {
+    slide.classList.remove('arco-carousel-item-current', 'arco-carousel-item-next', 'arco-carousel-item-prev')
+    if (index === currentSlide.value) {
+      slide.classList.add('arco-carousel-item-current')
+    } else if (index === (currentSlide.value + 1) % slideCount) {
+      slide.classList.add('arco-carousel-item-next')
+    } else if (index === (currentSlide.value - 1 + slideCount) % slideCount) {
+      slide.classList.add('arco-carousel-item-prev')
+    }
+  })
+}
+
+onMounted(() => {
+  // 启动自动轮播
+  carouselInterval = window.setInterval(nextSlide, 3000)
+  
+  // 添加指示器点击事件
+  const indicators = document.querySelectorAll('.swiper-pagination-bullet')
+  indicators.forEach((indicator, index) => {
+    indicator.addEventListener('click', () => goToSlide(index))
+  })
+  
+  // 添加箭头点击事件
+  const leftArrow = document.querySelector('.arco-carousel-arrow-left')
+  const rightArrow = document.querySelector('.arco-carousel-arrow-right')
+  if (leftArrow) leftArrow.addEventListener('click', prevSlide)
+  if (rightArrow) rightArrow.addEventListener('click', nextSlide)
+})
+
+onUnmounted(() => {
+  // 清除轮播定时器
+  if (carouselInterval) {
+    clearInterval(carouselInterval)
+  }
 })
 </script>
 
@@ -75,6 +145,9 @@ const stats = ref({
 .home-page {
   padding: 20px;
   padding-bottom: 80px;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  margin: 0 auto;
 }
 
 .header {
@@ -143,8 +216,20 @@ const stats = ref({
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .action-btn {
@@ -177,5 +262,106 @@ const stats = ref({
 .action-btn span:last-child {
   font-size: 14px;
   font-weight: 500;
+}
+
+/* 轮播组件样式 */
+.carousel-section {
+  margin-bottom: 30px;
+}
+
+.arco-carousel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.arco-carousel-slide {
+  position: relative;
+  display: flex;
+  height: 100%;
+}
+
+.arco-carousel-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.34, 0.69, 0.1, 1);
+  pointer-events: none;
+}
+
+.arco-carousel-item.arco-carousel-item-current {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Swiper Pagination */
+.swiper-pagination {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.swiper-pagination-bullet {
+  width: 36px;
+  height: 36px;
+  background: url('../assets/carousel-indicator-inactive.png') no-repeat center;
+  background-size: 100%;
+  transition: all 0.5s;
+  opacity: 0.5;
+  transform: scale(0.85);
+  border: none;
+  outline: none;
+}
+
+.swiper-pagination-bullet-active {
+  background: url('../assets/carousel-indicator.png') no-repeat center;
+  background-size: 100%;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.arco-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 10;
+}
+
+.arco-carousel-arrow-left,
+.arco-carousel-arrow-right {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: white;
+}
+
+.arco-carousel-arrow-left:hover,
+.arco-carousel-arrow-right:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.arco-icon {
+  width: 20px;
+  height: 20px;
 }
 </style>

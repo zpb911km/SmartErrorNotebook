@@ -1353,7 +1353,6 @@ const viewError = (error: any) => {
   padding-bottom: 100px;
   background: var(--bg-primary);
   min-height: 100vh;
-  max-width: 800px;
   margin: 0 auto;
 }
 

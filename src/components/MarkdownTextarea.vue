@@ -11,7 +11,6 @@
         :class="['markdown-textarea__input', textareaClass]"
         :value="modelValue"
         @input="handleInput"
-        @scroll="handleScroll"
         @keydown="handleKeydown"
       ></textarea>
 
@@ -29,7 +28,6 @@
           <div
             v-for="segment in previewSegments"
             :key="segment.id"
-            :ref="(el: any) => setSegmentRef(segment.id, el)"
             class="markdown-textarea__preview-segment"
             :class="{ 'is-active': segment.id === activeSegmentId }"
             v-html="segment.html"
@@ -112,35 +110,39 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const previewRef = ref<HTMLDivElement | null>(null)
 const viewMode = ref<'edit' | 'preview'>(props.defaultViewMode)
 const activeSegmentId = ref('segment-0')
-const segmentRefs = new Map<string, HTMLElement>()
-
 watch(() => props.defaultViewMode, (value) => {
   viewMode.value = value
 })
 
-const renderedMarkdown = computed(() => {
-  const normalized = (props.modelValue || '')
+const normalizeMarkdown = (value: string) => {
+  return (value || '')
     .replace(/\\\[/g, '$$')
     .replace(/\\\]/g, '$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
+}
 
+const renderMarkdown = (value: string) => {
+  const normalized = normalizeMarkdown(value)
   return marked.parse(normalized, { breaks: true, gfm: true }) as string
-})
+}
+
+const focusAtStart = async () => {
+  await nextTick()
+  const el = textareaRef.value
+  if (!el) return
+  el.setSelectionRange(0, 0)
+  el.focus()
+}
 
 const previewSegments = computed(() => {
-  const html = renderedMarkdown.value
+  const html = renderMarkdown(props.modelValue || '')
   if (!html) return []
 
-  const parts = html
-    .split(/(?=<h[1-6]|<blockquote|<pre|<ul|<ol|<p|<table)/g)
-    .map(part => part.trim())
-    .filter(Boolean)
-
-  return parts.map((htmlPart, index) => ({
-    id: `segment-${index}`,
-    html: htmlPart
-  }))
+  return [{
+    id: 'segment-0',
+    html
+  }]
 })
 
 const handleInput = (event: Event) => {
@@ -152,40 +154,6 @@ const focus = () => textareaRef.value?.focus()
 const blur = () => textareaRef.value?.blur()
 const select = () => textareaRef.value?.select()
 
-const setSegmentRef = (id: string, el: Element | null) => {
-  if (el instanceof HTMLElement) {
-    segmentRefs.set(id, el)
-  }
-}
-
-const syncPreviewToEditor = () => {
-  if (!textareaRef.value || !previewRef.value || !props.showPreview) return
-
-  const text = textareaRef.value.value || ''
-  const lines = text.split('\n')
-  const lineHeight = parseFloat(getComputedStyle(textareaRef.value).lineHeight || '20')
-  const scrollTop = textareaRef.value.scrollTop
-  const currentLine = Math.max(0, Math.floor(scrollTop / lineHeight))
-  const percentage = lines.length > 1 ? currentLine / Math.max(lines.length - 1, 1) : 0
-
-  const segmentIndex = Math.min(
-    previewSegments.value.length - 1,
-    Math.max(0, Math.floor(percentage * Math.max(previewSegments.value.length - 1, 0)))
-  )
-  const segment = previewSegments.value[segmentIndex]
-  if (!segment) return
-
-  activeSegmentId.value = segment.id
-  const segmentEl = segmentRefs.get(segment.id)
-  segmentEl?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-}
-
-const handleScroll = () => {
-  if (viewMode.value === 'edit') {
-    syncPreviewToEditor()
-  }
-}
-
 const toggleViewMode = async () => {
   if (!props.showPreview) return
 
@@ -193,7 +161,6 @@ const toggleViewMode = async () => {
   await nextTick()
   if (viewMode.value === 'edit') {
     await focusAtStart()
-    syncPreviewToEditor()
   }
 }
 
@@ -202,7 +169,6 @@ const returnToEdit = async () => {
   viewMode.value = 'edit'
   await nextTick()
   await focusAtStart()
-  syncPreviewToEditor()
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -218,22 +184,16 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
-let rafId = 0
-const scheduleSync = () => {
-  cancelAnimationFrame(rafId)
-  rafId = requestAnimationFrame(syncPreviewToEditor)
-}
-
 watch(() => props.modelValue, () => {
-  scheduleSync()
+  void 0
 })
 
 onMounted(() => {
-  scheduleSync()
+  void 0
 })
 
 onBeforeUnmount(() => {
-  cancelAnimationFrame(rafId)
+  void 0
 })
 
 defineExpose({ focus, blur, select, el: textareaRef })
