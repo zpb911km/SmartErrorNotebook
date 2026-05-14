@@ -109,38 +109,6 @@
         </div>
       </div>
 
-      <!-- 其他设置 -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">📱</div>
-          <div class="setting-name">设备管理</div>
-        </div>
-        <div class="setting-action">
-          <span class="arrow-icon">→</span>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">🔔</div>
-          <div class="setting-name">通知设置</div>
-        </div>
-        <div class="setting-action">
-          <span class="arrow-icon">→</span>
-        </div>
-      </div>
-
-      <div class="setting-item">
-        <div class="setting-info">
-          <div class="setting-icon">ℹ️</div>
-          <div class="setting-name">关于应用</div>
-        </div>
-        <div class="setting-action">
-          <span class="arrow-icon">→</span>
-        </div>
-      </div>
-    </div>
-
     <!-- LLM 配置对话框 -->
     <div v-if="showLLMConfig" class="modal-overlay" @click="closeLLMConfig">
       <div class="modal" @click.stop>
@@ -243,11 +211,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { llm } from '../services'
 
 // 主题设置
-const theme = ref('light')
+const theme = ref(localStorage.getItem('theme') || 'system')
+console.log('初始化 theme 值:', theme.value, 'localStorage 中的值:', localStorage.getItem('theme'))
+
+// 应用主题
+const applyTheme = (themeValue: string) => {
+  // 移除所有主题类
+  document.body.classList.remove('light-theme', 'dark-theme')
+  
+  if (themeValue === 'light') {
+    document.body.classList.add('light-theme')
+  } else if (themeValue === 'dark') {
+    document.body.classList.add('dark-theme')
+  } else if (themeValue === 'system') {
+    // 跟随系统
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark-theme')
+    } else {
+      document.body.classList.add('light-theme')
+    }
+  }
+}
+
+// 主题切换
+const handleThemeChange = () => {
+  console.log('主题切换为:', theme.value)
+  applyTheme(theme.value)
+  // 保存主题设置到localStorage
+  localStorage.setItem('theme', theme.value)
+}
+
+// 系统主题变化处理
+const handleSystemThemeChange = () => {
+  console.log('系统主题变化事件触发，当前 theme.value:', theme.value, 'localStorage 中的值:', localStorage.getItem('theme'))
+  if (theme.value === 'system') {
+    console.log('执行跟随系统主题更新')
+    applyTheme('system')
+  } else {
+    console.log('当前主题不是 system，不执行跟随系统主题更新，当前主题:', theme.value)
+    // 确保应用当前设置的主题
+    applyTheme(theme.value)
+  }
+}
 
 // AI 选项
 const aiEnabled = ref(false)
@@ -271,56 +280,6 @@ const testMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>
 const testInput = ref('')
 const isSending = ref(false)
 const chatMessages = ref<HTMLElement | null>(null)
-
-// 主题切换
-const handleThemeChange = () => {
-  console.log('主题切换为:', theme.value)
-  applyTheme(theme.value)
-  // 保存主题设置到localStorage
-  localStorage.setItem('theme', theme.value)
-}
-
-// 应用主题
-const applyTheme = (themeValue: string) => {
-  // 移除所有主题类
-  document.body.classList.remove('light-theme', 'dark-theme')
-  
-  if (themeValue === 'light') {
-    document.body.classList.add('light-theme')
-  } else if (themeValue === 'dark') {
-    document.body.classList.add('dark-theme')
-  } else if (themeValue === 'system') {
-    // 跟随系统
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      document.body.classList.add('dark-theme')
-    } else {
-      document.body.classList.add('light-theme')
-    }
-  }
-}
-
-// 初始化主题
-onMounted(() => {
-  // 从localStorage读取主题设置
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme) {
-    theme.value = savedTheme
-  } else {
-    // 默认跟随系统
-    theme.value = 'system'
-  }
-  // 应用主题
-  applyTheme(theme.value)
-  
-  // 监听系统主题变化
-  if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (theme.value === 'system') {
-        applyTheme('system')
-      }
-    })
-  }
-})
 
 // AI 选项切换
 const handleAiToggle = () => {
@@ -435,9 +394,28 @@ const clearTestChat = () => {
   testStatus.value = 'idle'
 }
 
-// 组件挂载时加载 AI 配置
+// 初始化主题
 onMounted(() => {
+  // 应用主题
+  console.log('初始化主题:', theme.value)
+  applyTheme(theme.value)
+  
+  // 监听系统主题变化
+  if (window.matchMedia) {
+    console.log('添加系统主题变化监听器')
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', handleSystemThemeChange)
+  }
+  
+  // 加载 AI 配置
   aiEnabled.value = llm.config.enabled
+})
+
+// 组件卸载时移除监听器
+onUnmounted(() => {
+  if (window.matchMedia) {
+    console.log('移除系统主题变化监听器')
+    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', handleSystemThemeChange)
+  }
 })
 </script>
 
@@ -447,7 +425,6 @@ onMounted(() => {
   padding-bottom: 100px;
   background: var(--bg-primary);
   min-height: 100vh;
-  max-width: 800px;
   margin: 0 auto;
 }
 

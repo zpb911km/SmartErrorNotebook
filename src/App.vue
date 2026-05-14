@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import TopBar from './components/TopBar.vue'
 import BottomNav from './components/BottomNav.vue'
@@ -17,6 +17,41 @@ const showTopBar = computed(() => {
 
 const showBottomNav = computed(() => {
   return route.path !== '/'
+})
+
+// 应用主题
+const applyTheme = (themeValue: string) => {
+  // 移除所有主题类
+  document.body.classList.remove('light-theme', 'dark-theme')
+  
+  if (themeValue === 'light') {
+    document.body.classList.add('light-theme')
+  } else if (themeValue === 'dark') {
+    document.body.classList.add('dark-theme')
+  } else if (themeValue === 'system') {
+    // 跟随系统
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.body.classList.add('dark-theme')
+    } else {
+      document.body.classList.add('light-theme')
+    }
+  }
+}
+
+// 初始化主题
+onMounted(() => {
+  const savedTheme = localStorage.getItem('theme') || 'system'
+  applyTheme(savedTheme)
+  
+  // 监听系统主题变化
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      const currentTheme = localStorage.getItem('theme') || 'system'
+      if (currentTheme === 'system') {
+        applyTheme('system')
+      }
+    })
+  }
 })
 </script>
 
