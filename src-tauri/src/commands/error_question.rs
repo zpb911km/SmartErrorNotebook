@@ -51,7 +51,7 @@ pub struct UpsertQuestionInput {
     #[serde(alias = "source_id")]
     pub sourceid: Option<String>,
     pub prompt: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type_")]
     pub type_: String,
     pub answer: Option<String>,
     pub analysis: Option<String>,
@@ -301,7 +301,7 @@ pub async fn upsert_error_question(
         active_model.error_note = Set(input.error_note);
         active_model.updated_at = Set(now);
         active_model.version = Set(input.version);
-        active_model.sync_status = Set(input.status);
+        active_model.sync_status = Set("synced".to_string());
         active_model.deleted_at = Set(input.deleted_at);
 
         active_model.update(db).await.map_err(|e| e.to_string())?;
@@ -321,11 +321,11 @@ pub async fn upsert_error_question(
             updated_at: Set(now),
             deleted_at: Set(input.deleted_at),
             version: Set(input.version),
-            sync_status: Set(input.status),
+            sync_status: Set("synced".to_string()),
             sync_hash: Set(input.sync_hash)
         };
 
-        new_question.insert(db).await.map_err(|e| e.to_string())?;
+        let _ = new_question.insert(db).await;
     }
 
     Ok(())

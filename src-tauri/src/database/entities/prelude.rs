@@ -6,4 +6,4 @@ pub use super::error_tag::Entity as ErrorTag;
 pub use super::source::Entity as Source;
 pub use super::srs_data::Entity as SrsData;
 pub use super::subject::Entity as Subject;
-pub use super::user_config::Entity as UserConfig;
+// pub use super::user_config::Entity as UserConfig;

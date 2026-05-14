@@ -373,7 +373,7 @@ pub async fn upsert_source(
         active_model.knowledge = Set(input.knowledge);
         active_model.updated_at = Set(now);
         active_model.version = Set(input.version);
-        active_model.sync_status = Set(input.status);
+        active_model.sync_status = Set("synced".to_string());
         active_model.deleted_at = Set(input.deleted_at);
 
         active_model.update(db).await.map_err(|e| e.to_string())?;
@@ -390,11 +390,11 @@ pub async fn upsert_source(
             updated_at: Set(now),
             deleted_at: Set(input.deleted_at),
             version: Set(input.version),
-            sync_status: Set(input.status),
+            sync_status: Set("synced".to_string()),
             sync_hash: Set(None),
         };
 
-        new_source.insert(db).await.map_err(|e| e.to_string())?;
+        let _ = new_source.insert(db).await;
     }
 
     Ok(())

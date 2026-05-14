@@ -83,6 +83,17 @@ class Record(db.Model):
             'data': self.data,
         }
 
+    def to_header(self):
+        """转换为轻量格式（不含 data），供握手使用"""
+        return {
+            'id': self.id,
+            'table_name': self.table_name,
+            'version': self.version,
+            'status': self.status,
+            'deleted_at': self.deleted_at,
+            'updated_at': self.updated_at,
+        }
+
     @classmethod
     def from_client_dict(cls, record_dict, auth_key, table_name):
         """从客户端字典创建记录（用于更新时保留原 ID）"""
@@ -184,7 +195,7 @@ def get_all_sync_data():
     records = Record.query.filter_by(auth_key=auth_key).all()
 
     return jsonify({
-        'all_records': [r.to_dict() for r in records]
+        'all_records': [r.to_header() for r in records]
     })
 
 

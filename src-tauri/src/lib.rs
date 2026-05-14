@@ -45,6 +45,8 @@ pub fn run() {
             // Sync
             commands::get_all_pending_records,
             commands::get_record_for_upload,
+            commands::set_record_sync_status_version,
+            commands::get_all_records,
             // Subject
             commands::get_subjects,
             commands::create_subject,

@@ -17,6 +17,17 @@ export interface ServerRecord {
   data: object;                  // 所有业务字段
 }
 
+/** 本地记录头（握手用，不含 data 负载，所有 status 的记录） */
+export interface SyncRecordHeader {
+  id: string;
+  table_name: string;
+  version: number;
+  status: 'synced' | 'pending';
+  deleted_at: number | null;
+  updated_at: number;
+  created_at: number;
+}
+
 /** 获取所有同步数据响应 */
 interface GetAllSyncDataResponse {
   all_records: ServerRecord[];
@@ -209,6 +220,9 @@ export function handshake(
 
       if (local_status === 'pending' && local_version === server_version) {
         result.push_list.push(rec_id);
+      } else if (local_status === 'synced' && server_version && local_version === server_version) {
+        // 本地已同步，且版本号相同
+        // do nothing
       } else {
         result.conflicts.push({
           id: rec_id,
@@ -279,8 +293,10 @@ export async function applyPullRecords(records: ServerRecord[]): Promise<void> {
         });
         break;
       case 'attachments':
+        let input = { id, version, status, deleted_at, ...data }
+        console.log(input)
         await invoke('upsert_attachment', {
-          input: { id, version, status, deleted_at, ...data },
+          input: input,
         });
         break;
       case 'error_tags':
@@ -319,7 +335,18 @@ export async function uploadRecords(
     await Promise.all(
       chunk.map(async (rec) => {
         try {
+          // 上传前保证状态为 synced
+          rec.status = 'synced';
           const res = await uploadRecord(rec.id, rec, auth_key);
+          if (res.success) {
+            // 上传后更新数据库状态
+            let rst = await invoke("set_record_sync_status_version", {
+              recordId: rec.id,
+              version: res.new_version,
+              status: 'synced',
+            })
+            console.log("上传后", rst)
+          }
           results.set(rec.id, res.success);
         } catch (e) {
           console.error(`Failed to upload record ${rec.id}:`, e);
@@ -367,109 +394,128 @@ export async function getLocalPendingRecords(): Promise<ServerRecord[]> {
 }
 
 /**
- * 开始同步流程（主入口）
+ * 获取本地所有记录（无视 status），仅含握手所需字段，不含 data 负载
  */
-export async function startSync(options: {
-  onProgress?: (progress: SyncProgress) => void;
-  onConflict?: (conflicts: ConflictInfo[]) => Promise<ResolvedConflict[]>;
-}): Promise<SyncProgress> {
-  const { onProgress, onConflict } = options || {};
-  const auth_key = localStorage.getItem('auth_key') || '';
-
-  if (!auth_key) {
-    throw new Error('No auth_key found. Please login first.');
-  }
-
-  // Step 1: 获取服务端数据
-  const remote_records = await getAllSyncData(auth_key);
-
-  // Step 2: 获取本地 pending 记录
-  const local_pending = await getLocalPendingRecords();
-
-  // Step 3: 执行握手
-  const handshake_result = handshake(local_pending, remote_records);
-
-  let progress: SyncProgress = {
-    phase: 'handshake',
-    total:
-      handshake_result.pull_list.length +
-      handshake_result.push_list.length,
-    current: 0,
-    details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 },
-  };
-
-  if (onProgress) {
-    onProgress(progress);
-  }
-
-  // Step 4: 处理冲突（如果有）
-  if (handshake_result.conflicts.length > 0) {
-    progress.phase = 'resolving_conflicts';
-    if (onProgress) {
-      onProgress(progress);
-    }
-
-    if (onConflict) {
-      const resolved = await onConflict(handshake_result.conflicts);
-      progress.details.conflicts_resolved = resolved.length;
-
-      // 应用冲突解决
-      await applyConflictResolution(resolved);
-    } else {
-      throw new Error('Conflicts detected but no handler provided');
-    }
-  }
-
-  // Step 5: 推送记录
-  progress.phase = 'pushing';
-  if (handshake_result.push_list.length > 0) {
-    const push_records: ServerRecord[] = [];
-
-    for (const record_id of handshake_result.push_list) {
-      // 需要从本地数据库中获取完整的记录数据（包含 table_name）
-      const record = await invoke('get_record_for_upload', {
-        record_id,
-      }) as ServerRecord;
-      push_records.push(record);
-    }
-
-    // 调用服务器上传（需要 auth_key）
-    const upload_results = await uploadRecords(push_records, auth_key);
-
-    for (const succeeded of upload_results.values()) {
-      if (succeeded) {
-        progress.details.pushed++;
-      } else {
-        progress.details.failed++;
-      }
-    }
-  }
-  progress.current += handshake_result.push_list.length;
-  if (onProgress) {
-    onProgress(progress);
-  }
-
-  // Step 6: 拉取记录
-  progress.phase = 'pulling';
-  if (handshake_result.pull_list.length > 0) {
-    await applyPullRecords(handshake_result.pull_list);
-    progress.details.pulled = handshake_result.pull_list.length;
-    progress.current += handshake_result.pull_list.length;
-    if (onProgress) {
-      onProgress(progress);
-    }
-  }
-
-  // Step 7: 更新状态
-  progress.phase = 'updating';
-
-  progress.total = progress.current;
-  if (onProgress) {
-    onProgress(progress);
-  }
-
-  return progress;
+export async function getAllLocalRecords(): Promise<SyncRecordHeader[]> {
+  return invoke('get_all_records');
 }
+
+// /**
+//  * 开始同步流程（主入口）
+//  */
+// export async function startSync(options: {
+//   onProgress?: (progress: SyncProgress) => void;
+//   onConflict?: (conflicts: ConflictInfo[]) => Promise<ResolvedConflict[]>;
+// }): Promise<SyncProgress> {
+//   const { onProgress, onConflict } = options || {};
+//   const auth_key = localStorage.getItem('auth_key') || '';
+
+//   if (!auth_key) {
+//     throw new Error('No auth_key found. Please login first.');
+//   }
+
+//   // Step 1: 获取服务端数据
+//   const remote_records = await getAllSyncData(auth_key);
+
+//   // Step 2: 获取本地 pending 记录
+//   const local_pending = await getLocalPendingRecords();
+
+//   // Step 3: 执行握手
+//   const handshake_result = handshake(local_pending, remote_records);
+
+//   let progress: SyncProgress = {
+//     phase: 'handshake',
+//     total:
+//       handshake_result.pull_list.length +
+//       handshake_result.push_list.length,
+//     current: 0,
+//     details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 },
+//   };
+
+//   if (onProgress) {
+//     onProgress(progress);
+//   }
+
+//   // Step 4: 处理冲突（如果有）
+//   if (handshake_result.conflicts.length > 0) {
+//     progress.phase = 'resolving_conflicts';
+//     if (onProgress) {
+//       onProgress(progress);
+//     }
+
+//     if (onConflict) {
+//       const resolved = await onConflict(handshake_result.conflicts);
+//       progress.details.conflicts_resolved = resolved.length;
+
+//       // 应用冲突解决
+//       await applyConflictResolution(resolved);
+//     } else {
+//       throw new Error('Conflicts detected but no handler provided');
+//     }
+//   }
+
+//   // Step 5: 推送记录
+//   progress.phase = 'pushing';
+//   if (handshake_result.push_list.length > 0) {
+//     const push_records: ServerRecord[] = [];
+
+//     for (const record_id of handshake_result.push_list) {
+//       // 需要从本地数据库中获取完整的记录数据（包含 table_name）
+//       const record = await invoke('get_record_for_upload', {
+//         record_id,
+//       }) as ServerRecord;
+//       // 更改待上传的记录的状态为 synced
+//       record.status = 'synced';
+//       console.log(record);
+//       push_records.push(record);
+//     }
+
+//     // 调用服务器上传（需要 auth_key）
+//     const upload_results = await uploadRecords(push_records, auth_key);
+
+//     // 更改本地数据库的记录状态为 synced
+//     for (const record_id of handshake_result.push_list) {
+//       let rst = await invoke('set_record_sync_status', {
+//         record_id,
+//         status: 'synced',
+//       });
+//       console.log(rst);
+//     }
+
+//     for (const succeeded of upload_results.values()) {
+//       if (succeeded) {
+//         progress.details.pushed++;
+//       } else {
+//         progress.details.failed++;
+//       }
+//     }
+//   }
+//   progress.current += handshake_result.push_list.length;
+//   if (onProgress) {
+//     onProgress(progress);
+//   }
+
+//   // Step 6: 拉取记录
+//   progress.phase = 'pulling';
+//   if (handshake_result.pull_list.length > 0) {
+//     await applyPullRecords(handshake_result.pull_list);
+//     progress.details.pulled = handshake_result.pull_list.length;
+//     progress.current += handshake_result.pull_list.length;
+//     if (onProgress) {
+//       onProgress(progress);
+//     }
+//   }
+
+//   // Step 7: 更新状态
+//   progress.phase = 'updating';
+
+//   progress.total = progress.current;
+//   if (onProgress) {
+//     onProgress(progress);
+//   }
+
+//   return progress;
+// }
 
 // ==================== 导出 ====================
 

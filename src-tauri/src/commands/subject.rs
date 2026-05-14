@@ -101,7 +101,6 @@ pub async fn update_subject(
     }
 
     subject.updated_at = Set(now);
-    subject.version = Set(subject.version.unwrap() + 1);
     subject.sync_status = Set("pending".to_string());
 
     let subject = subject.update(db).await.map_err(|e| e.to_string())?;
@@ -157,7 +156,7 @@ pub async fn upsert_subject(
         active_model.color = Set(input.color);
         active_model.updated_at = Set(now);
         active_model.version = Set(input.version);
-        active_model.sync_status = Set(input.status);
+        active_model.sync_status = Set("synced".to_string());
         active_model.deleted_at = Set(input.deleted_at);
 
         active_model.update(db).await.map_err(|e| e.to_string())?;
@@ -171,11 +170,11 @@ pub async fn upsert_subject(
             updated_at: Set(now),
             deleted_at: Set(input.deleted_at),
             version: Set(input.version),
-            sync_status: Set(input.status),
+            sync_status: Set("synced".to_string()),
             sync_hash: Set(None),
         };
 
-        new_subject.insert(db).await.map_err(|e| e.to_string())?;
+        let _ = new_subject.insert(db).await;
     }
 
     Ok(())

@@ -1,9 +1,104 @@
 // 同步相关命令 - 聚合查询接口
 
 use crate::AppState;
-use sea_orm::{EntityTrait, ColumnTrait, QueryFilter};
-use serde::{Serialize, Deserialize};
+use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter};
+use serde::{Serialize};
 use tauri::State;
+
+/// 轻量记录头（握手用，不含 data 负载）
+#[derive(Debug, Clone, Serialize)]
+pub struct SyncRecordHeader {
+    pub id: String,
+    pub table_name: String,
+    pub version: i32,
+    pub status: String,
+    pub deleted_at: Option<i64>,
+    pub updated_at: i64,
+    pub created_at: i64,
+}
+
+/// 获取所有记录（无视 status），仅返回握手所需的字段，不含 data
+#[tauri::command]
+pub async fn get_all_records(
+    state: State<'_, AppState>,
+) -> Result<Vec<SyncRecordHeader>, String> {
+    let db = state.db.as_ref();
+    let mut results = Vec::new();
+
+    // error_questions
+    {
+        use crate::database::entities::error_question as eq;
+        let models = eq::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query error_questions: {}", e))?;
+        for model in models {
+            results.push(model_to_header(model, "error_questions".to_string()));
+        }
+    }
+
+    // subjects
+    {
+        use crate::database::entities::subject as sub;
+        let models = sub::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query subjects: {}", e))?;
+        for model in models {
+            results.push(model_to_header(model, "subjects".to_string()));
+        }
+    }
+
+    // srs_data
+    {
+        use crate::database::entities::srs_data as srs;
+        let models = srs::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query srs_data: {}", e))?;
+        for model in models {
+            results.push(model_to_header(model, "srs_data".to_string()));
+        }
+    }
+
+    // attachments
+    {
+        use crate::database::entities::attachment as att;
+        let models = att::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query attachments: {}", e))?;
+        for model in models {
+            results.push(model_to_header(model, "attachments".to_string()));
+        }
+    }
+
+    // error_tags
+    {
+        use crate::database::entities::error_tag as tag;
+        let models = tag::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query error_tags: {}", e))?;
+        for model in models {
+            results.push(model_to_header(model, "error_tags".to_string()));
+        }
+    }
+
+    // sources
+    {
+        use crate::database::entities::source as src;
+        let models = src::Entity::find()
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query sources: {}", e))?;
+        for model in models {
+            results.push(model_to_header(model, "sources".to_string()));
+        }
+    }
+
+    Ok(results)
+}
 
 /// 通用记录输出格式（返回给前端）
 #[derive(Debug, Clone, Serialize)]
@@ -194,6 +289,137 @@ pub async fn get_record_for_upload(
     Err(format!("Record not found with id: {}", record_id))
 }
 
+
+#[tauri::command]
+pub async fn set_record_sync_status_version(
+    state: State<'_, AppState>,
+    record_id: String,
+    status: String,
+    version: i32,
+) -> Result<String, String> {
+    let db = state.db.as_ref();
+
+    // 依次在各个表中查找
+    let table_names = [
+        "error_questions",
+        "subjects",
+        "srs_data",
+        "attachments",
+        "error_tags",
+        "sources",
+    ];
+
+    for &table_name in &table_names {
+        match table_name {
+            "error_questions" => {
+                use crate::database::entities::error_question as eq;
+                use sea_orm::ActiveModelTrait;
+                if let Some(model) = eq::Entity::find_by_id(record_id.clone())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query error_questions: {}", e))?
+                {
+                    let mut model: eq::ActiveModel = model.into();
+                    model.sync_status = ActiveValue::Set(status.clone());
+                    model.version = ActiveValue::Set(version);
+                    let rst = model.update(db)
+                        .await
+                        .map_err(|e| format!("Failed to update error_questions: {}", e))?;
+                    return Ok(format!("Record updated with id: {:?}", rst.id));
+                }
+            }
+            "subjects" => {
+                use crate::database::entities::subject as sub;
+                use sea_orm::ActiveModelTrait;
+                if let Some(model) = sub::Entity::find_by_id(record_id.clone())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query subjects: {}", e))?
+                {
+                    let mut model: sub::ActiveModel = model.into();
+                    model.sync_status = ActiveValue::Set(status.clone());
+                    model.version = ActiveValue::Set(version);
+                    let rst = model.update(db)
+                        .await
+                        .map_err(|e| format!("Failed to update subjects: {}", e))?;
+                    return Ok(format!("Record updated with id: {:?}", rst.id));
+                }
+            }
+            "srs_data" => {
+                use crate::database::entities::srs_data as srs;
+                use sea_orm::ActiveModelTrait;
+                if let Some(model) = srs::Entity::find_by_id(record_id.clone())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query srs_data: {}", e))?
+                {
+                    let mut model: srs::ActiveModel = model.into();
+                    model.sync_status = ActiveValue::Set(status.clone());
+                    model.version = ActiveValue::Set(version);
+                    let rst = model.update(db)
+                        .await
+                        .map_err(|e| format!("Failed to update srs_data: {}", e))?;
+                    return Ok(format!("Record updated with id: {:?}", rst.id));
+                }
+            }
+            "attachments" => {
+                use crate::database::entities::attachment as att;
+                use sea_orm::ActiveModelTrait;
+                if let Some(model) = att::Entity::find_by_id(record_id.clone())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query attachments: {}", e))?
+                {
+                    let mut model: att::ActiveModel = model.into();
+                    model.sync_status = ActiveValue::Set(status.clone());
+                    model.version = ActiveValue::Set(version);
+                    let rst = model.update(db)
+                        .await
+                        .map_err(|e| format!("Failed to update attachments: {}", e))?;
+                    return Ok(format!("Record updated with id: {:?}", rst.id));
+                }
+            }
+            "error_tags" => {
+                use crate::database::entities::error_tag as tag;
+                use sea_orm::ActiveModelTrait;
+                if let Some(model) = tag::Entity::find_by_id(record_id.clone())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query error_tags: {}", e))?
+                {
+                    let mut model: tag::ActiveModel = model.into();
+                    model.sync_status = ActiveValue::Set(status.clone());
+                    model.version = ActiveValue::Set(version);
+                    let rst = model.update(db)
+                        .await
+                        .map_err(|e| format!("Failed to update error_tags: {}", e))?;
+                    return Ok(format!("Record updated with id: {:?}", rst.id));
+                }
+            }
+            "sources" => {
+                use crate::database::entities::source as src;
+                use sea_orm::ActiveModelTrait;
+                if let Some(model) = src::Entity::find_by_id(record_id.clone())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query sources: {}", e))?
+                {
+                    let mut model: src::ActiveModel = model.into();
+                    model.sync_status = ActiveValue::Set(status.clone());
+                    model.version = ActiveValue::Set(version);
+                    let rst = model.update(db)
+                        .await
+                        .map_err(|e| format!("Failed to update sources: {}", e))?;
+                    return Ok(format!("Record updated with id: {:?}", rst.id));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Err(format!("Record not found with id: {}", record_id))
+}
+
 /// 将 SeaORM Model 转换为通用输出格式（针对具体类型实现）
 fn model_to_sync_output<M>(model: M, table_name: String) -> SyncRecordOutput
 where
@@ -224,5 +450,24 @@ where
         deleted_at,
         updated_at,
         data: serde_json::Value::Object(data),
+    }
+}
+
+/// 将 SeaORM Model 转换为轻量记录头（不含 data）
+fn model_to_header<M>(model: M, table_name: String) -> SyncRecordHeader
+where
+    M: sea_orm::ModelTrait + Serialize,
+{
+    let model_json: serde_json::Value = serde_json::to_value(&model).unwrap_or_default();
+    let obj = model_json.as_object().unwrap().clone();
+
+    SyncRecordHeader {
+        id: obj.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        table_name,
+        version: obj.get("version").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+        status: obj.get("sync_status").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        deleted_at: obj.get("deleted_at").and_then(|v| v.as_i64()),
+        updated_at: obj.get("updated_at").and_then(|v| v.as_i64()).unwrap_or(0),
+        created_at: obj.get("created_at").and_then(|v| v.as_i64()).unwrap_or(0),
     }
 }

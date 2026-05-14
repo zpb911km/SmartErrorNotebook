@@ -50,16 +50,28 @@
       <h2 class="section-title">数据同步</h2>
       <div class="info-card">
         <div class="info-row">
-          <span class="info-label">待同步记录</span>
+          <span class="info-label">待上传</span>
           <span class="info-value">
-            <span class="badge" :class="pendingCount > 0 ? 'badge-warning' : 'badge-success'">
-              {{ pendingCount }}
+            <span class="badge" :class="statsUploadClass">
+              {{ syncStats.toUpload }}
             </span>
           </span>
         </div>
         <div class="info-row">
-          <span class="info-label">上次同步</span>
-          <span class="info-value">{{ lastSyncText }}</span>
+          <span class="info-label">待下载</span>
+          <span class="info-value">
+            <span class="badge" :class="statsDownloadClass">
+              {{ syncStats.toDownload !== null ? syncStats.toDownload : '未知' }}
+            </span>
+          </span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">待处理（冲突）</span>
+          <span class="info-value">
+            <span class="badge" :class="statsConflictClass">
+              {{ syncStats.toConflicts !== null ? syncStats.toConflicts : '未知' }}
+            </span>
+          </span>
         </div>
       </div>
 
@@ -114,10 +126,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { handshake, getAllSyncData, uploadRecords, applyPullRecords } from '../apis/sync'
-import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord } from '../apis/sync'
+import { handshake, getAllSyncData, uploadRecords, applyPullRecords, getAllLocalRecords, downloadRecord } from '../apis/sync'
+import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord, SyncRecordHeader } from '../apis/sync'
 import SyncOverlay from '../components/SyncOverlay.vue'
 import ConflictResolver from '../components/ConflictResolver.vue'
+import { showError, showInfo, showSuccess } from '../utils/notification'
 
 const AUTH_STORAGE_KEY = 'auth_key'
 const URL_STORAGE_KEY = 'sync_server_url'
@@ -215,8 +228,6 @@ const checkConnection = async () => {
 }
 
 // ---------- 同步状态 ----------
-const pendingCount = ref(0)
-const lastSyncTime = ref<number | null>(null)
 const syncing = ref(false)
 const showProgress = ref(false)
 const showConflictResolver = ref(false)
@@ -234,32 +245,60 @@ const syncTotal = computed(() => {
   return r ? r.push_list.length + r.pull_list.length : 0
 })
 
-const lastSyncText = computed(() => {
-  if (!lastSyncTime.value) return '从未同步'
-  const d = new Date(lastSyncTime.value)
-  return d.toLocaleString('zh-CN')
+// ---------- 握手统计（待上传/待下载/待处理） ----------
+const syncStats = ref<{
+  toUpload: number
+  toDownload: number | null
+  toConflicts: number | null
+}>({ toUpload: 0, toDownload: null, toConflicts: null })
+
+const statsUploadClass = computed(() =>
+  syncStats.value.toUpload > 0 ? 'badge-warning' : 'badge-success'
+)
+const statsDownloadClass = computed(() => {
+  if (syncStats.value.toDownload === null) return 'badge-neutral'
+  return syncStats.value.toDownload > 0 ? 'badge-warning' : 'badge-success'
+})
+const statsConflictClass = computed(() => {
+  if (syncStats.value.toConflicts === null) return 'badge-neutral'
+  return syncStats.value.toConflicts > 0 ? 'badge-danger' : 'badge-success'
 })
 
-const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-  console.log(`[${type.toUpperCase()}] ${message}`)
-}
-
-// ---------- 刷新待同步计数 ----------
-const refreshPendingCount = async () => {
+/** 尝试握手并刷新三栏统计 */
+const refreshSyncStats = async () => {
   try {
-    const records = await invoke<ServerRecord[]>('get_all_pending_records')
-    pendingCount.value = records.length
-  } catch {
-    pendingCount.value = 0
+    const localPending = await invoke<ServerRecord[]>('get_all_pending_records')
+    syncStats.value = { toUpload: localPending.length, toDownload: null, toConflicts: null }
+
+    const key = localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!key) return  // 无密钥，其余两项显示未知
+
+    const { checkServerHealth, getAllSyncData } = await import('../apis/sync')
+    const online = await checkServerHealth()
+    if (!online) return  // 服务不可达，其余两项显示未知
+
+    // 服务在线且有密钥 → 使用全量记录握手
+    const [allLocal, remoteRecords] = await Promise.all([
+      getAllLocalRecords(),
+      getAllSyncData(key),
+    ])
+    const result = handshake(allLocal, remoteRecords)
+    syncStats.value = {
+      toUpload: result.push_list.length,
+      toDownload: result.pull_list.length,
+      toConflicts: result.conflicts.length,
+    }
+  } catch (e) {
+    console.warn('Failed to refresh sync stats:', e)
   }
 }
 
-onMounted(refreshPendingCount)
+onMounted(refreshSyncStats)
 
 // ---------- 同步流程 ----------
 const handleSync = async () => {
   if (!authKey.value) {
-    showToast('请先配置授权码', 'error')
+    showError('请先配置授权码', 'error')
     return
   }
 
@@ -268,12 +307,13 @@ const handleSync = async () => {
   syncProgress.value = { phase: 'handshake', current: 0, total: 0, details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 } }
 
   try {
-    const [localPending, remoteRecords] = await Promise.all([
-      invoke<ServerRecord[]>('get_all_pending_records'),
+    const [allLocal, remoteRecords] = await Promise.all([
+      getAllLocalRecords(),
       getAllSyncData(authKey.value),
     ])
 
-    const result = handshake(localPending, remoteRecords)
+    const result = handshake(allLocal, remoteRecords)
+    console.log('handshake result:', result)
     handshakeResult.value = result
 
     if (result.conflicts.length > 0) {
@@ -283,12 +323,12 @@ const handleSync = async () => {
     }
 
     await doSync(result, authKey.value)
-    lastSyncTime.value = Date.now()
-    showToast('同步完成', 'success')
-    refreshPendingCount()
-  } catch (e) {
-    console.error('Sync failed:', e)
-    showToast(`同步失败：${e}`, 'error')
+
+    showSuccess('同步完成', 'success')
+    refreshSyncStats()
+  // } catch (e) {
+  //   console.error('Sync failed:', e)
+  //   showError(`同步失败：${e}`, 'error')
   } finally {
     if (!showConflictResolver.value) {
       syncing.value = false
@@ -307,7 +347,7 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
     const records = await Promise.all(
       result.push_list.map(id =>
         invoke<ServerRecord>('get_record_for_upload', { recordId: id })
-      )
+      ) 
     )
     const uploadResults = await uploadRecords(records, key)
     for (const succeeded of uploadResults.values()) {
@@ -319,8 +359,14 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
   }
 
   if (result.pull_list.length > 0) {
+    const downloadedRecords = await Promise.all(
+      result.pull_list.map(rc =>
+        downloadRecord(rc.id, key)
+      )
+    )
+    console.log('downloaded records:', downloadedRecords)
     syncProgress.value.phase = 'pulling'
-    await applyPullRecords(result.pull_list)
+    await applyPullRecords(downloadedRecords)
     syncProgress.value.details.pulled = result.pull_list.length
     current += result.pull_list.length
     syncProgress.value.current = current
@@ -340,25 +386,24 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
       await invoke('apply_conflict_resolution', { resolution })
     }
 
-    const [localPending, remoteRecords] = await Promise.all([
-      invoke<ServerRecord[]>('get_all_pending_records'),
+    const [allLocal, remoteRecords] = await Promise.all([
+      getAllLocalRecords(),
       getAllSyncData(authKey.value),
     ])
 
-    const newResult = handshake(localPending, remoteRecords)
+    const newResult = handshake(allLocal, remoteRecords)
     handshakeResult.value = newResult
 
     if (newResult.push_list.length > 0 || newResult.pull_list.length > 0) {
       await doSync(newResult, authKey.value)
-      showToast('同步完成', 'success')
+      showSuccess('同步完成', 'success')
     } else {
-      showToast('所有冲突已解决，无需同步', 'info')
+      showInfo('所有冲突已解决，无需同步', 'info')
     }
-    lastSyncTime.value = Date.now()
-    refreshPendingCount()
+    refreshSyncStats()
   } catch (e) {
     console.error('Conflict resolution failed:', e)
-    showToast(`冲突解决失败：${e}`, 'error')
+    showError(`冲突解决失败：${e}`, 'error')
   } finally {
     syncing.value = false
     showProgress.value = false
@@ -563,6 +608,16 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 .badge-warning {
   background: #fef3c7;
   color: #92400e;
+}
+
+.badge-neutral {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.badge-danger {
+  background: #fde8e8;
+  color: #dc2626;
 }
 
 /* 同步按钮 */

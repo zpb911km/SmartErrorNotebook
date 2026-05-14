@@ -152,7 +152,7 @@ pub struct UpsertAttachmentInput {
     pub question_id: String,
     pub type_: String,
     pub file_type: String,
-    pub base64_data: String,
+    pub base64_data: Vec<u8>,
     pub hash: String,
 }
 
@@ -179,11 +179,11 @@ pub async fn upsert_attachment(
         active_model.question_id = Set(input.question_id);
         active_model.type_ = Set(input.type_);
         active_model.file_type = Set(input.file_type);
-        active_model.base64_data = Set(input.base64_data.into_bytes());
+        active_model.base64_data = Set(input.base64_data);
         active_model.hash = Set(input.hash);
         active_model.updated_at = Set(now);
         active_model.version = Set(input.version);
-        active_model.sync_status = Set(input.status);
+        active_model.sync_status = Set("synced".to_string());
         active_model.deleted_at = Set(input.deleted_at);
 
         active_model.update(db).await.map_err(|e| e.to_string())?;
@@ -194,17 +194,17 @@ pub async fn upsert_attachment(
             question_id: Set(input.question_id),
             type_: Set(input.type_),
             file_type: Set(input.file_type),
-            base64_data: Set(input.base64_data.into_bytes()),
+            base64_data: Set(input.base64_data),
             hash: Set(input.hash),
             created_at: Set(now),
             updated_at: Set(now),
             deleted_at: Set(input.deleted_at),
             version: Set(input.version),
-            sync_status: Set(input.status),
+            sync_status: Set("synced".to_string()),
             sync_hash: Set(None),
         };
 
-        new_attachment.insert(db).await.map_err(|e| e.to_string())?;
+        let _ = new_attachment.insert(db).await;
     }
 
     Ok(())

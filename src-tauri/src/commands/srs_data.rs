@@ -447,7 +447,7 @@ pub async fn upsert_srs_data(
         active_model.feedback_history = Set(input.feedback_history);
         active_model.updated_at = Set(now);
         active_model.version = Set(input.version);
-        active_model.sync_status = Set(input.status);
+        active_model.sync_status = Set("synced".to_string());
 
         active_model.update(db).await.map_err(|e| e.to_string())?;
     } else {
@@ -464,11 +464,11 @@ pub async fn upsert_srs_data(
             created_at: Set(now),
             updated_at: Set(now),
             version: Set(input.version),
-            sync_status: Set(input.status),
+            sync_status: Set("synced".to_string()),
             sync_hash: Set(None),
         };
 
-        new_srs.insert(db).await.map_err(|e| e.to_string())?;
+        let _ = new_srs.insert(db).await;
     }
 
     Ok(())
