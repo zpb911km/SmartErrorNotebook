@@ -131,7 +131,7 @@ pub async fn delete_attachment(state: State<'_, AppState>, id: String) -> Result
 
     attachment.deleted_at = Set(Some(now));
     attachment.updated_at = Set(now);
-    attachment.version = Set(attachment.version.unwrap() + 1);
+    attachment.version = Set(attachment.version.unwrap());
     attachment.sync_status = Set("pending".to_string());
 
     attachment

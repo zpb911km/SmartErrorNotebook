@@ -263,7 +263,7 @@ pub async fn update_source(
     }
 
     source.updated_at = Set(now);
-    source.version = Set(source.version.unwrap() + 1);
+    source.version = Set(source.version.unwrap());
     source.sync_status = Set("pending".to_string());
 
     let source = source.update(db).await.map_err(|e| e.to_string())?;
@@ -289,7 +289,7 @@ pub async fn delete_source(state: State<'_, AppState>, id: String) -> Result<(),
 
     source.deleted_at = Set(Some(now));
     source.updated_at = Set(now);
-    source.version = Set(source.version.unwrap() + 1);
+    source.version = Set(source.version.unwrap());
     source.sync_status = Set("pending".to_string());
 
     source.update(db).await.map_err(|e| e.to_string())?;

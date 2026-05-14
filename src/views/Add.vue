@@ -53,14 +53,6 @@
         </div>
       </div>
 
-      <div class="form-group" :class="{ 'loading': promptLoading }">
-        <label>题目</label>
-        <MarkdownTextarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></MarkdownTextarea>  
-        <div class="loading-spinner" v-if="promptLoading">
-          <div class="spinner"></div>
-        </div>
-      </div>
-
       <div class="form-group" :class="{ 'loading': typeLoading }">
         <label>题型</label>
         <select v-model="form.type">
@@ -69,6 +61,25 @@
           <div class="spinner"></div>
         </div>
         </select>
+      </div>
+
+      <div class="form-group">
+        <label>来源</label>
+        <SourceSelector :currentSourceId="form.source" :subjectId="form.subject"
+          @select="(source_id) => { form.source = source_id; console.log('source_id:', source_id); }" />
+      </div>
+
+      <div class="form-group">
+        <label>错因</label>
+        <ErrorTagSelector :currentTags="form.error_tags" @select="(tags) => { form.error_tags = tags }" />
+      </div>
+
+      <div class="form-group" :class="{ 'loading': promptLoading }">
+        <label>题目</label>
+        <MarkdownTextarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></MarkdownTextarea>  
+        <div class="loading-spinner" v-if="promptLoading">
+          <div class="spinner"></div>
+        </div>
       </div>
 
       <div class="form-group" :class="{ 'loading': answerLoading }">
@@ -90,17 +101,6 @@
       <div class="form-group">
         <label>错题小记</label>
         <MarkdownTextarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></MarkdownTextarea>
-      </div>
-
-      <div class="form-group">
-        <label>来源</label>
-        <SourceSelector :currentSourceId="form.source" :subjectId="form.subject"
-          @select="(source_id) => { form.source = source_id; console.log('source_id:', source_id); }" />
-      </div>
-
-      <div class="form-group">
-        <label>错因</label>
-        <ErrorTagSelector :currentTags="form.error_tags" @select="(tags) => { form.error_tags = tags }" />
       </div>
     </div>
 

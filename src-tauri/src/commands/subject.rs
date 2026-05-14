@@ -124,7 +124,7 @@ pub async fn delete_subject(state: State<'_, AppState>, id: String) -> Result<()
 
     subject.deleted_at = Set(Some(now));
     subject.updated_at = Set(now);
-    subject.version = Set(subject.version.unwrap() + 1);
+    subject.version = Set(subject.version.unwrap());
     subject.sync_status = Set("pending".to_string());
 
     subject.update(db).await.map_err(|e| e.to_string())?;

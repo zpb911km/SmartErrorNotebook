@@ -216,7 +216,7 @@ pub async fn update_question(
     }
 
     question.updated_at = Set(now);
-    question.version = Set(question.version.unwrap() + 1);
+    question.version = Set(question.version.unwrap());
     question.sync_status = Set("pending".to_string());
 
     let question = question.update(db).await.map_err(|e| {
@@ -243,7 +243,7 @@ pub async fn delete_question(state: State<'_, AppState>, id: String) -> Result<(
 
     question.deleted_at = Set(Some(now));
     question.updated_at = Set(now);
-    question.version = Set(question.version.unwrap() + 1);
+    question.version = Set(question.version.unwrap());
     question.sync_status = Set("pending".to_string());
 
     question.update(db).await.map_err(|e| e.to_string())?;

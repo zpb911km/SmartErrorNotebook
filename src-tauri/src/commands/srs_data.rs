@@ -224,7 +224,7 @@ pub async fn submit_review_result(
         input.feedback,
     ));
     update_model.updated_at = Set(now);
-    update_model.version = Set(srs_model.version + 1);
+    update_model.version = Set(srs_model.version);
 
     update_model.update(db).await.map_err(|e| e.to_string())?;
 
@@ -306,7 +306,7 @@ pub async fn reset_srs_progress(
             update_model.review_count = Set(1);
             update_model.feedback_history = Set("[]".to_string());
             update_model.updated_at = Set(now);
-            update_model.version = Set(model.version + 1);
+            update_model.version = Set(model.version);
 
             update_model.update(db).await.map_err(|e| e.to_string())?;
 

@@ -126,7 +126,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { handshake, getAllSyncData, uploadRecords, applyPullRecords, getAllLocalRecords, downloadRecord } from '../apis/sync'
+import { handshake, getAllSyncData, uploadRecord, applyPullRecords, getAllLocalRecords, downloadRecord } from '../apis/sync'
 import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord, SyncRecordHeader } from '../apis/sync'
 import SyncOverlay from '../components/SyncOverlay.vue'
 import ConflictResolver from '../components/ConflictResolver.vue'
@@ -327,9 +327,9 @@ const handleSync = async () => {
 
     showSuccess('同步完成', 'success')
     refreshSyncStats()
-  // } catch (e) {
-  //   console.error('Sync failed:', e)
-  //   showError(`同步失败：${e}`, 'error')
+  } catch (e) {
+    console.error('Sync failed:', e)
+    showError(`同步失败：${e}`, 'error')
   } finally {
     if (!showConflictResolver.value) {
       syncing.value = false
@@ -339,37 +339,49 @@ const handleSync = async () => {
 }
 
 const doSync = async (result: SyncHandshakeResult, key: string) => {
-  let current = 0
   const total = result.push_list.length + result.pull_list.length
   syncProgress.value.total = total
+  let current = 0
 
-  if (result.push_list.length > 0) {
+  // 逐个上传，及时更新进度
+  for (const recordId of result.push_list) {
     syncProgress.value.phase = 'pushing'
-    const records = await Promise.all(
-      result.push_list.map(id =>
-        invoke<ServerRecord>('get_record_for_upload', { recordId: id })
-      ) 
-    )
-    const uploadResults = await uploadRecords(records, key)
-    for (const succeeded of uploadResults.values()) {
-      current++
-      if (succeeded) syncProgress.value.details.pushed++
-      else syncProgress.value.details.failed++
+    try {
+      const record = await invoke<ServerRecord>('get_record_for_upload', { recordId })
+      record.status = 'synced'
+      const uploadRes = await uploadRecord(record.id, record, key)
+      if (uploadRes.success) {
+        if (uploadRes.new_version != null) {
+          await invoke('set_record_sync_status_version', {
+            recordId: record.id,
+            version: uploadRes.new_version,
+            status: 'synced',
+          })
+        }
+        syncProgress.value.details.pushed++
+      } else {
+        syncProgress.value.details.failed++
+      }
+    } catch (e) {
+      console.error(`Failed to upload record ${recordId}:`, e)
+      syncProgress.value.details.failed++
     }
+    current++
     syncProgress.value.current = current
   }
 
-  if (result.pull_list.length > 0) {
-    const downloadedRecords = await Promise.all(
-      result.pull_list.map(rc =>
-        downloadRecord(rc.id, key)
-      )
-    )
-    console.log('downloaded records:', downloadedRecords)
+  // 逐个下载，及时更新进度
+  for (const rc of result.pull_list) {
     syncProgress.value.phase = 'pulling'
-    await applyPullRecords(downloadedRecords)
-    syncProgress.value.details.pulled = result.pull_list.length
-    current += result.pull_list.length
+    try {
+      const fullRecord = await downloadRecord(rc.id, key)
+      await applyPullRecords([fullRecord])
+      syncProgress.value.details.pulled++
+    } catch (e) {
+      console.error(`Failed to download record ${rc.id}:`, e)
+      syncProgress.value.details.failed++
+    }
+    current++
     syncProgress.value.current = current
   }
 
