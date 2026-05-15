@@ -201,23 +201,34 @@
       <div class="srs-section">
         <div class="section-title">学习数据</div>
         
-        <div class="srs-stats">
+        <div v-if="srsData" class="srs-stats">
           <div class="stat-item">
             <span class="stat-label">掌握程度</span>
-            <span class="stat-value">{{ srsData?.mastery || 0 }}%</span>
+            <span class="stat-value">{{ calculateMastery(srsData) }}%</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">难度系数</span>
-            <span class="stat-value">{{ srsData?.difficulty || '未设置' }}</span>
+            <span class="stat-value">{{ srsData.difficulty.toFixed(2) }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">复习次数</span>
-            <span class="stat-value">{{ srsData?.review_count || 0 }}</span>
+            <span class="stat-value">{{ srsData.review_count }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">最后复习</span>
-            <span class="stat-value">{{ formatTimestamp(srsData?.lastreviewed_at) }}</span>
+            <span class="stat-value">{{ formatTimestamp(srsData.last_review_at) }}</span>
           </div>
+          <div class="stat-item">
+            <span class="stat-label">稳定性</span>
+            <span class="stat-value">{{ srsData.stability.toFixed(2) }} 天</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">召回率</span>
+            <span class="stat-value">{{ (srsData.recall_rate * 100).toFixed(1) }}%</span>
+          </div>
+        </div>
+        <div v-else class="no-srs-data">
+          <p>暂无学习数据</p>
         </div>
       </div>
 
@@ -309,6 +320,7 @@ import {
 import { getSubjects } from '../apis/subjects'
 import { getErrorTagByQuestionId, createErrorTagsForQuestion, deleteErrorTagById } from '../apis/errorTags'
 import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment, base64ToArrayBuffer } from '../apis/attachments'
+import { getQuestionSRSStatus } from '../apis/srsData'
 import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
@@ -449,16 +461,30 @@ const fetchErrorDetail = async () => {
       const attachments = await getAttachmentsByQuestion(errorId.value)
       console.log('获取到的附件:', attachments)
       
-      // 分类图片和答案图片（注意：后端字段名是 type_ 不是 type）
-      questionImages.value = attachments.filter((att: any) => att.type_ === 'original')
-      answerImages.value = attachments.filter((att: any) => att.type_ === 'answer')
-      
+      // 分类附件
+      questionImages.value = attachments.filter(a => a.type === 'original')
+      answerImages.value = attachments.filter(a => a.type === 'answer')
       console.log('题目图片数量:', questionImages.value.length)
       console.log('答案图片数量:', answerImages.value.length)
     } catch (error) {
-      console.error('获取题目图片失败:', error)
+      console.error('获取附件失败:', error)
     }
     
+    // 获取 SRS 数据
+    try {
+      console.log('开始获取 SRS 数据...')
+      const srs = await getQuestionSRSStatus(errorId.value)
+      if (srs) {
+        srsData.value = srs
+        console.log('SRS 数据:', srs)
+      } else {
+        console.log('该题目没有 SRS 数据')
+        srsData.value = null
+      }
+    } catch (error) {
+      console.error('获取 SRS 数据失败:', error)
+      srsData.value = null
+    }
   } catch (error) {
     console.error('获取错题详情失败:', error)
   }
@@ -618,6 +644,22 @@ const saveChanges = async () => {
 // 确认删除
 const confirmDelete = () => {
   showDeleteConfirm.value = true
+}
+
+// 计算掌握程度
+const calculateMastery = (srs: any): number => {
+  if (!srs) return 0
+  
+  const reviewCount = srs.review_count || 0
+  const stability = srs.stability || 0
+  const recallRate = srs.recall_rate || 0
+  
+  // 综合计算掌握程度（0-100%）
+  const reviewScore = Math.min(reviewCount / 10, 1) * 100
+  const stabilityScore = Math.min(stability / 30, 1) * 100
+  const recallScore = recallRate * 100
+  
+  return Math.round(reviewScore * 0.3 + stabilityScore * 0.3 + recallScore * 0.4)
 }
 
 // 删除错题
@@ -1205,6 +1247,17 @@ onMounted(() => {
 }
 
 /* SRS 统计 */
+.no-srs-data {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-secondary);
+}
+
+.no-srs-data p {
+  margin: 0;
+  font-size: 14px;
+}
+
 .srs-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

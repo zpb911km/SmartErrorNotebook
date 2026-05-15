@@ -21,3 +21,12 @@ export async function createSRSData(
     },
   });
 }
+
+/**
+ * 获取单个题目的 SRS 状态
+ * @param questionId 错题ID
+ * @returns SRS 数据对象，如果不存在则返回 null
+ */
+export async function getQuestionSRSStatus(questionId: string): Promise<SRSData | null> {
+  return await invoke('get_question_srs_status', { questionId });
+}
