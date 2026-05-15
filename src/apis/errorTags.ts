@@ -78,7 +78,7 @@ export async function updateErrorTagByName(tagName: string, name: string, color:
 
 export async function deleteErrorTagById(tagId: string): Promise<number> {
   return await invoke('delete_error_tag_by_id', {
-    tag_id: tagId
+    tagId: tagId
   });
 }
 
