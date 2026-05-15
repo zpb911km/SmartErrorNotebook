@@ -15,6 +15,9 @@ export * from './errorTags';
 // SRS 数据相关
 export * from './srsData';
 
+// SRS 间隔重复相关
+export * from './srs';
+
 // 附件相关
 export * from './attachments';
 

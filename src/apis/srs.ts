@@ -100,6 +100,6 @@ export async function getSRSStatics(): Promise<{
   avg_difficulty: number;
   total_reviews: number;
 }> {
-  return invoke('get_srs_statics');
+  return invoke('get_srs_statistics');
 }
 
