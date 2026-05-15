@@ -177,14 +177,25 @@ onMounted(() => {
           </div>
           <div class="color-indicator" :style="{ backgroundColor: errorTag.color }"></div>
         </div>
-        <div  v-if="!showAddErrorTag" class="error-tag-option" @click="showAddErrorTag = true">
-          <span class="option-name">+ 添加新错因</span>
+        <div class="error-tag-option-add" v-if="!showAddErrorTag" @click="showAddErrorTag = true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+          <span>添加新错因</span>
         </div>
-        <div class="add-error-tag-container" v-if="showAddErrorTag">
-          <input v-model="newErrorTag.name" type="text" placeholder="请输入错因名称"></input>
-          <input v-model="newErrorTag.color" type="color" title="选择颜色" :style="{ backgroundColor: newErrorTag.color }"></input>
-          <button @click="handleAddErrorTag" class="confirm">添加</button>
-          <button @click="showAddErrorTag = false" class="cancel">取消</button>
+        <div class="add-form-container" v-if="showAddErrorTag">
+          <div class="add-form-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            <span>添加新错因</span>
+          </div>
+          <input v-model="newErrorTag.name" type="text" placeholder="请输入错因名称" class="add-form-input" />
+          <div class="add-form-footer">
+            <div class="color-picker-wrap" :style="{ backgroundColor: newErrorTag.color }">
+              <input v-model="newErrorTag.color" type="color" title="选择颜色" />
+            </div>
+            <div class="btn-group">
+              <button @click="handleAddErrorTag" class="btn-confirm">添加</button>
+              <button @click="showAddErrorTag = false" class="btn-cancel">取消</button>
+            </div>
+          </div>
         </div>
         <div v-if="errorTags.length === 0" class="no-options">
           暂无错因标签数据
@@ -283,7 +294,7 @@ onMounted(() => {
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  max-height: 250px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
@@ -304,6 +315,32 @@ onMounted(() => {
 
 .error-tag-option.selected {
   background-color: var(--primary-light) !important;
+}
+
+.error-tag-option-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 15px;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border-radius: calc(var(--radius-sm) - 2px);
+  margin: 4px;
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.error-tag-option-add:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.error-tag-option-add svg {
+  flex-shrink: 0;
 }
 
 .option-left {
@@ -362,12 +399,12 @@ onMounted(() => {
 /* 下拉动画 */
 .slide-down-enter-active {
   transition: all var(--transition-base);
-  max-height: 250px;
+  max-height: 280px;
 }
 
 .slide-down-leave-active {
   transition: all var(--transition-base);
-  max-height: 250px;
+  max-height: 280px;
 }
 
 .slide-down-enter-from,
@@ -377,54 +414,128 @@ onMounted(() => {
   max-height: 0;
 }
 
-.add-error-tag-container {
-  width: 50%;
-  z-index: var(--z-modal);
+/* ===== 添加表单（与 SubjectSelector 保持一致） ===== */
+.add-form-container {
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--divider-color);
+  background: var(--bg-secondary);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.add-form-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.add-form-header svg {
+  color: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.add-form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.add-form-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.add-form-footer {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 20px;
-  background-color: var(--card-bg);
-  border: 2px solid var(--border-color);
+  margin-top: 10px;
+}
+
+/* 颜色选择器美化 */
+.color-picker-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xl);
-  min-width: 300px;
-}
-
-.add-error-tag-container input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  background-color: var(--input-bg);
-  color: var(--text-primary);
-}
-
-.add-error-tag-container button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
   cursor: pointer;
-  font-size: var(--font-size-base);
-  transition: background-color var(--transition-base);
+  flex-shrink: 0;
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
 }
 
-.add-error-tag-container .confirm {
-  background-color: var(--primary-color);
-  color: var(--white);
+.color-picker-wrap:hover {
+  border-color: var(--primary-color);
+  transform: scale(1.05);
 }
 
-.add-error-tag-container .confirm:hover {
-  background-color: var(--primary-dark);
+.color-picker-wrap input[type="color"] {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  opacity: 0;
 }
 
-.add-error-tag-container .cancel {
-  background-color: var(--gray-300);
-  color: var(--gray-700);
+/* 按钮组 */
+.btn-group {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
 }
 
-.add-error-tag-container .cancel:hover {
-  background-color: var(--gray-400);
+.btn-confirm {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--primary-color);
+  color: white;
+  letter-spacing: 0.3px;
+}
+
+.btn-confirm:hover {
+  background: var(--primary-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-confirm:active {
+  transform: scale(0.97);
+}
+
+.btn-cancel {
+  padding: 8px 18px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-cancel:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--gray-400);
 }
 </style>

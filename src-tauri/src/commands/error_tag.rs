@@ -120,48 +120,23 @@ pub async fn get_error_tags_for_question(
     Ok(tags)
 }
 
-// 删除错因标签: 删除错因记录中标签等于给定名称的全部记录
+
+// 删除错因标签 by id, 软删除
 #[tauri::command]
-pub async fn delete_error_tag_by_name(
-    state: State<'_, AppState>,
-    tag_name: String,
-) -> Result<u64, String> {
+pub async fn delete_error_tag(state: State<'_, AppState>, tag_id: String) -> Result<(), String> {
     let db = state.db.as_ref();
-    let deleted_result = error_tag::Entity::delete_many()
-        .filter(error_tag::Column::Name.eq(tag_name))
-        .exec(db)
+    let tag = ErrorTag::find_by_id(tag_id)
+        .one(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
-    let deleted_count = deleted_result.rows_affected;
-    Ok(deleted_count)
-}
 
-// 改动错因标签: 改动错因记录中标签等于给定名称的全部记录为新名称和颜色
-#[tauri::command]
-pub async fn update_error_tag_by_name(
-    state: State<'_, AppState>,
-    tag_name: String,
-    new_tag_name: String,
-    new_tag_color: Option<String>,
-) -> Result<u64, String> {
-    let db = state.db.as_ref();
-    let mut update_query = error_tag::Entity::update_many();
-    update_query = update_query.filter(error_tag::Column::Name.eq(tag_name));
-    update_query = update_query.col_expr(
-        error_tag::Column::Name,
-        sea_orm::prelude::Expr::value(new_tag_name),
-    );
-    if let Some(color) = new_tag_color {
-        update_query = update_query.col_expr(
-            error_tag::Column::Color,
-            sea_orm::prelude::Expr::value(color),
-        );
+    if let Some(tag) = tag {
+        let mut active_model: error_tag::ActiveModel = tag.into();
+        active_model.deleted_at = Set(Some(chrono::Utc::now().timestamp()));
+        active_model.sync_status = Set("pending".to_string());
+        active_model.update(db).await.map_err(|e| e.to_string())?;
     }
-    let updated_result = update_query.exec(db).await;
-    match updated_result {
-        Ok(result) => Ok(result.rows_affected),
-        Err(e) => Err(e.to_string()),
-    }
+    Ok(())
 }
 
 /// UPSERT: 根据 ID 插入或更新错因标签（用于同步）
@@ -214,49 +189,30 @@ pub async fn upsert_error_tag(
     Ok(())
 }
 
-// 删除错因记录,通过id定位
-#[tauri::command]
-pub async fn delete_error_tag_by_id(
-    state: State<'_, AppState>,
-    tag_id: String,
-) -> Result<u64, String> {
-    let db = state.db.as_ref();
-    let deleted_result = error_tag::Entity::delete_many()
-        .filter(error_tag::Column::Id.eq(tag_id))
-        .exec(db)
-        .await;
-    match deleted_result {
-        Ok(result) => Ok(result.rows_affected),
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-// 修改错因记录,通过id定位,不可单独修改颜色,可以单独修改名字
+// 修改错因记录,通过id定位
 #[tauri::command]
 pub async fn update_error_tag_by_id(
     state: State<'_, AppState>,
     tag_id: String,
     new_tag_name: String,
     new_tag_color: Option<String>,
-) -> Result<u64, String> {
+) -> Result<(), String> {
     let db = state.db.as_ref();
-    let mut update_query = error_tag::Entity::update_many();
-    update_query = update_query.filter(error_tag::Column::Id.eq(tag_id));
-    update_query = update_query.col_expr(
-        error_tag::Column::Name,
-        sea_orm::prelude::Expr::value(new_tag_name),
-    );
+    let cur_model = ErrorTag::find_by_id(tag_id)
+        .one(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?
+        .ok_or("标签不存在".to_string())?;
+    let mut active_model: error_tag::ActiveModel = cur_model.into();
+    active_model.name = Set(new_tag_name);
     if let Some(color) = new_tag_color {
-        update_query = update_query.col_expr(
-            error_tag::Column::Color,
-            sea_orm::prelude::Expr::value(color),
-        );
+        active_model.color = Set(color);
     }
-
-    let updated_result = update_query.exec(db).await;
-    match updated_result {
-        Ok(result) => Ok(result.rows_affected),
-        Err(e) => Err(e.to_string()),
-    }
+    active_model.updated_at = Set(chrono::Utc::now().timestamp());
+    active_model.sync_status = Set("pending".to_string());
+    let _ = active_model.update(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string());
+    Ok(())
 }
 

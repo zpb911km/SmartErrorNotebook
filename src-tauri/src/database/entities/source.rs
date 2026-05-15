@@ -22,19 +22,6 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::subject::Entity",
-        from = "Column::SubjectId",
-        to = "super::subject::Column::Id"
-    )]
-    Subject,
-}
-
-impl Related<super::subject::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Subject.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
