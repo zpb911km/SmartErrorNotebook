@@ -31,17 +31,17 @@
             </template>
           </div>
         </div>
+        <div v-if="showAuthInput" class="auth-input-row">
+          <input v-model="authInput" type="text" placeholder="输入授权码..." class="input" />
+          <button class="btn btn-primary" @click="saveAuthKey">保存</button>
+          <button class="btn btn-secondary" @click="showAuthInput = false">取消</button>
+        </div>
         <div class="info-row info-row--action">
           <button class="btn btn-secondary btn--sm" @click="checkConnection" :disabled="checking">
             {{ checking ? '检测中...' : '检测连接' }}
           </button>
           <span v-if="checkMessage" class="check-msg" :class="checkMsgClass">{{ checkMessage }}</span>
         </div>
-      </div>
-      <div v-if="showAuthInput" class="auth-input-row">
-        <input v-model="authInput" type="text" placeholder="输入授权码..." class="input" />
-        <button class="btn btn-primary" @click="saveAuthKey">保存</button>
-        <button class="btn btn-secondary" @click="showAuthInput = false">取消</button>
       </div>
     </section>
 
@@ -148,6 +148,7 @@ const saveServerUrl = () => {
   }
   showUrlInput.value = false
   urlInput.value = ''
+  checkConnection()
 }
 
 // ---------- 授权码 ----------
@@ -169,6 +170,7 @@ const saveAuthKey = () => {
   }
   showAuthInput.value = false
   authInput.value = ''
+  checkConnection()
 }
 
 // ---------- 连接检测 ----------
@@ -282,7 +284,10 @@ const refreshSyncStats = async () => {
       getAllLocalRecords(),
       getAllSyncData(key),
     ])
+    console.log('all local records:', allLocal)
+    console.log('remote records:', remoteRecords)
     const result = handshake(allLocal, remoteRecords)
+    console.log('handshake result:', result)
     syncStats.value = {
       toUpload: result.push_list.length,
       toDownload: result.pull_list.length,
@@ -293,7 +298,10 @@ const refreshSyncStats = async () => {
   }
 }
 
-onMounted(refreshSyncStats)
+onMounted(() => {
+  checkConnection()
+  refreshSyncStats()
+})
 
 // ---------- 同步流程 ----------
 const handleSync = async () => {
@@ -349,6 +357,7 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
     try {
       const record = await invoke<ServerRecord>('get_record_for_upload', { recordId })
       record.status = 'synced'
+      record.version = record.version + 1
       const uploadRes = await uploadRecord(record.id, record, key)
       if (uploadRes.success) {
         if (uploadRes.new_version != null) {
@@ -371,19 +380,22 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
   }
 
   // 逐个下载，及时更新进度
-  for (const rc of result.pull_list) {
+  let downloaded = [];
+  for (const rc_id of result.pull_list) {
     syncProgress.value.phase = 'pulling'
     try {
-      const fullRecord = await downloadRecord(rc.id, key)
-      await applyPullRecords([fullRecord])
+      const fullRecord = await downloadRecord(rc_id, key)
+      downloaded.push(fullRecord)
       syncProgress.value.details.pulled++
     } catch (e) {
-      console.error(`Failed to download record ${rc.id}:`, e)
+      console.error(`Failed to download record ${rc_id}:`, e)
       syncProgress.value.details.failed++
     }
     current++
     syncProgress.value.current = current
   }
+  console.log('downloaded:', downloaded)
+  await applyPullRecords(downloaded)
 
   syncProgress.value.phase = 'updating'
 }
@@ -401,40 +413,28 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
       return
     }
 
-    const remoteRecords = await getAllSyncData(authKey.value)
-    const resolvedPush: string[] = []
+    const resolvedPushList = []
+    const resolvedPullList = []
 
     for (const res of resolutions) {
       const conflict = conflicts.find(c => c.id === res.id)
       if (!conflict) continue
 
-      const newVersion = Math.max(conflict.local_version, conflict.server_version) + 1
+      // const newVersion = Math.max(conflict.local_version, conflict.server_version) + 1
 
       if (res.resolution === 'keep_local') {
-        // 保留本地：更新本地 version = max+1, status = 'synced'，推送到服务端
-        await invoke('set_record_sync_status_version', {
-          recordId: res.id,
-          status: 'synced',
-          version: newVersion,
-        })
-        resolvedPush.push(res.id)
+        // 保留本地：加入push 列表,覆盖服务器
+        resolvedPushList.push(res.id)
       } else {
-        // 保留服务端：下载服务端数据，本地设置 version = max+1，再推送更新服务端 version
-        const fullRecord = await downloadRecord(res.id, authKey.value)
-        await applyPullRecords([fullRecord])
-        await invoke('set_record_sync_status_version', {
-          recordId: res.id,
-          status: 'synced',
-          version: newVersion,
-        })
-        resolvedPush.push(res.id)
+        // 保留服务端：加入pull 列表,覆盖本地
+        resolvedPullList.push(res.id)
       }
     }
 
     // 合并原有的 push/pull 列表
     const merged: SyncHandshakeResult = {
-      push_list: [...handshakeResult.value.push_list, ...resolvedPush],
-      pull_list: [...handshakeResult.value.pull_list],
+      push_list: [...handshakeResult.value.push_list, ...resolvedPushList],
+      pull_list: [...handshakeResult.value.pull_list, ...resolvedPullList],
       conflicts: [],
     }
 

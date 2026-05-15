@@ -22,9 +22,6 @@
         </div>
 
         <div class="conflict-card__footer">
-          <button class="btn btn--outline" @click="handleSkip">
-            跳过 (保持本地)
-          </button>
           <button
             v-if="resolvedMap.size > 0"
             class="btn btn--confirm"
@@ -32,7 +29,10 @@
           >
             确认已选 ({{ resolvedMap.size }})
           </button>
-          <button class="btn btn--primary" @click="handleAllRemote">
+          <button class="btn btn--local-all" @click="handleAllLocal">
+            全部使用本地版本
+          </button>
+          <button class="btn btn--remote-all" @click="handleAllRemote">
             全部使用服务端版本
           </button>
         </div>
@@ -74,33 +74,21 @@ const confirmResolved = () => {
   emit('update:modelValue', false);
 };
 
-const handleSkip = () => {
-  const all: ResolvedConflict[] = [
-    // already resolved items
-    ...Array.from(resolvedMap.value.values()),
-    // unresolved ones → keep_local
-    ...props.conflicts
-      .filter((c) => !resolvedMap.value.has(c.id))
-      .map((c) => ({
-        id: c.id,
-        resolution: 'keep_local' as const,
-      })),
-  ];
-  if (all.length > 0) emit('resolve', all);
+const handleAllLocal = () => {
+  const all: ResolvedConflict[] = props.conflicts.map((c) => ({
+    id: c.id,
+    resolution: 'keep_local' as const,
+  }));
+  emit('resolve', all);
   emit('update:modelValue', false);
 };
 
 const handleAllRemote = () => {
-  const all: ResolvedConflict[] = [
-    ...Array.from(resolvedMap.value.values()),
-    ...props.conflicts
-      .filter((c) => !resolvedMap.value.has(c.id))
-      .map((c) => ({
-        id: c.id,
-        resolution: 'keep_remote' as const,
-      })),
-  ];
-  if (all.length > 0) emit('resolve', all);
+  const all: ResolvedConflict[] = props.conflicts.map((c) => ({
+    id: c.id,
+    resolution: 'keep_remote' as const,
+  }));
+  emit('resolve', all);
   emit('update:modelValue', false);
 };
 
@@ -205,6 +193,26 @@ const handleBackgroundClick = () => {
 }
 
 .btn--primary:hover {
+  background: #2563eb;
+}
+
+.btn--local-all {
+  flex: 1;
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btn--local-all:hover {
+  background: #059669;
+}
+
+.btn--remote-all {
+  flex: 1;
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.btn--remote-all:hover {
   background: #2563eb;
 }
 

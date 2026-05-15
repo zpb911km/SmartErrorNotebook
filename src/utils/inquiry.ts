@@ -61,7 +61,7 @@ const CUSTOM_PROMPTS_STORAGE_KEY = 'custom_ai_prompts';
 
 const DEFAULT_PROMPTS = {
   subject: `这是一些题目和答案的图片，请观察全部图片.
-目前存在的科目有${(await getExistingSubjects()).join("、")}.
+目前存在的科目有: {{existingSubjects}}.
 如果题目所处科目位于其中，请给出科目名称;
 否则，请问这些图片中的错题属于哪个科目？`,
   question_text: `**请提取图片中的题干内容，以 Markdown 格式返回.**
@@ -112,7 +112,12 @@ const getPromptText = async (tag: string): Promise<string> => {
 
   // 返回默认提示词（subject 和 question_type 需要动态注入）
   if (tag in DEFAULT_PROMPTS) {
-    return DEFAULT_PROMPTS[tag as keyof typeof DEFAULT_PROMPTS];
+    let dprompt =  DEFAULT_PROMPTS[tag as keyof typeof DEFAULT_PROMPTS];
+    if (tag === 'subject') {
+      let existingSubjects = await getExistingSubjects();
+      dprompt = dprompt.replace('{{existingSubjects}}', existingSubjects.join(', '));
+    }
+    return dprompt;
   }
 
   return '';
