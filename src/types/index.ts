@@ -55,6 +55,8 @@ interface UpdateQuestionInput {
   id: string;
   /** 科目 ID（可选） */
   subject_id?: string;
+  /** 来源 ID（可选） */
+  source_id?: string;
   /** 题干（可选） */
   prompt?: string;
   /** 题型（可选） */

@@ -25,23 +25,18 @@
         <!-- 科目选择 -->
         <div class="form-group">
           <label>科目</label>
-          <select 
-            v-model="editForm.subject_id" 
+          <SubjectSelector 
+            :modelValue="editForm.subject_id"
             :disabled="!isEditing"
-            class="form-select"
-          >
-            <option value="">请选择科目</option>
-            <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-              {{ subject.name }}
-            </option>
-          </select>
+            @select="handleSubjectSelect"
+          />
         </div>
 
         <!-- 来源信息 -->
         <div class="form-group">
           <label>来源信息</label>
           <SourceSelector 
-            :disable="!isEditing"
+            :disable="!isEditing || sourceSelectorDisabled"
             :currentSourceId="editForm.source_id || ''"
             :subjectId="editForm.subject_id"
             @select="handleSourceSelect"
@@ -328,6 +323,7 @@ import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, f
 import { getQuestionSRSStatus } from '../apis/srsData'
 import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
+import SubjectSelector from '../components/SubjectSelector.vue'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import ImagePreview from '../components/ImagePreview.vue'
@@ -361,6 +357,7 @@ const tempErrorTags = ref<Array<{ name: string; color: string }>>([])
 // 编辑状态
 const isEditing = ref(false)
 const saving = ref(false)
+const sourceSelectorDisabled = ref(false) // 控制SourceSelector的disabled状态
 const editForm = ref({
   subject_id: '',
   source_id: '',
@@ -508,6 +505,8 @@ const fetchSubjects = async () => {
 const toggleEditMode = () => {
   if (isEditing.value) {
     // 取消编辑，恢复原值
+    console.log('取消编辑，恢复原始状态...')
+    
     if (errorDetail.value) {
       editForm.value = {
         subject_id: errorDetail.value.subject_id,
@@ -519,15 +518,17 @@ const toggleEditMode = () => {
         error_note: errorDetail.value.error_note || ''
       }
     }
-    // 清空临时图片数据
+    
+    // 清空临时数据（不需要重新加载，因为原始数据还在）
     tempQuestionImages.value = []
     imagesToDelete.value = []
     imagesToAdd.value = []
-    // 清空临时标签数据
     tempErrorTags.value = []
+    
+    console.log('已恢复原始状态')
   } else {
-    // 进入编辑模式，初始化临时列表
-    tempQuestionImages.value = [...questionImages.value]
+    // 进入编辑模式，初始化临时列表（使用深拷贝避免引用污染）
+    tempQuestionImages.value = questionImages.value.map(img => ({...img}))
     imagesToDelete.value = []
     imagesToAdd.value = []
     // 初始化临时标签列表
@@ -543,52 +544,172 @@ const toggleEditMode = () => {
 const saveChanges = async () => {
   if (!errorDetail.value) return
   
+  console.log('========== 开始保存流程 ==========')
+  console.log('1. 先禁用SourceSelector')
+  
+  // 1. 先禁用SourceSelector，确保下拉框收起
+  sourceSelectorDisabled.value = true
+  
+  // 2. 等待一小段时间，确保组件响应disabled状态并收起
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  console.log('2. SourceSelector已禁用，开始执行保存操作')
+  
   saving.value = true
   try {
     // 1. 更新题目基本信息
-    await updateQuestion({
+    console.log('========== 开始保存题目基本信息 ==========')
+    console.log('editForm:', JSON.parse(JSON.stringify(editForm.value)))
+    console.log('editForm.source_id:', editForm.value.source_id)
+    console.log('editForm.subject_id:', editForm.value.subject_id)
+    
+    const updateData = {
       id: errorId.value,
       ...editForm.value
-    })
+    }
+    console.log('准备发送给后端的 updateData:', JSON.parse(JSON.stringify(updateData)))
+    
+    await updateQuestion(updateData)
     console.log('题目基本信息保存成功')
     
-    // 2. 处理图片删除
-    if (imagesToDelete.value.length > 0) {
-      console.log('开始删除', imagesToDelete.value.length, '张图片')
-      for (const imageId of imagesToDelete.value) {
+    // 3. 处理图片更新（包括新增、删除和编辑）
+    console.log('========== 开始处理图片 ==========')
+    console.log('原始图片数量:', questionImages.value.length)
+    console.log('临时图片数量:', tempQuestionImages.value.length)
+    console.log('待删除图片ID:', imagesToDelete.value)
+    
+    // 3.1 找出被编辑过的图片（在临时列表中存在但 base64_data 已改变的图片）
+    const editedImageIds: string[] = []
+    console.log('开始检测编辑过的图片...')
+    for (const tempImg of tempQuestionImages.value) {
+      console.log('\n--- 检查图片 ---')
+      console.log('图片ID:', tempImg.id)
+      console.log('是否为临时图片:', tempImg.id.startsWith('temp-'))
+      
+      // 跳过新添加的临时图片（ID以temp-开头）
+      if (tempImg.id.startsWith('temp-')) {
+        console.log('跳过新添加的临时图片')
+        continue
+      }
+      
+      // 查找原始图片列表中对应的图片
+      const originalImg = questionImages.value.find(img => img.id === tempImg.id)
+      console.log('找到原始图片:', !!originalImg)
+      
+      if (originalImg) {
+        const originalLen = originalImg.base64_data?.length || 0
+        const tempLen = tempImg.base64_data?.length || 0
+        const isSame = originalImg.base64_data === tempImg.base64_data
+        
+        console.log('原始 base64 长度:', originalLen)
+        console.log('临时 base64 长度:', tempLen)
+        console.log('长度差异:', Math.abs(originalLen - tempLen))
+        console.log('base64 是否相同:', isSame)
+        
+        if (!isSame) {
+          console.log('✅ 发现编辑过的图片:', tempImg.id)
+          console.log('   原始前50字符:', originalImg.base64_data?.substring(0, 50))
+          console.log('   临时前50字符:', tempImg.base64_data?.substring(0, 50))
+          editedImageIds.push(tempImg.id)
+        } else {
+          console.log('❌ 图片未编辑')
+        }
+      } else {
+        console.log('⚠️ 未找到原始图片')
+      }
+    }
+    console.log('\n========== 编辑过的图片ID列表 ==========')
+    console.log(editedImageIds)
+    
+    // 3.2 删除所有需要删除或更新的图片（包括显式删除的和编辑过的）
+    const allImagesToDelete = [...imagesToDelete.value, ...editedImageIds]
+    if (allImagesToDelete.length > 0) {
+      console.log('开始删除', allImagesToDelete.length, '张图片')
+      for (const imageId of allImagesToDelete) {
         await deleteAttachment(imageId)
         console.log('已删除图片:', imageId)
       }
     }
     
-    // 3. 处理图片添加
-    if (imagesToAdd.value.length > 0) {
-      console.log('开始上传', imagesToAdd.value.length, '张新图片')
-      const attachments = []
-      
-      for (const file of imagesToAdd.value) {
-        console.log('转换文件:', file.name)
-        const base64Data = await fileToBase64(file)
-
-        let fileType = 'png'
-        if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
-          fileType = 'jpeg'
-        } else if (file.type === 'image/webp') {
-          fileType = 'webp'
-        } else if (file.type === 'image/gif') {
-          fileType = 'gif'
-        }
-
-        attachments.push({
+    // 3.3 上传需要新增或更新的图片（只上传编辑后的和新添加的）
+    const imagesToUpload: any[] = []
+    
+    // 添加编辑后的图片（使用新的 base64 数据）
+    console.log('\n========== 准备上传编辑后的图片 ==========')
+    for (const tempImg of tempQuestionImages.value) {
+      if (editedImageIds.includes(tempImg.id)) {
+        console.log('准备上传编辑后的图片:')
+        console.log('  ID:', tempImg.id)
+        console.log('  type_:', (tempImg as any).type_ || tempImg.type)
+        console.log('  file_type:', tempImg.file_type)
+        console.log('  base64_data 长度:', tempImg.base64_data?.length || 0)
+        
+        imagesToUpload.push({
           question_id: errorId.value,
-          type_: 'original',
-          file_type: fileType,
-          base64_data: base64Data
+          type_: (tempImg as any).type_ || tempImg.type,
+          file_type: tempImg.file_type,
+          base64_data: tempImg.base64_data
         })
       }
-      
-      await createAttachmentsForQuestion(errorId.value, attachments)
-      console.log('新图片上传成功')
+    }
+    
+    // 添加新上传的图片（优先使用 tempQuestionImages 中已编辑的数据）
+    console.log('\n========== 准备上传新添加的图片 ==========')
+    console.log('imagesToAdd 数量:', imagesToAdd.value.length)
+    console.log('tempQuestionImages 数量:', tempQuestionImages.value.length)
+    
+    if (imagesToAdd.value.length > 0) {
+      for (let i = 0; i < imagesToAdd.value.length; i++) {
+        const file = imagesToAdd.value[i]
+        console.log(`\n处理新图片 ${i + 1}:`, file.name)
+        
+        // 查找对应的临时图片对象（可能已经被编辑过）
+        const tempImg = tempQuestionImages.value.find(img => {
+          if (!img.id.startsWith('temp-')) return false
+          const imgAny = img as any
+          return imgAny._file === file
+        })
+        
+        if (tempImg && tempImg.base64_data && tempImg.base64_data.length > 0) {
+          // 如果临时图片已经有 base64_data（可能被编辑过），直接使用
+          console.log('✅ 使用已编辑的 base64 数据')
+          console.log('  base64_data 长度:', tempImg.base64_data.length)
+          
+          imagesToUpload.push({
+            question_id: errorId.value,
+            type_: 'original',
+            file_type: tempImg.file_type,
+            base64_data: tempImg.base64_data
+          })
+        } else {
+          // 否则从原始文件转换
+          console.log('⚠️ 从原始文件转换 base64')
+          const base64Data = await fileToBase64(file)
+
+          let fileType = 'png'
+          if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+            fileType = 'jpeg'
+          } else if (file.type === 'image/webp') {
+            fileType = 'webp'
+          } else if (file.type === 'image/gif') {
+            fileType = 'gif'
+          }
+
+          imagesToUpload.push({
+            question_id: errorId.value,
+            type_: 'original',
+            file_type: fileType,
+            base64_data: base64Data
+          })
+        }
+      }
+    }
+    
+    // 批量创建所有需要保留的图片
+    if (imagesToUpload.length > 0) {
+      console.log('开始上传', imagesToUpload.length, '张图片')
+      await createAttachmentsForQuestion(errorId.value, imagesToUpload)
+      console.log('图片上传成功')
     }
     
     // 4. 处理标签更新
@@ -643,6 +764,9 @@ const saveChanges = async () => {
     alert('保存失败，请重试')
   } finally {
     saving.value = false
+    // 恢复SourceSelector的disabled状态（根据isEditing决定）
+    sourceSelectorDisabled.value = false
+    console.log('3. 保存完成，恢复SourceSelector状态')
   }
 }
 
@@ -692,6 +816,14 @@ const goBack = () => {
   router.back()
 }
 
+// 处理科目选择
+const handleSubjectSelect = (subjectId: string) => {
+  console.log('========== 科目选择事件 ==========')
+  console.log('选中的科目ID:', subjectId)
+  editForm.value.subject_id = subjectId
+  console.log('editForm.value.subject_id:', editForm.value.subject_id)
+}
+
 // 处理来源选择
 const handleSourceSelect = (sourceId: string) => {
   console.log('========== 来源选择事件 ==========')
@@ -699,6 +831,11 @@ const handleSourceSelect = (sourceId: string) => {
   console.log('选中前 editForm.source_id:', editForm.value.source_id)
   editForm.value.source_id = sourceId
   console.log('选中后 editForm.source_id:', editForm.value.source_id)
+  
+  // 验证是否真的更新了
+  setTimeout(() => {
+    console.log('100ms 后 editForm.source_id:', editForm.value.source_id)
+  }, 100)
 }
 
 // 渲染 Markdown
@@ -716,7 +853,22 @@ const renderMarkdown = (content: string) => {
 const buildImageSrc = (attachment: any) => {
   console.log('构建图片URL:', attachment)
   try {
-    // 如果是临时图片（包含原始文件引用）
+    // 如果有 base64_data，优先使用（可能是编辑后的数据）
+    if (attachment.base64_data && attachment.base64_data.length > 0) {
+      // 根据文件类型确定MIME类型
+      let mimeType = 'image/png'
+      if (attachment.file_type === 'jpeg' || attachment.file_type === 'jpg') {
+        mimeType = 'image/jpeg'
+      } else if (attachment.file_type === 'webp') {
+        mimeType = 'image/webp'
+      } else if (attachment.file_type === 'gif') {
+        mimeType = 'image/gif'
+      }
+      
+      return buildDataUrl(attachment.base64_data, mimeType)
+    }
+    
+    // 如果没有 base64_data，但有原始文件引用（仅用于未编辑的临时图片）
     if (attachment._file) {
       return URL.createObjectURL(attachment._file)
     }
@@ -742,16 +894,63 @@ const buildImageSrc = (attachment: any) => {
 // 图片预览状态
 const showImagePreview = ref(false)
 const previewImageUrl = ref('')
+const editingImageId = ref<string | null>(null) // 当前正在编辑的图片ID
 
 // 关闭图片预览
 const closeImagePreview = () => {
   showImagePreview.value = false
   previewImageUrl.value = ''
+  editingImageId.value = null // 清除编辑中的图片ID
 }
 
-// 处理预览确认（不保存更改）
+// 处理预览确认（保存编辑后的图片）
 const handlePreviewConfirm = (imageData: string) => {
-  // 在预览模式下，点击确认只是关闭预览
+  console.log('========== 图片编辑确认 ==========')
+  console.log('editingImageId:', editingImageId.value)
+  console.log('imageData 类型:', typeof imageData)
+  console.log('imageData 前100字符:', imageData.substring(0, 100))
+  console.log('imageData 长度:', imageData.length)
+  console.log('tempQuestionImages 数量:', tempQuestionImages.value.length)
+  console.log('tempQuestionImages IDs:', tempQuestionImages.value.map(img => img.id))
+  
+  if (!editingImageId.value) {
+    console.error('没有正在编辑的图片ID')
+    closeImagePreview()
+    return
+  }
+  
+  // 查找并更新临时图片列表中的对应图片
+  const imageIndex = tempQuestionImages.value.findIndex(img => img.id === editingImageId.value)
+  
+  console.log('找到的索引:', imageIndex)
+  
+  if (imageIndex !== -1) {
+    console.log('找到对应的图片，索引:', imageIndex)
+    console.log('原始 base64_data 长度:', tempQuestionImages.value[imageIndex].base64_data?.length || 0)
+    console.log('原始 file_type:', tempQuestionImages.value[imageIndex].file_type)
+    
+    // 将 base64 数据转换为纯 base64 字符串（去掉 data:image/jpeg;base64, 前缀）
+    const base64Data = imageData.split(',')[1] || imageData
+    
+    console.log('新的 base64_data 长度:', base64Data.length)
+    console.log('新数据前缀:', imageData.substring(0, 30))
+    
+    // 更新图片的 base64_data
+    tempQuestionImages.value[imageIndex].base64_data = base64Data
+    
+    console.log('✅ 更新成功！')
+    console.log('更新后 base64_data 长度:', tempQuestionImages.value[imageIndex].base64_data.length)
+    console.log('更新后的图片对象:', {
+      id: tempQuestionImages.value[imageIndex].id,
+      base64_data_length: tempQuestionImages.value[imageIndex].base64_data.length,
+      file_type: tempQuestionImages.value[imageIndex].file_type
+    })
+  } else {
+    console.error('❌ 未找到对应的图片ID:', editingImageId.value)
+    console.error('当前所有图片ID:', tempQuestionImages.value.map(img => img.id))
+  }
+  
+  // 关闭预览
   closeImagePreview()
 }
 
@@ -762,12 +961,12 @@ const previewImage = (attachment: any) => {
   
   if (!imageUrl) {
     console.error('图片URL为空，无法预览')
-    alert('图片加载失败')
     return
   }
   
   console.log('预览图片URL:', imageUrl.substring(0, 50) + '...')
   previewImageUrl.value = imageUrl
+  editingImageId.value = attachment.id // 记录当前编辑的图片ID
   showImagePreview.value = true
 }
 
@@ -801,23 +1000,33 @@ const handleImageSelect = async (event: Event) => {
     // 创建临时的 Attachment 对象用于显示
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
+      
+      // 将文件转换为 base64
+      const base64Data = await fileToBase64(file)
+      
       const tempAttachment: any = {
         id: `temp-${Date.now()}-${i}`,
         question_id: errorId.value,
         type_: 'original',
         file_type: file.type.split('/')[1] || 'png',
-        base64_data: '', // 稍后在保存时转换
+        base64_data: base64Data, // 保存 base64 数据
         name: file.name,
         _file: file // 保存原始文件引用
       }
       tempQuestionImages.value.push(tempAttachment)
+      
+      // 如果是第一张图片，自动打开编辑器
+      if (i === 0) {
+        console.log('自动打开图片编辑器')
+        previewImageUrl.value = `data:${file.type};base64,${base64Data}`
+        editingImageId.value = tempAttachment.id
+        showImagePreview.value = true
+      }
     }
     
     console.log('临时图片列表:', tempQuestionImages.value.length, '个')
-    alert(`已添加 ${files.length} 张图片，请点击“保存修改”生效`)
   } catch (error) {
     console.error('处理图片失败:', error)
-    alert('处理图片失败，请重试')
   } finally {
     // 清空 input，允许重复选择同一文件
     if (target) {
@@ -828,10 +1037,6 @@ const handleImageSelect = async (event: Event) => {
 
 // 删除临时图片
 const deleteTempImage = (image: any) => {
-  if (!confirm('确定要删除这张图片吗？')) {
-    return
-  }
-  
   console.log('删除临时图片:', image.id)
   
   // 如果是已有图片（有真实ID），加入待删除列表

@@ -48,9 +48,16 @@ export async function createAttachmentsForQuestion(
   questionId: string,
   attachments: CreateAttachmentInput[]
 ): Promise<Attachment[]> {
+  console.log('========== createAttachmentsForQuestion ==========')
+  console.log('questionId:', questionId)
+  console.log('附件数量:', attachments.length)
+  
   // 阻塞式批量图片压缩（等待所有压缩完成）
   const compressedAttachments = await Promise.all(
-    attachments.map(async (att) => {
+    attachments.map(async (att, index) => {
+      console.log(`\n--- 处理附件 ${index + 1} ---`)
+      console.log('原始 base64_data 长度:', att.base64_data?.length || 0)
+      
       const base64 = att.base64_data.startsWith('data:')
         ? att.base64_data.split(',')[1]
         : att.base64_data;
@@ -62,13 +69,25 @@ export async function createAttachmentsForQuestion(
             `[图片压缩] 题目 ${questionId} 的附件从 ${Math.round(att.base64_data.length / 1024)}KB 压缩至 ${Math.round(compressed.length / 1024)}KB`
           );
           return { ...att, base64_data: compressed };
+        } else {
+          console.log('图片未压缩（大小合适）')
         }
       }
+      console.log('最终 base64_data 长度:', (att.base64_data || base64)?.length || 0)
       return att;
     })
   );
 
-  console.log(`questionId: ${questionId}, attachments: `, compressedAttachments);
+  console.log('\n========== 准备发送给后端的附件数据 ==========')
+  console.log('questionId:', questionId)
+  console.log('attachments:', compressedAttachments.map((att, i) => ({
+    index: i + 1,
+    question_id: att.question_id,
+    type_: att.type_,
+    file_type: att.file_type,
+    base64_data_length: att.base64_data?.length || 0
+  })))
+  
   return await invoke('create_attachments_for_question', {
     questionId: questionId,
     attachments: compressedAttachments,

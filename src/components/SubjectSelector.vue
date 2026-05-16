@@ -24,23 +24,36 @@ const newSubject = ref<Subject>({
 
 const props = defineProps<{
   modelValue: string;
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'select', subject_id: string): void;
 }>();
-
+// 添加一个监听器监听disable，如果disable为true，则收起
+watch(() => props.disabled, (disabled) => {
+  if (disabled) {
+    isExpanded.value = false;
+  }
+});
 watch(
   () => props.modelValue,
   (newVal) => {
-    if (newVal === '') {
-      selectedSubject.value = null;
+    console.log('modelValue changed:', newVal)
+    if (!newVal || newVal === '') {
+      selectedSubject.value = null
+      return
     }
-    const subject = subjects.value.find(subject => subject.id === newVal);
-    if (subject) {
-      selectedSubject.value = subject;
+    // 如果科目列表已加载，立即查找
+    if (subjects.value.length > 0) {
+      const subject = subjects.value.find(s => s.id === newVal)
+      if (subject) {
+        selectedSubject.value = subject
+        console.log('找到对应科目:', subject.name)
+      }
     }
-  }
+  },
+  { immediate: true }
 )
 
 watch(
@@ -86,11 +99,18 @@ watch(isExpanded, (newVal) => {
     getSubjects()
       .then(data => {
         subjects.value = data;
+        // 加载完科目列表后，根据modelValue重新设置选中状态
+        if (props.modelValue) {
+          const found = data.find(s => s.id === props.modelValue)
+          if (found) {
+            selectedSubject.value = found
+            console.log('展开时恢复选中科目:', found.name)
+          }
+        }
       })
       .catch(error => {
         console.error('获取科目失败：', error);
       });
-    selectedSubject.value = null;
   }
 })
 
@@ -98,18 +118,25 @@ onMounted(() => {
   getSubjects()
     .then(data => {
       subjects.value = data;
+      // 初始化时根据modelValue设置选中状态
+      if (props.modelValue) {
+        const found = data.find(s => s.id === props.modelValue)
+        if (found) {
+          selectedSubject.value = found
+          console.log('初始化时设置选中科目:', found.name)
+        }
+      }
     })
     .catch(error => {
       console.error('获取科目失败：', error);
     });
-  selectedSubject.value = null;
 });
 </script>
 
 <template>
   <div class="subject-selector">
     <!-- 选择器触发按钮 -->
-    <div class="selector-trigger" @click="isExpanded = !isExpanded" :class="{ 'expanded': isExpanded }">
+    <div class="selector-trigger" @click="!props.disabled && (isExpanded = !isExpanded)" :class="{ 'expanded': isExpanded, 'disabled': props.disabled }">
       <span class="selected-text">
         {{ selectedSubject ? selectedSubject.name : '请选择科目' }}
       </span>
@@ -167,6 +194,17 @@ onMounted(() => {
 .selector-trigger:hover {
   border-color: var(--gray-400);
   box-shadow: var(--shadow-sm);
+}
+
+.selector-trigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--bg-secondary);
+}
+
+.selector-trigger.disabled:hover {
+  border-color: var(--border-color);
+  box-shadow: none;
 }
 
 .selector-trigger.expanded {
