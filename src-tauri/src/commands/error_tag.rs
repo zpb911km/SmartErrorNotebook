@@ -132,7 +132,9 @@ pub async fn delete_error_tag(state: State<'_, AppState>, tag_id: String) -> Res
 
     if let Some(tag) = tag {
         let mut active_model: error_tag::ActiveModel = tag.into();
-        active_model.deleted_at = Set(Some(chrono::Utc::now().timestamp()));
+        let now = chrono::Utc::now().timestamp();
+        active_model.deleted_at = Set(Some(now));
+        active_model.updated_at = Set(now);
         active_model.sync_status = Set("pending".to_string());
         active_model.update(db).await.map_err(|e| e.to_string())?;
     }
@@ -184,6 +186,36 @@ pub async fn upsert_error_tag(
         };
 
         let _ = new_tag.insert(db).await;
+    }
+
+    Ok(())
+}
+
+// 修改错因标签: 将名称等于 old_name 的全部记录更新为新名称和颜色
+#[tauri::command]
+pub async fn update_error_tag_by_name(
+    state: State<'_, AppState>,
+    old_name: String,
+    new_name: String,
+    new_color: String,
+) -> Result<(), String> {
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+
+    let tags = ErrorTag::find()
+        .filter(error_tag::Column::Name.eq(&old_name))
+        .filter(error_tag::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|e: sea_orm::DbErr| e.to_string())?;
+
+    for tag in tags {
+        let mut active_model: error_tag::ActiveModel = tag.into();
+        active_model.name = Set(new_name.clone());
+        active_model.color = Set(new_color.clone());
+        active_model.updated_at = Set(now);
+        active_model.sync_status = Set("pending".to_string());
+        active_model.update(db).await.map_err(|e: sea_orm::DbErr| e.to_string())?;
     }
 
     Ok(())

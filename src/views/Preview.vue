@@ -216,6 +216,7 @@ interface MergedItem {
   lastReviewLabel: string
   nextReviewLabel: string
   stabilityText: string
+  isDue: boolean
 }
 
 const mergedItems = computed(() => {
@@ -240,7 +241,9 @@ const mergedItems = computed(() => {
     const daysSinceLast = lastAt ? Math.max(0, Math.floor((n - lastAt) / 86400)) : -1
     const nextAt = srs.next_review_at
     const daysUntilNext = nextAt ? Math.floor((nextAt - n) / 86400) : null
-    const isDue = !nextAt || n >= nextAt
+    const isDue = !nextAt || !daysUntilNext || daysUntilNext <= 0
+
+    console.log(srs, isDue, n)
 
     let urgencyLabel: string
     let lastReviewLabel: string
@@ -249,8 +252,8 @@ const mergedItems = computed(() => {
     const stab = srs.stability ?? 0
 
     if (isDue) {
-      if (recallPercent < 30) urgencyLabel = '🔴 紧急'
-      else if (recallPercent < 60) urgencyLabel = '🟡 待复习'
+      if (recallPercent < 30) urgencyLabel = '🔴 复习'
+      else if (recallPercent < 60) urgencyLabel = '🟡 复习'
       else urgencyLabel = '🟢 复习'
       lastReviewLabel = daysSinceLast >= 0 ? `${daysSinceLast} 天前` : '未复习'
       nextReviewLabel = ''
@@ -290,6 +293,7 @@ const mergedItems = computed(() => {
       lastReviewLabel,
       nextReviewLabel,
       stabilityText,
+      isDue: isDue,
     })
   }
   return items
@@ -311,8 +315,7 @@ const filteredItems = computed(() => {
 const dueList = computed(() => {
   return filteredItems.value
     .filter(item => {
-      const n = now()
-      return !item.nextReviewAt || n >= item.nextReviewAt!
+      return item.isDue
     })
     .sort((a, b) => a.recallRate - b.recallRate)
 })
@@ -320,8 +323,7 @@ const dueList = computed(() => {
 const notDueList = computed(() => {
   return filteredItems.value
     .filter(item => {
-      const n = now()
-      return item.nextReviewAt && n < item.nextReviewAt
+      return !item.isDue
     })
     .sort((a, b) => (a.nextReviewAt ?? Infinity) - (b.nextReviewAt ?? Infinity))
 })

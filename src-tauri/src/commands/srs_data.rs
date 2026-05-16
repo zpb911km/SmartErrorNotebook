@@ -151,7 +151,7 @@ pub async fn get_due_questions(
 ) -> Result<Vec<SRSCardOutput>, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
-    let limit = limit.unwrap_or(30);
+    let limit = limit.unwrap_or(1000);
 
     // 获取所有 SRS 数据
     let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;

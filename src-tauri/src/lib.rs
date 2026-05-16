@@ -47,6 +47,7 @@ pub fn run() {
             commands::get_record_for_upload,
             commands::set_record_sync_status_version,
             commands::get_all_records,
+            commands::purge_synced_deletions,
             // Subject
             commands::get_subjects,
             commands::create_subject,
@@ -68,6 +69,7 @@ pub fn run() {
             commands::get_error_tags_for_question,
             commands::delete_error_tag,
             commands::update_error_tag_by_id,
+            commands::update_error_tag_by_name,
             commands::upsert_error_tag,
             // SRS Data
             commands::create_srs_data,

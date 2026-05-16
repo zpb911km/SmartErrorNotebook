@@ -368,6 +368,13 @@ export async function getLocalPendingRecords(): Promise<ServerRecord[]> {
 }
 
 /**
+ * 清理所有已同步(synced)且已软删除的记录，执行真删除
+ */
+export async function purgeSyncedDeletions(): Promise<Record<string, { deleted: number }>> {
+  return invoke('purge_synced_deletions');
+}
+
+/**
  * 获取本地所有记录（无视 status），仅含握手所需字段，不含 data 负载
  */
 export async function getAllLocalRecords(): Promise<SyncRecordHeader[]> {
