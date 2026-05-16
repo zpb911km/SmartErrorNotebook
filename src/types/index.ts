@@ -119,6 +119,13 @@ interface SourceFilter {
 
 /**
  * 错题实体
+ *
+ * FIXME: 字段名与后端 Model 不匹配
+ *   user_id → userid
+ *   subject_id → subjectid
+ *   source_id → sourceid
+ *   type → type_
+ * 后端 error_question::Model 返回的是 userid/subjectid/sourceid/type_
  */
 interface ErrorQuestion {
   /** 错题 ID（uuid）*/
@@ -143,6 +150,11 @@ interface ErrorQuestion {
 
 /**
  * SRS（间隔重复学习）数据实体 - 基于连续反馈的 SDR 模型
+ *
+ * FIXME: last_review_at 字段名不匹配后端
+ *   SRSCardOutput 返回 last_review_at
+ *   srs_data::Model 返回 lastreviewed_at（create_srs_data 和 reset_srs_progress）
+ *   视图用 srs.last_review_at ?? srs.lastreviewed_at 兼容
  */
 interface SRSData {
   /** SRS 数据 ID（uuid）*/
@@ -201,6 +213,8 @@ interface ErrorTags {
 
 /**
  * 附件实体
+ *
+ * FIXME: type → type_，后端 AttachmentInterface 的字段是 type_ 没有 rename
  */
 interface Attachment {
   /** 附件 ID（uuid）*/
