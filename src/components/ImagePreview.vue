@@ -2,7 +2,9 @@
   <div v-if="visible" class="image-preview-overlay" @click="handleClose">
     <div class="image-preview-container" @click.stop>
       <!-- 关闭按钮 -->
-      <button class="close-btn" @click="handleClose" title="关闭">×</button>
+      <button class="close-btn" @click="handleClose" title="关闭">
+        <span class="close-icon">x</span>
+      </button>
       
       <!-- 图片 -->
       <div class="image-wrapper" @wheel.capture="handleWheel">
@@ -225,23 +227,37 @@ const handleMouseDown = (e: MouseEvent) => {
   right: 20px;
   width: 48px;
   height: 48px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(224, 224, 224, 0.4);
   border: none;
   border-radius: 50%;
-  color: white;
-  font-size: 32px;
   cursor: pointer;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s;
-  backdrop-filter: blur(10px);
+}
+
+.close-btn:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg);
+  background: rgba(208, 208, 208, 0.7);
+  transform: scale(1.1);
+}
+
+.close-btn:hover .close-icon {
+  color: red;
+  transform: scale(1.5);
+}
+
+.close-icon {
+  font-size: 32px;
+  color: black;
+  transition: all 0.3s ease;
+  position: relative;
+  top: -5px;
 }
 
 .preview-image {
@@ -282,7 +298,7 @@ const handleMouseDown = (e: MouseEvent) => {
   background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 50%;
-  color: white;
+  color: black;
   font-size: 20px;
   cursor: pointer;
   display: flex;

@@ -110,7 +110,38 @@
           </div>
         </div>
       </div>
-
+      <!-- 标签筛选 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': tagDropdownVisible }">
+        <div 
+          class="custom-select"
+          @click="toggleTagDropdown"
+        >
+          <div class="custom-select-value">
+            {{ selectedTagsText || '全部标签' }}
+          </div>
+          <span class="custom-select-arrow" :class="{ 'rotated': tagDropdownVisible }">▼</span>
+        </div>
+        
+        <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
+          <div 
+            class="dropdown-item"
+            :class="{ active: filters.tags.length === 0 }"
+            @click="clearTags"
+          >
+            全部标签
+          </div>
+          <div 
+            v-for="tag in availableTags" 
+            :key="tag"
+            class="dropdown-item"
+            :class="{ active: filters.tags.includes(tag) }"
+            @click="toggleTag(tag)"
+          >
+            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
+            {{ tag }}
+          </div>
+        </div>
+      </div>
       <!-- 难度排序 -->
       <div class="filter-select-wrapper" :class="{ 'dropdown-open': difficultyDropdownVisible }">
         <div 
@@ -233,38 +264,7 @@
         </div>
       </div>
 
-      <!-- 标签筛选 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': tagDropdownVisible }">
-        <div 
-          class="custom-select"
-          @click="toggleTagDropdown"
-        >
-          <div class="custom-select-value">
-            {{ selectedTagsText || '全部标签' }}
-          </div>
-          <span class="custom-select-arrow" :class="{ 'rotated': tagDropdownVisible }">▼</span>
-        </div>
-        
-        <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
-          <div 
-            class="dropdown-item"
-            :class="{ active: filters.tags.length === 0 }"
-            @click="clearTags"
-          >
-            全部标签
-          </div>
-          <div 
-            v-for="tag in availableTags" 
-            :key="tag"
-            class="dropdown-item"
-            :class="{ active: filters.tags.includes(tag) }"
-            @click="toggleTag(tag)"
-          >
-            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
-            {{ tag }}
-          </div>
-        </div>
-      </div>
+      
     </div>
 
     <!-- 已选筛选条件 -->

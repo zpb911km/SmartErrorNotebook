@@ -2,7 +2,12 @@
   <div class="manage-detail-page">
     <!-- 顶部导航栏 -->
     <div class="detail-header">
-      <button class="back-btn" @click="goBack">← 返回</button>
+      <button class="back-btn" @click="goBack">
+        <svg class="back-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        <span>返回</span>
+      </button>
       <h2>错题详情管理</h2>
       <div class="header-actions">
         <button class="action-btn edit-btn" @click="toggleEditMode">
@@ -461,9 +466,9 @@ const fetchErrorDetail = async () => {
       const attachments = await getAttachmentsByQuestion(errorId.value)
       console.log('获取到的附件:', attachments)
       
-      // 分类附件
-      questionImages.value = attachments.filter(a => a.type === 'original')
-      answerImages.value = attachments.filter(a => a.type === 'answer')
+      // 分类附件（注意：后端字段名是 type_ 不是 type）
+      questionImages.value = attachments.filter((a: any) => a.type_ === 'original')
+      answerImages.value = attachments.filter((a: any) => a.type_ === 'answer')
       console.log('题目图片数量:', questionImages.value.length)
       console.log('答案图片数量:', answerImages.value.length)
     } catch (error) {
@@ -876,18 +881,42 @@ onMounted(() => {
 }
 
 .back-btn {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: background 0.2s;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.back-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.back-btn:hover .back-icon {
+  transform: translateX(-3px);
 }
 
 .back-btn:hover {
   background: var(--primary-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+}
+
+.back-btn:active {
+  transform: translateX(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .detail-header h2 {
@@ -1491,18 +1520,69 @@ onMounted(() => {
   }
   
   .detail-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .detail-header h2 {
+    font-size: 18px;
+    text-align: center;
+    grid-column: 2;
+  }
+  
+  .back-btn {
+    grid-column: 1;
+    justify-self: start;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .back-icon {
+    width: 14px;
+    height: 14px;
   }
   
   .header-actions {
-    width: 100%;
-    justify-content: space-between;
+    grid-column: 3;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
   }
   
+  .action-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  /* 移动端 - 双列布局（无表格线） */
   .srs-stats {
-    grid-template-columns: repeat(2, 1fr);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    background: var(--input-bg);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  .stat-item {
+    display: contents;
+  }
+  
+  .stat-label {
+    padding: 8px 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: left;
+  }
+  
+  .stat-value {
+    padding: 8px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: right;
   }
 }
 
