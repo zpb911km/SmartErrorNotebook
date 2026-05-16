@@ -313,9 +313,14 @@ def health_check():
 
 # ==================== 管理后台 ====================
 
-# session token 管理：{token: 过期时间戳(毫秒)}
-_admin_tokens = {}
-_ADMIN_TOKEN_TTL = 10 * 60 * 1000  # 10 分钟
+class AdminSession(db.Model):
+    """管理员 session 表"""
+    __tablename__ = 'admin_sessions'
+
+    id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    expires_at = db.Column(db.BigInteger, nullable=False)
+    created_at = db.Column(db.BigInteger, nullable=False, default=lambda: int(datetime.now().timestamp() * 1000))
 
 
 def calc_admin_code():
@@ -324,19 +329,14 @@ def calc_admin_code():
     return '%02d%02d' % (t[3] + t[4], t[2])
 
 
-def cleanup_admin_tokens():
-    """清理过期的 token"""
-    now = int(datetime.now().timestamp() * 1000)
-    expired = [t for t, exp in _admin_tokens.items() if exp < now]
-    for t in expired:
-        del _admin_tokens[t]
-
-
 def require_admin():
     """验证请求头中的 admin token"""
-    cleanup_admin_tokens()
     token = request.headers.get('X-Admin-Token', '')
-    if token not in _admin_tokens:
+    if not token:
+        return None
+    session = AdminSession.query.filter_by(token=token).first()
+    now = int(datetime.now().timestamp() * 1000)
+    if not session or session.expires_at < now:
         return None
     return token
 
@@ -355,9 +355,15 @@ def admin_verify():
         return jsonify({'valid': False}), 401
 
     token = str(uuid.uuid4())
-    expiry = int(datetime.now().timestamp() * 1000) + _ADMIN_TOKEN_TTL
-    _admin_tokens[token] = expiry
-    return jsonify({'valid': True, 'token': token})
+    expiry = int(datetime.now().timestamp() * 1000) + 10 * 60 * 1000
+    session = AdminSession(token=token, expires_at=expiry)
+    try:
+        db.session.add(session)
+        db.session.commit()
+        return jsonify({'valid': True, 'token': token})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/admin/keys', methods=['GET', 'POST'])
@@ -435,4 +441,4 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=60032)

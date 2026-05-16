@@ -123,7 +123,7 @@ import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64, base64ToArrayBuffer } from '../apis/attachments'
-import { showInfo, showError, showDebug, showSuccess } from '../utils/notification'
+import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
@@ -416,7 +416,6 @@ const saveError = async () => {
   }
 
   isSaving.value = true
-  showDebug('保存中...', form.value)
 
   try {
     // 1. 创建错题

@@ -242,7 +242,7 @@ defineExpose({ focus, blur, select, el: textareaRef })
 
 .markdown-textarea__input {
   width: 100%;
-  min-height: 360px;
+  /* min-height: 360px; */
   padding: 12px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -266,7 +266,7 @@ defineExpose({ focus, blur, select, el: textareaRef })
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 360px;
+  /* min-height: 360px; */
 }
 
 .markdown-textarea__preview-header {

@@ -113,7 +113,7 @@
         </div>
         
         <div class="form-group">
-          <label>题干</label>
+          <!-- <label>题干</label> -->
           <MarkdownTextarea 
             v-if="isEditing"
             v-model="editForm.prompt" 
@@ -130,7 +130,7 @@
         <div class="section-title">参考答案</div>
         
         <div class="form-group">
-          <label>参考答案</label>
+          <!-- <label>参考答案</label> -->
           <MarkdownTextarea 
             v-if="isEditing"
             v-model="editForm.answer" 
@@ -147,7 +147,7 @@
         <div class="section-title">解析</div>
         
         <div class="form-group">
-          <label>解析</label>
+          <!-- <label>解析</label> -->
           <MarkdownTextarea 
             v-if="isEditing"
             v-model="editForm.analysis" 
@@ -185,7 +185,7 @@
         <div class="section-title">错题笔记</div>
         
         <div class="form-group">
-          <label>笔记内容</label>
+          <!-- <label>笔记内容</label> -->
           <MarkdownTextarea 
             v-if="isEditing"
             v-model="editForm.error_note" 

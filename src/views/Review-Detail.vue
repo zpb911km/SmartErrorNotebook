@@ -94,7 +94,7 @@
         <!-- SRS Debug -->
         <div class="srs-debug">
           <div class="debug-toggle" @click="showDebug = !showDebug">
-            SRS Debug {{ showDebug ? '▲' : '▼' }}
+            SRS Details {{ showDebug ? '▲' : '▼' }}
           </div>
           <div v-if="showDebug" class="debug-body">
             <div class="debug-row"><span>stability</span><span>{{ currentCard.srs.stability }}</span></div>
