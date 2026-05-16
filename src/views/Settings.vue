@@ -32,50 +32,6 @@
         </div>
       </div>
 
-
-      <!-- AI 选项详情 -->
-      <div v-if="aiEnabled" class="ai-options">
-        <div class="setting-item nested">
-          <div class="setting-info">
-            <div class="setting-icon">📝</div>
-            <div class="setting-name">AI 错题解析</div>
-          </div>
-          <div class="setting-action">
-            <div class="toggle-switch">
-              <input type="checkbox" v-model="aiAnalysis" id="aiAnalysisToggle" />
-              <label for="aiAnalysisToggle" class="toggle-label"></label>
-            </div>
-          </div>
-        </div>
-
-        <div class="setting-item nested">
-          <div class="setting-info">
-            <div class="setting-icon">📚</div>
-            <div class="setting-name">AI 智能复习</div>
-          </div>
-          <div class="setting-action">
-            <div class="toggle-switch">
-              <input type="checkbox" v-model="aiReview" id="aiReviewToggle" />
-              <label for="aiReviewToggle" class="toggle-label"></label>
-            </div>
-          </div>
-        </div>
-
-        <div class="setting-item nested">
-          <div class="setting-info">
-            <div class="setting-icon">🔍</div>
-            <div class="setting-name">AI 相似题型推荐</div>
-          </div>
-          <div class="setting-action">
-            <div class="toggle-switch">
-              <input type="checkbox" v-model="aiRecommend" id="aiRecommendToggle" />
-              <label for="aiRecommendToggle" class="toggle-label"></label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
       <!-- LLM 配置 -->
       <div class="setting-item">
         <div class="setting-info">

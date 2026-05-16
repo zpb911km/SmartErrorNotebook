@@ -92,7 +92,7 @@ export async function getDueCount(): Promise<number> {
   return invoke('get_due_count');
 }
 
-export async function getSRSStatics(): Promise<{
+export async function getSRSStatistics(): Promise<{
   total: number;
   due_count: number;
   new_cards: number;
