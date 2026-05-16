@@ -42,24 +42,19 @@ th { font-size: 13px; color: #666; }
   <div class="card">
     <div class="row" style="margin-bottom:12px">
       <button id="refreshBtn">刷新</button>
+      <input id="remarkInput" placeholder="备注（可选）" style="width:200px" />
       <button id="generateBtn">生成新授权码</button>
     </div>
     <div id="adminMsg" class="msg" style="display:none"></div>
     <table>
-      <thead><tr><th>#</th><th>授权码</th><th>创建时间</th><th>操作</th></tr></thead>
+      <thead><tr><th>#</th><th>授权码</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead>
       <tbody id="keyList"></tbody>
     </table>
   </div>
 </div>
 
 <script>
-function calcCode() {
-  var d = new Date()
-  var u8 = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 28800000)
-  return (u8.getHours() + u8.getMinutes()) + String(u8.getDate()).padStart(2, '0')
-}
-
-var authed = false, loading = false, keys = []
+var authed = false, loading = false, keys = [], adminToken = ''
 
 function showMsg(el, text, ok) {
   el.style.display = 'block'
@@ -84,6 +79,7 @@ function login() {
     .then(function(d) {
       if (d.valid) {
         authed = true
+        adminToken = d.token
         document.getElementById('login').style.display = 'none'
         document.getElementById('admin').style.display = 'block'
         loadKeys()
@@ -96,7 +92,7 @@ function login() {
 }
 
 function getHeaders() {
-  return { 'Content-Type': 'application/json', 'X-Admin-Code': calcCode() }
+  return { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken }
 }
 
 function loadKeys() {
@@ -110,10 +106,10 @@ function loadKeys() {
       keys = d.keys || []
       var html = ''
       if (keys.length === 0) {
-        html = '<tr><td colspan="4" style="text-align:center;color:#888">暂无授权码</td></tr>'
+        html = '<tr><td colspan="5" style="text-align:center;color:#888">暂无授权码</td></tr>'
       } else {
         for (var i = 0; i < keys.length; i++) {
-          html += '<tr><td>' + (i + 1) + '</td><td><code>' + keys[i].auth_key + '</code></td><td>' + fmtTime(keys[i].created_at) + '</td><td><button class="danger" onclick="delKey(\'' + keys[i].id + '\')">删除</button></td></tr>'
+          html += '<tr><td>' + (i + 1) + '</td><td><code>' + keys[i].auth_key + '</code></td><td><div class="row"><input id="remark_' + keys[i].id + '" value="' + esc(keys[i].remark || '') + '" style="width:120px" /><button onclick="saveRemark(\'' + keys[i].id + '\')">保存</button></div></td><td>' + fmtTime(keys[i].created_at) + '</td><td><button class="danger" onclick="delKey(\'' + keys[i].id + '\')">删除</button></td></tr>'
         }
       }
       document.getElementById('keyList').innerHTML = html
@@ -124,7 +120,8 @@ function loadKeys() {
 
 function generateKey() {
   setLoading(true)
-  fetch('/api/admin/keys', { method: 'POST', headers: getHeaders() })
+  var remark = document.getElementById('remarkInput').value || ''
+  fetch('/api/admin/keys', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ remark: remark }) })
     .then(function(r) {
       if (r.status === 401) { showMsg(document.getElementById('adminMsg'), '验证码已过期', false); authed = false; document.getElementById('login').style.display = 'block'; document.getElementById('admin').style.display = 'none'; return null }
       return r.json()
@@ -156,6 +153,30 @@ function delKey(id) {
 function fmtTime(ts) {
   if (!ts) return '-'
   return new Date(ts).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+}
+
+function esc(s) {
+  if (!s) return ''
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+function saveRemark(id) {
+  var remark = document.getElementById('remark_' + id).value
+  setLoading(true)
+  fetch('/api/admin/keys/' + id, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ remark: remark })
+  }).then(function(r) {
+    if (r.status === 401) { showMsg(document.getElementById('adminMsg'), '验证码已过期', false); authed = false; document.getElementById('login').style.display = 'block'; document.getElementById('admin').style.display = 'none'; return null }
+    return r.json()
+  }).then(function(d) {
+    if (!d) return
+    if (d.success) { showMsg(document.getElementById('adminMsg'), '备注已更新', true) }
+    else showMsg(document.getElementById('adminMsg'), '更新失败', false)
+  }).catch(function() {
+    showMsg(document.getElementById('adminMsg'), '请求失败', false)
+  }).then(function() { setLoading(false) })
 }
 
 document.getElementById('loginBtn').addEventListener('click', login)
