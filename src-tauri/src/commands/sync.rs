@@ -420,6 +420,92 @@ pub async fn set_record_sync_status_version(
     Err(format!("Record not found with id: {}", record_id))
 }
 
+/// 清理所有已同步(synced)且已软删除(deleted_at 不空)的记录，执行真删除
+#[tauri::command]
+pub async fn purge_synced_deletions(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let db = state.db.as_ref();
+    let mut results = serde_json::Map::new();
+
+    // error_questions
+    {
+        use crate::database::entities::error_question as eq;
+        let deleted = eq::Entity::delete_many()
+            .filter(eq::Column::SyncStatus.eq("synced"))
+            .filter(eq::Column::DeletedAt.is_not_null())
+            .exec(db)
+            .await
+            .map_err(|e| format!("Failed to purge error_questions: {}", e))?;
+        results.insert(
+            "error_questions".to_string(),
+            serde_json::json!({ "deleted": deleted.rows_affected }),
+        );
+    }
+
+    // subjects
+    {
+        use crate::database::entities::subject as sub;
+        let deleted = sub::Entity::delete_many()
+            .filter(sub::Column::SyncStatus.eq("synced"))
+            .filter(sub::Column::DeletedAt.is_not_null())
+            .exec(db)
+            .await
+            .map_err(|e| format!("Failed to purge subjects: {}", e))?;
+        results.insert(
+            "subjects".to_string(),
+            serde_json::json!({ "deleted": deleted.rows_affected }),
+        );
+    }
+
+    // attachments
+    {
+        use crate::database::entities::attachment as att;
+        let deleted = att::Entity::delete_many()
+            .filter(att::Column::SyncStatus.eq("synced"))
+            .filter(att::Column::DeletedAt.is_not_null())
+            .exec(db)
+            .await
+            .map_err(|e| format!("Failed to purge attachments: {}", e))?;
+        results.insert(
+            "attachments".to_string(),
+            serde_json::json!({ "deleted": deleted.rows_affected }),
+        );
+    }
+
+    // error_tags
+    {
+        use crate::database::entities::error_tag as tag;
+        let deleted = tag::Entity::delete_many()
+            .filter(tag::Column::SyncStatus.eq("synced"))
+            .filter(tag::Column::DeletedAt.is_not_null())
+            .exec(db)
+            .await
+            .map_err(|e| format!("Failed to purge error_tags: {}", e))?;
+        results.insert(
+            "error_tags".to_string(),
+            serde_json::json!({ "deleted": deleted.rows_affected }),
+        );
+    }
+
+    // sources
+    {
+        use crate::database::entities::source as src;
+        let deleted = src::Entity::delete_many()
+            .filter(src::Column::SyncStatus.eq("synced"))
+            .filter(src::Column::DeletedAt.is_not_null())
+            .exec(db)
+            .await
+            .map_err(|e| format!("Failed to purge sources: {}", e))?;
+        results.insert(
+            "sources".to_string(),
+            serde_json::json!({ "deleted": deleted.rows_affected }),
+        );
+    }
+
+    Ok(serde_json::Value::Object(results))
+}
+
 /// 将 SeaORM Model 转换为通用输出格式（针对具体类型实现）
 fn model_to_sync_output<M>(model: M, table_name: String) -> SyncRecordOutput
 where

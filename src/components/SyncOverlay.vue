@@ -157,9 +157,9 @@ const statusText = computed(() => {
     case 'handshake':
       return '分析需要同步的数据';
     case 'pulling':
-      return `从服务器获取 ${props.pulled}/${Math.max(props.pulled, props.pushed)} 条记录`;
+      return `从服务器获取 ${props.pulled} 条记录`;
     case 'pushing':
-      return `上传到服务器 ${props.pushed}/${Math.max(props.pulled, props.pushed)} 条记录`;
+      return `上传到服务器 ${props.pushed} 条记录`;
     case 'resolving_conflicts':
       return `发现 ${props.conflictsResolved} 个冲突待解决`;
     case 'updating':

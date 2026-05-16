@@ -151,7 +151,7 @@ pub async fn get_due_questions(
 ) -> Result<Vec<SRSCardOutput>, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
-    let limit = limit.unwrap_or(30);
+    let limit = limit.unwrap_or(1000);
 
     // 获取所有 SRS 数据
     let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
@@ -225,6 +225,7 @@ pub async fn submit_review_result(
     ));
     update_model.updated_at = Set(now);
     update_model.version = Set(srs_model.version);
+    update_model.sync_status = Set("pending".to_string());
 
     update_model.update(db).await.map_err(|e| e.to_string())?;
 
@@ -307,6 +308,7 @@ pub async fn reset_srs_progress(
             update_model.feedback_history = Set("[]".to_string());
             update_model.updated_at = Set(now);
             update_model.version = Set(model.version);
+            update_model.sync_status = Set("pending".to_string());
 
             update_model.update(db).await.map_err(|e| e.to_string())?;
 

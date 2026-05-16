@@ -1,370 +1,526 @@
 <template>
-  <div class="review-page">
-    <div class="progress-section">
-      <div class="progress-header">
-        <h2>今日复习</h2>
-        <span class="progress-text">{{ currentIndex + 1 }} / {{ reviewList.length }}</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
-      </div>
+  <div class="review-detail-page">
+    <!-- 顶部 -->
+    <div class="top-bar">
+      <button class="back-btn" @click="exitReview">← 退出</button>
+      <span class="top-title">复习</span>
+      <span class="top-count">{{ currentIndex + 1 }} / {{ queue.length }}</span>
     </div>
 
-    <div v-if="currentError" class="review-card">
-      <div class="card-header">
-        <div class="header-left">
-          <span class="subject-tag" :style="getSubjectStyle(currentError.subject)">{{ currentError.subjectName }}</span>
-          <span v-if="(currentError as any).book" class="source-tag book-tag">{{ (currentError as any).book }}</span>
-          <span v-if="(currentError as any).chapter" class="source-tag chapter-tag">{{ (currentError as any).chapter }}</span>
-          <span v-if="(currentError as any).knowledge" class="source-tag knowledge-tag">{{ (currentError as any).knowledge }}</span>
-          <span class="difficulty-tag" :class="getDifficultyClass(currentError.difficulty)">{{ currentError.difficultyName }}</span>
+    <!-- 进度条 -->
+    <div class="progress-bar">
+      <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+    </div>
+
+    <div v-if="currentCard" class="review-content">
+      <!-- 科目标签 -->
+      <div class="card-meta">
+        <span class="subject-tag" :style="getSubjectStyle(currentCard.question)">{{ subjectName }}</span>
+        <span class="difficulty-info">稳定性: {{ currentCard.srs.stability?.toFixed(1) }}天</span>
+      </div>
+
+      <!-- 题目区 (始终可见, MarkdownTextarea 预览模式) -->
+      <div class="section-block">
+        <div class="section-label">题目</div>
+        <MarkdownTextarea
+          v-model="promptText"
+          :showPreview="true"
+          :defaultViewMode="'preview'"
+          :previewTitle="''"
+        />
+      </div>
+
+      <!-- 显示答案按钮 / 答案区 -->
+      <div v-if="!showAnswer" class="action-row">
+        <button class="btn-reveal" @click="showAnswer = true">
+          💭 显示答案
+        </button>
+      </div>
+
+      <template v-if="showAnswer">
+        <!-- 答案区 -->
+        <div class="section-block" v-if="answerText">
+          <div class="section-label">参考答案</div>
+          <MarkdownTextarea
+            v-model="answerText"
+            :showPreview="true"
+            :defaultViewMode="'preview'"
+            :previewTitle="''"
+          />
         </div>
-      </div>
 
-      <div class="question-section">
-        <h3>题目</h3>
-        <p class="question-content">{{ currentError.content }}</p>
-      </div>
+        <!-- 解析区 -->
+        <div class="section-block" v-if="analysisText">
+          <div class="section-label">解析</div>
+          <MarkdownTextarea
+            v-model="analysisText"
+            :showPreview="true"
+            :defaultViewMode="'preview'"
+            :previewTitle="''"
+          />
+        </div>
 
-      <div class="answer-section">
-        <h3>你的答案</h3>
-        <textarea v-model="userAnswer" placeholder="输入你的答案..." rows="4"></textarea>
-      </div>
+        <!-- 链接 -->
+        <div class="action-row">
+          <button class="btn-link" @click="goToDetail">🔗 查看/编辑详细</button>
+        </div>
 
-      <div class="reference-section" v-if="showReference">
-        <h3>参考答案</h3>
-        <p class="reference-content">{{ currentError.answer }}</p>
-      </div>
+        <!-- 滑动条评分 -->
+        <div class="slider-section">
+          <div class="slider-labels">
+            <span>完全忘了</span>
+            <span>模糊</span>
+            <span>基本对了</span>
+            <span>完美记住</span>
+          </div>
+          <div class="slider-track-wrapper">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.000000000001"
+              v-model.number="feedbackValue"
+              @touchend="submitReview"
+              @mouseup="submitReview"
+              class="gradient-slider"
+            />
+          </div>
+          <div class="slider-value">
+            反馈值: <strong>{{ feedbackValue.toFixed(2) }}</strong>
+            <span class="feedback-tag" :style="{ color: feedbackColor }">{{ feedbackLabel }}</span>
+          </div>
+        </div>
 
-      <div class="action-buttons">
-        <button v-if="!showReference" class="btn primary" @click="showReference = true">查看答案</button>
-        <template v-else>
-          <button class="btn wrong" @click="markWrong">没掌握</button>
-          <button class="btn correct" @click="markCorrect">已掌握</button>
-        </template>
-      </div>
+        <!-- SRS Debug -->
+        <div class="srs-debug">
+          <div class="debug-toggle" @click="showDebug = !showDebug">
+            SRS Debug {{ showDebug ? '▲' : '▼' }}
+          </div>
+          <div v-if="showDebug" class="debug-body">
+            <div class="debug-row"><span>stability</span><span>{{ currentCard.srs.stability }}</span></div>
+            <div class="debug-row"><span>difficulty</span><span>{{ currentCard.srs.difficulty }}</span></div>
+            <div class="debug-row"><span>recall_rate</span><span>{{ currentCard.srs.recall_rate }}</span></div>
+            <div class="debug-row"><span>review_count</span><span>{{ currentCard.srs.review_count }}</span></div>
+            <div class="debug-row"><span>next_review_at</span><span>{{ formatTs(currentCard.srs.next_review_at) }}</span></div>
+            <div class="debug-row"><span>last_review_at</span><span>{{ formatTs(currentCard.srs.last_review_at) }}</span></div>
+            <div class="debug-row" v-if="lastResult">
+              <span>→ new_stability</span><span>{{ lastResult.new_stability?.toFixed(2) }}</span>
+            </div>
+            <div class="debug-row" v-if="lastResult">
+              <span>→ new_difficulty</span><span>{{ lastResult.new_difficulty?.toFixed(2) }}</span>
+            </div>
+            <div class="debug-row" v-if="lastResult">
+              <span>→ next_interval</span><span>{{ lastResult.next_interval_days?.toFixed(1) }} 天</span>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
 
-    <div v-else class="complete-state">
-      <div class="complete-icon">🎉</div>
-      <h2>今日复习完成！</h2>
-      <p class="complete-stats">
-        正确率：{{ correctCount }} / {{ totalCount }}
-      </p>
-      <button class="btn primary" @click="resetReview">重新开始</button>
+    <!-- 空状态 -->
+    <div v-else class="empty-state">
+      <p>没有待复习的题目</p>
+      <button class="btn-back" @click="exitReview">返回</button>
+    </div>
+
+    <!-- 提交中遮罩 -->
+    <div v-if="submitting" class="submitting-overlay">
+      <div class="submitting-spinner"></div>
+      <p>提交中...</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { submitReviewResult } from '../apis/srs'
+import { getReviewQueue, clearReviewQueue } from '../services/reviewStore'
+import type { ReviewOutput } from '../apis/srs'
 
+const router = useRouter()
+
+// ============ State ============
+const queue = getReviewQueue()
 const currentIndex = ref(0)
-const userAnswer = ref('')
-const showReference = ref(false)
-const correctCount = ref(0)
-const totalCount = ref(0)
+const showAnswer = ref(false)
+const feedbackValue = ref(0.5)
+const showDebug = ref(false)
+const submitting = ref(false)
+const lastResult = ref<ReviewOutput | null>(null)
 
-const reviewList = ref([
-  {
-    id: 1,
-    subject: 'math',
-    subjectName: '数学',
-    difficulty: 'medium',
-    difficultyName: '中等',
-    content: '求函数 f(x) = x² - 2x + 1 的最小值',
-    answer: '最小值为 0，当 x = 1 时取得'
-  },
-  {
-    id: 2,
-    subject: 'physics',
-    subjectName: '物理',
-    difficulty: 'hard',
-    difficultyName: '困难',
-    content: '一个质量为 2kg 的物体从 10m 高处自由落下，求落地时的速度（g = 10m/s²）',
-    answer: 'v = √(2gh) = √(2×10×10) = √200 = 10√2 ≈ 14.14 m/s'
-  },
-  {
-    id: 3,
-    subject: 'english',
-    subjectName: '英语',
-    difficulty: 'easy',
-    difficultyName: '简单',
-    content: '翻译句子：The quick brown fox jumps over the lazy dog',
-    answer: '敏捷的棕色狐狸跳过了懒惰的狗'
+// ============ Computed ============
+const currentCard = computed(() => queue[currentIndex.value] || null)
+
+// MarkdownTextarea 需要 writable refs
+const promptText = ref('')
+const answerText = ref('')
+const analysisText = ref('')
+
+const subjectName = computed(() => currentCard.value?.subjectName || '')
+
+watch(currentCard, (card) => {
+  if (card) {
+    promptText.value = card.question?.prompt || ''
+    answerText.value = card.question?.answer || ''
+    analysisText.value = card.question?.analysis || ''
   }
-])
-
-const currentError = computed(() => {
-  return reviewList.value[currentIndex.value]
-})
+}, { immediate: true })
 
 const progressPercent = computed(() => {
-  if (reviewList.value.length === 0) return 0
-  return ((currentIndex.value + 1) / reviewList.value.length) * 100
+  if (queue.length === 0) return 0
+  return ((currentIndex.value + 1) / queue.length) * 100
 })
 
-// 获取科目样式
-const getSubjectStyle = (subjectId: string) => {
-  // 简化版本，返回默认样式
-  return {
-    backgroundColor: '#e3f2fd',
-    color: '#1976d2'
+const feedbackColor = computed(() => {
+  const v = feedbackValue.value
+  if (v < 0.2) return '#f44336'
+  if (v < 0.4) return '#ff9800'
+  if (v < 0.7) return '#ffc107'
+  return '#4caf50'
+})
+
+const feedbackLabel = computed(() => {
+  const v = feedbackValue.value
+  if (v < 0.15) return '完全忘了'
+  if (v < 0.35) return '模糊'
+  if (v < 0.65) return '基本对了'
+  if (v < 0.9) return '大部分对了'
+  return '完美记住'
+})
+
+// ============ Methods ============
+function getSubjectStyle(_question: any) {
+  return { backgroundColor: '#e3f2fd', color: '#1976d2' }
+}
+
+function formatTs(ts: number | null | undefined): string {
+  if (!ts) return '-'
+  return new Date(ts * 1000).toLocaleString('zh-CN')
+}
+
+async function submitReview() {
+  if (submitting.value || !currentCard.value) return
+  submitting.value = true
+  try {
+    const result = await submitReviewResult({
+      question_id: currentCard.value.questionId,
+      feedback: feedbackValue.value,
+    })
+    lastResult.value = result
+
+    // 延迟后进入下一题
+    await new Promise(r => setTimeout(r, 400))
+
+    if (currentIndex.value < queue.length - 1) {
+      currentIndex.value++
+      showAnswer.value = false
+      feedbackValue.value = 0.5
+      showDebug.value = false
+      lastResult.value = null
+    } else {
+      clearReviewQueue()
+      router.replace({ name: 'Preview' })
+    }
+  } catch (e) {
+    console.error('提交复习结果失败:', e)
+    alert('提交失败: ' + e)
+  } finally {
+    submitting.value = false
   }
 }
 
-// 获取难度样式类
-const getDifficultyClass = (difficulty: number | string) => {
-  const level = typeof difficulty === 'string' ? 
-    (difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3) : difficulty
-  if (level <= 1) return 'easy'
-  if (level <= 2) return 'medium'
-  return 'hard'
+function goToDetail() {
+  if (!currentCard.value) return
+  router.push({
+    name: 'ManageDetail',
+    params: { id: currentCard.value.questionId },
+  })
 }
 
-const markWrong = () => {
-  totalCount.value++
-  nextQuestion()
+function exitReview() {
+  clearReviewQueue()
+  router.replace({ name: 'Preview' })
 }
 
-const markCorrect = () => {
-  correctCount.value++
-  totalCount.value++
-  nextQuestion()
-}
-
-const nextQuestion = () => {
-  showReference.value = false
-  userAnswer.value = ''
-  if (currentIndex.value < reviewList.value.length - 1) {
-    currentIndex.value++
+// ============ Lifecycle ============
+onMounted(() => {
+  if (queue.length === 0) {
+    router.replace({ name: 'Preview' })
   }
-}
-
-const resetReview = () => {
-  currentIndex.value = 0
-  userAnswer.value = ''
-  showReference.value = false
-  correctCount.value = 0
-  totalCount.value = 0
-}
+})
 </script>
 
 <style scoped>
-.review-page {
-  padding: 20px;
-  padding-bottom: 80px;
-}
-
-.progress-section {
-  background: var(--card-bg);
-  border-radius: 12px;
+.review-detail-page {
   padding: 16px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding-bottom: 40px;
+  background: var(--bg-primary);
+  min-height: 100vh;
 }
 
-.progress-header {
+/* ===== Top Bar ===== */
+.top-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
-
-.progress-header h2 {
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.top-title {
   font-size: 18px;
-  margin: 0;
+  font-weight: 600;
   color: var(--text-primary);
 }
-
-.progress-text {
+.top-count {
   font-size: 14px;
   color: var(--text-secondary);
 }
 
+/* ===== Progress Bar ===== */
 .progress-bar {
-  height: 8px;
+  height: 6px;
   background: var(--border-color);
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
+  margin-bottom: 20px;
 }
-
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--primary-color), #42a5f5);
-  transition: width 0.3s;
+  transition: width 0.4s ease;
+  border-radius: 3px;
 }
 
-.review-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.card-header {
+/* ===== Card Meta ===== */
+.card-meta {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 16px;
 }
-
-.header-left {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  flex: 1;
-}
-
 .subject-tag {
-  padding: 4px 8px;
-  background: var(--primary-light);
-  color: var(--primary-color);
+  padding: 4px 10px;
   border-radius: 4px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  white-space: nowrap;
 }
-
-.source-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
+.difficulty-info {
   font-size: 12px;
-  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.book-tag {
-  background: #fff3e0;
-  color: #f57c00;
+/* ===== Section Block ===== */
+.section-block {
+  margin-bottom: 16px;
+}
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.chapter-tag {
-  background: #e8f5e9;
-  color: #43a047;
+/* ===== Action Row ===== */
+.action-row {
+  text-align: center;
+  margin-bottom: 16px;
 }
 
-.knowledge-tag {
-  background: #e0f2f1;
-  color: #00796b;
-}
-
-.difficulty-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.difficulty-tag.easy {
-  background: #e8f5e9;
-  color: #43a047;
-}
-
-.difficulty-tag.medium {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.difficulty-tag.hard {
-  background: #ffebee;
-  color: #c62828;
-}
-
-.question-section,
-.answer-section,
-.reference-section {
-  margin-bottom: 20px;
-}
-
-.question-section h3,
-.answer-section h3,
-.reference-section h3 {
-  font-size: 16px;
-  margin: 0 0 12px 0;
-  color: var(--text-primary);
-}
-
-.question-content,
-.reference-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text-primary);
-  margin: 0;
-  padding: 12px;
-  background: var(--input-bg);
-  border-radius: 8px;
-}
-
-.answer-section textarea {
+.btn-reveal {
   width: 100%;
-  padding: 12px;
+  padding: 16px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+.btn-reveal:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 6px rgba(25, 118, 210, 0.2);
+}
+
+.btn-link {
+  padding: 10px 20px;
+  background: none;
   border: 1px solid var(--border-color);
   border-radius: 8px;
+  color: var(--primary-color);
   font-size: 14px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  resize: vertical;
-  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-
-.answer-section textarea:focus {
-  outline: none;
+.btn-link:hover {
+  background: var(--primary-light);
   border-color: var(--primary-color);
 }
 
-.action-buttons {
-  display: flex;
-  gap: 12px;
-}
-
-.btn {
-  flex: 1;
-  padding: 14px;
-  border: none;
+/* ===== Slider Section ===== */
+.slider-section {
+  margin: 24px 0 16px;
+  padding: 16px;
+  background: var(--card-bg);
   border-radius: 12px;
-  font-size: 16px;
-  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.slider-track-wrapper {
+  padding: 4px 0;
+}
+
+.gradient-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  outline: none;
+  background: linear-gradient(to right, #f44336, #ff9800, #ffc107, #4caf50);
   cursor: pointer;
-  transition: all 0.3s;
 }
 
-.btn.primary {
-  background: var(--primary-color);
-  color: white;
+.gradient-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--primary-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.gradient-slider::-webkit-slider-thumb:active {
+  transform: scale(1.15);
 }
 
-.btn.correct {
-  background: #43a047;
-  color: white;
+.gradient-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid var(--primary-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
 }
 
-.btn.wrong {
-  background: #e65100;
-  color: white;
-}
-
-.btn:active {
-  transform: scale(0.98);
-}
-
-.complete-state {
+.slider-value {
   text-align: center;
-  padding: 60px 20px;
-}
-
-.complete-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-
-.complete-state h2 {
-  font-size: 24px;
-  margin: 0 0 12px 0;
+  margin-top: 12px;
+  font-size: 14px;
   color: var(--text-primary);
 }
+.feedback-tag {
+  margin-left: 8px;
+  font-weight: 600;
+}
 
-.complete-stats {
-  font-size: 18px;
+/* ===== SRS Debug ===== */
+.srs-debug {
+  margin-bottom: 16px;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.debug-toggle {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 24px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-secondary);
+}
+.debug-toggle:hover {
+  background: var(--border-color);
+}
+.debug-body {
+  padding: 10px 14px;
+  background: #1a1a2e;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  color: #e0e0e0;
+}
+.debug-row span:first-child {
+  color: #7ec8e3;
+}
+.debug-row span:last-child {
+  color: #a8e6cf;
+  font-weight: 500;
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-secondary);
+}
+.empty-state p {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+.btn-back {
+  padding: 12px 32px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ===== Submitting Overlay ===== */
+.submitting-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  color: white;
+  font-size: 16px;
+}
+.submitting-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

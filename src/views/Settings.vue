@@ -120,6 +120,17 @@
         </div>
       </div>
 
+      <!-- 数据清理 -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-icon">🗑️</div>
+          <div class="setting-name">清理已同步的软删除数据</div>
+        </div>
+        <div class="setting-action">
+          <button class="config-btn danger" @click="confirmPurge">清理</button>
+        </div>
+      </div>
+
       <!-- LLM 配置对话框 -->
       <div v-if="showLLMConfig" class="modal-overlay" @click="closeLLMConfig">
         <div class="modal" @click.stop>
@@ -246,6 +257,7 @@
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { llm } from '../services'
 import PromptEditor from '../components/PromptEditor.vue'
+import { purgeSyncedDeletions } from '../apis/sync'
 
 // AI 选项
 const aiEnabled = ref(false)
@@ -432,6 +444,31 @@ const clearTestChat = () => {
   testStatus.value = 'idle'
 }
 
+// 确认并执行清理
+const confirmPurge = async () => {
+  const ok = confirm('确定要清理所有已同步且已软删除的记录吗？此操作不可恢复！')
+  if (!ok) return
+
+  try {
+    const result = await purgeSyncedDeletions()
+    const parts: string[] = []
+    let total = 0
+    for (const [table, info] of Object.entries(result)) {
+      if (info.deleted > 0) {
+        parts.push(`${table}: ${info.deleted} 条`)
+        total += info.deleted
+      }
+    }
+    if (total > 0) {
+      alert(`清理完成！共删除 ${total} 条记录\n${parts.join('\n')}`)
+    } else {
+      alert('没有需要清理的记录')
+    }
+  } catch (e) {
+    alert(`清理失败：${e}`)
+  }
+}
+
 // 初始化主题
 onMounted(() => {
   // 应用主题
@@ -535,6 +572,14 @@ onUnmounted(() => {
 .config-btn:hover {
   opacity: 0.9;
   transform: translateY(-1px);
+}
+
+.config-btn.danger {
+  background: #ef4444;
+}
+
+.config-btn.danger:hover {
+  background: #dc2626;
 }
 
 /* 主题选择器 */

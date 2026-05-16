@@ -465,7 +465,7 @@ const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 15px;
-  background-color: var(--gray-100);
+  background-color: var(--primary-color);
   border-bottom: 1px solid var(--border-color);
 }
 

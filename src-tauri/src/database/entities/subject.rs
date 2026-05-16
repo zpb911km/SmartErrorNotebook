@@ -19,23 +19,6 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(has_many = "super::error_question::Entity")]
-    ErrorQuestions,
-    #[sea_orm(has_many = "super::source::Entity")]
-    Sources,
-}
-
-impl Related<super::error_question::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::error_question::Relation::Subject.def()
-    }
-}
-
-impl Related<super::source::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::source::Relation::Subject.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
