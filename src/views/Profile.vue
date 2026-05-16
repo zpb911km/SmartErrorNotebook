@@ -71,9 +71,11 @@
       </div>
 
       <!-- 科目分布 -->
-      <!-- <div class="chart-section">
+      <div class="chart-section">
         <h3>科目分布</h3>
-        <div v-if="subjectDistribution.length > 0" class="distribution-body">
+        
+        <!-- 可视化科目分布条 -->
+        <div v-if="subjectDistribution.length > 0" class="distribution-visual">
           <div class="stacked-bar">
             <div
               v-for="(item, index) in subjectDistribution"
@@ -83,21 +85,158 @@
                 width: item.percent + '%',
                 background: colors[index % colors.length]
               }"
+              :class="{ 'segment-selected': selectedSubject?.name === item.name }"
+              @click="handleSelectSubjectByName(item.name)"
+              :title="`${item.name}: ${item.count}题 (${item.percent}%)`"
             ></div>
           </div>
           <div class="bar-total">{{ overview.total }} 题</div>
           <div class="legend">
-            <div v-for="(item, index) in subjectDistribution" :key="index" class="legend-item">
+            <div 
+              v-for="(item, index) in subjectDistribution" 
+              :key="index" 
+              class="legend-item"
+              :class="{ 'legend-selected': selectedSubject?.name === item.name }"
+              @click="handleSelectSubjectByName(item.name)"
+            >
               <span class="legend-color" :style="{ background: colors[index % colors.length] }"></span>
               <span class="legend-label">{{ item.name }}</span>
               <span class="legend-value">{{ item.count }}题 ({{ item.percent }}%)</span>
             </div>
           </div>
         </div>
-        <div v-else class="empty-state">
-          <div class="empty-description">暂无科目数据</div>
+        
+        <div v-if="showCascade" class="cascade-container">
+          <div class="cascade-header">
+            <span class="cascade-title">科目详情</span>
+            <button class="close-btn" @click="closeCascade">×</button>
+          </div>
+          <div class="cascade-column-wrapper">
+            <!-- 科目列 -->
+            <div class="cascade-column cascade-col-1" :class="{ 'active-column': activeColumn === 0 }">
+              <div class="column-title">科目</div>
+              <div
+                v-for="subject in subjects"
+                :key="subject.id"
+                class="column-item"
+                :class="{ 'item-selected': selectedSubject?.id === subject.id }"
+                @click="handleSelectSubject(subject)"
+              >
+                <span class="item-dot" :style="{ background: subject.color || '#1976d2' }"></span>
+                <span class="item-text">{{ subject.name }}</span>
+              </div>
+              <div v-if="subjects.length === 0" class="empty-column-item">
+                暂无科目
+              </div>
+            </div>
+
+            <!-- 书籍列 -->
+            <div class="cascade-column cascade-col-2" :class="{ 'active-column': activeColumn === 1, 'show-column': selectedSubject }" v-show="selectedSubject">
+              <div class="column-title">书籍</div>
+              <div
+                v-for="book in books"
+                :key="book"
+                class="column-item"
+                :class="{ 'item-selected': selectedBook === book }"
+                @click="handleSelectBook(book)"
+              >
+                <span class="item-text">{{ book }}</span>
+              </div>
+              <div v-if="books.length === 0" class="empty-column-item">
+                暂无书籍
+              </div>
+            </div>
+
+            <!-- 章节列 -->
+            <div class="cascade-column cascade-col-3" :class="{ 'active-column': activeColumn === 2, 'show-column': selectedBook }" v-show="selectedBook">
+              <div class="column-title">章节</div>
+              <div
+                v-for="chapter in chapters"
+                :key="chapter"
+                class="column-item"
+                :class="{ 'item-selected': selectedChapter === chapter }"
+                @click="handleSelectChapter(chapter)"
+              >
+                <span class="item-text">{{ chapter }}</span>
+              </div>
+              <div v-if="chapters.length === 0" class="empty-column-item">
+                暂无章节
+              </div>
+            </div>
+
+            <!-- 知识点列 -->
+            <div class="cascade-column cascade-col-4" :class="{ 'active-column': activeColumn === 3, 'show-column': selectedChapter }" v-show="selectedChapter">
+              <div class="column-title">知识点</div>
+              <div
+                v-for="knowledge in knowledges"
+                :key="knowledge"
+                class="column-item"
+                :class="{ 'item-selected': selectedKnowledge === knowledge }"
+                @click="handleSelectKnowledge(knowledge)"
+              >
+                <span class="item-text">{{ knowledge }}</span>
+              </div>
+              <div v-if="knowledges.length === 0" class="empty-column-item">
+                暂无知识点
+              </div>
+            </div>
+          </div>
         </div>
-      </div> -->
+      </div>
+
+      <!-- 错因分布 -->
+      <div class="chart-section">
+        <h3>错因分布</h3>
+        <div v-if="errorTagDistribution.length > 0" class="error-tag-distribution">
+          <div class="donut-chart-wrapper">
+            <svg class="donut-chart" viewBox="0 0 100 100">
+              <!-- 背景圆环 -->
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border-color)" stroke-width="20" />
+              <!-- 扇区 -->
+              <circle
+                v-for="(segment, index) in donutSegments"
+                :key="index"
+                class="donut-segment"
+                :class="{ 'segment-hovered': hoveredIndex === index }"
+                cx="50"
+                cy="50"
+                :r="hoveredIndex === index ? 42 : 40"
+                fill="none"
+                :stroke="segment.color"
+                :stroke-width="hoveredIndex === index ? 22 : 20"
+                :stroke-dasharray="`${segment.percent} ${251.2}`"
+                :stroke-dashoffset="`${segment.offset}`"
+                :stroke-linecap="(segment.linecap as 'butt' | 'round' | 'square' | 'inherit') || 'butt'"
+                @mouseenter="hoveredIndex = index"
+                @mouseleave="hoveredIndex = -1"
+              />
+            </svg>
+            <!-- 中心显示总数量 -->
+            <div class="donut-center">
+              <div class="donut-center-count">{{ totalTags }}</div>
+              <div class="donut-center-label">题目错因总数</div>
+            </div>
+          </div>
+          <div class="error-tag-legend">
+            <div
+              v-for="(tag, index) in errorTagDistribution"
+              :key="index"
+              class="error-tag-item"
+              :class="{ 'item-highlighted': hoveredIndex === index }"
+              @mouseenter="hoveredIndex = index"
+              @mouseleave="hoveredIndex = -1"
+            >
+              <span class="tag-color-dot" :style="{ background: tag.color }"></span>
+              <span class="tag-name">{{ tag.name }}</span>
+              <span class="tag-count">{{ tag.count }}</span>
+              <span class="tag-percentage">{{ calculatePercentage(tag.count) }}%</span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-state">
+          <div class="empty-description">暂无错因数据</div>
+        </div>
+      </div>
 
       <!-- 科目 × 难度热力图 -->
       <div class="chart-section">
@@ -173,11 +312,24 @@ import { ref, computed } from 'vue'
 import { getQuestionStats, getQuestions } from '../apis/errorQuestions'
 import { getDueCount, getSRSStatistics, getAllSRSStatus } from '../apis/srs'
 import { getSubjects } from '../apis/subjects'
-import type { Subject } from '../types'
+import { getBooks, getChapters, getKnowledges } from '../apis/sources'
+import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
+import type { Subject, ErrorTags } from '../types'
 
 // ==================== 状态 ====================
 const loading = ref(true)
 const loadError = ref('')
+
+// ==================== 科目分布级联选择状态 ====================
+const selectedSubject = ref<Subject | null>(null)
+const selectedBook = ref<string | null>(null)
+const selectedChapter = ref<string | null>(null)
+const selectedKnowledge = ref<string | null>(null)
+const books = ref<string[]>([])
+const chapters = ref<string[]>([])
+const knowledges = ref<string[]>([])
+const activeColumn = ref<number>(0)
+const showCascade = ref<boolean>(false)
 
 // 原始数据
 const questionTotal = ref(0)
@@ -186,19 +338,13 @@ const srsStats = ref({ total: 0, due_count: 0, new_cards: 0, avg_stability: 0, a
 const subjects = ref<Subject[]>([])
 const questions = ref<{ id: string; subject_id: string }[]>([])
 const allCards = ref<{ question_id: string; difficulty: number; next_review_at: number | null; review_count: number }[]>([])
+const errorTags = ref<ErrorTags[]>([])
+const hoveredIndex = ref(-1)
 
 const colors = ['#1976d2', '#e65100', '#7b1fa2', '#43a047', '#00bcd4', '#ff9800', '#795548', '#607d8b', '#c62828', '#283593']
 
 // 难度区间标注
 const difficultyRange = ref<{ min: number; max: number } | null>(null)
-
-// ==================== 概览卡片 ====================
-const overview = computed(() => ({
-  total: questionTotal.value,
-  dueCount: dueCount.value,
-  currentMemory: Math.max(0, questionTotal.value - dueCount.value),
-  newCards: srsStats.value.new_cards
-}))
 
 // ==================== 科目分布 ====================
 interface SubjectDistItem {
@@ -230,6 +376,14 @@ const subjectDistribution = computed<SubjectDistItem[]>(() => {
     }))
     .sort((a, b) => b.count - a.count)
 })
+
+// ==================== 概览卡片 ====================
+const overview = computed(() => ({
+  total: questionTotal.value,
+  dueCount: dueCount.value,
+  currentMemory: Math.max(0, questionTotal.value - dueCount.value),
+  newCards: srsStats.value.new_cards
+}))
 
 // ==================== 科目 × 难度热力图 ====================
 
@@ -315,6 +469,30 @@ const heatmapData = computed<HeatmapRow[]>(() => {
   return rows
 })
 
+// ==================== 错因分布 ====================
+interface ErrorTagDistItem {
+  name: string
+  count: number
+  color: string
+}
+
+const errorTagDistribution = computed<ErrorTagDistItem[]>(() => {
+  const tagCountMap = new Map<string, { count: number; color: string }>()
+  
+  errorTags.value.forEach(tag => {
+    const existing = tagCountMap.get(tag.name)
+    if (existing) {
+      existing.count++
+    } else {
+      tagCountMap.set(tag.name, { count: 1, color: tag.color })
+    }
+  })
+  
+  return Array.from(tagCountMap.entries())
+    .map(([name, data]) => ({ name, count: data.count, color: data.color }))
+    .sort((a, b) => b.count - a.count)
+})
+
 const heatmapMax = computed(() => {
   let max = 0
   for (const row of heatmapData.value) {
@@ -397,13 +575,14 @@ async function loadData() {
   loadError.value = ''
 
   try {
-    const [statsRes, dueRes, srsRes, subjRes, qsRes, cardsRes] = await Promise.all([
+    const [statsRes, dueRes, srsRes, subjRes, qsRes, cardsRes, tagsRes] = await Promise.all([
       getQuestionStats().catch(() => ({ total: 0 })),
       getDueCount().catch(() => 0),
       getSRSStatistics().catch(() => ({ total: 0, due_count: 0, new_cards: 0, avg_stability: 0, avg_difficulty: 0, total_reviews: 0 })),
       getSubjects().catch(() => [] as Subject[]),
       getQuestions().catch(() => []),
       getAllSRSStatus().catch(() => []),
+      getFullErrorTags().catch(() => [] as ErrorTags[]),
     ])
 
     questionTotal.value = statsRes.total
@@ -418,6 +597,7 @@ async function loadData() {
       next_review_at: c.next_review_at,
       review_count: c.review_count
     }))
+    errorTags.value = tagsRes
 
     // 调试: SRS 难度分布
     if (cardsRes.length > 0) {
@@ -442,6 +622,106 @@ async function loadData() {
 }
 
 loadData()
+
+// ==================== 科目分布级联选择逻辑 ====================
+const handleSelectSubject = async (subject: Subject) => {
+  selectedSubject.value = subject
+  selectedBook.value = null
+  selectedChapter.value = null
+  selectedKnowledge.value = null
+  chapters.value = []
+  knowledges.value = []
+  activeColumn.value = 1
+  showCascade.value = true
+  
+  try {
+    books.value = await getBooks(subject.id)
+  } catch (error) {
+    console.error('获取书籍失败:', error)
+    books.value = []
+  }
+}
+
+const handleSelectSubjectByName = async (subjectName: string) => {
+  const subject = subjects.value.find(s => s.name === subjectName)
+  if (subject) {
+    await handleSelectSubject(subject)
+  }
+}
+
+const handleSelectBook = async (book: string) => {
+  selectedBook.value = book
+  selectedChapter.value = null
+  selectedKnowledge.value = null
+  knowledges.value = []
+  activeColumn.value = 2
+  
+  try {
+    chapters.value = await getChapters(book, selectedSubject.value?.id)
+  } catch (error) {
+    console.error('获取章节失败:', error)
+    chapters.value = []
+  }
+}
+
+const handleSelectChapter = async (chapter: string) => {
+  selectedChapter.value = chapter
+  selectedKnowledge.value = null
+  activeColumn.value = 3
+  
+  try {
+    knowledges.value = await getKnowledges(selectedBook.value!, chapter, selectedSubject.value?.id)
+  } catch (error) {
+    console.error('获取知识点失败:', error)
+    knowledges.value = []
+  }
+}
+
+const handleSelectKnowledge = (knowledge: string) => {
+  selectedKnowledge.value = knowledge
+}
+
+const closeCascade = () => {
+  showCascade.value = false
+  selectedSubject.value = null
+  selectedBook.value = null
+  selectedChapter.value = null
+  selectedKnowledge.value = null
+  books.value = []
+  chapters.value = []
+  knowledges.value = []
+  activeColumn.value = 0
+}
+
+// ==================== 错因分布环形图 ====================
+const totalTags = computed(() => {
+  return errorTagDistribution.value.reduce((sum, item) => sum + item.count, 0)
+})
+
+function calculatePercentage(count: number): number {
+  if (totalTags.value === 0) return 0
+  return Math.round((count / totalTags.value) * 100)
+}
+
+const donutSegments = computed(() => {
+  const segments: { percent: number; offset: number; color: string; linecap?: string }[] = []
+  let currentOffset = 0
+  const circumference = 251.2 // 2 * Math.PI * 40 ≈ 251.2
+  
+  errorTagDistribution.value.forEach((tag, index) => {
+    const percent = (tag.count / totalTags.value)
+    const strokeLength = percent * circumference
+    segments.push({
+      percent: strokeLength,
+      offset: currentOffset,
+      color: tag.color || colors[index % colors.length],
+      linecap: 'butt'
+    })
+    currentOffset -= strokeLength
+  })
+  
+  return segments
+})
 </script>
 
 <style scoped>
@@ -454,6 +734,409 @@ loadData()
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* 级联容器 */
+.cascade-container {
+  position: relative;
+  margin-top: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cascade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cascade-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* 列包装器 */
+.cascade-column-wrapper {
+  display: flex;
+  position: relative;
+  overflow: visible;
+}
+
+/* 级联列 */
+.cascade-column {
+  flex: 0 0 160px;
+  width: 160px;
+  border-right: 1px solid var(--border-color);
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), z-index 0.4s ease;
+  background: var(--card-bg);
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* 第一列特殊样式 */
+.cascade-col-1 {
+  border-left: none;
+  z-index: 1;
+}
+
+/* 第二列 - 显示时向左移动80px */
+.cascade-col-2.show-column {
+  transform: translateX(-80px);
+  z-index: 10;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 第三列 - 显示时向左移动160px */
+.cascade-col-3.show-column {
+  transform: translateX(-160px);
+  z-index: 20;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 第四列 - 显示时向左移动240px */
+.cascade-col-4.show-column {
+  transform: translateX(-240px);
+  z-index: 30;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 活动列确保在最上层 */
+.cascade-column.active-column {
+  z-index: 100;
+}
+
+/* 列标题 */
+.column-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+/* 列项 */
+.column-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.column-item:hover {
+  background: var(--primary-light);
+}
+
+.column-item.item-selected {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* 项目点 */
+.item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 项目文本 */
+.item-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 空列项 */
+.empty-column-item {
+  padding: 20px 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 科目分布可视化 */
+.distribution-visual {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.stacked-bar {
+  display: flex;
+  height: 28px;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.bar-segment {
+  transition: all 0.3s ease;
+  min-width: 2px;
+  cursor: pointer;
+}
+
+.bar-segment:hover {
+  opacity: 0.85;
+  transform: scaleY(1.1);
+}
+
+.bar-segment.segment-selected {
+  box-shadow: inset 0 0 0 2px white;
+  transform: scaleY(1.15);
+  z-index: 10;
+  position: relative;
+}
+
+.bar-total {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  background: var(--card-bg);
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.legend-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.legend-item.legend-selected {
+  box-shadow: 0 0 0 2px var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.legend-item {
+  cursor: pointer;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.legend-value {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* ========== 错因分布 ========== */
+.error-tag-distribution {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.donut-chart-wrapper {
+  flex-shrink: 0;
+  width: 220px;
+  height: 220px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-chart {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+.donut-segment {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  transform-origin: center;
+  stroke-linejoin: round;
+}
+
+.donut-segment.segment-hovered {
+  filter: brightness(1.1);
+}
+
+.donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.donut-center-count {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary-color);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.donut-center-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.error-tag-legend {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-tag-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+}
+
+.error-tag-item:hover {
+  transform: translateX(6px);
+  background: var(--primary-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.error-tag-item.item-highlighted {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.3);
+  transform: translateX(6px) scale(1.02);
+}
+
+.error-tag-item.item-highlighted .tag-name,
+.error-tag-item.item-highlighted .tag-count {
+  color: white;
+}
+
+.error-tag-item.item-highlighted .tag-percentage {
+  background: white;
+  color: var(--primary-color);
+}
+
+.error-tag-item.item-highlighted .tag-color-dot {
+  border-color: white;
+  transform: scale(1.2);
+}
+
+.tag-color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+}
+
+.tag-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  transition: color 0.25s ease;
+}
+
+.tag-count {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 30px;
+  text-align: right;
+  transition: color 0.25s ease;
+}
+
+.tag-percentage {
+  background: var(--primary-color);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  min-width: 45px;
+  text-align: center;
+  transition: all 0.25s ease;
 }
 
 /* ========== 加载 & 错误 ========== */
