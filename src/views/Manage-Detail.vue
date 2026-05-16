@@ -25,23 +25,18 @@
         <!-- 科目选择 -->
         <div class="form-group">
           <label>科目</label>
-          <select 
-            v-model="editForm.subject_id" 
+          <SubjectSelector 
+            :modelValue="editForm.subject_id"
             :disabled="!isEditing"
-            class="form-select"
-          >
-            <option value="">请选择科目</option>
-            <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-              {{ subject.name }}
-            </option>
-          </select>
+            @select="handleSubjectSelect"
+          />
         </div>
 
         <!-- 来源信息 -->
         <div class="form-group">
           <label>来源信息</label>
           <SourceSelector 
-            :disable="!isEditing"
+            :disable="!isEditing || sourceSelectorDisabled"
             :currentSourceId="editForm.source_id || ''"
             :subjectId="editForm.subject_id"
             @select="handleSourceSelect"
@@ -328,6 +323,7 @@ import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, f
 import { getQuestionSRSStatus } from '../apis/srsData'
 import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
+import SubjectSelector from '../components/SubjectSelector.vue'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import ImagePreview from '../components/ImagePreview.vue'
@@ -361,6 +357,7 @@ const tempErrorTags = ref<Array<{ name: string; color: string }>>([])
 // 编辑状态
 const isEditing = ref(false)
 const saving = ref(false)
+const sourceSelectorDisabled = ref(false) // 控制SourceSelector的disabled状态
 const editForm = ref({
   subject_id: '',
   source_id: '',
@@ -546,6 +543,17 @@ const toggleEditMode = () => {
 // 保存修改
 const saveChanges = async () => {
   if (!errorDetail.value) return
+  
+  console.log('========== 开始保存流程 ==========')
+  console.log('1. 先禁用SourceSelector')
+  
+  // 1. 先禁用SourceSelector，确保下拉框收起
+  sourceSelectorDisabled.value = true
+  
+  // 2. 等待一小段时间，确保组件响应disabled状态并收起
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  console.log('2. SourceSelector已禁用，开始执行保存操作')
   
   saving.value = true
   try {
@@ -756,6 +764,9 @@ const saveChanges = async () => {
     alert('保存失败，请重试')
   } finally {
     saving.value = false
+    // 恢复SourceSelector的disabled状态（根据isEditing决定）
+    sourceSelectorDisabled.value = false
+    console.log('3. 保存完成，恢复SourceSelector状态')
   }
 }
 
@@ -803,6 +814,14 @@ const formatTimestamp = (timestamp?: number) => {
 // 返回上一页
 const goBack = () => {
   router.back()
+}
+
+// 处理科目选择
+const handleSubjectSelect = (subjectId: string) => {
+  console.log('========== 科目选择事件 ==========')
+  console.log('选中的科目ID:', subjectId)
+  editForm.value.subject_id = subjectId
+  console.log('editForm.value.subject_id:', editForm.value.subject_id)
 }
 
 // 处理来源选择

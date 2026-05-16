@@ -32,6 +32,13 @@ const props = defineProps<{
   disable?: boolean;
 }>();
 
+// 添加一个监听器，监听currentSourceId，如果currentSourceId变化，则把信息设置为空
+watch(() => props.currentSourceId, (newVal, oldVal) => {
+  if (newVal !== oldVal) {
+    resetSelection();
+  }
+});
+
 // 添加一个监听器监听disable，如果disable为true，则收起
 watch(() => props.disable, (disable) => {
   if (disable) {
