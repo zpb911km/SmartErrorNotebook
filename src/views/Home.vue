@@ -217,6 +217,7 @@ onUnmounted(() => {
 
 .action-btn {
   background: var(--card-bg);
+  color: var(--text-primary);
   border: none;
   border-radius: 12px;
   padding: 20px 16px;
