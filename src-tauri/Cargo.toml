@@ -1,8 +1,8 @@
 [package]
 name = "smarterrornotebook"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "smarterrornotebook"
+authors = ["zpb911km", "fly-960452909", "dimixun", "BakeReisen"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
