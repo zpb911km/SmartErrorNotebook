@@ -37,7 +37,7 @@
           <label>来源信息</label>
           <SourceSelector 
             :disable="!isEditing || sourceSelectorDisabled"
-            :currentSourceId="editForm.source_id || ''"
+            :currentSourceId="editForm.source_id"
             :subjectId="editForm.subject_id"
             @select="handleSourceSelect"
           />

@@ -78,6 +78,7 @@ pub async fn create_error_tags_for_question(
 pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag::Model>, String> {
     let db = state.db.as_ref();
     let tags = ErrorTag::find()
+        .filter(error_tag::Column::DeletedAt.is_null())
         .all(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
@@ -99,6 +100,7 @@ pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag:
 pub async fn get_full_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag::Model>, String> {
     let db = state.db.as_ref();
     let tags = ErrorTag::find()
+        .filter(error_tag::Column::DeletedAt.is_null())
         .all(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
@@ -114,6 +116,7 @@ pub async fn get_error_tags_for_question(
     let db = state.db.as_ref();
     let tags = ErrorTag::find()
         .filter(error_tag::Column::QuestionId.eq(question_id))
+        .filter(error_tag::Column::DeletedAt.is_null())
         .all(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?;
@@ -231,6 +234,7 @@ pub async fn update_error_tag_by_id(
 ) -> Result<(), String> {
     let db = state.db.as_ref();
     let cur_model = ErrorTag::find_by_id(tag_id)
+        .filter(error_tag::Column::DeletedAt.is_null())
         .one(db)
         .await
         .map_err(|e: sea_orm::DbErr| e.to_string())?

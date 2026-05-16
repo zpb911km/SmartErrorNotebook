@@ -32,10 +32,11 @@ const props = defineProps<{
   disable?: boolean;
 }>();
 
-// 添加一个监听器，监听currentSourceId，如果currentSourceId变化，则把信息设置为空
-watch(() => props.currentSourceId, (newVal, oldVal) => {
-  if (newVal !== oldVal) {
+// 添加一个监听器，监听subjectId，如果subjectId变化，则把信息设置为空
+watch(() => props.subjectId, (newVal, oldVal) => {
+  if (oldVal && newVal !== oldVal) {
     resetSelection();
+    loadBooks();
   }
 });
 
@@ -129,6 +130,8 @@ const selectedText = computed(() => {
   return '请选择来源';
 });
 
+const isInitializing = ref(false); // 标识是否在初始化阶段
+
 const loadSourceById = async (sourceId: string) => {
   if (!sourceId) {
     selectedSource.value = null;
@@ -137,15 +140,28 @@ const loadSourceById = async (sourceId: string) => {
 
   try {
     const source = await getSource(sourceId);
+    // console.log("source:", source.book, source.chapter, source.knowledge)
+    // 在初始化模式下直接赋值，不触发 watcher 的级联清空逻辑
+    isInitializing.value = true;
+
     if (source.book) {
       selectedBook.value = source.book;
+      // console.log("selectedBook.value:", selectedBook.value)
     }
     if (source.chapter) {
       selectedChapter.value = source.chapter;
+      // console.log("selectedChapter.value:", selectedChapter.value)
     }
     if (source.knowledge) {
       selectedKnowledge.value = source.knowledge;
+      console.log("selectedKnowledge.value:", selectedKnowledge.value)
     }
+
+    // 异步延迟1s秒, 重置isInitializing
+    setTimeout(() => {
+      isInitializing.value = false;
+    }, 1000);
+    
     if (props.subjectId) {
       books.value = await getBooks(props.subjectId);
     }
@@ -169,14 +185,14 @@ const loadSourceById = async (sourceId: string) => {
 // 然后定义 watch
 // 当选择书名时,加载章节列表
 watch(selectedBook, (newBook) => {
-  if (newBook) {
+  if (newBook && !isInitializing.value) {
+    selectedChapter.value = '';
+    selectedKnowledge.value = '';
+    showAddChapterInput.value = false;
+    showAddKnowledgeInput.value = false;
     getChapters(newBook)
       .then(data => {
         chapters.value = data;
-        selectedChapter.value = '';
-        selectedKnowledge.value = '';
-        showAddChapterInput.value = false;
-        showAddKnowledgeInput.value = false;
       })
       .catch(error => {
         console.error('获取章节失败：', error);
@@ -187,12 +203,12 @@ watch(selectedBook, (newBook) => {
 
 // 当选择章节时,加载知识点列表
 watch(selectedChapter, (newChapter) => {
-  if (newChapter && selectedBook.value) {
+  if (newChapter && selectedBook.value && !isInitializing.value) {
+    selectedKnowledge.value = '';
+    showAddKnowledgeInput.value = false;
     getKnowledges(selectedBook.value, newChapter)
       .then(data => {
         knowledges.value = data;
-        selectedKnowledge.value = '';
-        showAddKnowledgeInput.value = false;
       })
       .catch(error => {
         console.error('获取知识点失败：', error);
@@ -200,15 +216,6 @@ watch(selectedChapter, (newChapter) => {
       });
   }
 });
-
-// 当subjectId变化时,重新加载书名列表
-watch(
-  () => props.subjectId,
-  () => {
-    resetSelection();
-    loadBooks();
-  }, { immediate: true }
-);
 
 watch(
   () => props.currentSourceId,
