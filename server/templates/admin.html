@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>同步管理后台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+.card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+input, button { font-size: 14px; padding: 8px 14px; border-radius: 4px; border: 1px solid #ccc; }
+button { cursor: pointer; background: #4f6ef7; color: #fff; border: none; }
+button:hover { opacity: .85; }
+button.danger { background: #e74c3c; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+code { font-size: 13px; background: #f0f0f0; padding: 2px 6px; border-radius: 3px; word-break: break-all; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #eee; }
+th { font-size: 13px; color: #666; }
+.msg { padding: 8px 14px; border-radius: 4px; margin: 12px 0; }
+.msg.ok { background: #d4edda; color: #155724; }
+.msg.err { background: #f8d7da; color: #721c24; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<div id="login" class="card">
+  <h2>管理员验证</h2>
+  <div class="row">
+    <input id="codeInput" type="text" maxlength="4" placeholder="4位动态码" />
+    <button id="loginBtn">验证</button>
+  </div>
+  <div id="loginMsg" class="msg" style="display:none"></div>
+</div>
+
+<div id="admin" style="display:none">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">授权码管理</h2>
+    </div>
+  </div>
+  <div class="card">
+    <div class="row" style="margin-bottom:12px">
+      <button id="refreshBtn">刷新</button>
+      <input id="remarkInput" placeholder="备注（可选）" style="width:200px" />
+      <button id="generateBtn">生成新授权码</button>
+    </div>
+    <div id="adminMsg" class="msg" style="display:none"></div>
+    <table>
+      <thead><tr><th>#</th><th>授权码</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead>
+      <tbody id="keyList"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+var authed = false, loading = false, keys = [], adminToken = ''
+
+function showMsg(el, text, ok) {
+  el.style.display = 'block'
+  el.textContent = text
+  el.className = 'msg ' + (ok ? 'ok' : 'err')
+}
+
+function setLoading(v) {
+  loading = v
+  document.querySelectorAll('button').forEach(function(b) { b.disabled = v })
+}
+
+function login() {
+  var code = document.getElementById('codeInput').value
+  if (!code) return
+  setLoading(true)
+  fetch('/api/admin/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: code })
+  }).then(function(r) { return r.json() })
+    .then(function(d) {
+      if (d.valid) {
+        authed = true
+        adminToken = d.token
+        document.getElementById('login').style.display = 'none'
+        document.getElementById('admin').style.display = 'block'
+        loadKeys()
+      } else {
+        showMsg(document.getElementById('loginMsg'), '验证码错误', false)
+      }
+    }).catch(function() {
+      showMsg(document.getElementById('loginMsg'), '请求失败', false)
+    }).then(function() { setLoading(false) })
+}
+
+function getHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken }
+}
+
+function loadKeys() {
+  setLoading(true)
+  fetch('/api/admin/keys', { headers: getHeaders() })
+    .then(function(r) {
+      if (r.status === 401) { showMsg(document.getElementById('adminMsg'), '验证码已过期', false); authed = false; document.getElementById('login').style.display = 'block'; document.getElementById('admin').style.display = 'none'; return null }
+      return r.json()
+    }).then(function(d) {
+      if (!d) return
+      keys = d.keys || []
+      var html = ''
+      if (keys.length === 0) {
+        html = '<tr><td colspan="5" style="text-align:center;color:#888">暂无授权码</td></tr>'
+      } else {
+        for (var i = 0; i < keys.length; i++) {
+          html += '<tr><td>' + (i + 1) + '</td><td><code>' + keys[i].auth_key + '</code></td><td><div class="row"><input id="remark_' + keys[i].id + '" value="' + esc(keys[i].remark || '') + '" style="width:120px" /><button onclick="saveRemark(\'' + keys[i].id + '\')">保存</button></div></td><td>' + fmtTime(keys[i].created_at) + '</td><td><button class="danger" onclick="delKey(\'' + keys[i].id + '\')">删除</button></td></tr>'
+        }
+      }
+      document.getElementById('keyList').innerHTML = html
+    }).catch(function() {
+      showMsg(document.getElementById('adminMsg'), '加载失败', false)
+    }).then(function() { setLoading(false) })
+}
+
+function generateKey() {
+  setLoading(true)
+  var remark = document.getElementById('remarkInput').value || ''
+  fetch('/api/admin/keys', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ remark: remark }) })
+    .then(function(r) {
+      if (r.status === 401) { showMsg(document.getElementById('adminMsg'), '验证码已过期', false); authed = false; document.getElementById('login').style.display = 'block'; document.getElementById('admin').style.display = 'none'; return null }
+      return r.json()
+    }).then(function(d) {
+      if (!d) return
+      if (d.auth_key) { showMsg(document.getElementById('adminMsg'), '已生成: ' + d.auth_key, true); loadKeys() }
+      else showMsg(document.getElementById('adminMsg'), '生成失败', false)
+    }).catch(function() {
+      showMsg(document.getElementById('adminMsg'), '请求失败', false)
+    }).then(function() { setLoading(false) })
+}
+
+function delKey(id) {
+  if (!confirm('确定删除此授权码？')) return
+  setLoading(true)
+  fetch('/api/admin/keys/' + id, { method: 'DELETE', headers: getHeaders() })
+    .then(function(r) {
+      if (r.status === 401) { showMsg(document.getElementById('adminMsg'), '验证码已过期', false); authed = false; document.getElementById('login').style.display = 'block'; document.getElementById('admin').style.display = 'none'; return null }
+      return r.json()
+    }).then(function(d) {
+      if (!d) return
+      if (d.success) { showMsg(document.getElementById('adminMsg'), '已删除', true); loadKeys() }
+      else showMsg(document.getElementById('adminMsg'), '删除失败', false)
+    }).catch(function() {
+      showMsg(document.getElementById('adminMsg'), '请求失败', false)
+    }).then(function() { setLoading(false) })
+}
+
+function fmtTime(ts) {
+  if (!ts) return '-'
+  return new Date(ts).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+}
+
+function esc(s) {
+  if (!s) return ''
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+function saveRemark(id) {
+  var remark = document.getElementById('remark_' + id).value
+  setLoading(true)
+  fetch('/api/admin/keys/' + id, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ remark: remark })
+  }).then(function(r) {
+    if (r.status === 401) { showMsg(document.getElementById('adminMsg'), '验证码已过期', false); authed = false; document.getElementById('login').style.display = 'block'; document.getElementById('admin').style.display = 'none'; return null }
+    return r.json()
+  }).then(function(d) {
+    if (!d) return
+    if (d.success) { showMsg(document.getElementById('adminMsg'), '备注已更新', true) }
+    else showMsg(document.getElementById('adminMsg'), '更新失败', false)
+  }).catch(function() {
+    showMsg(document.getElementById('adminMsg'), '请求失败', false)
+  }).then(function() { setLoading(false) })
+}
+
+document.getElementById('loginBtn').addEventListener('click', login)
+document.getElementById('codeInput').addEventListener('keyup', function(e) { if (e.key === 'Enter') login() })
+document.getElementById('refreshBtn').addEventListener('click', loadKeys)
+document.getElementById('generateBtn').addEventListener('click', generateKey)
+</script>
+</body>
+</html>

@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Package managers
+pnpm-lock.yaml
+
+
+SEN.prg
+graphs.md
+src-tauri/gen/
+
+CLAUDE.md
+.lingma/rules/global_ruls.md
+.lingma/rules/Understanding.md
+.lingma/skills/code-review/SKILL.md
+src-tauri/Cargo.lock
+server/instance/sync_data.db
+src-tauri/Cargo.toml
+openspec/*
+.cursor/*
