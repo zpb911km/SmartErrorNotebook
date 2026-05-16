@@ -89,7 +89,7 @@
               class="bar-segment"
               :style="{
                 width: item.percent + '%',
-                background: colors[index % colors.length]
+                background: item.color
               }"
               :class="{ 'segment-selected': selectedSubject?.name === item.name }"
               @click="handleSelectSubjectByName(item.name)"
@@ -105,7 +105,7 @@
               :class="{ 'legend-selected': selectedSubject?.name === item.name }"
               @click="handleSelectSubjectByName(item.name)"
             >
-              <span class="legend-color" :style="{ background: colors[index % colors.length] }"></span>
+              <span class="legend-color" :style="{ background: item.color }"></span>
               <span class="legend-label">{{ item.name }}</span>
               <span class="legend-value">{{ item.count }}题 ({{ item.percent }}%)</span>
             </div>
@@ -362,16 +362,18 @@
             <div v-else class="tag-list">
               <div v-for="(tag, index) in manageErrorTags" :key="tag.name" class="tag-item">
                 <div class="tag-info">
-                  <span class="tag-dot" :style="{ background: tag.color }"></span>
+                  <span class="tag-dot" :style="{ background: editingTagIndex === index ? editingTagColor : tag.color }"></span>
                   <span v-if="editingTagIndex !== index" class="tag-name-text">{{ tag.name }}</span>
-                  <input 
-                    v-else 
-                    type="text" 
-                    v-model="editingTagName" 
-                    class="tag-input"
-                    @keyup.enter="saveTagEdit(index)"
-                    @keyup.escape="cancelTagEdit"
-                  />
+                  <template v-else>
+                    <input 
+                      type="text" 
+                      v-model="editingTagName" 
+                      class="tag-input"
+                      @keyup.enter="saveTagEdit(index)"
+                      @keyup.escape="cancelTagEdit"
+                    />
+                    <input type="color" v-model="editingTagColor" class="tag-color-input" />
+                  </template>
                 </div>
                 <div class="tag-actions">
                   <div v-if="editingTagIndex !== index" class="actions-group">
@@ -489,11 +491,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import { getQuestionStats, getQuestions } from '../apis/errorQuestions'
 import { getDueCount, getSRSStatistics, getAllSRSStatus } from '../apis/srs'
 import { getSubjects, updateSubject, deleteSubject } from '../apis/subjects'
 import { getBooks, getChapters, getKnowledges, getSources, updateSource, deleteSource } from '../apis/sources'
-import { getErrorTags, getFullErrorTags, updateErrorTagById, deleteErrorTagById } from '../apis/errorTags'
+import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
 import type { Subject, Source, ErrorTags } from '../types'
 
 // ==================== 状态 ====================
@@ -536,6 +539,7 @@ interface UniqueErrorTag {
 const manageErrorTags = ref<UniqueErrorTag[]>([])
 const editingTagIndex = ref<number | null>(null)
 const editingTagName = ref('')
+const editingTagColor = ref('')
 const deleteTagName = ref('')
 
 // 科目/来源管理相关状态
@@ -565,8 +569,8 @@ interface SubjectDistItem {
 }
 
 const subjectDistribution = computed<SubjectDistItem[]>(() => {
-  const subjectMap = new Map<string, string>()
-  subjects.value.forEach(s => subjectMap.set(s.id, s.name))
+  const subjectMap = new Map<string, { name: string; color: string }>()
+  subjects.value.forEach(s => subjectMap.set(s.id, { name: s.name, color: s.color || '#1976d2' }))
 
   const countMap = new Map<string, number>()
   questions.value.forEach(q => {
@@ -578,12 +582,15 @@ const subjectDistribution = computed<SubjectDistItem[]>(() => {
   if (total === 0) return []
 
   return Array.from(countMap.entries())
-    .map(([id, count]) => ({
-      name: subjectMap.get(id) || '未分类',
-      count,
-      percent: Math.round((count / total) * 100),
-      color: ''
-    }))
+    .map(([id, count]) => {
+      const subjectInfo = subjectMap.get(id) || { name: '未分类', color: '#1976d2' }
+      return {
+        name: subjectInfo.name,
+        count,
+        percent: Math.round((count / total) * 100),
+        color: subjectInfo.color
+      }
+    })
     .sort((a, b) => b.count - a.count)
 })
 
@@ -1426,7 +1433,7 @@ const donutSegments = computed(() => {
     segments.push({
       percent: strokeLength,
       offset: currentOffset,
-      color: tag.color || colors[index % colors.length],
+      color: tag.color,
       linecap: 'butt'
     })
     currentOffset -= strokeLength
@@ -1474,16 +1481,19 @@ function closeManageModal() {
   showManageModal.value = false
   editingTagIndex.value = null
   editingTagName.value = ''
+  editingTagColor.value = ''
 }
 
 function startEditTag(index: number) {
   editingTagIndex.value = index
   editingTagName.value = manageErrorTags.value[index].name
+  editingTagColor.value = manageErrorTags.value[index].color
 }
 
 function cancelTagEdit() {
   editingTagIndex.value = null
   editingTagName.value = ''
+  editingTagColor.value = ''
 }
 
 async function saveTagEdit(index: number) {
@@ -1492,25 +1502,29 @@ async function saveTagEdit(index: number) {
   try {
     const oldTag = manageErrorTags.value[index]
     const newName = editingTagName.value.trim()
+    const newColor = editingTagColor.value || oldTag.color
     
-    // 批量更新所有相同name的标签（不管color）
-    // 先找到所有相同name的标签，然后统一更新
+    // 批量更新所有相同name的标签（包括颜色）
     const allSameNameTags = errorTags.value.filter(t => t.name === oldTag.name)
     
     for (const tag of allSameNameTags) {
-      await updateErrorTagById(tag.id, newName, tag.color)
+      await invoke('update_error_tag_by_id', {
+        tagId: tag.id,
+        newTagName: newName,
+        newTagColor: newColor
+      })
     }
     
     // 更新本地数据
-    // 更新errorTags中的所有相同name的标签
     errorTags.value = errorTags.value.map(t => 
       t.name === oldTag.name 
-        ? { ...t, name: newName } 
+        ? { ...t, name: newName, color: newColor } 
         : t
     )
     
     // 更新manageErrorTags
     manageErrorTags.value[index].name = newName
+    manageErrorTags.value[index].color = newColor
     
     cancelTagEdit()
   } catch (error) {
@@ -1549,7 +1563,11 @@ async function executeDeleteTag() {
       const tag = errorTags.value.find(t => t.id === id)
       if (tag) {
         console.log('更新标签 ID:', id, '原名为:', tag.name, '新名为:', newName)
-        await updateErrorTagById(id, newName, tag.color)
+        await invoke('update_error_tag_by_id', {
+          tagId: id,
+          newTagName: newName,
+          newTagColor: tag.color
+        })
       }
     }
     
@@ -2346,7 +2364,7 @@ async function executeDeleteTag() {
 
 /* 项目激活状态 */
 .column-item.item-active {
-  background: var(--primary-light) !important;
+  background: var(--bg-primary) !important;
   border-left: 3px solid var(--primary-color);
 }
 
@@ -2356,6 +2374,7 @@ async function executeDeleteTag() {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: var(--bg-secondary);
 }
 
 .edit-form input {
@@ -2366,6 +2385,8 @@ async function executeDeleteTag() {
   font-size: 13px;
   outline: none;
   transition: border-color 0.2s;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
 }
 
 .edit-form input:focus {
@@ -2767,6 +2788,25 @@ async function executeDeleteTag() {
   color: var(--text-primary);
   background: white;
   outline: none;
+}
+
+.tag-color-input {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+.tag-color-input::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.tag-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 5px;
 }
 
 .tag-actions {

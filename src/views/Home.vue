@@ -33,23 +33,6 @@
       </div>
     </div>
 
-    <div class="stats-cards">
-      <div class="stat-card">
-        <div class="stat-icon">📚</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.total }}</div>
-          <div class="stat-label">总错题数</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">✅</div>
-        <div class="stat-info">
-          <div class="stat-value">{{ stats.mastered }}</div>
-          <div class="stat-label">已掌握</div>
-        </div>
-      </div>
-    </div>
-
     <div class="quick-actions">
       <h2>快捷操作</h2>
       <div class="action-grid">
