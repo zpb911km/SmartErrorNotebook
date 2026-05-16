@@ -18,6 +18,7 @@
       <!-- 科目筛选 - 向右展开的级联菜单 -->
       <div 
         class="filter-select-wrapper"
+        :class="{ 'dropdown-open': subjectDropdownVisible || cascadeVisible }"
       >
         <!-- 自定义下拉框 -->
         <div 
@@ -109,141 +110,118 @@
           </div>
         </div>
       </div>
-
-      <!-- 状态筛选 -->
-      <div class="filter-select-wrapper">
+      <!-- 标签筛选 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': tagDropdownVisible }">
         <div 
           class="custom-select"
-          @click="toggleStatusDropdown"
+          @click="toggleTagDropdown"
         >
           <div class="custom-select-value">
-            {{ statusText || '全部状态' }}
+            {{ selectedTagsText || '全部标签' }}
           </div>
-          <span class="custom-select-arrow" :class="{ 'rotated': statusDropdownVisible }">▼</span>
+          <span class="custom-select-arrow" :class="{ 'rotated': tagDropdownVisible }">▼</span>
         </div>
         
-        <div v-if="statusDropdownVisible" class="dropdown-popup">
+        <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
           <div 
             class="dropdown-item"
-            :class="{ active: filters.status === '' }"
-            @click="selectStatus('')"
+            :class="{ active: filters.tags.length === 0 }"
+            @click="clearTags"
           >
-            全部状态
+            全部标签
           </div>
           <div 
+            v-for="tag in availableTags" 
+            :key="tag"
             class="dropdown-item"
-            :class="{ active: filters.status === 'pending' }"
-            @click="selectStatus('pending')"
+            :class="{ active: filters.tags.includes(tag) }"
+            @click="toggleTag(tag)"
           >
-            待复习
-          </div>
-          <div 
-            class="dropdown-item"
-            :class="{ active: filters.status === 'reviewed' }"
-            @click="selectStatus('reviewed')"
-          >
-            已复习
-          </div>
-          <div 
-            class="dropdown-item"
-            :class="{ active: filters.status === 'mastered' }"
-            @click="selectStatus('mastered')"
-          >
-            已掌握
+            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
+            {{ tag }}
           </div>
         </div>
       </div>
-
-      <!-- 难度筛选 -->
-      <div class="filter-select-wrapper">
+      <!-- 难度排序 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': difficultyDropdownVisible }">
         <div 
           class="custom-select"
           @click="toggleDifficultyDropdown"
         >
           <div class="custom-select-value">
-            {{ difficultyText || '全部难度' }}
+            难度排序
+            <span v-if="difficultySort !== 'none'" class="sort-indicator">{{ difficultySort === 'desc' ? '↓' : '↑' }}</span>
           </div>
           <span class="custom-select-arrow" :class="{ 'rotated': difficultyDropdownVisible }">▼</span>
         </div>
         
         <div v-if="difficultyDropdownVisible" class="dropdown-popup">
+          <!-- 排序选项 - 竖向排列 -->
           <div 
             class="dropdown-item"
-            :class="{ active: filters.difficulty === '' }"
-            @click="selectDifficulty('')"
+            :class="{ active: difficultySort === 'none' }"
+            @click="setDifficultySort('none')"
           >
-            全部难度
+            无排序
           </div>
           <div 
             class="dropdown-item"
-            :class="{ active: filters.difficulty === 'easy' }"
-            @click="selectDifficulty('easy')"
+            :class="{ active: difficultySort === 'asc' }"
+            @click="setDifficultySort('asc')"
           >
-            简单
+            ↑ 正序
           </div>
           <div 
             class="dropdown-item"
-            :class="{ active: filters.difficulty === 'medium' }"
-            @click="selectDifficulty('medium')"
+            :class="{ active: difficultySort === 'desc' }"
+            @click="setDifficultySort('desc')"
           >
-            中等
-          </div>
-          <div 
-            class="dropdown-item"
-            :class="{ active: filters.difficulty === 'hard' }"
-            @click="selectDifficulty('hard')"
-          >
-            困难
+            ↓ 倒序
           </div>
         </div>
       </div>
 
-      <!-- 掌握程度筛选 -->
-      <div class="filter-select-wrapper">
+      <!-- 掌握程度排序 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': masteryDropdownVisible }">
         <div 
           class="custom-select"
           @click="toggleMasteryDropdown"
         >
           <div class="custom-select-value">
-            {{ masteryText || '全部掌握程度' }}
+            掌握程度排序
+            <span v-if="masterySort !== 'none'" class="sort-indicator">{{ masterySort === 'desc' ? '↓' : '↑' }}</span>
           </div>
           <span class="custom-select-arrow" :class="{ 'rotated': masteryDropdownVisible }">▼</span>
         </div>
         
         <div v-if="masteryDropdownVisible" class="dropdown-popup">
+          <!-- 排序选项 - 竖向排列 -->
           <div 
             class="dropdown-item"
-            :class="{ active: filters.mastery === '' }"
-            @click="selectMastery('')"
+            :class="{ active: masterySort === 'none' }"
+            @click="setMasterySort('none')"
           >
-            全部掌握程度
+            无排序
           </div>
           <div 
             class="dropdown-item"
-            :class="{ active: filters.mastery === 'unmastered' }"
-            @click="selectMastery('unmastered')"
+            :class="{ active: masterySort === 'asc' }"
+            @click="setMasterySort('asc')"
           >
-            未掌握 (0-30%)
+            ↑ 正序
           </div>
           <div 
             class="dropdown-item"
-            :class="{ active: filters.mastery === 'partial' }"
-            @click="selectMastery('partial')"
+            :class="{ active: masterySort === 'desc' }"
+            @click="setMasterySort('desc')"
           >
-            部分掌握 (30-70%)
-          </div>
-          <div 
-            class="dropdown-item"
-            :class="{ active: filters.mastery === 'mastered' }"
-            @click="selectMastery('mastered')"
-          >
-            已掌握 (70-100%)
+            ↓ 倒序
           </div>
         </div>
       </div>
 
       <!-- 时间范围筛选 -->
-      <div class="filter-select-wrapper">
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': dateRangeDropdownVisible }">
         <div 
           class="custom-select"
           @click="toggleDateRangeDropdown"
@@ -286,38 +264,7 @@
         </div>
       </div>
 
-      <!-- 标签筛选 -->
-      <div class="filter-select-wrapper">
-        <div 
-          class="custom-select"
-          @click="toggleTagDropdown"
-        >
-          <div class="custom-select-value">
-            {{ selectedTagsText || '全部标签' }}
-          </div>
-          <span class="custom-select-arrow" :class="{ 'rotated': tagDropdownVisible }">▼</span>
-        </div>
-        
-        <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
-          <div 
-            class="dropdown-item"
-            :class="{ active: filters.tags.length === 0 }"
-            @click="clearTags"
-          >
-            全部标签
-          </div>
-          <div 
-            v-for="tag in availableTags" 
-            :key="tag"
-            class="dropdown-item"
-            :class="{ active: filters.tags.includes(tag) }"
-            @click="toggleTag(tag)"
-          >
-            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
-            {{ tag }}
-          </div>
-        </div>
-      </div>
+      
     </div>
 
     <!-- 已选筛选条件 -->
@@ -332,19 +279,27 @@
 
     <div class="error-list">
       <div v-for="error in filteredErrors" :key="error.id" class="error-card" @click="viewError(error)">
+        <!-- 上层：左边信息，右边标签 -->
         <div class="error-header">
-          <span class="subject-tag" :style="getSubjectStyle(error.subject_id)">{{ error.subjectName }}</span>
-          <span v-if="error.book" class="source-tag book-tag">{{ error.book }}</span>
-          <span v-if="error.knowledge" class="source-tag knowledge-tag">{{ error.knowledge }}</span>
-          <span class="difficulty-tag" :class="getDifficultyClass(error.difficulty)">{{ error.difficultyName }}</span>
+          <div class="header-left">
+            <span class="subject-tag" :style="getSubjectStyle(error.subject_id)">{{ error.subjectName }}</span>
+            <span v-if="error.book" class="source-tag book-tag">{{ error.book }}</span>
+            <span v-if="error.chapter" class="source-tag chapter-tag">{{ error.chapter }}</span>
+            <span v-if="error.knowledge" class="source-tag knowledge-tag">{{ error.knowledge }}</span>
+            <span class="difficulty-tag" :class="getDifficultyClass(error.difficulty)">{{ error.difficultyName }}</span>
+          </div>
+          <!-- 错因标签在右上角 -->
+          <div v-if="error.tags && error.tags.length > 0" class="error-tags-inline">
+            <span v-for="tag in error.tags" :key="tag" class="tag-item-inline">{{ tag }}</span>
+          </div>
         </div>
-        <div class="error-content">{{ truncateContent(error.content, 100) }}</div>
-        <div v-if="error.tags && error.tags.length > 0" class="error-tags">
-          <span v-for="tag in error.tags" :key="tag" class="tag-item">{{ tag }}</span>
-        </div>
-        <div class="error-footer">
-          <span class="error-date">{{ error.date }}</span>
-          <span class="error-status" :class="error.status">{{ error.statusText }}</span>
+        
+        <!-- 下层：左边题干，右边时间靠下 -->
+        <div class="error-body">
+          <div class="error-content markdown-body" v-html="renderMarkdown(error.content)"></div>
+          <div class="error-footer">
+            <span class="error-date">{{ error.date }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -363,7 +318,9 @@ import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
 import { getBooks, getChapters, getKnowledges, getSources } from '../apis/sources'
 import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
+import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
 import type { Subject } from '../types'
+import { marked } from 'marked'
 
 const router = useRouter()
 const route = useRoute()
@@ -374,10 +331,7 @@ const filters = ref({
   book: '',
   chapter: '',
   knowledge: '',
-  status: '',
   keyword: '',
-  difficulty: '',       // 'easy' | 'medium' | 'hard'
-  mastery: '',          // 'unmastered' | 'partial' | 'mastered'
   date_range: 'all',    // '7days' | '30days' | '90days' | 'all'
   tags: [] as string[]  // 标签名称数组（多选）
 })
@@ -423,50 +377,23 @@ const hasChapterClicked = ref(false)
 const subjectDropdownVisible = ref(false)
 
 // 其他筛选器下拉框状态
-const statusDropdownVisible = ref(false)
 const difficultyDropdownVisible = ref(false)
 const masteryDropdownVisible = ref(false)
 const dateRangeDropdownVisible = ref(false)
 const tagDropdownVisible = ref(false)
+
+// SRS 数据缓存
+const srsDataMap = ref<Map<string, any>>(new Map())
+
+// 排序状态
+const difficultySort = ref<'asc' | 'desc' | 'none'>('none')
+const masterySort = ref<'asc' | 'desc' | 'none'>('none')
 
 // 计算选中的科目名称
 const selectedSubjectName = computed(() => {
   if (!filters.value.subject_id) return ''
   const subject = subjects.value.find(s => s.id === filters.value.subject_id)
   return subject?.name || ''
-})
-
-// 计算状态文本
-const statusText = computed(() => {
-  if (!filters.value.status) return ''
-  const statusMap: Record<string, string> = {
-    pending: '待复习',
-    reviewed: '已复习',
-    mastered: '已掌握'
-  }
-  return statusMap[filters.value.status] || ''
-})
-
-// 计算难度文本
-const difficultyText = computed(() => {
-  if (!filters.value.difficulty) return ''
-  const difficultyMap: Record<string, string> = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
-  }
-  return difficultyMap[filters.value.difficulty] || ''
-})
-
-// 计算掌握程度文本
-const masteryText = computed(() => {
-  if (!filters.value.mastery) return ''
-  const masteryMap: Record<string, string> = {
-    unmastered: '未掌握 (0-30%)',
-    partial: '部分掌握 (30-70%)',
-    mastered: '已掌握 (70-100%)'
-  }
-  return masteryMap[filters.value.mastery] || ''
 })
 
 // 计算时间范围文本
@@ -490,12 +417,6 @@ const toggleSubjectDropdown = () => {
   }
   // 关闭其他下拉框
   closeOtherDropdowns('subject')
-}
-
-// 切换状态下拉框
-const toggleStatusDropdown = () => {
-  statusDropdownVisible.value = !statusDropdownVisible.value
-  closeOtherDropdowns('status')
 }
 
 // 切换难度下拉框
@@ -525,28 +446,21 @@ const toggleTagDropdown = () => {
 // 关闭其他下拉框
 const closeOtherDropdowns = (current: string) => {
   if (current !== 'subject') subjectDropdownVisible.value = false
-  if (current !== 'status') statusDropdownVisible.value = false
   if (current !== 'difficulty') difficultyDropdownVisible.value = false
   if (current !== 'mastery') masteryDropdownVisible.value = false
   if (current !== 'dateRange') dateRangeDropdownVisible.value = false
   if (current !== 'tag') tagDropdownVisible.value = false
 }
 
-// 选择状态
-const selectStatus = (status: string) => {
-  filters.value.status = status
-  statusDropdownVisible.value = false
-}
-
-// 选择难度
-const selectDifficulty = (difficulty: string) => {
-  filters.value.difficulty = difficulty
+// 设置难度排序
+const setDifficultySort = (sort: 'asc' | 'desc' | 'none') => {
+  difficultySort.value = sort
   difficultyDropdownVisible.value = false
 }
 
-// 选择掌握程度
-const selectMastery = (mastery: string) => {
-  filters.value.mastery = mastery
+// 设置掌握程度排序
+const setMasterySort = (sort: 'asc' | 'desc' | 'none') => {
+  masterySort.value = sort
   masteryDropdownVisible.value = false
 }
 
@@ -636,9 +550,6 @@ const closeAllOtherFilters = (current: string) => {
     hasClicked.value = false
     hasBookClicked.value = false
     hasChapterClicked.value = false
-  }
-  if (current !== 'status' && statusSelectRef.value) {
-    statusSelectRef.value.blur()
   }
   if (current !== 'difficulty' && difficultySelectRef.value) {
     difficultySelectRef.value.blur()
@@ -916,6 +827,56 @@ const fetchData = async () => {
     // 后端返回的数据包含 created_at 和 updated_at 等额外字段
     errors.value = questionsData as any[]
     
+    // 批量获取 SRS 数据
+    console.log('开始获取 SRS 数据...')
+    const srsMap = new Map<string, any>()
+    const questionsWithoutSRS: any[] = []
+    
+    const srsPromises = questionsData.map(async (question: any) => {
+      try {
+        const srsData = await getQuestionSRSStatus(question.id)
+        if (srsData) {
+          srsMap.set(question.id, srsData)
+          console.log(`题目 ${question.id} 的 SRS 数据:`, {
+            difficulty: srsData.difficulty,
+            stability: srsData.stability,
+            recall_rate: srsData.recall_rate,
+            review_count: srsData.review_count
+          })
+        } else {
+          console.warn(`题目 ${question.id} 没有 SRS 数据，将自动创建`)
+          questionsWithoutSRS.push(question)
+        }
+      } catch (error) {
+        console.warn(`获取题目 ${question.id} 的 SRS 数据失败:`, error)
+        questionsWithoutSRS.push(question)
+      }
+    })
+    
+    await Promise.all(srsPromises)
+    
+    // 为没有 SRS 数据的题目创建 SRS 数据
+    if (questionsWithoutSRS.length > 0) {
+      console.log(`开始为 ${questionsWithoutSRS.length} 个题目创建 SRS 数据...`)
+      const createPromises = questionsWithoutSRS.map(async (question: any) => {
+        try {
+          // 使用默认难度 5.0（中等）
+          const srsData = await createSRSData(question.id, 5.0)
+          srsMap.set(question.id, srsData)
+          console.log(`为题目 ${question.id} 创建 SRS 数据成功:`, srsData)
+        } catch (error) {
+          console.error(`为题目 ${question.id} 创建 SRS 数据失败:`, error)
+        }
+      })
+      
+      await Promise.all(createPromises)
+      console.log('SRS 数据创建完成')
+    }
+    
+    srsDataMap.value = srsMap
+    console.log('SRS 数据获取完成，总数:', srsMap.size)
+    console.log('SRS 数据详情:', Array.from(srsMap.entries()))
+    
     // 提取所有唯一的标签名称
     const allTags = tagsData as any[]
     const uniqueTags = [...new Set(allTags.map(tag => tag.name))]
@@ -986,11 +947,34 @@ const truncateContent = (content: string, maxLength: number) => {
   return content.substring(0, maxLength) + '...'
 }
 
+// 渲染 Markdown
+const renderMarkdown = (content: string) => {
+  if (!content) return ''
+  const normalized = content
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+  return marked.parse(normalized, { breaks: true, gfm: true }) as string
+}
+
 // 获取难度等级（基于 SRS 数据）
-const getDifficultyLevel = (_questionId: string): number => {
-  // TODO: 从 SRS 数据中获取实际难度
-  // 目前返回默认值 2（中等）
-  return 2
+const getDifficultyLevel = (questionId: string): number => {
+  const srsData = srsDataMap.value.get(questionId)
+  if (!srsData) {
+    // 只在开发环境下输出警告，避免生产环境日志过多
+    if (import.meta.env.DEV) {
+      console.debug(`题目 ${questionId} 暂无 SRS 数据，使用默认难度`)
+    }
+    return 2 // 默认中等
+  }
+  
+  // SRS difficulty 范围是 [1.0, 10.0]
+  // 映射到前端的 3 个等级：1=简单, 2=中等, 3=困难
+  const difficulty = srsData.difficulty || 5.0
+  if (difficulty <= 3.5) return 1 // 简单
+  if (difficulty <= 6.5) return 2 // 中等
+  return 3 // 困难
 }
 
 // 获取难度名称
@@ -1047,36 +1031,6 @@ const activeFilters = computed(() => {
     }
   }
   
-  // 状态
-  if (filters.value.status) {
-    const statusMap: Record<string, string> = {
-      pending: '待复习',
-      reviewed: '已复习',
-      mastered: '已掌握'
-    }
-    filters_list.push({ key: 'status', label: statusMap[filters.value.status] })
-  }
-  
-  // 难度
-  if (filters.value.difficulty) {
-    const difficultyMap: Record<string, string> = {
-      easy: '简单',
-      medium: '中等',
-      hard: '困难'
-    }
-    filters_list.push({ key: 'difficulty', label: difficultyMap[filters.value.difficulty] })
-  }
-  
-  // 掌握程度
-  if (filters.value.mastery) {
-    const masteryMap: Record<string, string> = {
-      unmastered: '未掌握',
-      partial: '部分掌握',
-      mastered: '已掌握'
-    }
-    filters_list.push({ key: 'mastery', label: masteryMap[filters.value.mastery] })
-  }
-  
   // 时间范围
   if (filters.value.date_range && filters.value.date_range !== 'all') {
     const dateRangeMap: Record<string, string> = {
@@ -1093,6 +1047,18 @@ const activeFilters = computed(() => {
       ? filters.value.tags[0] 
       : `${filters.value.tags[0]} +${filters.value.tags.length - 1}`
     filters_list.push({ key: 'tags', label })
+  }
+  
+  // 难度排序
+  if (difficultySort.value !== 'none') {
+    const sortLabel = difficultySort.value === 'asc' ? '难度正序排序' : '难度倒序排序'
+    filters_list.push({ key: 'difficulty_sort', label: sortLabel })
+  }
+  
+  // 掌握程度排序
+  if (masterySort.value !== 'none') {
+    const sortLabel = masterySort.value === 'asc' ? '掌握程度正序排序' : '掌握程度倒序排序'
+    filters_list.push({ key: 'mastery_sort', label: sortLabel })
   }
   
   // 书名
@@ -1122,15 +1088,6 @@ const removeFilter = (key: string) => {
       filters.value.chapter = ''
       filters.value.knowledge = ''
       break
-    case 'status':
-      filters.value.status = ''
-      break
-    case 'difficulty':
-      filters.value.difficulty = ''
-      break
-    case 'mastery':
-      filters.value.mastery = ''
-      break
     case 'date_range':
       filters.value.date_range = 'all'
       break
@@ -1139,8 +1096,6 @@ const removeFilter = (key: string) => {
       break
     case 'book':
       filters.value.book = ''
-      filters.value.chapter = ''
-      filters.value.knowledge = ''
       break
     case 'chapter':
       filters.value.chapter = ''
@@ -1148,6 +1103,12 @@ const removeFilter = (key: string) => {
       break
     case 'knowledge':
       filters.value.knowledge = ''
+      break
+    case 'difficulty_sort':
+      difficultySort.value = 'none'
+      break
+    case 'mastery_sort':
+      masterySort.value = 'none'
       break
   }
 }
@@ -1158,9 +1119,6 @@ const clearAllFilters = () => {
   filters.value.book = ''
   filters.value.chapter = ''
   filters.value.knowledge = ''
-  filters.value.status = ''
-  filters.value.difficulty = ''
-  filters.value.mastery = ''
   filters.value.date_range = 'all'
   filters.value.tags = []
   filters.value.keyword = ''
@@ -1191,7 +1149,7 @@ const onSearchFocus = () => {
 
 // 过滤后的错题列表
 const filteredErrors = computed(() => {
-  return errors.value
+  let filtered = errors.value
     .map((question: any) => {
       const subject = subjects.value.find(s => s.id === question.subjectid)
       const difficulty = getDifficultyLevel(question.id)
@@ -1256,24 +1214,6 @@ const filteredErrors = computed(() => {
       if (filters.value.knowledge && error.knowledge !== filters.value.knowledge) {
         return false
       }
-      // 状态筛选
-      if (filters.value.status && error.status !== filters.value.status) {
-        return false
-      }
-      // 难度筛选
-      if (filters.value.difficulty) {
-        if (filters.value.difficulty === 'easy' && error.difficulty > 1) return false
-        if (filters.value.difficulty === 'medium' && (error.difficulty <= 1 || error.difficulty > 3)) return false
-        if (filters.value.difficulty === 'hard' && error.difficulty <= 3) return false
-      }
-      // 掌握程度筛选
-      if (filters.value.mastery) {
-        // TODO: 从 SRS 数据获取 mastery，目前使用模拟数据
-        const mastery = 50 // 默认值
-        if (filters.value.mastery === 'unmastered' && mastery > 30) return false
-        if (filters.value.mastery === 'partial' && (mastery <= 30 || mastery > 70)) return false
-        if (filters.value.mastery === 'mastered' && mastery <= 70) return false
-      }
       // 时间范围筛选
       if (filters.value.date_range && filters.value.date_range !== 'all') {
         const now = Date.now() / 1000 // 当前秒级时间戳
@@ -1336,6 +1276,63 @@ const filteredErrors = computed(() => {
       }
       return true
     })
+  
+  // 排序：难度筛选时按难度排序
+  if (difficultySort.value !== 'none') {
+    filtered.sort((a: any, b: any) => {
+      const srsA = srsDataMap.value.get(a.id)
+      const srsB = srsDataMap.value.get(b.id)
+      const diffA = srsA?.difficulty || 5.0
+      const diffB = srsB?.difficulty || 5.0
+      return difficultySort.value === 'desc' ? diffB - diffA : diffA - diffB
+    })
+    
+    // 输出排序结果日志
+    if (filtered.length > 0) {
+      const firstSRS = srsDataMap.value.get(filtered[0].id)
+      const lastSRS = srsDataMap.value.get(filtered[filtered.length - 1].id)
+      const firstDiff = firstSRS?.difficulty || 5.0
+      const lastDiff = lastSRS?.difficulty || 5.0
+      const sortType = difficultySort.value === 'asc' ? '正序' : '倒序'
+      console.log(`难度排序完成 (${sortType}): ${firstDiff.toFixed(2)} ~ ${lastDiff.toFixed(2)}`)
+    }
+  }
+  
+  // 排序：掌握程度筛选时按掌握程度排序
+  if (masterySort.value !== 'none') {
+    // 计算掌握程度
+    const calculateMastery = (questionId: string): number => {
+      const srsData = srsDataMap.value.get(questionId)
+      if (!srsData) return 50 // 默认值
+      
+      const reviewCount = srsData.review_count || 0
+      const stability = srsData.stability || 0
+      const recallRate = srsData.recall_rate || 0
+      
+      // 综合计算掌握程度（0-100%）
+      const reviewScore = Math.min(reviewCount / 10, 1) * 100
+      const stabilityScore = Math.min(stability / 30, 1) * 100
+      const recallScore = recallRate * 100
+      
+      return reviewScore * 0.3 + stabilityScore * 0.3 + recallScore * 0.4
+    }
+    
+    filtered.sort((a: any, b: any) => {
+      const masteryA = calculateMastery(a.id)
+      const masteryB = calculateMastery(b.id)
+      return masterySort.value === 'desc' ? masteryB - masteryA : masteryA - masteryB
+    })
+    
+    // 输出排序结果日志
+    if (filtered.length > 0) {
+      const firstMastery = calculateMastery(filtered[0].id)
+      const lastMastery = calculateMastery(filtered[filtered.length - 1].id)
+      const sortType = masterySort.value === 'asc' ? '正序' : '倒序'
+      console.log(`掌握程度排序完成 (${sortType}): ${firstMastery.toFixed(1)}% ~ ${lastMastery.toFixed(1)}%`)
+    }
+  }
+  
+  return filtered
 })
 
 // 查看错题详情
@@ -1379,6 +1376,7 @@ const viewError = (error: any) => {
   margin-bottom: 12px;
   flex-wrap: wrap;
   align-items: flex-start;
+  position: relative;
 }
 
 /* 已选筛选条件 */
@@ -1462,6 +1460,11 @@ const viewError = (error: any) => {
   flex: 1;
   min-width: 100px;
   z-index: 1;
+}
+
+/* 当下拉框打开时，提升层级 */
+.filter-select-wrapper.dropdown-open {
+  z-index: 1002;
 }
 
 /* 向下展开的级联弹窗 */
@@ -1559,10 +1562,10 @@ const viewError = (error: any) => {
 /* 下拉弹窗 */
 .dropdown-popup {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
-  right: 0;
-  margin-top: 4px;
+  right: auto;
+  min-width: 150px;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -1624,6 +1627,11 @@ const viewError = (error: any) => {
 
 .dropdown-item:active {
   transform: scale(0.98);
+}
+
+.sort-indicator {
+  margin-left: 4px;
+  font-size: 12px;
 }
 
 /* 级联列 */
@@ -1773,6 +1781,10 @@ const viewError = (error: any) => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: all 0.3s;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .error-card:active {
@@ -1783,6 +1795,16 @@ const viewError = (error: any) => {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
 }
 
 .subject-tag {
@@ -1830,19 +1852,25 @@ const viewError = (error: any) => {
   color: #7b1fa2;
 }
 
+.chapter-tag {
+  background: #e8f5e9;
+  color: #43a047;
+}
+
+
 .knowledge-tag {
   background: #e0f2f1;
   color: #00796b;
 }
 
-.error-tags {
+.error-tags-inline {
   display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 4px;
+  margin-left: auto;
   flex-wrap: wrap;
 }
 
-.tag-item {
+.tag-item-inline {
   padding: 3px 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
@@ -1852,22 +1880,117 @@ const viewError = (error: any) => {
   white-space: nowrap;
 }
 
+/* 下层布局 */
+.error-body {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-height: 0;
+}
+
 .error-content {
   font-size: 14px;
   color: var(--text-primary);
-  margin-bottom: 12px;
   line-height: 1.5;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 .error-footer {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
+  justify-content: flex-end;
   font-size: 12px;
+  padding-bottom: 0;
+  flex-shrink: 0;
 }
 
 .error-date {
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Markdown 渲染内容溢出处理 */
+.error-content.markdown-body {
+  overflow: hidden;
+  max-height: 100%;
+}
+
+/* Markdown 渲染样式 */
+.error-content.markdown-body :deep(h1),
+.error-content.markdown-body :deep(h2),
+.error-content.markdown-body :deep(h3),
+.error-content.markdown-body :deep(h4),
+.error-content.markdown-body :deep(h5),
+.error-content.markdown-body :deep(h6) {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+  font-size: 1em;
+}
+
+.error-content.markdown-body :deep(p) {
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(code) {
+  background: rgba(25, 118, 210, 0.12);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.error-content.markdown-body :deep(pre) {
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #e2e8f0;
+}
+
+.error-content.markdown-body :deep(ul),
+.error-content.markdown-body :deep(ol) {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.error-content.markdown-body :deep(a) {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.error-content.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(th),
+.error-content.markdown-body :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+}
+
+/* 旧的 footer 样式保留但不再使用 */
+.error-footer-old {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 12px;
 }
 
 .error-status {

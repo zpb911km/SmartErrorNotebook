@@ -2,7 +2,12 @@
   <div class="manage-detail-page">
     <!-- 顶部导航栏 -->
     <div class="detail-header">
-      <button class="back-btn" @click="goBack">← 返回</button>
+      <button class="back-btn" @click="goBack">
+        <svg class="back-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        <span>返回</span>
+      </button>
       <h2>错题详情管理</h2>
       <div class="header-actions">
         <button class="action-btn edit-btn" @click="toggleEditMode">
@@ -75,12 +80,12 @@
               v-for="(image, index) in (isEditing ? tempQuestionImages : questionImages)" 
               :key="image.id || `temp-${index}`" 
               class="image-item"
+              @click="previewImage(image)"
             >
               <img 
                 :src="buildImageSrc(image)" 
                 :alt="'题目图片'" 
                 class="question-image"
-                @click="previewImage(image)"
               >
               <button 
                 v-if="isEditing"
@@ -114,13 +119,14 @@
         
         <div class="form-group">
           <label>题干</label>
-          <textarea 
+          <MarkdownTextarea 
+            v-if="isEditing"
             v-model="editForm.prompt" 
-            :disabled="!isEditing"
-            rows="6"
-            class="form-textarea"
-            placeholder="请输入题目内容..."
-          ></textarea>
+            :show-preview="true"
+            :default-view-mode="'edit'"
+            preview-title="题目预览"
+          />
+          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.prompt)"></div>
         </div>
       </div>
 
@@ -129,13 +135,15 @@
         <div class="section-title">参考答案</div>
         
         <div class="form-group">
-          <textarea 
+          <label>参考答案</label>
+          <MarkdownTextarea 
+            v-if="isEditing"
             v-model="editForm.answer" 
-            :disabled="!isEditing"
-            rows="4"
-            class="form-textarea"
-            placeholder="请输入参考答案..."
-          ></textarea>
+            :show-preview="true"
+            :default-view-mode="'edit'"
+            preview-title="答案预览"
+          />
+          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.answer)"></div>
         </div>
       </div>
 
@@ -144,13 +152,15 @@
         <div class="section-title">解析</div>
         
         <div class="form-group">
-          <textarea 
+          <label>解析</label>
+          <MarkdownTextarea 
+            v-if="isEditing"
             v-model="editForm.analysis" 
-            :disabled="!isEditing"
-            rows="6"
-            class="form-textarea"
-            placeholder="请输入题目解析..."
-          ></textarea>
+            :show-preview="true"
+            :default-view-mode="'edit'"
+            preview-title="解析预览"
+          />
+          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.analysis)"></div>
         </div>
       </div>
 
@@ -158,11 +168,20 @@
       <div class="tags-section">
         <div class="section-title">错因标签</div>
         
-        <div class="tags-display">
+        <!-- 非编辑模式：只显示标签 -->
+        <div v-if="!isEditing" class="tags-display">
           <span v-for="tag in errorTags" :key="tag.id" class="tag-item" :style="{ backgroundColor: tag.color + '20', color: tag.color }">
             {{ tag.name }}
           </span>
           <span v-if="errorTags.length === 0" class="no-tags">暂无标签</span>
+        </div>
+        
+        <!-- 编辑模式：使用标签选择器 -->
+        <div v-else class="tags-edit">
+          <ErrorTagSelector 
+            :currentTags="tempErrorTags"
+            @select="(tags) => { tempErrorTags = tags }"
+          />
         </div>
       </div>
 
@@ -171,13 +190,15 @@
         <div class="section-title">错题笔记</div>
         
         <div class="form-group">
-          <textarea 
+          <label>笔记内容</label>
+          <MarkdownTextarea 
+            v-if="isEditing"
             v-model="editForm.error_note" 
-            :disabled="!isEditing"
-            rows="6"
-            class="form-textarea"
-            placeholder="记录你的学习心得和注意事项..."
-          ></textarea>
+            :show-preview="true"
+            :default-view-mode="'edit'"
+            preview-title="笔记预览"
+          />
+          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.error_note)"></div>
         </div>
       </div>
 
@@ -185,23 +206,34 @@
       <div class="srs-section">
         <div class="section-title">学习数据</div>
         
-        <div class="srs-stats">
+        <div v-if="srsData" class="srs-stats">
           <div class="stat-item">
             <span class="stat-label">掌握程度</span>
-            <span class="stat-value">{{ srsData?.mastery || 0 }}%</span>
+            <span class="stat-value">{{ calculateMastery(srsData) }}%</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">难度系数</span>
-            <span class="stat-value">{{ srsData?.difficulty || '未设置' }}</span>
+            <span class="stat-value">{{ srsData.difficulty.toFixed(2) }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">复习次数</span>
-            <span class="stat-value">{{ srsData?.review_count || 0 }}</span>
+            <span class="stat-value">{{ srsData.review_count }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">最后复习</span>
-            <span class="stat-value">{{ formatTimestamp(srsData?.lastreviewed_at) }}</span>
+            <span class="stat-value">{{ formatTimestamp(srsData.last_review_at) }}</span>
           </div>
+          <div class="stat-item">
+            <span class="stat-label">稳定性</span>
+            <span class="stat-value">{{ srsData.stability.toFixed(2) }} 天</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">召回率</span>
+            <span class="stat-value">{{ (srsData.recall_rate * 100).toFixed(1) }}%</span>
+          </div>
+        </div>
+        <div v-else class="no-srs-data">
+          <p>暂无学习数据</p>
         </div>
       </div>
 
@@ -249,22 +281,57 @@
         {{ saving ? '保存中...' : '保存修改' }}
       </button>
     </div>
+
+    <!-- 非编辑模式：简单图片预览 -->
+    <ImagePreview 
+      v-if="!isEditing"
+      :visible="showImagePreview" 
+      :imageUrl="previewImageUrl"
+      @close="closeImagePreview"
+    />
+
+    <!-- 编辑模式：图片编辑器预览 -->
+    <ImageEditor 
+      v-if="isEditing"
+      :visible="showImagePreview" 
+      :imageData="previewImageUrl"
+      :autoDetect="false"
+      @close="closeImagePreview"
+      @confirm="handlePreviewConfirm"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+import 'katex/dist/katex.min.css'
+
+// 配置 marked 支持 KaTeX
+marked.use(
+  markedKatex({
+    throwOnError: false,
+    output: 'html'
+  })
+)
+
 import { 
   getQuestion, 
   updateQuestion, 
   deleteQuestion 
 } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
-import { getErrorTagByQuestionId } from '../apis/errorTags'
+import { getErrorTagByQuestionId, createErrorTagsForQuestion, deleteErrorTagById } from '../apis/errorTags'
 import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment, base64ToArrayBuffer } from '../apis/attachments'
+import { getQuestionSRSStatus } from '../apis/srsData'
 import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
+import MarkdownTextarea from '../components/MarkdownTextarea.vue'
+import ImageEditor from '../components/ImageEditor.vue'
+import ImagePreview from '../components/ImagePreview.vue'
+import ErrorTagSelector from '../components/ErrorTagSelector.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -288,6 +355,9 @@ const tempQuestionImages = ref<Attachment[]>([])
 const imagesToDelete = ref<string[]>([]) // 待删除的图片ID列表
 const imagesToAdd = ref<File[]>([]) // 待添加的文件列表
 
+// 临时标签列表（用于编辑时的暂存）
+const tempErrorTags = ref<Array<{ name: string; color: string }>>([])
+
 // 编辑状态
 const isEditing = ref(false)
 const saving = ref(false)
@@ -306,36 +376,78 @@ const showDeleteConfirm = ref(false)
 
 // 获取错题详情
 const fetchErrorDetail = async () => {
+  console.log('========== 开始获取错题详情 ==========')
+  console.log('错题ID:', errorId.value)
+  
   try {
     const question = await getQuestion(errorId.value)
+    console.log('========== 后端返回的原始数据 ==========')
+    console.log('question 对象:', question)
+    console.log('question 类型:', typeof question)
+    console.log('question.keys:', Object.keys(question))
+    
+    // 详细记录所有字段
+    console.log('========== 字段详细检查 ==========')
+    console.log('question.id:', (question as any).id)
+    console.log('question.subjectid:', (question as any).subjectid)
+    console.log('question.subject_id:', (question as any).subject_id)
+    console.log('question.sourceid:', (question as any).sourceid)
+    console.log('question.source_id:', (question as any).source_id)
+    console.log('question.userid:', (question as any).userid)
+    console.log('question.user_id:', (question as any).user_id)
+    console.log('question.prompt:', (question as any).prompt)
+    console.log('question.type_:', (question as any).type_)
+    console.log('question.type:', (question as any).type)
+    console.log('question.answer:', (question as any).answer)
+    console.log('question.analysis:', (question as any).analysis)
+    console.log('question.error_note:', (question as any).error_note)
     
     // 处理后端返回的字段映射（subjectid -> subject_id, sourceid -> source_id 等）
+    // 注意：使用 ?? 运算符以正确保留 null 值
     const mappedQuestion = {
       ...question,
-      subject_id: (question as any).subjectid || question.subject_id,
-      source_id: (question as any).sourceid || question.source_id,
-      user_id: (question as any).userid || question.user_id,
+      subject_id: (question as any).subjectid ?? question.subject_id,
+      source_id: (question as any).sourceid ?? question.source_id,
+      user_id: (question as any).userid ?? question.user_id,
       error_note: (question as any).error_note || '',
       created_at: (question as any).created_at,
       updated_at: (question as any).updated_at
     } as any
     
+    console.log('========== 映射后的数据 ==========')
+    console.log('mappedQuestion:', mappedQuestion)
+    console.log('mappedQuestion.subject_id:', mappedQuestion.subject_id)
+    console.log('mappedQuestion.source_id:', mappedQuestion.source_id)
+    console.log('mappedQuestion.source_id 类型:', typeof mappedQuestion.source_id)
+    console.log('mappedQuestion.source_id 是否为空:', !mappedQuestion.source_id)
+    
     errorDetail.value = mappedQuestion
+    console.log('errorDetail.value 已设置')
     
     // 初始化编辑表单
+    // 注意：source_id 使用 ?? 保留 null 值，避免 || 运算符将 null 转换为 undefined
     editForm.value = {
       subject_id: mappedQuestion.subject_id,
-      source_id: mappedQuestion.source_id,
+      source_id: mappedQuestion.source_id ?? '',
       prompt: mappedQuestion.prompt,
       type: (question as any).type_ || mappedQuestion.type,
       answer: mappedQuestion.answer || '',
       analysis: mappedQuestion.analysis || '',
       error_note: mappedQuestion.error_note || ''
     }
+    
+    console.log('========== 编辑表单初始化 ==========')
+    console.log('editForm.value:', editForm.value)
+    console.log('editForm.value.subject_id:', editForm.value.subject_id)
+    console.log('editForm.value.source_id:', editForm.value.source_id)
+    console.log('editForm.value.source_id 类型:', typeof editForm.value.source_id)
+    console.log('editForm.value.source_id 是否为空:', !editForm.value.source_id)
 
     // 获取标签
     try {
+      console.log('开始获取标签...')
       const allTags = await getErrorTagByQuestionId(errorId.value)
+      console.log('获取到的标签数量:', allTags.length)
       errorTags.value = allTags
     } catch (error) {
       console.error('获取标签失败:', error)
@@ -354,16 +466,30 @@ const fetchErrorDetail = async () => {
       const attachments = await getAttachmentsByQuestion(errorId.value)
       console.log('获取到的附件:', attachments)
       
-      // 分类图片和答案图片（注意：后端字段名是 type_ 不是 type）
-      questionImages.value = attachments.filter((att: any) => att.type_ === 'original')
-      answerImages.value = attachments.filter((att: any) => att.type_ === 'answer')
-      
+      // 分类附件（注意：后端字段名是 type_ 不是 type）
+      questionImages.value = attachments.filter((a: any) => a.type_ === 'original')
+      answerImages.value = attachments.filter((a: any) => a.type_ === 'answer')
       console.log('题目图片数量:', questionImages.value.length)
       console.log('答案图片数量:', answerImages.value.length)
     } catch (error) {
-      console.error('获取题目图片失败:', error)
+      console.error('获取附件失败:', error)
     }
     
+    // 获取 SRS 数据
+    try {
+      console.log('开始获取 SRS 数据...')
+      const srs = await getQuestionSRSStatus(errorId.value)
+      if (srs) {
+        srsData.value = srs
+        console.log('SRS 数据:', srs)
+      } else {
+        console.log('该题目没有 SRS 数据')
+        srsData.value = null
+      }
+    } catch (error) {
+      console.error('获取 SRS 数据失败:', error)
+      srsData.value = null
+    }
   } catch (error) {
     console.error('获取错题详情失败:', error)
   }
@@ -397,11 +523,18 @@ const toggleEditMode = () => {
     tempQuestionImages.value = []
     imagesToDelete.value = []
     imagesToAdd.value = []
+    // 清空临时标签数据
+    tempErrorTags.value = []
   } else {
     // 进入编辑模式，初始化临时列表
     tempQuestionImages.value = [...questionImages.value]
     imagesToDelete.value = []
     imagesToAdd.value = []
+    // 初始化临时标签列表
+    tempErrorTags.value = errorTags.value.map(tag => ({
+      name: tag.name,
+      color: tag.color
+    }))
   }
   isEditing.value = !isEditing.value
 }
@@ -458,7 +591,43 @@ const saveChanges = async () => {
       console.log('新图片上传成功')
     }
     
-    // 4. 重新获取详情（包括最新的图片）
+    // 4. 处理标签更新
+    console.log('========== 开始更新标签 ==========')
+    console.log('旧标签数量:', errorTags.value.length)
+    console.log('旧标签列表:', errorTags.value.map(t => `${t.name}(${t.id})`))
+    console.log('新标签数量:', tempErrorTags.value.length)
+    console.log('新标签列表:', tempErrorTags.value.map(t => `${t.name}(${t.color})`))
+    
+    // 4.1 删除当前题目的所有旧标签（使用ID精确删除）
+    if (errorTags.value.length > 0) {
+      console.log('开始删除', errorTags.value.length, '个旧标签...')
+      for (const tag of errorTags.value) {
+        try {
+          console.log('删除标签:', tag.name, '(ID:', tag.id, ')')
+          const deletedCount = await deleteErrorTagById(tag.id)
+          console.log('已删除标签:', tag.name, '(影响行数:', deletedCount, ')')
+        } catch (error) {
+          console.error('删除标签失败:', tag.name, error)
+        }
+      }
+      console.log('所有旧标签删除完成')
+    } else {
+      console.log('没有旧标签需要删除')
+    }
+    
+    // 4.2 创建新标签（只为当前题目创建）
+    if (tempErrorTags.value.length > 0) {
+      console.log('开始创建', tempErrorTags.value.length, '个新标签...')
+      const createdTags = await createErrorTagsForQuestion(errorId.value, tempErrorTags.value)
+      console.log('新标签创建成功，创建了', createdTags.length, '个标签')
+      console.log('创建的标签:', createdTags)
+    } else {
+      console.log('没有新标签需要创建')
+    }
+    
+    console.log('========== 标签更新完成 ==========')
+    
+    // 5. 重新获取详情（包括最新的图片和标签）
     await fetchErrorDetail()
     isEditing.value = false
     
@@ -480,6 +649,22 @@ const saveChanges = async () => {
 // 确认删除
 const confirmDelete = () => {
   showDeleteConfirm.value = true
+}
+
+// 计算掌握程度
+const calculateMastery = (srs: any): number => {
+  if (!srs) return 0
+  
+  const reviewCount = srs.review_count || 0
+  const stability = srs.stability || 0
+  const recallRate = srs.recall_rate || 0
+  
+  // 综合计算掌握程度（0-100%）
+  const reviewScore = Math.min(reviewCount / 10, 1) * 100
+  const stabilityScore = Math.min(stability / 30, 1) * 100
+  const recallScore = recallRate * 100
+  
+  return Math.round(reviewScore * 0.3 + stabilityScore * 0.3 + recallScore * 0.4)
 }
 
 // 删除错题
@@ -509,7 +694,22 @@ const goBack = () => {
 
 // 处理来源选择
 const handleSourceSelect = (sourceId: string) => {
+  console.log('========== 来源选择事件 ==========')
+  console.log('选中的来源ID:', sourceId)
+  console.log('选中前 editForm.source_id:', editForm.value.source_id)
   editForm.value.source_id = sourceId
+  console.log('选中后 editForm.source_id:', editForm.value.source_id)
+}
+
+// 渲染 Markdown
+const renderMarkdown = (content: string) => {
+  if (!content) return ''
+  const normalized = content
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+  return marked.parse(normalized, { breaks: true, gfm: true }) as string
 }
 
 // 构建图片src
@@ -539,7 +739,23 @@ const buildImageSrc = (attachment: any) => {
   }
 }
 
-// 预览图片
+// 图片预览状态
+const showImagePreview = ref(false)
+const previewImageUrl = ref('')
+
+// 关闭图片预览
+const closeImagePreview = () => {
+  showImagePreview.value = false
+  previewImageUrl.value = ''
+}
+
+// 处理预览确认（不保存更改）
+const handlePreviewConfirm = (imageData: string) => {
+  // 在预览模式下，点击确认只是关闭预览
+  closeImagePreview()
+}
+
+// 预览图片 - 使用 ImageEditor 组件
 const previewImage = (attachment: any) => {
   console.log('预览图片:', attachment)
   const imageUrl = buildImageSrc(attachment)
@@ -551,49 +767,8 @@ const previewImage = (attachment: any) => {
   }
   
   console.log('预览图片URL:', imageUrl.substring(0, 50) + '...')
-  
-  try {
-    // 在新窗口打开图片
-    const newWindow = window.open('', '_blank', 'width=1200,height=800')
-    if (newWindow) {
-      newWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>图片预览</title>
-          <style>
-            body {
-              margin: 0;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              min-height: 100vh;
-              background: #1a1a1a;
-              overflow: auto;
-            }
-            img {
-              max-width: 95%;
-              max-height: 95vh;
-              object-fit: contain;
-              box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            }
-          </style>
-        </head>
-        <body>
-          <img src="${imageUrl}" alt="图片预览">
-        </body>
-        </html>
-      `)
-      newWindow.document.close()
-      console.log('预览窗口已打开')
-    } else {
-      console.error('无法打开预览窗口，可能被浏览器拦截')
-      alert('无法打开预览窗口，请检查浏览器弹窗设置')
-    }
-  } catch (error) {
-    console.error('预览图片失败:', error)
-    alert('预览图片失败: ' + error)
-  }
+  previewImageUrl.value = imageUrl
+  showImagePreview.value = true
 }
 
 // 触发图片选择
@@ -679,11 +854,20 @@ onMounted(() => {
 <style scoped>
 .manage-detail-page {
   padding: 20px;
-  padding-bottom: 100px;
+  padding-bottom: 200px;
   background: var(--bg-primary);
   min-height: 100vh;
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+}
+
+/* 桌面端优化 - 全屏显示 */
+@media (min-width: 769px) {
+  .manage-detail-page {
+    max-width: none;
+    margin: 0;
+    padding: 40px;
+    padding-bottom: 200px;
+  }
 }
 
 /* 顶部导航 */
@@ -697,18 +881,42 @@ onMounted(() => {
 }
 
 .back-btn {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: background 0.2s;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.back-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.back-btn:hover .back-icon {
+  transform: translateX(-3px);
 }
 
 .back-btn:hover {
   background: var(--primary-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
+}
+
+.back-btn:active {
+  transform: translateX(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .detail-header h2 {
@@ -816,6 +1024,83 @@ onMounted(() => {
   background: var(--bg-secondary);
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+/* Markdown 预览样式 */
+.markdown-preview {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+  min-height: 100px;
+}
+
+.markdown-preview :deep(h1),
+.markdown-preview :deep(h2),
+.markdown-preview :deep(h3),
+.markdown-preview :deep(h4),
+.markdown-preview :deep(h5),
+.markdown-preview :deep(h6) {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+}
+
+.markdown-preview :deep(p) {
+  margin: 0.5em 0;
+}
+
+.markdown-preview :deep(code) {
+  background: rgba(25, 118, 210, 0.12);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.markdown-preview :deep(pre) {
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.markdown-preview :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #e2e8f0;
+}
+
+.markdown-preview :deep(ul),
+.markdown-preview :deep(ol) {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+
+.markdown-preview :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.markdown-preview :deep(a) {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.markdown-preview :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.markdown-preview :deep(th),
+.markdown-preview :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
 }
 
 .form-textarea {
@@ -986,7 +1271,22 @@ onMounted(() => {
   font-size: 14px;
 }
 
+.tags-edit {
+  margin-top: 8px;
+}
+
 /* SRS 统计 */
+.no-srs-data {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-secondary);
+}
+
+.no-srs-data p {
+  margin: 0;
+  font-size: 14px;
+}
+
 .srs-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1220,18 +1520,89 @@ onMounted(() => {
   }
   
   .detail-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .detail-header h2 {
+    font-size: 18px;
+    text-align: center;
+    grid-column: 2;
+  }
+  
+  .back-btn {
+    grid-column: 1;
+    justify-self: start;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .back-icon {
+    width: 14px;
+    height: 14px;
   }
   
   .header-actions {
-    width: 100%;
-    justify-content: space-between;
+    grid-column: 3;
+    justify-self: end;
+    display: flex;
+    gap: 8px;
   }
   
+  .action-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  /* 移动端 - 双列布局（无表格线） */
   .srs-stats {
-    grid-template-columns: repeat(2, 1fr);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    background: var(--input-bg);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  .stat-item {
+    display: contents;
+  }
+  
+  .stat-label {
+    padding: 8px 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: left;
+  }
+  
+  .stat-value {
+    padding: 8px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: right;
+  }
+}
+
+/* 桌面端优化 - 全屏显示 */
+@media (min-width: 769px) {
+  /* 图片网格优化 */
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+  }
+  
+  /* 表单元素优化 */
+  .form-select,
+  .form-textarea {
+    font-size: 15px;
+  }
+  
+  /* 弹窗宽度优化 */
+  .modal-content {
+    max-width: 900px;
   }
 }
 </style>

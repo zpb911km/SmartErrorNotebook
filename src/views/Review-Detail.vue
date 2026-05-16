@@ -12,8 +12,13 @@
 
     <div v-if="currentError" class="review-card">
       <div class="card-header">
-        <span class="subject-tag">{{ currentError.subjectName }}</span>
-        <span class="difficulty-tag" :class="currentError.difficulty">{{ currentError.difficultyName }}</span>
+        <div class="header-left">
+          <span class="subject-tag" :style="getSubjectStyle(currentError.subject)">{{ currentError.subjectName }}</span>
+          <span v-if="(currentError as any).book" class="source-tag book-tag">{{ (currentError as any).book }}</span>
+          <span v-if="(currentError as any).chapter" class="source-tag chapter-tag">{{ (currentError as any).chapter }}</span>
+          <span v-if="(currentError as any).knowledge" class="source-tag knowledge-tag">{{ (currentError as any).knowledge }}</span>
+          <span class="difficulty-tag" :class="getDifficultyClass(currentError.difficulty)">{{ currentError.difficultyName }}</span>
+        </div>
       </div>
 
       <div class="question-section">
@@ -98,6 +103,24 @@ const progressPercent = computed(() => {
   if (reviewList.value.length === 0) return 0
   return ((currentIndex.value + 1) / reviewList.value.length) * 100
 })
+
+// 获取科目样式
+const getSubjectStyle = (subjectId: string) => {
+  // 简化版本，返回默认样式
+  return {
+    backgroundColor: '#e3f2fd',
+    color: '#1976d2'
+  }
+}
+
+// 获取难度样式类
+const getDifficultyClass = (difficulty: number | string) => {
+  const level = typeof difficulty === 'string' ? 
+    (difficulty === 'easy' ? 1 : difficulty === 'medium' ? 2 : 3) : difficulty
+  if (level <= 1) return 'easy'
+  if (level <= 2) return 'medium'
+  return 'hard'
+}
 
 const markWrong = () => {
   totalCount.value++
@@ -185,6 +208,14 @@ const resetReview = () => {
   margin-bottom: 16px;
 }
 
+.header-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
 .subject-tag {
   padding: 4px 8px;
   background: var(--primary-light);
@@ -192,6 +223,28 @@ const resetReview = () => {
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
+}
+
+.source-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.book-tag {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.chapter-tag {
+  background: #e8f5e9;
+  color: #43a047;
+}
+
+.knowledge-tag {
+  background: #e0f2f1;
+  color: #00796b;
 }
 
 .difficulty-tag {
