@@ -30,6 +30,8 @@ pub struct CreateQuestionInput {
 pub struct UpdateQuestionInput {
     pub id: String,
     pub subject_id: Option<String>,
+    #[serde(alias = "source_id")]
+    pub sourceid: Option<String>,
     pub prompt: Option<String>,
     #[serde(rename = "type")]
     pub type_: Option<String>,
@@ -198,6 +200,9 @@ pub async fn update_question(
             .map_err(|e| e.to_string())?
             .ok_or("Subject not found")?;
         question.subjectid = Set(subjectid);
+    }
+    if let Some(sourceid) = input.sourceid {
+        question.sourceid = Set(Some(sourceid));
     }
     if let Some(prompt) = input.prompt {
         question.prompt = Set(prompt);

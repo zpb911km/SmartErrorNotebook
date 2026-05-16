@@ -32,6 +32,13 @@ const props = defineProps<{
   disable?: boolean;
 }>();
 
+// 添加一个监听器监听disable，如果disable为true，则收起
+watch(() => props.disable, (disable) => {
+  if (disable) {
+    isExpanded.value = false;
+  }
+});
+
 const emit = defineEmits<{
   (e: 'select', source_id: string): void;
 }>();
