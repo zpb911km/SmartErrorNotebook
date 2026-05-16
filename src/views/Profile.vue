@@ -72,7 +72,13 @@
 
       <!-- 科目分布 -->
       <div class="chart-section">
-        <h3>科目分布</h3>
+        <div class="section-header">
+          <h3>科目分布</h3>
+          <button class="manage-btn" @click="showCascade = true">
+            <span class="manage-icon">⚙️</span>
+            <span>管理</span>
+          </button>
+        </div>
         
         <!-- 可视化科目分布条 -->
         <div v-if="subjectDistribution.length > 0" class="distribution-visual">
@@ -106,7 +112,7 @@
           </div>
         </div>
         
-        <div v-if="showCascade" class="cascade-container">
+        <div ref="cascadeContainer" v-if="showCascade" class="cascade-container">
           <div class="cascade-header">
             <span class="cascade-title">科目详情</span>
             <button class="close-btn" @click="closeCascade">×</button>
@@ -116,14 +122,36 @@
             <div class="cascade-column cascade-col-1" :class="{ 'active-column': activeColumn === 0 }">
               <div class="column-title">科目</div>
               <div
-                v-for="subject in subjects"
-                :key="subject.id"
-                class="column-item"
-                :class="{ 'item-selected': selectedSubject?.id === subject.id }"
-                @click="handleSelectSubject(subject)"
-              >
-                <span class="item-dot" :style="{ background: subject.color || '#1976d2' }"></span>
-                <span class="item-text">{{ subject.name }}</span>
+              v-for="(subject, index) in subjects"
+              :key="subject.id"
+              class="column-item"
+              :class="{ 
+                'item-selected': selectedSubject?.id === subject.id,
+                'item-active': activeItemType === 'subject' && activeItemIndex === index
+              }"
+              @click="handleItemClick('subject', index)"
+              @mousedown="startLongPress('subject', index)"
+              @mouseup="cancelLongPress"
+              @mouseleave="cancelLongPress"
+              @touchstart="startLongPress('subject', index)"
+              @touchend="cancelLongPress"
+            >
+                <div v-if="isEditing && activeItemType === 'subject' && activeItemIndex === index" class="edit-form">
+                  <input v-model="editingItemName" @keyup.enter="saveEditSubject(subject, index)" />
+                  <input type="color" v-model="editingItemColor" />
+                  <div class="edit-buttons">
+                    <button class="btn-save" @click="saveEditSubject(subject, index)">✓</button>
+                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                  </div>
+                </div>
+                <template v-else>
+                  <span class="item-dot" :style="{ background: subject.color || '#1976d2' }"></span>
+                  <span class="item-text">{{ subject.name }}</span>
+                  <div v-if="activeItemType === 'subject' && activeItemIndex === index" class="item-actions">
+                    <button class="action-btn edit-btn" @click.stop="startEditSubject(subject, index)">✏️</button>
+                    <button class="action-btn delete-btn" @click.stop="confirmDeleteSubject(subject)">🗑️</button>
+                  </div>
+                </template>
               </div>
               <div v-if="subjects.length === 0" class="empty-column-item">
                 暂无科目
@@ -134,13 +162,34 @@
             <div class="cascade-column cascade-col-2" :class="{ 'active-column': activeColumn === 1, 'show-column': selectedSubject }" v-show="selectedSubject">
               <div class="column-title">书籍</div>
               <div
-                v-for="book in books"
-                :key="book"
-                class="column-item"
-                :class="{ 'item-selected': selectedBook === book }"
-                @click="handleSelectBook(book)"
-              >
-                <span class="item-text">{{ book }}</span>
+              v-for="(book, index) in books"
+              :key="book"
+              class="column-item"
+              :class="{ 
+                'item-selected': selectedBook === book,
+                'item-active': activeItemType === 'book' && activeItemIndex === index
+              }"
+              @click="handleItemClick('book', index)"
+              @mousedown="startLongPress('book', index)"
+              @mouseup="cancelLongPress"
+              @mouseleave="cancelLongPress"
+              @touchstart="startLongPress('book', index)"
+              @touchend="cancelLongPress"
+            >
+                <div v-if="isEditing && activeItemType === 'book' && activeItemIndex === index" class="edit-form">
+                  <input v-model="editingItemName" @keyup.enter="saveEditBook(book, index)" />
+                  <div class="edit-buttons">
+                    <button class="btn-save" @click="saveEditBook(book, index)">✓</button>
+                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                  </div>
+                </div>
+                <template v-else>
+                  <span class="item-text">{{ book }}</span>
+                  <div v-if="activeItemType === 'book' && activeItemIndex === index" class="item-actions">
+                    <button class="action-btn edit-btn" @click.stop="startEditBook(book, index)">✏️</button>
+                    <button class="action-btn delete-btn" @click.stop="confirmDeleteBook(book)">🗑️</button>
+                  </div>
+                </template>
               </div>
               <div v-if="books.length === 0" class="empty-column-item">
                 暂无书籍
@@ -151,13 +200,34 @@
             <div class="cascade-column cascade-col-3" :class="{ 'active-column': activeColumn === 2, 'show-column': selectedBook }" v-show="selectedBook">
               <div class="column-title">章节</div>
               <div
-                v-for="chapter in chapters"
-                :key="chapter"
-                class="column-item"
-                :class="{ 'item-selected': selectedChapter === chapter }"
-                @click="handleSelectChapter(chapter)"
-              >
-                <span class="item-text">{{ chapter }}</span>
+              v-for="(chapter, index) in chapters"
+              :key="chapter"
+              class="column-item"
+              :class="{ 
+                'item-selected': selectedChapter === chapter,
+                'item-active': activeItemType === 'chapter' && activeItemIndex === index
+              }"
+              @click="handleItemClick('chapter', index)"
+              @mousedown="startLongPress('chapter', index)"
+              @mouseup="cancelLongPress"
+              @mouseleave="cancelLongPress"
+              @touchstart="startLongPress('chapter', index)"
+              @touchend="cancelLongPress"
+            >
+                <div v-if="isEditing && activeItemType === 'chapter' && activeItemIndex === index" class="edit-form">
+                  <input v-model="editingItemName" @keyup.enter="saveEditChapter(chapter, index)" />
+                  <div class="edit-buttons">
+                    <button class="btn-save" @click="saveEditChapter(chapter, index)">✓</button>
+                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                  </div>
+                </div>
+                <template v-else>
+                  <span class="item-text">{{ chapter }}</span>
+                  <div v-if="activeItemType === 'chapter' && activeItemIndex === index" class="item-actions">
+                    <button class="action-btn edit-btn" @click.stop="startEditChapter(chapter, index)">✏️</button>
+                    <button class="action-btn delete-btn" @click.stop="confirmDeleteChapter(chapter)">🗑️</button>
+                  </div>
+                </template>
               </div>
               <div v-if="chapters.length === 0" class="empty-column-item">
                 暂无章节
@@ -168,16 +238,50 @@
             <div class="cascade-column cascade-col-4" :class="{ 'active-column': activeColumn === 3, 'show-column': selectedChapter }" v-show="selectedChapter">
               <div class="column-title">知识点</div>
               <div
-                v-for="knowledge in knowledges"
-                :key="knowledge"
-                class="column-item"
-                :class="{ 'item-selected': selectedKnowledge === knowledge }"
-                @click="handleSelectKnowledge(knowledge)"
-              >
-                <span class="item-text">{{ knowledge }}</span>
+              v-for="(knowledge, index) in knowledges"
+              :key="knowledge"
+              class="column-item"
+              :class="{ 
+                'item-selected': selectedKnowledge === knowledge,
+                'item-active': activeItemType === 'knowledge' && activeItemIndex === index
+              }"
+              @click="handleItemClick('knowledge', index)"
+              @mousedown="startLongPress('knowledge', index)"
+              @mouseup="cancelLongPress"
+              @mouseleave="cancelLongPress"
+              @touchstart="startLongPress('knowledge', index)"
+              @touchend="cancelLongPress"
+            >
+                <div v-if="isEditing && activeItemType === 'knowledge' && activeItemIndex === index" class="edit-form">
+                  <input v-model="editingItemName" @keyup.enter="saveEditKnowledge(knowledge, index)" />
+                  <div class="edit-buttons">
+                    <button class="btn-save" @click="saveEditKnowledge(knowledge, index)">✓</button>
+                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                  </div>
+                </div>
+                <template v-else>
+                  <span class="item-text">{{ knowledge }}</span>
+                  <div v-if="activeItemType === 'knowledge' && activeItemIndex === index" class="item-actions">
+                    <button class="action-btn edit-btn" @click.stop="startEditKnowledge(knowledge, index)">✏️</button>
+                    <button class="action-btn delete-btn" @click.stop="confirmDeleteKnowledge(knowledge)">🗑️</button>
+                  </div>
+                </template>
               </div>
               <div v-if="knowledges.length === 0" class="empty-column-item">
                 暂无知识点
+              </div>
+            </div>
+          </div>
+          
+          <!-- 删除确认弹窗 -->
+          <div v-if="showDeleteConfirm" class="delete-confirm-overlay" @click.self="cancelDelete">
+            <div class="delete-confirm-modal">
+              <h3>确认删除</h3>
+              <p>确定要删除 {{ deleteItemInfo?.name }} 吗？</p>
+              <p v-if="deleteItemInfo?.type !== 'knowledge'" class="warning-text">这将同时删除所有下级内容！</p>
+              <div class="modal-buttons">
+                <button class="btn-danger" @click="executeDelete">删除</button>
+                <button class="btn-secondary" @click="cancelDelete">取消</button>
               </div>
             </div>
           </div>
@@ -186,7 +290,13 @@
 
       <!-- 错因分布 -->
       <div class="chart-section">
-        <h3>错因分布</h3>
+        <div class="section-header">
+          <h3>错因分布</h3>
+          <button class="manage-btn" @click="openManageModal">
+            <span class="manage-icon">⚙️</span>
+            <span>管理</span>
+          </button>
+        </div>
         <div v-if="errorTagDistribution.length > 0" class="error-tag-distribution">
           <div class="donut-chart-wrapper">
             <svg class="donut-chart" viewBox="0 0 100 100">
@@ -235,6 +345,76 @@
         </div>
         <div v-else class="empty-state">
           <div class="empty-description">暂无错因数据</div>
+        </div>
+      </div>
+
+      <!-- 错因管理弹窗 -->
+      <div v-if="showManageModal" class="modal-overlay" @click.self="closeManageModal">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3 class="modal-title">错因管理</h3>
+            <button class="modal-close" @click="closeManageModal">×</button>
+          </div>
+          <div class="modal-body">
+            <div v-if="manageErrorTags.length === 0" class="empty-list">
+              <div class="empty-text">暂无错因标签</div>
+            </div>
+            <div v-else class="tag-list">
+              <div v-for="(tag, index) in manageErrorTags" :key="tag.name" class="tag-item">
+                <div class="tag-info">
+                  <span class="tag-dot" :style="{ background: tag.color }"></span>
+                  <span v-if="editingTagIndex !== index" class="tag-name-text">{{ tag.name }}</span>
+                  <input 
+                    v-else 
+                    type="text" 
+                    v-model="editingTagName" 
+                    class="tag-input"
+                    @keyup.enter="saveTagEdit(index)"
+                    @keyup.escape="cancelTagEdit"
+                  />
+                </div>
+                <div class="tag-actions">
+                  <div v-if="editingTagIndex !== index" class="actions-group">
+                    <button class="action-btn edit-btn" @click="startEditTag(index)">
+                      <span>✏️</span>
+                    </button>
+                    <button class="action-btn delete-btn" @click="confirmDeleteTag(tag)">
+                      <span>🗑️</span>
+                    </button>
+                  </div>
+                  <div v-else class="actions-group">
+                    <button class="action-btn save-btn" @click="saveTagEdit(index)">
+                      <span>✓</span>
+                    </button>
+                    <button class="action-btn cancel-btn" @click="cancelTagEdit">
+                      <span>✕</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeManageModal">关闭</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 错因标签删除确认弹窗 -->
+      <div v-if="showTagDeleteConfirm" class="modal-overlay" @click.self="showTagDeleteConfirm = false">
+        <div class="modal-container confirm-modal">
+          <div class="modal-header">
+            <h3 class="modal-title">确认删除</h3>
+            <button class="modal-close" @click="showTagDeleteConfirm = false">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="confirm-text">确定要删除错因标签「{{ deleteTagName }}」吗？</p>
+            <p class="confirm-hint">此操作将删除所有题目的该标签</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="showTagDeleteConfirm = false">取消</button>
+            <button class="btn btn-danger" @click="executeDeleteTag">删除</button>
+          </div>
         </div>
       </div>
 
@@ -308,13 +488,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getQuestionStats, getQuestions } from '../apis/errorQuestions'
 import { getDueCount, getSRSStatistics, getAllSRSStatus } from '../apis/srs'
-import { getSubjects } from '../apis/subjects'
-import { getBooks, getChapters, getKnowledges } from '../apis/sources'
-import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
-import type { Subject, ErrorTags } from '../types'
+import { getSubjects, updateSubject, deleteSubject } from '../apis/subjects'
+import { getBooks, getChapters, getKnowledges, getSources, updateSource, deleteSource } from '../apis/sources'
+import { getErrorTags, getFullErrorTags, updateErrorTagById, deleteErrorTagById } from '../apis/errorTags'
+import type { Subject, Source, ErrorTags } from '../types'
 
 // ==================== 状态 ====================
 const loading = ref(true)
@@ -330,6 +510,7 @@ const chapters = ref<string[]>([])
 const knowledges = ref<string[]>([])
 const activeColumn = ref<number>(0)
 const showCascade = ref<boolean>(false)
+const cascadeContainer = ref<HTMLElement | null>(null)
 
 // 原始数据
 const questionTotal = ref(0)
@@ -340,6 +521,34 @@ const questions = ref<{ id: string; subject_id: string }[]>([])
 const allCards = ref<{ question_id: string; difficulty: number; next_review_at: number | null; review_count: number }[]>([])
 const errorTags = ref<ErrorTags[]>([])
 const hoveredIndex = ref(-1)
+
+// 错因管理相关状态
+const showManageModal = ref(false)
+const showTagDeleteConfirm = ref(false)
+
+// 唯一错因标签管理数据结构
+interface UniqueErrorTag {
+  name: string
+  color: string
+  ids: string[] // 所有具有相同name的标签ID
+}
+
+const manageErrorTags = ref<UniqueErrorTag[]>([])
+const editingTagIndex = ref<number | null>(null)
+const editingTagName = ref('')
+const deleteTagName = ref('')
+
+// 科目/来源管理相关状态
+const allSources = ref<Source[]>([])
+const activeItemType = ref<'subject' | 'book' | 'chapter' | 'knowledge' | null>(null)
+const activeItemIndex = ref<number | null>(null)
+const longPressTimer = ref<number | null>(null)
+const isEditing = ref(false)
+const editingItemName = ref('')
+const editingItemColor = ref('')
+const justFinishedLongPress = ref(false)
+const showDeleteConfirm = ref(false)
+const deleteItemInfo = ref<{ type: 'subject' | 'book' | 'chapter' | 'knowledge', id?: string, name: string, subjectId?: string, book?: string, chapter?: string } | null>(null)
 
 const colors = ['#1976d2', '#e65100', '#7b1fa2', '#43a047', '#00bcd4', '#ff9800', '#795548', '#607d8b', '#c62828', '#283593']
 
@@ -480,6 +689,11 @@ const errorTagDistribution = computed<ErrorTagDistItem[]>(() => {
   const tagCountMap = new Map<string, { count: number; color: string }>()
   
   errorTags.value.forEach(tag => {
+    // 过滤掉软删除的标签
+    if (tag.name.startsWith('[已删除]')) {
+      return
+    }
+    
     const existing = tagCountMap.get(tag.name)
     if (existing) {
       existing.count++
@@ -575,7 +789,7 @@ async function loadData() {
   loadError.value = ''
 
   try {
-    const [statsRes, dueRes, srsRes, subjRes, qsRes, cardsRes, tagsRes] = await Promise.all([
+    const [statsRes, dueRes, srsRes, subjRes, qsRes, cardsRes, tagsRes, sourcesRes] = await Promise.all([
       getQuestionStats().catch(() => ({ total: 0 })),
       getDueCount().catch(() => 0),
       getSRSStatistics().catch(() => ({ total: 0, due_count: 0, new_cards: 0, avg_stability: 0, avg_difficulty: 0, total_reviews: 0 })),
@@ -583,12 +797,14 @@ async function loadData() {
       getQuestions().catch(() => []),
       getAllSRSStatus().catch(() => []),
       getFullErrorTags().catch(() => [] as ErrorTags[]),
+      getSources().catch(() => [] as Source[]),
     ])
 
     questionTotal.value = statsRes.total
     dueCount.value = dueRes
     srsStats.value = srsRes
     subjects.value = subjRes
+    allSources.value = sourcesRes
     // 注意: 后端返回的字段名是 subjectid（非 subject_id）
     questions.value = qsRes.map((q: any) => ({ id: q.id, subject_id: q.subjectid }))
     allCards.value = cardsRes.map((c: any) => ({
@@ -691,7 +907,466 @@ const closeCascade = () => {
   chapters.value = []
   knowledges.value = []
   activeColumn.value = 0
+  activeItemType.value = null
+  activeItemIndex.value = null
+  isEditing.value = false
 }
+
+// ==================== 科目/来源长按和管理功能 ====================
+
+function startLongPress(type: 'subject' | 'book' | 'chapter' | 'knowledge', index: number) {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+  }
+  longPressTimer.value = window.setTimeout(() => {
+    activeItemType.value = type
+    activeItemIndex.value = index
+    justFinishedLongPress.value = true
+    
+    // 300ms 后重置标志，避免后续点击被影响
+    setTimeout(() => {
+      justFinishedLongPress.value = false
+    }, 300)
+  }, 500)
+}
+
+function cancelLongPress() {
+  if (longPressTimer.value) {
+    clearTimeout(longPressTimer.value)
+    longPressTimer.value = null
+  }
+}
+
+function handleItemClick(type: 'subject' | 'book' | 'chapter' | 'knowledge', index: number) {
+  cancelLongPress()
+  
+  // 如果刚完成长按，则跳过这次点击处理，不重置标志位
+  if (justFinishedLongPress.value) {
+    return
+  }
+  
+  // 如果正在编辑，则不触发点击事件
+  if (isEditing.value) {
+    return
+  }
+  
+  // 首先检查是否点击了已选择的上一级标签，如果是则关闭下级
+  if (type === 'subject' && selectedSubject.value?.id === subjects.value[index].id) {
+    if (selectedBook.value) {
+      // 如果有书籍已选择，则关闭书籍及以下
+      selectedBook.value = null
+      selectedChapter.value = null
+      selectedKnowledge.value = null
+      chapters.value = []
+      knowledges.value = []
+      activeColumn.value = 1
+      activeItemType.value = null
+      activeItemIndex.value = null
+      isEditing.value = false
+      return
+    }
+  }
+  
+  if (type === 'book' && selectedBook.value === books.value[index]) {
+    if (selectedChapter.value) {
+      // 如果有章节已选择，则关闭章节及以下
+      selectedChapter.value = null
+      selectedKnowledge.value = null
+      knowledges.value = []
+      activeColumn.value = 2
+      activeItemType.value = null
+      activeItemIndex.value = null
+      isEditing.value = false
+      return
+    }
+  }
+  
+  if (type === 'chapter' && selectedChapter.value === chapters.value[index]) {
+    if (selectedKnowledge.value) {
+      // 如果有知识点已选择，则关闭知识点
+      selectedKnowledge.value = null
+      activeColumn.value = 3
+      activeItemType.value = null
+      activeItemIndex.value = null
+      isEditing.value = false
+      return
+    }
+  }
+  
+  // 如果当前项目已经激活，则取消激活，不触发选择
+  if (activeItemType.value === type && activeItemIndex.value === index) {
+    activeItemType.value = null
+    activeItemIndex.value = null
+    isEditing.value = false
+    return
+  }
+  
+  // 清除之前的激活状态
+  activeItemType.value = null
+  activeItemIndex.value = null
+  isEditing.value = false
+  
+  // 触发原来的选择功能
+  if (type === 'subject') {
+    const subject = subjects.value[index]
+    if (subject) {
+      handleSelectSubject(subject)
+    }
+  } else if (type === 'book') {
+    const book = books.value[index]
+    if (book) {
+      handleSelectBook(book)
+    }
+  } else if (type === 'chapter') {
+    const chapter = chapters.value[index]
+    if (chapter) {
+      handleSelectChapter(chapter)
+    }
+  } else if (type === 'knowledge') {
+    const knowledge = knowledges.value[index]
+    if (knowledge) {
+      handleSelectKnowledge(knowledge)
+    }
+  }
+}
+
+// 编辑功能
+async function startEditSubject(subject: Subject, index: number) {
+  activeItemType.value = 'subject'
+  activeItemIndex.value = index
+  isEditing.value = true
+  editingItemName.value = subject.name
+  editingItemColor.value = subject.color || '#1976d2'
+}
+
+async function saveEditSubject(subject: Subject, index: number) {
+  try {
+    const updatedSubject = await updateSubject({
+      ...subject,
+      name: editingItemName.value,
+      color: editingItemColor.value
+    })
+    subjects.value[index] = updatedSubject
+    isEditing.value = false
+    activeItemType.value = null
+    activeItemIndex.value = null
+  } catch (error) {
+    console.error('更新科目失败:', error)
+    alert('更新失败')
+  }
+}
+
+async function startEditBook(bookName: string, index: number) {
+  activeItemType.value = 'book'
+  activeItemIndex.value = index
+  isEditing.value = true
+  editingItemName.value = bookName
+}
+
+async function saveEditBook(oldName: string, index: number) {
+  try {
+    const subjectId = selectedSubject.value?.id
+    if (!subjectId) return
+    
+    const bookSources = allSources.value.filter(s => 
+      s.subject_id === subjectId && s.book === oldName
+    )
+    
+    for (const source of bookSources) {
+      await updateSource({
+        id: source.id,
+        book: editingItemName.value
+      })
+    }
+    
+    // 更新本地数据
+    allSources.value = allSources.value.map(s => {
+      if (s.subject_id === subjectId && s.book === oldName) {
+        return { ...s, book: editingItemName.value }
+      }
+      return s
+    })
+    
+    books.value[index] = editingItemName.value
+    if (selectedBook.value === oldName) {
+      selectedBook.value = editingItemName.value
+    }
+    
+    isEditing.value = false
+    activeItemType.value = null
+    activeItemIndex.value = null
+  } catch (error) {
+    console.error('更新书籍失败:', error)
+    alert('更新失败')
+  }
+}
+
+async function startEditChapter(chapterName: string, index: number) {
+  activeItemType.value = 'chapter'
+  activeItemIndex.value = index
+  isEditing.value = true
+  editingItemName.value = chapterName
+}
+
+async function saveEditChapter(oldName: string, index: number) {
+  try {
+    const subjectId = selectedSubject.value?.id
+    const bookName = selectedBook.value
+    if (!subjectId || !bookName) return
+    
+    const chapterSources = allSources.value.filter(s => 
+      s.subject_id === subjectId && s.book === bookName && s.chapter === oldName
+    )
+    
+    for (const source of chapterSources) {
+      await updateSource({
+        id: source.id,
+        chapter: editingItemName.value
+      })
+    }
+    
+    // 更新本地数据
+    allSources.value = allSources.value.map(s => {
+      if (s.subject_id === subjectId && s.book === bookName && s.chapter === oldName) {
+        return { ...s, chapter: editingItemName.value }
+      }
+      return s
+    })
+    
+    chapters.value[index] = editingItemName.value
+    if (selectedChapter.value === oldName) {
+      selectedChapter.value = editingItemName.value
+    }
+    
+    isEditing.value = false
+    activeItemType.value = null
+    activeItemIndex.value = null
+  } catch (error) {
+    console.error('更新章节失败:', error)
+    alert('更新失败')
+  }
+}
+
+async function startEditKnowledge(knowledgeName: string, index: number) {
+  activeItemType.value = 'knowledge'
+  activeItemIndex.value = index
+  isEditing.value = true
+  editingItemName.value = knowledgeName
+}
+
+async function saveEditKnowledge(oldName: string, index: number) {
+  try {
+    const subjectId = selectedSubject.value?.id
+    const bookName = selectedBook.value
+    const chapterName = selectedChapter.value
+    if (!subjectId || !bookName || !chapterName) return
+    
+    const knowledgeSources = allSources.value.filter(s => 
+      s.subject_id === subjectId && s.book === bookName && s.chapter === chapterName && s.knowledge === oldName
+    )
+    
+    for (const source of knowledgeSources) {
+      await updateSource({
+        id: source.id,
+        knowledge: editingItemName.value
+      })
+    }
+    
+    // 更新本地数据
+    allSources.value = allSources.value.map(s => {
+      if (s.subject_id === subjectId && s.book === bookName && s.chapter === chapterName && s.knowledge === oldName) {
+        return { ...s, knowledge: editingItemName.value }
+      }
+      return s
+    })
+    
+    knowledges.value[index] = editingItemName.value
+    if (selectedKnowledge.value === oldName) {
+      selectedKnowledge.value = editingItemName.value
+    }
+    
+    isEditing.value = false
+    activeItemType.value = null
+    activeItemIndex.value = null
+  } catch (error) {
+    console.error('更新知识点失败:', error)
+    alert('更新失败')
+  }
+}
+
+// 删除功能 - 递归删除所有子项
+async function confirmDeleteSubject(subject: Subject) {
+  deleteItemInfo.value = {
+    type: 'subject',
+    id: subject.id,
+    name: subject.name
+  }
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteBook(bookName: string) {
+  deleteItemInfo.value = {
+    type: 'book',
+    name: bookName,
+    subjectId: selectedSubject.value?.id
+  }
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteChapter(chapterName: string) {
+  deleteItemInfo.value = {
+    type: 'chapter',
+    name: chapterName,
+    subjectId: selectedSubject.value?.id,
+    book: selectedBook.value ?? undefined
+  }
+  showDeleteConfirm.value = true
+}
+
+async function confirmDeleteKnowledge(knowledgeName: string) {
+  deleteItemInfo.value = {
+    type: 'knowledge',
+    name: knowledgeName,
+    subjectId: selectedSubject.value?.id,
+    book: selectedBook.value ?? undefined,
+    chapter: selectedChapter.value ?? undefined
+  }
+  showDeleteConfirm.value = true
+}
+
+async function executeDelete() {
+  try {
+    if (!deleteItemInfo.value) return
+    
+    const { type, id, name, subjectId, book, chapter } = deleteItemInfo.value
+    
+    if (type === 'subject' && id) {
+      // 删除科目 - 递归删除所有相关来源
+      const subjectSources = allSources.value.filter(s => s.subject_id === id)
+      for (const source of subjectSources) {
+        await deleteSource(source.id)
+      }
+      await deleteSubject(id)
+      
+      // 更新本地数据
+      allSources.value = allSources.value.filter(s => s.subject_id !== id)
+      subjects.value = subjects.value.filter(s => s.id !== id)
+      
+      if (selectedSubject.value?.id === id) {
+        closeCascade()
+      }
+    } else if (type === 'book' && subjectId) {
+      // 删除书籍 - 递归删除所有相关章节和知识点
+      const bookSources = allSources.value.filter(s => 
+        s.subject_id === subjectId && s.book === name
+      )
+      for (const source of bookSources) {
+        await deleteSource(source.id)
+      }
+      
+      // 更新本地数据
+      allSources.value = allSources.value.filter(s => 
+        !(s.subject_id === subjectId && s.book === name)
+      )
+      books.value = books.value.filter(b => b !== name)
+      
+      if (selectedBook.value === name) {
+        selectedBook.value = null
+        selectedChapter.value = null
+        selectedKnowledge.value = null
+        chapters.value = []
+        knowledges.value = []
+        activeColumn.value = 1
+      }
+    } else if (type === 'chapter' && subjectId && book) {
+      // 删除章节 - 递归删除所有相关知识点
+      const chapterSources = allSources.value.filter(s => 
+        s.subject_id === subjectId && s.book === book && s.chapter === name
+      )
+      for (const source of chapterSources) {
+        await deleteSource(source.id)
+      }
+      
+      // 更新本地数据
+      allSources.value = allSources.value.filter(s => 
+        !(s.subject_id === subjectId && s.book === book && s.chapter === name)
+      )
+      chapters.value = chapters.value.filter(c => c !== name)
+      
+      if (selectedChapter.value === name) {
+        selectedChapter.value = null
+        selectedKnowledge.value = null
+        knowledges.value = []
+        activeColumn.value = 2
+      }
+    } else if (type === 'knowledge' && subjectId && book && chapter) {
+      // 删除知识点
+      const knowledgeSources = allSources.value.filter(s => 
+        s.subject_id === subjectId && s.book === book && s.chapter === chapter && s.knowledge === name
+      )
+      for (const source of knowledgeSources) {
+        await deleteSource(source.id)
+      }
+      
+      // 更新本地数据
+      allSources.value = allSources.value.filter(s => 
+        !(s.subject_id === subjectId && s.book === book && s.chapter === chapter && s.knowledge === name)
+      )
+      knowledges.value = knowledges.value.filter(k => k !== name)
+      
+      if (selectedKnowledge.value === name) {
+        selectedKnowledge.value = null
+      }
+    }
+    
+    showDeleteConfirm.value = false
+    deleteItemInfo.value = null
+    activeItemType.value = null
+    activeItemIndex.value = null
+  } catch (error) {
+    console.error('删除失败:', error)
+    alert('删除失败')
+  }
+}
+
+function cancelDelete() {
+  showDeleteConfirm.value = false
+  deleteItemInfo.value = null
+}
+
+function cancelEdit() {
+  isEditing.value = false
+  activeItemType.value = null
+  activeItemIndex.value = null
+}
+
+// 点击外部区域取消激活状态
+function handleClickOutside(event: MouseEvent) {
+  // 如果刚完成长按，则跳过这次点击处理，不重置标志位
+  if (justFinishedLongPress.value) {
+    return
+  }
+  
+  if (cascadeContainer.value && cascadeContainer.value.contains(event.target as Node)) {
+    // 点击在级联容器内部，不取消
+    return
+  }
+  
+  // 只有不在编辑状态时才取消激活
+  if (!isEditing.value) {
+    activeItemType.value = null
+    activeItemIndex.value = null
+    isEditing.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 // ==================== 错因分布环形图 ====================
 const totalTags = computed(() => {
@@ -722,6 +1397,162 @@ const donutSegments = computed(() => {
   
   return segments
 })
+
+// ==================== 错因管理 ====================
+function openManageModal() {
+  console.log('=== 打开管理对话框 ===')
+  console.log('所有错因标签:', errorTags.value)
+  
+  // 获取去重的错因标签（仅基于name），过滤掉软删除的标签
+  const tagMap = new Map<string, { name: string; color: string; ids: string[] }>()
+  
+  errorTags.value.forEach(tag => {
+    const isDeleted = tag.name.startsWith('[已删除]')
+    console.log(`标签 ${tag.name}, 是否删除: ${isDeleted}`)
+    
+    // 过滤掉软删除的标签
+    if (isDeleted) {
+      return
+    }
+    
+    const key = tag.name
+    if (!tagMap.has(key)) {
+      tagMap.set(key, {
+        name: tag.name,
+        color: tag.color, // 使用第一个出现的颜色
+        ids: []
+      })
+    }
+    tagMap.get(key)?.ids.push(tag.id)
+  })
+  
+  const result = Array.from(tagMap.values())
+  console.log('过滤后的标签列表:', result)
+  
+  manageErrorTags.value = result
+  showManageModal.value = true
+}
+
+function closeManageModal() {
+  showManageModal.value = false
+  editingTagIndex.value = null
+  editingTagName.value = ''
+}
+
+function startEditTag(index: number) {
+  editingTagIndex.value = index
+  editingTagName.value = manageErrorTags.value[index].name
+}
+
+function cancelTagEdit() {
+  editingTagIndex.value = null
+  editingTagName.value = ''
+}
+
+async function saveTagEdit(index: number) {
+  if (!editingTagName.value.trim()) return
+  
+  try {
+    const oldTag = manageErrorTags.value[index]
+    const newName = editingTagName.value.trim()
+    
+    // 批量更新所有相同name的标签（不管color）
+    // 先找到所有相同name的标签，然后统一更新
+    const allSameNameTags = errorTags.value.filter(t => t.name === oldTag.name)
+    
+    for (const tag of allSameNameTags) {
+      await updateErrorTagById(tag.id, newName, tag.color)
+    }
+    
+    // 更新本地数据
+    // 更新errorTags中的所有相同name的标签
+    errorTags.value = errorTags.value.map(t => 
+      t.name === oldTag.name 
+        ? { ...t, name: newName } 
+        : t
+    )
+    
+    // 更新manageErrorTags
+    manageErrorTags.value[index].name = newName
+    
+    cancelTagEdit()
+  } catch (error) {
+    console.error('更新错因标签失败:', error)
+  }
+}
+
+function confirmDeleteTag(tag: UniqueErrorTag) {
+  deleteTagName.value = tag.name
+  showTagDeleteConfirm.value = true
+}
+
+async function executeDeleteTag() {
+  try {
+    console.log('=== 执行删除 ===')
+    console.log('要删除的标签名:', deleteTagName.value)
+    console.log('manageErrorTags:', manageErrorTags.value)
+    
+    const tagToDelete = manageErrorTags.value.find(
+      t => t.name === deleteTagName.value
+    )
+    
+    console.log('找到的要删除的标签:', tagToDelete)
+    
+    if (!tagToDelete) {
+      showTagDeleteConfirm.value = false
+      return
+    }
+    
+    // 软删除：给标签名称加上 [已删除] 前缀
+    const newName = `[已删除]${tagToDelete.name}`
+    console.log('新标签名:', newName)
+    
+    // 批量更新所有相同name的标签
+    for (const id of tagToDelete.ids) {
+      const tag = errorTags.value.find(t => t.id === id)
+      if (tag) {
+        console.log('更新标签 ID:', id, '原名为:', tag.name, '新名为:', newName)
+        await updateErrorTagById(id, newName, tag.color)
+      }
+    }
+    
+    // 更新本地数据 - 更新所有相同name的标签
+    errorTags.value = errorTags.value.map(t => 
+      t.name === tagToDelete.name 
+        ? { ...t, name: newName } 
+        : t
+    )
+    
+    console.log('更新后的 errorTags:', errorTags.value)
+    
+    // 重新计算过滤后的标签列表
+    const tagMap = new Map<string, { name: string; color: string; ids: string[] }>()
+    errorTags.value.forEach(tag => {
+      const isDeleted = tag.name.startsWith('[已删除]')
+      if (isDeleted) {
+        return
+      }
+      const key = tag.name
+      if (!tagMap.has(key)) {
+        tagMap.set(key, {
+          name: tag.name,
+          color: tag.color,
+          ids: []
+        })
+      }
+      tagMap.get(key)?.ids.push(tag.id)
+    })
+    
+    manageErrorTags.value = Array.from(tagMap.values())
+    
+    console.log('重新计算过滤后的 manageErrorTags:', manageErrorTags.value)
+    
+    showTagDeleteConfirm.value = false
+  } catch (error) {
+    console.error('软删除错因标签失败:', error)
+    alert('删除失败: ' + (error as Error)?.message)
+  }
+}
 </script>
 
 <style scoped>
@@ -1474,6 +2305,211 @@ const donutSegments = computed(() => {
   text-align: center;
 }
 
+/* ========== 科目/来源管理样式 ========== */
+
+/* 项目激活状态 */
+.column-item.item-active {
+  background: var(--primary-light) !important;
+  border-left: 3px solid var(--primary-color);
+}
+
+/* 编辑表单 */
+.edit-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-form input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.edit-form input:focus {
+  border-color: var(--primary-color);
+}
+
+.edit-form input[type="color"] {
+  padding: 2px;
+  height: 30px;
+  cursor: pointer;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.btn-save,
+.btn-cancel {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save {
+  background: #66bb6a;
+  color: white;
+}
+
+.btn-save:hover {
+  background: #4caf50;
+}
+
+.btn-cancel {
+  background: #bdbdbd;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background: #9e9e9e;
+}
+
+/* 操作按钮 */
+.item-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.action-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.edit-btn {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.edit-btn:hover {
+  background: #bbdefb;
+  transform: scale(1.1);
+}
+
+.delete-btn {
+  background: #ffebee;
+  color: #ef5350;
+}
+
+.delete-btn:hover {
+  background: #ffcdd2;
+  transform: scale(1.1);
+}
+
+/* 删除确认弹窗 */
+.delete-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.delete-confirm-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 360px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.delete-confirm-modal h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.delete-confirm-modal p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.warning-text {
+  color: #ef5350 !important;
+  font-size: 13px !important;
+  margin-top: 8px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.btn-danger {
+  padding: 8px 20px;
+  background: #ef5350;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: #e53935;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  padding: 8px 20px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--border-color);
+}
+
 /* ========== 响应式 ========== */
 @media (max-width: 480px) {
   .overview-cards {
@@ -1482,5 +2518,295 @@ const donutSegments = computed(() => {
   .card-value { font-size: 20px; }
   .legend { grid-template-columns: 1fr; }
   .bar-label { font-size: 9px; }
+}
+
+/* ========== 错因管理 ========== */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.manage-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manage-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+.manage-icon {
+  font-size: 16px;
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-container {
+  background: var(--card-bg);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+}
+
+.confirm-modal {
+  max-width: 400px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 按钮样式 */
+.btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--border-color);
+}
+
+.btn-danger {
+  background: #ef5350;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #e53935;
+  box-shadow: 0 4px 12px rgba(229, 57, 53, 0.3);
+}
+
+/* 标签列表 */
+.empty-list {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.empty-text {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tag-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.tag-item:hover {
+  background: var(--primary-light);
+}
+
+.tag-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.tag-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tag-name-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tag-input {
+  flex: 1;
+  max-width: 200px;
+  padding: 8px 12px;
+  border: 2px solid var(--primary-color);
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: white;
+  outline: none;
+}
+
+.tag-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions-group {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-btn {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.edit-btn:hover {
+  background: #bbdefb;
+  transform: scale(1.05);
+}
+
+.delete-btn {
+  background: #ffebee;
+  color: #ef5350;
+}
+
+.delete-btn:hover {
+  background: #ffcdd2;
+  transform: scale(1.05);
+}
+
+.save-btn {
+  background: #e8f5e9;
+  color: #43a047;
+}
+
+.save-btn:hover {
+  background: #c8e6c9;
+  transform: scale(1.05);
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: #757575;
+}
+
+.cancel-btn:hover {
+  background: #eeeeee;
+  transform: scale(1.05);
+}
+
+/* 确认弹窗 */
+.confirm-text {
+  font-size: 16px;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.confirm-hint {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
 }
 </style>

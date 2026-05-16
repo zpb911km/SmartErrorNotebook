@@ -20,6 +20,11 @@ const getRandomRGBColor = () => {
 const errorTags = ref<ErrorTags[]>([]);
 const selectedTags = ref<SelectedTagInfo[]>([]);
 const isExpanded = ref(false);
+
+// 过滤掉已删除的标签
+const filteredErrorTags = computed(() => {
+  return errorTags.value.filter(tag => !tag.name.startsWith('[已删除]'))
+})
 const showAddErrorTag = ref(false);
 const newErrorTag = ref<Omit<ErrorTags, 'id' | 'question_id'>>({
   name: '',
@@ -166,7 +171,7 @@ onMounted(() => {
       <div v-if="isExpanded" class="dropdown-container">
         <div
           class="error-tag-option"
-          v-for="errorTag in errorTags"
+          v-for="errorTag in filteredErrorTags"
           :key="errorTag.id"
           @click="handleClick(errorTag, $event)"
           :class="{ 'selected': isTagSelected(errorTag) }"
@@ -197,7 +202,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-        <div v-if="errorTags.length === 0" class="no-options">
+        <div v-if="filteredErrorTags.length === 0" class="no-options">
           暂无错因标签数据
         </div>
       </div>

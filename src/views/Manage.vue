@@ -877,15 +877,16 @@ const fetchData = async () => {
     console.log('SRS 数据获取完成，总数:', srsMap.size)
     console.log('SRS 数据详情:', Array.from(srsMap.entries()))
     
-    // 提取所有唯一的标签名称
+    // 提取所有唯一的标签名称（过滤掉已删除的）
     const allTags = tagsData as any[]
-    const uniqueTags = [...new Set(allTags.map(tag => tag.name))]
+    const activeTags = allTags.filter(tag => !tag.name.startsWith('[已删除]'))
+    const uniqueTags = [...new Set(activeTags.map(tag => tag.name))]
     availableTags.value = uniqueTags
     
-    // 构建错题和标签的映射关系
+    // 构建错题和标签的映射关系（过滤掉已删除的）
     console.log(allTags)
     const tagMap = new Map<string, string[]>()
-    allTags.forEach((tag: any) => {
+    activeTags.forEach((tag: any) => {
       const questionId = tag.question_id
       const tagName = tag.name
       

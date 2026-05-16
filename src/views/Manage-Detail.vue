@@ -165,10 +165,10 @@
         
         <!-- 非编辑模式：只显示标签 -->
         <div v-if="!isEditing" class="tags-display">
-          <span v-for="tag in errorTags" :key="tag.id" class="tag-item" :style="{ backgroundColor: tag.color + '20', color: tag.color }">
+          <span v-for="tag in filteredErrorTags" :key="tag.id" class="tag-item" :style="{ backgroundColor: tag.color + '20', color: tag.color }">
             {{ tag.name }}
           </span>
-          <span v-if="errorTags.length === 0" class="no-tags">暂无标签</span>
+          <span v-if="filteredErrorTags.length === 0" class="no-tags">暂无标签</span>
         </div>
         
         <!-- 编辑模式：使用标签选择器 -->
@@ -353,6 +353,11 @@ const imagesToAdd = ref<File[]>([]) // 待添加的文件列表
 
 // 临时标签列表（用于编辑时的暂存）
 const tempErrorTags = ref<Array<{ name: string; color: string }>>([])
+
+// 过滤掉已删除的标签
+const filteredErrorTags = computed(() => {
+  return errorTags.value.filter(tag => !tag.name.startsWith('[已删除]'))
+})
 
 // 编辑状态
 const isEditing = ref(false)

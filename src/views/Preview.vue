@@ -478,6 +478,8 @@ onMounted(async () => {
 
     const tagMap = new Map<string, string[]>()
     ;(tags as any[]).forEach((tag: any) => {
+      // 过滤掉已删除的标签
+      if (tag.name.startsWith('[已删除]')) return
       if (!tagMap.has(tag.question_id)) tagMap.set(tag.question_id, [])
       tagMap.get(tag.question_id)!.push(tag.name)
     })
