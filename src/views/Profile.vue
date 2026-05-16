@@ -74,7 +74,7 @@
       <div class="chart-section">
         <div class="section-header">
           <h3>科目分布</h3>
-          <button class="manage-btn" @click="showCascade = true">
+          <button class="manage-btn" @click="openManageCascade">
             <span class="manage-icon">⚙️</span>
             <span>管理</span>
           </button>
@@ -547,6 +547,7 @@ const isEditing = ref(false)
 const editingItemName = ref('')
 const editingItemColor = ref('')
 const justFinishedLongPress = ref(false)
+const isInLongPressMode = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteItemInfo = ref<{ type: 'subject' | 'book' | 'chapter' | 'knowledge', id?: string, name: string, subjectId?: string, book?: string, chapter?: string } | null>(null)
 
@@ -865,6 +866,14 @@ const handleSelectSubjectByName = async (subjectName: string) => {
   }
 }
 
+const openManageCascade = async () => {
+  showCascade.value = true
+  // 如果有科目但没有选中的科目，自动选中第一个
+  if (subjects.value.length > 0 && !selectedSubject.value) {
+    await handleSelectSubject(subjects.value[0])
+  }
+}
+
 const handleSelectBook = async (book: string) => {
   selectedBook.value = book
   selectedChapter.value = null
@@ -921,7 +930,29 @@ function startLongPress(type: 'subject' | 'book' | 'chapter' | 'knowledge', inde
   longPressTimer.value = window.setTimeout(() => {
     activeItemType.value = type
     activeItemIndex.value = index
+    isInLongPressMode.value = true
     justFinishedLongPress.value = true
+    
+    // 根据标签类型关闭下级列
+    if (type === 'subject') {
+      // 关闭书籍、章节、知识点
+      selectedBook.value = null
+      selectedChapter.value = null
+      selectedKnowledge.value = null
+      chapters.value = []
+      knowledges.value = []
+      activeColumn.value = 0
+    } else if (type === 'book') {
+      // 关闭章节、知识点
+      selectedChapter.value = null
+      selectedKnowledge.value = null
+      knowledges.value = []
+      activeColumn.value = 1
+    } else if (type === 'chapter') {
+      // 关闭知识点
+      selectedKnowledge.value = null
+      activeColumn.value = 2
+    }
     
     // 300ms 后重置标志，避免后续点击被影响
     setTimeout(() => {
@@ -940,8 +971,9 @@ function cancelLongPress() {
 function handleItemClick(type: 'subject' | 'book' | 'chapter' | 'knowledge', index: number) {
   cancelLongPress()
   
-  // 如果刚完成长按，则跳过这次点击处理，不重置标志位
+  // 如果刚完成长按，则跳过这次点击处理
   if (justFinishedLongPress.value) {
+    isInLongPressMode.value = false
     return
   }
   
@@ -950,54 +982,12 @@ function handleItemClick(type: 'subject' | 'book' | 'chapter' | 'knowledge', ind
     return
   }
   
-  // 首先检查是否点击了已选择的上一级标签，如果是则关闭下级
-  if (type === 'subject' && selectedSubject.value?.id === subjects.value[index].id) {
-    if (selectedBook.value) {
-      // 如果有书籍已选择，则关闭书籍及以下
-      selectedBook.value = null
-      selectedChapter.value = null
-      selectedKnowledge.value = null
-      chapters.value = []
-      knowledges.value = []
-      activeColumn.value = 1
-      activeItemType.value = null
-      activeItemIndex.value = null
-      isEditing.value = false
-      return
-    }
-  }
-  
-  if (type === 'book' && selectedBook.value === books.value[index]) {
-    if (selectedChapter.value) {
-      // 如果有章节已选择，则关闭章节及以下
-      selectedChapter.value = null
-      selectedKnowledge.value = null
-      knowledges.value = []
-      activeColumn.value = 2
-      activeItemType.value = null
-      activeItemIndex.value = null
-      isEditing.value = false
-      return
-    }
-  }
-  
-  if (type === 'chapter' && selectedChapter.value === chapters.value[index]) {
-    if (selectedKnowledge.value) {
-      // 如果有知识点已选择，则关闭知识点
-      selectedKnowledge.value = null
-      activeColumn.value = 3
-      activeItemType.value = null
-      activeItemIndex.value = null
-      isEditing.value = false
-      return
-    }
-  }
-  
   // 如果当前项目已经激活，则取消激活，不触发选择
   if (activeItemType.value === type && activeItemIndex.value === index) {
     activeItemType.value = null
     activeItemIndex.value = null
     isEditing.value = false
+    isInLongPressMode.value = false
     return
   }
   
@@ -1006,27 +996,61 @@ function handleItemClick(type: 'subject' | 'book' | 'chapter' | 'knowledge', ind
   activeItemIndex.value = null
   isEditing.value = false
   
-  // 触发原来的选择功能
+  // 如果是长按模式刚结束，则不关闭下级，只清除长按模式标志
+  if (isInLongPressMode.value) {
+    isInLongPressMode.value = false
+    return
+  }
+  
+  // 点击科目标签
   if (type === 'subject') {
     const subject = subjects.value[index]
-    if (subject) {
+    if (selectedSubject.value?.id === subject.id) {
+      // 点击了已选择的科目 - 关闭下一级（书籍）
+      selectedBook.value = null
+      selectedChapter.value = null
+      selectedKnowledge.value = null
+      chapters.value = []
+      knowledges.value = []
+      activeColumn.value = 1
+      return
+    } else {
+      // 点击了未选择的科目 - 选中并展开
       handleSelectSubject(subject)
     }
-  } else if (type === 'book') {
+  }
+  // 点击书籍标签
+  else if (type === 'book') {
     const book = books.value[index]
-    if (book) {
+    if (selectedBook.value === book) {
+      // 点击了已选择的书籍 - 关闭下一级（章节）
+      selectedChapter.value = null
+      selectedKnowledge.value = null
+      knowledges.value = []
+      activeColumn.value = 2
+      return
+    } else {
+      // 点击了未选择的书籍 - 选中并展开
       handleSelectBook(book)
     }
-  } else if (type === 'chapter') {
+  }
+  // 点击章节标签
+  else if (type === 'chapter') {
     const chapter = chapters.value[index]
-    if (chapter) {
+    if (selectedChapter.value === chapter) {
+      // 点击了已选择的章节 - 关闭下一级（知识点）
+      selectedKnowledge.value = null
+      activeColumn.value = 3
+      return
+    } else {
+      // 点击了未选择的章节 - 选中并展开
       handleSelectChapter(chapter)
     }
-  } else if (type === 'knowledge') {
+  }
+  // 点击知识点标签
+  else if (type === 'knowledge') {
     const knowledge = knowledges.value[index]
-    if (knowledge) {
-      handleSelectKnowledge(knowledge)
-    }
+    handleSelectKnowledge(knowledge)
   }
 }
 
@@ -1050,6 +1074,7 @@ async function saveEditSubject(subject: Subject, index: number) {
     isEditing.value = false
     activeItemType.value = null
     activeItemIndex.value = null
+    isInLongPressMode.value = false
   } catch (error) {
     console.error('更新科目失败:', error)
     alert('更新失败')
@@ -1095,6 +1120,7 @@ async function saveEditBook(oldName: string, index: number) {
     isEditing.value = false
     activeItemType.value = null
     activeItemIndex.value = null
+    isInLongPressMode.value = false
   } catch (error) {
     console.error('更新书籍失败:', error)
     alert('更新失败')
@@ -1141,6 +1167,7 @@ async function saveEditChapter(oldName: string, index: number) {
     isEditing.value = false
     activeItemType.value = null
     activeItemIndex.value = null
+    isInLongPressMode.value = false
   } catch (error) {
     console.error('更新章节失败:', error)
     alert('更新失败')
@@ -1188,6 +1215,7 @@ async function saveEditKnowledge(oldName: string, index: number) {
     isEditing.value = false
     activeItemType.value = null
     activeItemIndex.value = null
+    isInLongPressMode.value = false
   } catch (error) {
     console.error('更新知识点失败:', error)
     alert('更新失败')
@@ -1323,6 +1351,7 @@ async function executeDelete() {
     deleteItemInfo.value = null
     activeItemType.value = null
     activeItemIndex.value = null
+    isInLongPressMode.value = false
   } catch (error) {
     console.error('删除失败:', error)
     alert('删除失败')
@@ -1332,18 +1361,23 @@ async function executeDelete() {
 function cancelDelete() {
   showDeleteConfirm.value = false
   deleteItemInfo.value = null
+  activeItemType.value = null
+  activeItemIndex.value = null
+  isInLongPressMode.value = false
 }
 
 function cancelEdit() {
   isEditing.value = false
   activeItemType.value = null
   activeItemIndex.value = null
+  isInLongPressMode.value = false
 }
 
 // 点击外部区域取消激活状态
 function handleClickOutside(event: MouseEvent) {
-  // 如果刚完成长按，则跳过这次点击处理，不重置标志位
+  // 如果刚完成长按，则跳过这次点击处理，重置长按模式标志
   if (justFinishedLongPress.value) {
+    isInLongPressMode.value = false
     return
   }
   
@@ -1351,6 +1385,9 @@ function handleClickOutside(event: MouseEvent) {
     // 点击在级联容器内部，不取消
     return
   }
+  
+  // 重置长按模式标志
+  isInLongPressMode.value = false
   
   // 只有不在编辑状态时才取消激活
   if (!isEditing.value) {
