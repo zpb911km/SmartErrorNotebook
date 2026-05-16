@@ -40,6 +40,7 @@ class UserAuth(db.Model):
 
     id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     auth_key = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    remark = db.Column(db.String(256), nullable=True, default='')
     created_at = db.Column(db.BigInteger, nullable=False, default=lambda: int(datetime.now().timestamp() * 1000))
     updated_at = db.Column(db.BigInteger, nullable=False, default=lambda: int(datetime.now().timestamp() * 1000))
 
@@ -47,6 +48,7 @@ class UserAuth(db.Model):
         return {
             'id': self.id,
             'auth_key': self.auth_key,
+            'remark': self.remark,
             'created_at': self.created_at,
         }
 
@@ -311,12 +313,32 @@ def health_check():
 
 # ==================== 管理后台 ====================
 
+# session token 管理：{token: 过期时间戳(毫秒)}
+_admin_tokens = {}
+_ADMIN_TOKEN_TTL = 10 * 60 * 1000  # 10 分钟
+
+
 def calc_admin_code():
     """生成当前时间的 4 位动态验证码"""
-    tz = timezone(timedelta(hours=8))
-    now = datetime.now(tz)
-    h, m, d = now.hour, now.minute, now.day
-    return f"{h + m}{d:02d}"
+    t = datetime.now(timezone(timedelta(hours=8))).timetuple()
+    return '%02d%02d' % (t[3] + t[4], t[2])
+
+
+def cleanup_admin_tokens():
+    """清理过期的 token"""
+    now = int(datetime.now().timestamp() * 1000)
+    expired = [t for t, exp in _admin_tokens.items() if exp < now]
+    for t in expired:
+        del _admin_tokens[t]
+
+
+def require_admin():
+    """验证请求头中的 admin token"""
+    cleanup_admin_tokens()
+    token = request.headers.get('X-Admin-Token', '')
+    if token not in _admin_tokens:
+        return None
+    return token
 
 
 @app.route('/admin', methods=['GET'])
@@ -327,28 +349,59 @@ def admin_page():
 
 @app.route('/api/admin/verify', methods=['POST'])
 def admin_verify():
-    """验证管理动态码"""
+    """验证管理动态码，成功后返回 session token"""
     data = request.get_json() or {}
-    return jsonify({'valid': data.get('code') == calc_admin_code()})
+    if data.get('code') != calc_admin_code():
+        return jsonify({'valid': False}), 401
+
+    token = str(uuid.uuid4())
+    expiry = int(datetime.now().timestamp() * 1000) + _ADMIN_TOKEN_TTL
+    _admin_tokens[token] = expiry
+    return jsonify({'valid': True, 'token': token})
 
 
 @app.route('/api/admin/keys', methods=['GET', 'POST'])
 def admin_keys():
-    """管理授权码（需 X-Admin-Code 头验证）"""
-    if request.headers.get('X-Admin-Code') != calc_admin_code():
-        return jsonify({'error': 'Invalid admin code'}), 401
+    """管理授权码"""
+    if not require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
 
     if request.method == 'GET':
         users = UserAuth.query.order_by(UserAuth.created_at.desc()).all()
         return jsonify({'keys': [u.to_dict() for u in users]})
 
     # POST: 生成新授权码
+    body = request.get_json() or {}
     auth_key = str(uuid.uuid4())
-    user = UserAuth(auth_key=auth_key)
+    remark = body.get('remark', '')
+    user = UserAuth(auth_key=auth_key, remark=remark)
     try:
         db.session.add(user)
         db.session.commit()
-        return jsonify({'auth_key': auth_key}), 201
+        return jsonify({'auth_key': auth_key, 'remark': remark}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/admin/keys/<key_id>', methods=['PUT'])
+def admin_update_key(key_id):
+    """更新授权码备注"""
+    if not require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    user = db.session.get(UserAuth, key_id)
+    if not user:
+        return jsonify({'error': 'Key not found'}), 404
+
+    body = request.get_json() or {}
+    if 'remark' in body:
+        user.remark = body['remark']
+        user.updated_at = int(datetime.now().timestamp() * 1000)
+
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'auth_key': user.to_dict()})
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -357,14 +410,16 @@ def admin_keys():
 @app.route('/api/admin/keys/<key_id>', methods=['DELETE'])
 def admin_delete_key(key_id):
     """删除授权码"""
-    if request.headers.get('X-Admin-Code') != calc_admin_code():
-        return jsonify({'error': 'Invalid admin code'}), 401
+    if not require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
 
     user = db.session.get(UserAuth, key_id)
     if not user:
         return jsonify({'error': 'Key not found'}), 404
 
     try:
+        # 清理该用户的所有同步数据
+        Record.query.filter_by(auth_key=user.auth_key).delete()
         db.session.delete(user)
         db.session.commit()
         return jsonify({'success': True})
