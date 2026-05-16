@@ -2769,6 +2769,7 @@ async function executeDeleteTag() {
   border-radius: 50%;
   flex-shrink: 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--primary-color);
 }
 
 .tag-name-text {
@@ -2786,7 +2787,7 @@ async function executeDeleteTag() {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  background: white;
+  background: var(--bg-secondary);
   outline: none;
 }
 
