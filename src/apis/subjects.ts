@@ -35,11 +35,9 @@ export async function updateSubject(
 
 /**
  * 删除科目（软删除）
- * @param subject 科目对象（必须包含 id）
+ * @param id 科目ID
  * @returns 无返回值
  */
-export async function deleteSubject(
-  subject: Subject
-): Promise<void> {
-  return await invoke('delete_subject', { input: subject });
+export async function deleteSubject(id: string): Promise<void> {
+  return await invoke('delete_subject', { id });
 }
