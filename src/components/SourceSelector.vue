@@ -95,6 +95,7 @@ const handleAddKnowledge = () => {
 
 const addAllToBackend = async () => {
   if (props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
+    console.log("addAllToBackend:", props.subjectId, selectedBook.value, selectedChapter.value, selectedKnowledge.value)
     await getOrCreateSourceId({
       subject_id: props.subjectId,
       book: selectedBook.value,
@@ -158,8 +159,8 @@ watch(selectedBook, (newBook) => {
     getChapters(newBook)
       .then(data => {
         chapters.value = data;
-        selectedChapter.value = selectedChapter.value === undefined? '': selectedChapter.value;
-        selectedKnowledge.value = selectedKnowledge.value === undefined? '': selectedKnowledge.value;
+        selectedChapter.value = '';
+        selectedKnowledge.value = '';
         showAddChapterInput.value = false;
         showAddKnowledgeInput.value = false;
       })
@@ -176,7 +177,7 @@ watch(selectedChapter, (newChapter) => {
     getKnowledges(selectedBook.value, newChapter)
       .then(data => {
         knowledges.value = data;
-        selectedKnowledge.value = selectedKnowledge.value === undefined? '': selectedKnowledge.value;
+        selectedKnowledge.value = '';
         showAddKnowledgeInput.value = false;
       })
       .catch(error => {
