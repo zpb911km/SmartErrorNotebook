@@ -340,10 +340,6 @@ function getSubjectStyle(subjectId: string) {
   return { backgroundColor: '#e3f2fd', color: '#1976d2' }
 }
 
-function truncate(text: string, len: number) {
-  return (text || '').length > len ? text.substring(0, len) + '…' : text
-}
-
 const renderMarkdown = (content: string) => {
   if (!content) return ''
   const normalized = content
