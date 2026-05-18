@@ -123,7 +123,7 @@ import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { createAttachmentsForQuestion, blobUrlToBase64 } from '../apis/attachments'
-import { showInfo, showError, showSuccess } from '../utils/notification'
+import { showInfo, showError, showSuccess, showWarning } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
@@ -396,22 +396,14 @@ const resetForm = () => {
 const saveError = async () => {
   // 验证必填字段
   if (!form.value.subject) {
-    showError('错误', '请选择科目')
-    return
+    // 弹窗询问是否继续
+    if (!confirm('您未选择科目，是否继续保存？')) {
+      return
+    }
   }
 
   if (!form.value.prompt) {
     showError('错误', '请输入题目')
-    return
-  }
-
-  if (!form.value.type) {
-    showError('错误', '请选择题型')
-    return
-  }
-
-  if (imageUrls.value.length === 0) {
-    showError('错误', '请至少添加一张图片')
     return
   }
 
@@ -462,9 +454,11 @@ const saveError = async () => {
 
       await createAttachmentsForQuestion(errorQuestion.id, attachmentsData);
     }
-    showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
+    showInfo('错题添加成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
     // 重置表单
     resetForm()
+  } catch (e) {
+    console.log(e)
   } finally {
     isSaving.value = false
   }

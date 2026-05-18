@@ -140,11 +140,11 @@ pub async fn create_question(
     let id = Uuid::new_v4().to_string();
 
     // 验证科目是否存在
-    let _ = Subject::find_by_id(input.subject_id.clone())
-        .one(db)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Subject not found")?;
+    // let _ = Subject::find_by_id(input.subject_id.clone())
+    //     .one(db)
+    //     .await
+    //     .map_err(|e| e.to_string())?
+    //     .ok_or("Subject not found")?;
 
     let new_question = error_question::ActiveModel {
         id: Set(id.clone()),
