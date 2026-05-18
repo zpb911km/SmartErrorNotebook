@@ -110,6 +110,11 @@
       <span>{{ imageInfo }}</span>
       <span v-if="currentTool === 'crop'">{{ cropInfo }}</span>
     </div>
+
+    <!-- 放大镜 -->
+    <div class="loupe" v-if="showLoupe" :style="{ left: loupePosition.x + 'px', top: loupePosition.y + 'px' }">
+      <canvas ref="loupeCanvasRef" width="150" height="150"></canvas>
+    </div>
   </div>
 </template>
 
@@ -162,8 +167,6 @@ const corners = ref<{x: number; y: number}[]>([
   { x: 0, y: 0 }
 ])
 const draggingCorner = ref<number | null>(null)
-const pointRadius = 20
-
 // 旋转相关
 const rotationAngle = ref(0)
 
@@ -181,6 +184,21 @@ const panX = ref(0)
 const panY = ref(0)
 const isPanning = ref(false)
 const lastPanPos = ref({ x: 0, y: 0 })
+
+// 边缘拖拽相关
+const draggingEdge = ref<number | null>(null)
+const lastEdgePos = ref({ x: 0, y: 0 })
+
+// 放大镜相关
+const showLoupe = ref(false)
+const loupePosition = ref({ x: 0, y: 0 })
+const loupeCanvasRef = ref<HTMLCanvasElement | null>(null)
+const touchScreenPos = ref({ x: 0, y: 0 })
+
+// 双指缩放相关
+const isPinching = ref(false)
+const initialPinchDistance = ref(0)
+const initialPinchScale = ref(1)
 
 // 计算属性
 const currentToolName = computed(() => {
@@ -323,9 +341,9 @@ const drawCropOverlay = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElemen
   ctx.drawImage(currentImage.value!, 0, 0, canvas.width, canvas.height)
   ctx.restore()
   
-  // 绘制四边形边框
+  // 绘制四边形边框（动态线宽）
   ctx.strokeStyle = '#1976d2'
-  ctx.lineWidth = 3
+  ctx.lineWidth = getDynamicLineWidth(3)
   ctx.beginPath()
   ctx.moveTo(corners.value[0].x, corners.value[0].y)
   ctx.lineTo(corners.value[1].x, corners.value[1].y)
@@ -333,27 +351,74 @@ const drawCropOverlay = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElemen
   ctx.lineTo(corners.value[3].x, corners.value[3].y)
   ctx.closePath()
   ctx.stroke()
-  
-  // 绘制顶点
+
+  // 绘制顶点（动态半径）
+  const cornerRadius = getDynamicCornerRadius()
   corners.value.forEach((corner) => {
     ctx.beginPath()
-    ctx.arc(corner.x, corner.y, pointRadius, 0, Math.PI * 2)
+    ctx.arc(corner.x, corner.y, cornerRadius, 0, Math.PI * 2)
     ctx.fillStyle = '#1976d2'
     ctx.fill()
     ctx.strokeStyle = 'white'
-    ctx.lineWidth = 2
+    ctx.lineWidth = getDynamicLineWidth(2)
     ctx.stroke()
   })
+
+  // 绘制边缘中点菱形（示意可拖拽）
+  const edgeList: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]]
+  const diamondSize = cornerRadius * 0.6
+  const diamondLineWidth = getDynamicLineWidth(1.5)
+  edgeList.forEach(([i1, i2]) => {
+    const mx = (corners.value[i1].x + corners.value[i2].x) / 2
+    const my = (corners.value[i1].y + corners.value[i2].y) / 2
+
+    ctx.beginPath()
+    ctx.moveTo(mx, my - diamondSize)
+    ctx.lineTo(mx + diamondSize, my)
+    ctx.lineTo(mx, my + diamondSize)
+    ctx.lineTo(mx - diamondSize, my)
+    ctx.closePath()
+    ctx.fillStyle = '#1976d2'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = diamondLineWidth
+    ctx.stroke()
+  })
+
+  // 绘制辅助参考线（拖拽角点时显示）
+  if (draggingCorner.value !== null) {
+    const dragged = corners.value[draggingCorner.value]
+    const guideWidth = getDynamicLineWidth(1.5)
+    const avgScale = (getCanvasScale().scaleX + getCanvasScale().scaleY) / 2
+
+    ctx.save()
+    ctx.strokeStyle = 'rgba(100, 180, 255, 0.65)'
+    ctx.lineWidth = guideWidth
+    ctx.setLineDash([Math.max(4, 8 * avgScale), Math.max(2, 4 * avgScale)])
+
+    ctx.beginPath()
+    ctx.moveTo(0, dragged.y)
+    ctx.lineTo(canvas.width, dragged.y)
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.moveTo(dragged.x, 0)
+    ctx.lineTo(dragged.x, canvas.height)
+    ctx.stroke()
+
+    ctx.restore()
+  }
 }
 
 // 获取 Canvas 的缩放比例
 const getCanvasScale = () => {
   if (!canvasRef.value) return { scaleX: 1, scaleY: 1 }
-  
+
   const rect = canvasRef.value.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) return { scaleX: 1, scaleY: 1 }
   const scaleX = canvasRef.value.width / rect.width
   const scaleY = canvasRef.value.height / rect.height
-  
+
   return { scaleX, scaleY }
 }
 
@@ -370,20 +435,100 @@ const screenToCanvas = (screenX: number, screenY: number) => {
   return { x, y }
 }
 
+// 获取动态触控半径（屏幕像素 28px 转 canvas 坐标）
+const getDynamicTouchRadius = () => {
+  const { scaleX, scaleY } = getCanvasScale()
+  return 28 * (scaleX + scaleY) / 2
+}
+
+// 获取动态角点半径（屏幕像素 14px 转 canvas 坐标）
+const getDynamicCornerRadius = () => {
+  const { scaleX, scaleY } = getCanvasScale()
+  return Math.max(6, 14 * (scaleX + scaleY) / 2)
+}
+
+// 获取动态线宽（屏幕像素转 canvas 坐标）
+const getDynamicLineWidth = (targetScreenPx: number) => {
+  const { scaleX, scaleY } = getCanvasScale()
+  return Math.max(1, targetScreenPx * (scaleX + scaleY) / 2)
+}
+
+// 点到线段的最短距离
+const pointToSegmentDistance = (p: {x: number; y: number}, a: {x: number; y: number}, b: {x: number; y: number}) => {
+  const abx = b.x - a.x
+  const aby = b.y - a.y
+  const apx = p.x - a.x
+  const apy = p.y - a.y
+  const ab2 = abx * abx + aby * aby
+  if (ab2 === 0) return Math.sqrt(apx * apx + apy * apy)
+  let t = (apx * abx + apy * aby) / ab2
+  t = Math.max(0, Math.min(1, t))
+  const projx = a.x + t * abx
+  const projy = a.y + t * aby
+  return Math.sqrt((p.x - projx) ** 2 + (p.y - projy) ** 2)
+}
+
+// 查找最近的边缘（四边形的四条边）
+const findNearestEdge = (canvasX: number, canvasY: number): number | null => {
+  const edgeList: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]]
+  const radius = getDynamicTouchRadius()
+
+  for (let i = 0; i < 4; i++) {
+    const [i1, i2] = edgeList[i]
+    const dist = pointToSegmentDistance({x: canvasX, y: canvasY}, corners.value[i1], corners.value[i2])
+    if (dist <= radius) return i
+  }
+  return null
+}
+
 // 全局鼠标事件处理函数
 const handleGlobalMouseMove = (e: MouseEvent) => {
-  if (currentTool.value === 'crop' && draggingCorner.value !== null) {
-    const { x, y } = screenToCanvas(e.clientX, e.clientY)
-    
-    // 限制调节点在图片范围内
-    if (canvasRef.value) {
-      const width = canvasRef.value.width
-      const height = canvasRef.value.height
-      
-      const clampedX = Math.max(0, Math.min(x, width))
-      const clampedY = Math.max(0, Math.min(y, height))
-      
-      corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
+  if (currentTool.value === 'crop') {
+    if (draggingCorner.value !== null) {
+      const { x, y } = screenToCanvas(e.clientX, e.clientY)
+
+      if (canvasRef.value) {
+        const width = canvasRef.value.width
+        const height = canvasRef.value.height
+
+        corners.value[draggingCorner.value] = {
+          x: Math.max(0, Math.min(x, width)),
+          y: Math.max(0, Math.min(y, height))
+        }
+        drawCanvas()
+      }
+    } else if (draggingEdge.value !== null) {
+      const { x, y } = screenToCanvas(e.clientX, e.clientY)
+      const edgeList: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]]
+      const [i1, i2] = edgeList[draggingEdge.value]
+
+      const dx = x - lastEdgePos.value.x
+      const dy = y - lastEdgePos.value.y
+
+      if (canvasRef.value) {
+        const w = canvasRef.value.width
+        const h = canvasRef.value.height
+
+        // 约束 dx/dy 使两个角点同时不超过边界，避免边缩短
+        const minDx = Math.max(-corners.value[i1].x, -corners.value[i2].x)
+        const maxDx = Math.min(w - corners.value[i1].x, w - corners.value[i2].x)
+        const constrainedDx = Math.max(minDx, Math.min(dx, maxDx))
+
+        const minDy = Math.max(-corners.value[i1].y, -corners.value[i2].y)
+        const maxDy = Math.min(h - corners.value[i1].y, h - corners.value[i2].y)
+        const constrainedDy = Math.max(minDy, Math.min(dy, maxDy))
+
+        corners.value[i1] = {
+          x: corners.value[i1].x + constrainedDx,
+          y: corners.value[i1].y + constrainedDy
+        }
+        corners.value[i2] = {
+          x: corners.value[i2].x + constrainedDx,
+          y: corners.value[i2].y + constrainedDy
+        }
+      }
+
+      lastEdgePos.value = { x, y }
       drawCanvas()
     }
   } else if (isPanning.value) {
@@ -400,26 +545,23 @@ const handleGlobalMouseMove = (e: MouseEvent) => {
 }
 
 const handleGlobalMouseUp = () => {
-  // 移除全局事件监听器
   window.removeEventListener('mousemove', handleGlobalMouseMove)
   window.removeEventListener('mouseup', handleGlobalMouseUp)
-  
-  // 限制调节点在图片范围内
+
   if (canvasRef.value) {
     const width = canvasRef.value.width
     const height = canvasRef.value.height
-    
-    corners.value = corners.value.map((corner) => {
-      return {
-        x: Math.max(0, Math.min(corner.x, width)),
-        y: Math.max(0, Math.min(corner.y, height))
-      }
-    })
-    
+
+    corners.value = corners.value.map((corner) => ({
+      x: Math.max(0, Math.min(corner.x, width)),
+      y: Math.max(0, Math.min(corner.y, height))
+    }))
+
     drawCanvas()
   }
-  
+
   draggingCorner.value = null
+  draggingEdge.value = null
   isPanning.value = false
 }
 
@@ -427,20 +569,35 @@ const handleGlobalMouseUp = () => {
 const handleMouseDown = (e: MouseEvent) => {
   if (currentTool.value === 'crop') {
     const { x, y } = screenToCanvas(e.clientX, e.clientY)
-    
+    const radius = getDynamicTouchRadius()
+
+    // 检查角点（优先于边缘）
+    let hit = false
     corners.value.forEach((corner, index) => {
       const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
-      if (distance <= pointRadius) {
+      if (distance <= radius && !hit) {
         draggingCorner.value = index
-        // 添加全局事件监听器
-        window.addEventListener('mousemove', handleGlobalMouseMove)
-        window.addEventListener('mouseup', handleGlobalMouseUp)
+        hit = true
       }
     })
+
+    // 检查边缘
+    if (!hit) {
+      const edgeIndex = findNearestEdge(x, y)
+      if (edgeIndex !== null) {
+        draggingEdge.value = edgeIndex
+        lastEdgePos.value = { x, y }
+        hit = true
+      }
+    }
+
+    if (hit) {
+      window.addEventListener('mousemove', handleGlobalMouseMove)
+      window.addEventListener('mouseup', handleGlobalMouseUp)
+    }
   } else {
     isPanning.value = true
     lastPanPos.value = { x: e.clientX, y: e.clientY }
-    // 添加全局事件监听器
     window.addEventListener('mousemove', handleGlobalMouseMove)
     window.addEventListener('mouseup', handleGlobalMouseUp)
   }
@@ -449,41 +606,232 @@ const handleMouseDown = (e: MouseEvent) => {
 // 触摸事件处理
 const handleTouchStart = (e: TouchEvent) => {
   e.preventDefault()
+
+  // 双指缩放检测（优先于所有单指操作）
+  if (e.touches.length === 2) {
+    // 如果之前有裁剪拖拽，先清理
+    draggingCorner.value = null
+    draggingEdge.value = null
+    showLoupe.value = false
+    // 记录双指初始距离
+    const dx = e.touches[0].clientX - e.touches[1].clientX
+    const dy = e.touches[0].clientY - e.touches[1].clientY
+    initialPinchDistance.value = Math.sqrt(dx * dx + dy * dy)
+    initialPinchScale.value = scale.value
+    isPinching.value = true
+    return
+  }
+
   if (currentTool.value === 'crop') {
     const touch = e.touches[0]
     const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
-    
+    const radius = getDynamicTouchRadius()
+
+    touchScreenPos.value = { x: touch.clientX, y: touch.clientY }
+
+    // 检查角点（优先于边缘）
+    let hit = false
     corners.value.forEach((corner, index) => {
       const distance = Math.sqrt((x - corner.x) ** 2 + (y - corner.y) ** 2)
-      if (distance <= pointRadius) {
+      if (distance <= radius && !hit) {
         draggingCorner.value = index
+        hit = true
+        showLoupe.value = true
       }
     })
+
+    // 检查边缘
+    if (!hit) {
+      const edgeIndex = findNearestEdge(x, y)
+      if (edgeIndex !== null) {
+        draggingEdge.value = edgeIndex
+        lastEdgePos.value = { x, y }
+        hit = true
+      }
+    }
+
+    if (hit) {
+      updateLoupePosition(touch.clientX, touch.clientY)
+      requestAnimationFrame(() => updateLoupeContent())
+    }
   }
 }
 
 const handleTouchMove = (e: TouchEvent) => {
   e.preventDefault()
-  if (currentTool.value === 'crop' && draggingCorner.value !== null) {
-    const touch = e.touches[0]
-    const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
-    
-    // 限制调节点在图片范围内
-    if (canvasRef.value) {
-      const width = canvasRef.value.width
-      const height = canvasRef.value.height
-      
-      const clampedX = Math.max(0, Math.min(x, width))
-      const clampedY = Math.max(0, Math.min(y, height))
-      
-      corners.value[draggingCorner.value] = { x: clampedX, y: clampedY }
+
+  // 双指缩放
+  if (isPinching.value && e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX
+    const dy = e.touches[0].clientY - e.touches[1].clientY
+    const distance = Math.sqrt(dx * dx + dy * dy)
+    const ratio = distance / initialPinchDistance.value
+    scale.value = Math.max(0.1, Math.min(5, initialPinchScale.value * ratio))
+    updateCanvasTransform()
+    return
+  }
+
+  const touch = e.touches[0]
+  touchScreenPos.value = { x: touch.clientX, y: touch.clientY }
+
+  if (currentTool.value === 'crop') {
+    if (draggingCorner.value !== null) {
+      const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
+
+      if (canvasRef.value) {
+        const width = canvasRef.value.width
+        const height = canvasRef.value.height
+
+        corners.value[draggingCorner.value] = {
+          x: Math.max(0, Math.min(x, width)),
+          y: Math.max(0, Math.min(y, height))
+        }
+        drawCanvas()
+        updateLoupePosition(touch.clientX, touch.clientY)
+        requestAnimationFrame(() => updateLoupeContent())
+      }
+    } else if (draggingEdge.value !== null) {
+      const { x, y } = screenToCanvas(touch.clientX, touch.clientY)
+      const edgeList: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]]
+      const [i1, i2] = edgeList[draggingEdge.value]
+
+      const dx = x - lastEdgePos.value.x
+      const dy = y - lastEdgePos.value.y
+
+      if (canvasRef.value) {
+        const w = canvasRef.value.width
+        const h = canvasRef.value.height
+
+        // 约束 dx/dy 使两个角点同时不超过边界，避免边缩短
+        const minDx = Math.max(-corners.value[i1].x, -corners.value[i2].x)
+        const maxDx = Math.min(w - corners.value[i1].x, w - corners.value[i2].x)
+        const constrainedDx = Math.max(minDx, Math.min(dx, maxDx))
+
+        const minDy = Math.max(-corners.value[i1].y, -corners.value[i2].y)
+        const maxDy = Math.min(h - corners.value[i1].y, h - corners.value[i2].y)
+        const constrainedDy = Math.max(minDy, Math.min(dy, maxDy))
+
+        corners.value[i1] = {
+          x: corners.value[i1].x + constrainedDx,
+          y: corners.value[i1].y + constrainedDy
+        }
+        corners.value[i2] = {
+          x: corners.value[i2].x + constrainedDx,
+          y: corners.value[i2].y + constrainedDy
+        }
+      }
+
+      lastEdgePos.value = { x, y }
       drawCanvas()
     }
   }
 }
 
-const handleTouchEnd = () => {
+const handleTouchEnd = (e: TouchEvent) => {
+  // 双指缩放结束检测
+  if (isPinching.value && e.touches.length < 2) {
+    isPinching.value = false
+  }
+
+  if (canvasRef.value) {
+    const width = canvasRef.value.width
+    const height = canvasRef.value.height
+
+    corners.value = corners.value.map((corner) => ({
+      x: Math.max(0, Math.min(corner.x, width)),
+      y: Math.max(0, Math.min(corner.y, height))
+    }))
+
+    drawCanvas()
+  }
+
   draggingCorner.value = null
+  draggingEdge.value = null
+  showLoupe.value = false
+}
+
+// 更新放大镜位置（自动避开屏幕边缘）
+const updateLoupePosition = (clientX: number, clientY: number) => {
+  const loupeSize = 150
+  const margin = 12
+  const offsetAbove = 50
+  const offsetBelow = 30
+
+  let left: number
+  let top: number
+
+  // 垂直方向：优先显示在手指上方，空间不够则显示在下方
+  if (clientY - offsetAbove - loupeSize - margin > 0) {
+    top = clientY - offsetAbove - loupeSize
+  } else {
+    top = clientY + offsetBelow
+  }
+
+  // 水平方向：略偏右居中，贴近边缘时左移
+  left = clientX - loupeSize / 2 + 10
+  left = Math.max(margin, Math.min(left, window.innerWidth - loupeSize - margin))
+
+  // 如果上方显示空间不够同时下方也超出底部，强制上移
+  if (top + loupeSize > (window.innerHeight || document.documentElement.clientHeight) - margin) {
+    top = (window.innerHeight || document.documentElement.clientHeight) - loupeSize - margin
+  }
+
+  loupePosition.value = { x: left, y: top }
+}
+
+// 绘制放大镜内容
+const updateLoupeContent = () => {
+  if (!loupeCanvasRef.value || !currentImage.value || draggingCorner.value === null) return
+
+  const lCanvas = loupeCanvasRef.value
+  const lCtx = lCanvas.getContext('2d')
+  if (!lCtx) return
+
+  const loupeSize = 150
+  const magnification = 2.5
+  const regionSize = loupeSize / magnification // 60px canvas 坐标区域
+
+  const corner = corners.value[draggingCorner.value]
+  const halfRegion = regionSize / 2
+
+  const srcX = Math.max(0, corner.x - halfRegion)
+  const srcY = Math.max(0, corner.y - halfRegion)
+  const srcW = Math.min(regionSize, (canvasRef.value?.width ?? regionSize) - srcX)
+  const srcH = Math.min(regionSize, (canvasRef.value?.height ?? regionSize) - srcY)
+
+  // 清空 + 白色背景
+  lCtx.fillStyle = '#ffffff'
+  lCtx.fillRect(0, 0, loupeSize, loupeSize)
+
+  // 绘制放大后的图像区域
+  if (currentImage.value) {
+    lCtx.drawImage(currentImage.value, srcX, srcY, srcW, srcH, 0, 0, loupeSize, loupeSize)
+  }
+
+  // 计算角点在放大镜 canvas 中的位置
+  const cx = (corner.x - srcX) / regionSize * loupeSize
+  const cy = (corner.y - srcY) / regionSize * loupeSize
+
+  // 十字准星（红色）
+  lCtx.strokeStyle = '#ff4444'
+  lCtx.lineWidth = 1.5
+  lCtx.beginPath()
+  lCtx.moveTo(cx - 20, cy)
+  lCtx.lineTo(cx + 20, cy)
+  lCtx.stroke()
+  lCtx.beginPath()
+  lCtx.moveTo(cx, cy - 20)
+  lCtx.lineTo(cx, cy + 20)
+  lCtx.stroke()
+
+  // 中心蓝色角点标记
+  lCtx.beginPath()
+  lCtx.arc(cx, cy, 4, 0, Math.PI * 2)
+  lCtx.fillStyle = '#1976d2'
+  lCtx.fill()
+  lCtx.strokeStyle = '#ffffff'
+  lCtx.lineWidth = 1.5
+  lCtx.stroke()
 }
 
 // 滚轮缩放
@@ -664,59 +1012,67 @@ const autoDetectRegion = () => {
     console.log('Canvas或图像不存在')
     return
   }
-  
-  const canvas = canvasRef.value
-  const ctx = canvas.getContext('2d')
-  if (!ctx) {
-    console.log('无法获取Canvas上下文')
+
+  const img = currentImage.value
+  console.log('原始尺寸:', img.width, 'x', img.height)
+
+  // 降采样到最长边 800px，加速算法执行
+  const MAX_DIM = 800
+  const scale = Math.min(MAX_DIM / img.width, MAX_DIM / img.height, 1)
+  const smallW = Math.round(img.width * scale)
+  const smallH = Math.round(img.height * scale)
+
+  const tempCanvas = document.createElement('canvas')
+  tempCanvas.width = smallW
+  tempCanvas.height = smallH
+  const tempCtx = tempCanvas.getContext('2d')
+  if (!tempCtx) {
+    console.log('无法创建临时Canvas')
     return
   }
-  
-  console.log('Canvas尺寸:', canvas.width, 'x', canvas.height)
-  
-  // 绘制当前图像
-  ctx.drawImage(currentImage.value, 0, 0, canvas.width, canvas.height)
-  
-  // 获取图像数据
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  console.log('获取图像数据成功')
-  
-  // 应用二值化增强对比度
+
+  // 浏览器原生缩放（C++ 层面，不会卡）
+  tempCtx.drawImage(img, 0, 0, smallW, smallH)
+
+  // 缩略图上跑算法
+  const imageData = tempCtx.getImageData(0, 0, smallW, smallH)
+  console.log('降采样后尺寸:', smallW, 'x', smallH, '缩放比:', scale)
+
   const thresholdedData = applyThresholdToImage(imageData, 128)
   console.log('二值化处理完成')
-  
-  // 边缘检测
+
   const edgeData = sobelEdgeDetection(thresholdedData)
   console.log('边缘检测完成')
-  
-  // 提取轮廓
+
   const contours = findContours(edgeData)
   console.log('提取轮廓完成，轮廓点数量:', contours.length)
-  
-  // 拟合矩形
+
   const rectangle = fitRectangle(contours)
   console.log('拟合矩形完成，矩形点数量:', rectangle.length)
-  
+
   if (rectangle.length === 4) {
     console.log('识别到区域:', rectangle)
-    // 调整边界，添加一些 padding
+    // 将缩略图坐标映射回原图坐标
+    const invScale = 1 / scale
+    const width = canvasRef.value.width
+    const height = canvasRef.value.height
     const padding = 20
-    const width = canvas.width
-    const height = canvas.height
-    
+
     corners.value = rectangle.map((point, index) => {
-      if (index === 0) { // 左上角
-        return { x: Math.max(0, point.x - padding), y: Math.max(0, point.y - padding) }
-      } else if (index === 1) { // 右上角
-        return { x: Math.min(width, point.x + padding), y: Math.max(0, point.y - padding) }
-      } else if (index === 2) { // 右下角
-        return { x: Math.min(width, point.x + padding), y: Math.min(height, point.y + padding) }
-      } else { // 左下角
-        return { x: Math.max(0, point.x - padding), y: Math.min(height, point.y + padding) }
+      const origX = point.x * invScale
+      const origY = point.y * invScale
+      if (index === 0) {
+        return { x: Math.max(0, origX - padding), y: Math.max(0, origY - padding) }
+      } else if (index === 1) {
+        return { x: Math.min(width, origX + padding), y: Math.max(0, origY - padding) }
+      } else if (index === 2) {
+        return { x: Math.min(width, origX + padding), y: Math.min(height, origY + padding) }
+      } else {
+        return { x: Math.max(0, origX - padding), y: Math.min(height, origY + padding) }
       }
     })
-    
-    console.log('调整后的边界:', corners.value)
+
+    console.log('映射回原图的边界:', corners.value)
     drawCanvas()
     console.log('绘制完成')
   } else {
@@ -1425,5 +1781,25 @@ const handleCancel = () => {
 .status-bar span {
   color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
+}
+
+/* 放大镜 */
+.loupe {
+  position: fixed;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10000;
+  background: #fff;
+}
+
+.loupe canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 </style>
