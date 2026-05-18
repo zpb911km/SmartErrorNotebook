@@ -832,8 +832,7 @@ const rotate = (angle: number) => {
 
 const applyRotation = () => {
   if (!canvasRef.value || !currentImage.value) return
-  
-  const canvas = canvasRef.value
+
   const img = currentImage.value
   
   const angle = rotationAngle.value * Math.PI / 180

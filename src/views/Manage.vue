@@ -317,7 +317,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
 import { getBooks, getChapters, getKnowledges, getSources } from '../apis/sources'
-import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
+import { getFullErrorTags } from '../apis/errorTags'
 import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
 import type { Subject } from '../types'
 import { marked } from 'marked'
@@ -352,11 +352,6 @@ const questionTagsMap = ref<Map<string, string[]>>(new Map())
 const sourceInfoMap = ref<Map<string, any>>(new Map())
 
 // 筛选器引用
-const statusSelectRef = ref<HTMLSelectElement>()
-const difficultySelectRef = ref<HTMLSelectElement>()
-const masterySelectRef = ref<HTMLSelectElement>()
-const dateRangeSelectRef = ref<HTMLSelectElement>()
-const tagSelectRef = ref<HTMLSelectElement>()
 
 // 级联菜单状态
 const cascadeVisible = ref(false)
@@ -492,78 +487,6 @@ const clearTags = () => {
   filters.value.tags = []
 }
 
-// 选择标签（保留向后兼容）
-const selectTag = (tag: string) => {
-  if (tag === '') {
-    filters.value.tags = []
-  } else {
-    filters.value.tags = [tag]
-  }
-  tagDropdownVisible.value = false
-}
-
-// 显示科目列表
-const showSubjectList = async () => {
-  // 关闭其他筛选器
-  closeAllOtherFilters('subject')
-  
-  subjectDropdownVisible.value = true
-  cascadeVisible.value = true
-  // 加载所有科目的书名（如果没有选中具体科目）
-  if (!filters.value.subject_id) {
-    books.value = []
-    chapters.value = []
-    knowledges.value = []
-  }
-}
-
-// 状态筛选获得焦点时关闭其他筛选
-const onStatusFocus = () => {
-  closeAllOtherFilters('status')
-}
-
-// 难度筛选获得焦点时关闭其他筛选
-const onDifficultyFocus = () => {
-  closeAllOtherFilters('difficulty')
-}
-
-// 掌握程度筛选获得焦点时关闭其他筛选
-const onMasteryFocus = () => {
-  closeAllOtherFilters('mastery')
-}
-
-// 时间范围筛选获得焦点时关闭其他筛选
-const onDateRangeFocus = () => {
-  closeAllOtherFilters('dateRange')
-}
-
-// 标签筛选获得焦点时关闭其他筛选
-const onTagFocus = () => {
-  closeAllOtherFilters('tag')
-}
-
-// 关闭其他筛选器的通用函数
-const closeAllOtherFilters = (current: string) => {
-  if (current !== 'subject' && subjectDropdownVisible.value) {
-    subjectDropdownVisible.value = false
-    cascadeVisible.value = false
-    hasClicked.value = false
-    hasBookClicked.value = false
-    hasChapterClicked.value = false
-  }
-  if (current !== 'difficulty' && difficultySelectRef.value) {
-    difficultySelectRef.value.blur()
-  }
-  if (current !== 'mastery' && masterySelectRef.value) {
-    masterySelectRef.value.blur()
-  }
-  if (current !== 'dateRange' && dateRangeSelectRef.value) {
-    dateRangeSelectRef.value.blur()
-  }
-  if (current !== 'tag' && tagSelectRef.value) {
-    tagSelectRef.value.blur()
-  }
-}
 
 // 选择科目
 const selectSubject = (subjectId: string) => {
@@ -705,51 +628,6 @@ const closeCascadeWindow = () => {
   hasChapterClicked.value = false
 }
 
-// 隐藏级联菜单
-const hideCascadeMenu = () => {
-  hideTimer = window.setTimeout(() => {
-    cascadeVisible.value = false
-    currentBook.value = null
-    currentChapter.value = null
-    chapters.value = []
-    knowledges.value = []
-  }, 200)
-}
-
-// 显示章节
-const showChapters = async (book: string) => {
-  currentBook.value = book
-  currentChapter.value = null
-  knowledges.value = []
-  
-  if (filters.value.subject_id && book) {
-    try {
-      chapters.value = await getChapters(book, filters.value.subject_id)
-    } catch (error) {
-      console.error('获取章节失败:', error)
-      chapters.value = []
-    }
-  } else {
-    chapters.value = []
-  }
-}
-
-// 显示知识点
-const showKnowledges = async (chapter: string) => {
-  currentChapter.value = chapter
-  
-  if (filters.value.subject_id && currentBook.value && chapter) {
-    try {
-      knowledges.value = await getKnowledges(currentBook.value, chapter, filters.value.subject_id)
-    } catch (error) {
-      console.error('获取知识点失败:', error)
-      knowledges.value = []
-    }
-  } else {
-    knowledges.value = []
-  }
-}
-
 // 选择书名
 const selectBook = (book: string) => {
   filters.value.book = book
@@ -759,13 +637,6 @@ const selectBook = (book: string) => {
   fetchData()
 }
 
-// 选择章节
-const selectChapter = (chapter: string) => {
-  filters.value.chapter = chapter
-  filters.value.knowledge = ''
-  // 重新加载数据以应用筛选
-  fetchData()
-}
 
 // 选择知识点
 const selectKnowledge = (knowledge: string) => {
@@ -939,13 +810,6 @@ const formatDate = (timestamp: number) => {
   // 后端返回的是秒级时间戳，需要转换为毫秒
   const date = new Date(timestamp * 1000)
   return date.toLocaleDateString('zh-CN')
-}
-
-// 截断内容
-const truncateContent = (content: string, maxLength: number) => {
-  if (!content) return ''
-  if (content.length <= maxLength) return content
-  return content.substring(0, maxLength) + '...'
 }
 
 // 渲染 Markdown

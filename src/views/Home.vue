@@ -60,11 +60,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 
-const stats = ref({
-  total: 128,
-  mastered: 89
-})
-
 // 轮播组件逻辑
 const currentSlide = ref(0)
 const slideCount = 3

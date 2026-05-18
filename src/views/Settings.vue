@@ -217,9 +217,6 @@ import { purgeSyncedDeletions } from '../apis/sync'
 
 // AI 选项
 const aiEnabled = ref(false)
-const aiAnalysis = ref(true)
-const aiReview = ref(true)
-const aiRecommend = ref(false)
 
 // LLM 配置对话框
 const showLLMConfig = ref(false)

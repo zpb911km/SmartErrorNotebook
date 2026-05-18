@@ -127,7 +127,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { handshake, getAllSyncData, uploadRecord, applyPullRecords, getAllLocalRecords, downloadRecord } from '../apis/sync'
-import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord, SyncRecordHeader } from '../apis/sync'
+import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord } from '../apis/sync'
 import SyncOverlay from '../components/SyncOverlay.vue'
 import ConflictResolver from '../components/ConflictResolver.vue'
 import { showError, showSuccess } from '../utils/notification'

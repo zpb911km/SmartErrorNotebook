@@ -496,7 +496,7 @@ import { getQuestionStats, getQuestions } from '../apis/errorQuestions'
 import { getDueCount, getSRSStatistics, getAllSRSStatus } from '../apis/srs'
 import { getSubjects, updateSubject, deleteSubject } from '../apis/subjects'
 import { getBooks, getChapters, getKnowledges, getSources, updateSource, deleteSource } from '../apis/sources'
-import { getErrorTags, getFullErrorTags } from '../apis/errorTags'
+import { getFullErrorTags } from '../apis/errorTags'
 import type { Subject, Source, ErrorTags } from '../types'
 
 // ==================== 状态 ====================
@@ -554,8 +554,6 @@ const justFinishedLongPress = ref(false)
 const isInLongPressMode = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteItemInfo = ref<{ type: 'subject' | 'book' | 'chapter' | 'knowledge', id?: string, name: string, subjectId?: string, book?: string, chapter?: string } | null>(null)
-
-const colors = ['#1976d2', '#e65100', '#7b1fa2', '#43a047', '#00bcd4', '#ff9800', '#795548', '#607d8b', '#c62828', '#283593']
 
 // 难度区间标注
 const difficultyRange = ref<{ min: number; max: number } | null>(null)
@@ -1427,7 +1425,7 @@ const donutSegments = computed(() => {
   let currentOffset = 0
   const circumference = 251.2 // 2 * Math.PI * 40 ≈ 251.2
   
-  errorTagDistribution.value.forEach((tag, index) => {
+  errorTagDistribution.value.forEach((tag, _index) => {
     const percent = (tag.count / totalTags.value)
     const strokeLength = percent * circumference
     segments.push({

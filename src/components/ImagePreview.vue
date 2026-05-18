@@ -127,13 +127,6 @@ const zoomOut = () => {
   scale.value = Math.max(scale.value / 1.2, 0.1)
 }
 
-// 重置缩放和平移
-const resetZoom = () => {
-  scale.value = 1
-  translateX.value = 0
-  translateY.value = 0
-}
-
 // 重置所有状态
 const resetAll = () => {
   scale.value = 1

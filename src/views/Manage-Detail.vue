@@ -319,7 +319,7 @@ import {
 } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
 import { getErrorTagByQuestionId, createErrorTagsForQuestion, deleteErrorTagById } from '../apis/errorTags'
-import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment, base64ToArrayBuffer } from '../apis/attachments'
+import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment } from '../apis/attachments'
 import { getQuestionSRSStatus } from '../apis/srsData'
 import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'

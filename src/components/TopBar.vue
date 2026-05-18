@@ -36,7 +36,7 @@ interface Props {
   showSettings?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   title: '智能错题本',
   showBack: false,
   showSearch: true,
