@@ -5,7 +5,7 @@
       <button class="close-btn" @click="handleClose" title="关闭">
         <span class="close-icon">x</span>
       </button>
-      
+
       <!-- 图片 -->
       <div class="image-wrapper" @wheel.capture="handleWheel">
         <img
@@ -26,8 +26,12 @@
         <button class="zoom-btn" @click="zoomIn" title="放大">+</button>
         <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
         <button class="zoom-btn" @click="zoomOut" title="缩小">−</button>
-        <button class="zoom-btn rotate-btn" @click="rotateImage" title="旋转">↻</button>
-        <button class="zoom-btn reset-btn" @click="resetAll" title="重置">重置</button>
+        <button class="zoom-btn rotate-btn" @click="rotateImage" title="旋转">
+          ↻
+        </button>
+        <button class="zoom-btn reset-btn" @click="resetAll" title="重置">
+          重置
+        </button>
       </div>
     </div>
   </div>
@@ -83,34 +87,49 @@ const clampToViewport = () => {
   // 图片渲染后的实际尺寸（需要根据 viewBox 和 object-fit 估算）
   // 这里使用一个简化的方法：基于 max-width/max-height: 95%
   const maxWidth = window.innerWidth * 0.95
-  const maxHeight = window.innerHeight * 0.95 * (window.innerHeight * 0.95 / window.innerWidth || 1)
+  const maxHeight =
+    window.innerHeight *
+    0.95 *
+    ((window.innerHeight * 0.95) / window.innerWidth || 1)
 
   // 当缩小时，限制移动范围
   if (scale.value < 1) {
     const maxX = (maxWidth - maxWidth * scale.value) / 2
     const maxY = (maxHeight - maxHeight * scale.value) / 2
-    translateX.value = Math.max(-Math.abs(maxX), Math.min(Math.abs(maxX), translateX.value))
-    translateY.value = Math.max(-Math.abs(maxY), Math.min(Math.abs(maxY), translateY.value))
+    translateX.value = Math.max(
+      -Math.abs(maxX),
+      Math.min(Math.abs(maxX), translateX.value)
+    )
+    translateY.value = Math.max(
+      -Math.abs(maxY),
+      Math.min(Math.abs(maxY), translateY.value)
+    )
   }
 }
 
 // 在组件挂载后和 visible 变化时计算视图口限制
-watch(() => props.visible, () => {
-  if (props.visible) {
-    // 延迟一下确保 DOM 已渲染
-    setTimeout(clampToViewport, 100)
+watch(
+  () => props.visible,
+  () => {
+    if (props.visible) {
+      // 延迟一下确保 DOM 已渲染
+      setTimeout(clampToViewport, 100)
+    }
   }
-})
+)
 
 // 监听 visible 变化，重置缩放和平移
-watch(() => props.visible, (newVal) => {
-  if (newVal) {
-    scale.value = 1
-    translateX.value = 0
-    translateY.value = 0
-    rotation.value = 0
+watch(
+  () => props.visible,
+  (newVal) => {
+    if (newVal) {
+      scale.value = 1
+      translateX.value = 0
+      translateY.value = 0
+      rotation.value = 0
+    }
   }
-})
+)
 
 // 关闭预览
 const handleClose = () => {

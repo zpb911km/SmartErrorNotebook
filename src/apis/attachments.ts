@@ -1,9 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
-import {
-  Attachment,
-  CreateAttachmentInput,
-} from '../types';
-import { compressImageIfTooLarge } from '../utils/imageCompression';
+import { invoke } from '@tauri-apps/api/core'
+import { Attachment, CreateAttachmentInput } from '../types'
+import { compressImageIfTooLarge } from '../utils/imageCompression'
 
 // ==================== API 接口 ====================
 
@@ -16,26 +13,28 @@ export async function createAttachment(
   input: CreateAttachmentInput
 ): Promise<Attachment> {
   // 阻塞式图片压缩（等待压缩完成）
-  let compressedBase64Data = input.base64_data;
+  let compressedBase64Data = input.base64_data
   const base64 = input.base64_data.startsWith('data:')
     ? input.base64_data.split(',')[1]
-    : input.base64_data;
+    : input.base64_data
 
   if (base64) {
-    const compressed = await compressImageIfTooLarge(input.base64_data);
+    const compressed = await compressImageIfTooLarge(input.base64_data)
     if (compressed !== input.base64_data) {
-      console.log(`[图片压缩] 题目 ${input.question_id} 的图片从 ${Math.round(input.base64_data.length / 1024)}KB 压缩至 ${Math.round(compressed.length / 1024)}KB`);
-      compressedBase64Data = compressed;
+      console.log(
+        `[图片压缩] 题目 ${input.question_id} 的图片从 ${Math.round(input.base64_data.length / 1024)}KB 压缩至 ${Math.round(compressed.length / 1024)}KB`
+      )
+      compressedBase64Data = compressed
     }
   }
 
   // 使用压缩后的数据创建附件
   const updatedInput: CreateAttachmentInput = {
     ...input,
-    base64_data: compressedBase64Data,
-  };
+    base64_data: compressedBase64Data
+  }
 
-  return await invoke('create_attachment', { input: updatedInput });
+  return await invoke('create_attachment', { input: updatedInput })
 }
 
 /**
@@ -51,47 +50,53 @@ export async function createAttachmentsForQuestion(
   console.log('========== createAttachmentsForQuestion ==========')
   console.log('questionId:', questionId)
   console.log('附件数量:', attachments.length)
-  
+
   // 阻塞式批量图片压缩（等待所有压缩完成）
   const compressedAttachments = await Promise.all(
     attachments.map(async (att, index) => {
       console.log(`\n--- 处理附件 ${index + 1} ---`)
       console.log('原始 base64_data 长度:', att.base64_data?.length || 0)
-      
+
       const base64 = att.base64_data.startsWith('data:')
         ? att.base64_data.split(',')[1]
-        : att.base64_data;
+        : att.base64_data
 
       if (base64) {
-        const compressed = await compressImageIfTooLarge(att.base64_data);
+        const compressed = await compressImageIfTooLarge(att.base64_data)
         if (compressed !== att.base64_data) {
           console.log(
             `[图片压缩] 题目 ${questionId} 的附件从 ${Math.round(att.base64_data.length / 1024)}KB 压缩至 ${Math.round(compressed.length / 1024)}KB`
-          );
-          return { ...att, base64_data: compressed };
+          )
+          return { ...att, base64_data: compressed }
         } else {
           console.log('图片未压缩（大小合适）')
         }
       }
-      console.log('最终 base64_data 长度:', (att.base64_data || base64)?.length || 0)
-      return att;
+      console.log(
+        '最终 base64_data 长度:',
+        (att.base64_data || base64)?.length || 0
+      )
+      return att
     })
-  );
+  )
 
   console.log('\n========== 准备发送给后端的附件数据 ==========')
   console.log('questionId:', questionId)
-  console.log('attachments:', compressedAttachments.map((att, i) => ({
-    index: i + 1,
-    question_id: att.question_id,
-    type_: att.type_,
-    file_type: att.file_type,
-    base64_data_length: att.base64_data?.length || 0
-  })))
-  
+  console.log(
+    'attachments:',
+    compressedAttachments.map((att, i) => ({
+      index: i + 1,
+      question_id: att.question_id,
+      type_: att.type_,
+      file_type: att.file_type,
+      base64_data_length: att.base64_data?.length || 0
+    }))
+  )
+
   return await invoke('create_attachments_for_question', {
     questionId: questionId,
-    attachments: compressedAttachments,
-  });
+    attachments: compressedAttachments
+  })
 }
 
 /**
@@ -102,7 +107,7 @@ export async function createAttachmentsForQuestion(
 export async function getAttachmentsByQuestion(
   questionId: string
 ): Promise<Attachment[]> {
-  return await invoke('get_attachments_by_question', { questionId });
+  return await invoke('get_attachments_by_question', { questionId })
 }
 
 /**
@@ -111,7 +116,7 @@ export async function getAttachmentsByQuestion(
  * @returns 无返回值
  */
 export async function deleteAttachment(id: string): Promise<void> {
-  return await invoke('delete_attachment', { id });
+  return await invoke('delete_attachment', { id })
 }
 
 // ==================== 工具函数 ====================
@@ -122,12 +127,12 @@ export async function deleteAttachment(id: string): Promise<void> {
  * @returns Uint8Array 字节数组
  */
 export function base64ToArrayBuffer(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
+  const binaryString = atob(base64)
+  const bytes = new Uint8Array(binaryString.length)
   for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+    bytes[i] = binaryString.charCodeAt(i)
   }
-  return bytes;
+  return bytes
 }
 
 /**
@@ -137,16 +142,16 @@ export function base64ToArrayBuffer(base64: string): Uint8Array {
  */
 export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
     reader.onload = () => {
-      const result = reader.result as string;
+      const result = reader.result as string
       // 移除 data:image/xxx;base64, 前缀，只保留 base64 数据
-      const base64Data = result.split(',')[1];
-      resolve(base64Data);
-    };
-    reader.onerror = (error) => reject(error);
-  });
+      const base64Data = result.split(',')[1]
+      resolve(base64Data)
+    }
+    reader.onerror = (error) => reject(error)
+  })
 }
 
 /**
@@ -155,18 +160,18 @@ export async function fileToBase64(file: File): Promise<string> {
  * @returns base64 编码的字符串（不包含 data URL 前缀）
  */
 export async function blobUrlToBase64(blobUrl: string): Promise<string> {
-  const response = await fetch(blobUrl);
-  const blob = await response.blob();
+  const response = await fetch(blobUrl)
+  const blob = await response.blob()
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
+    const reader = new FileReader()
+    reader.readAsDataURL(blob)
     reader.onload = () => {
-      const result = reader.result as string;
-      const base64Data = result.split(',')[1];
-      resolve(base64Data);
-    };
-    reader.onerror = (error) => reject(error);
-  });
+      const result = reader.result as string
+      const base64Data = result.split(',')[1]
+      resolve(base64Data)
+    }
+    reader.onerror = (error) => reject(error)
+  })
 }
 
 /**
@@ -179,23 +184,23 @@ export function base64ToBlobUrl(
   base64: string,
   mimeType: string = 'image/png'
 ): string {
-  const byteCharacters = atob(base64);
-  const byteArrays = [];
+  const byteCharacters = atob(base64)
+  const byteArrays = []
 
   for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-    const slice = byteCharacters.slice(offset, offset + 512);
-    const byteNumbers = new Array(slice.length);
+    const slice = byteCharacters.slice(offset, offset + 512)
+    const byteNumbers = new Array(slice.length)
 
     for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
+      byteNumbers[i] = slice.charCodeAt(i)
     }
 
-    const byteArray = new Uint8Array(byteNumbers);
-    byteArrays.push(byteArray);
+    const byteArray = new Uint8Array(byteNumbers)
+    byteArrays.push(byteArray)
   }
 
-  const blob = new Blob(byteArrays, { type: mimeType });
-  return URL.createObjectURL(blob);
+  const blob = new Blob(byteArrays, { type: mimeType })
+  return URL.createObjectURL(blob)
 }
 
 /**
@@ -204,7 +209,7 @@ export function base64ToBlobUrl(
  * @returns base64 数据（不包含前缀）
  */
 export function extractBase64FromDataUrl(dataUrl: string): string {
-  return dataUrl.split(',')[1];
+  return dataUrl.split(',')[1]
 }
 
 /**
@@ -214,5 +219,5 @@ export function extractBase64FromDataUrl(dataUrl: string): string {
  * @returns data URL
  */
 export function buildDataUrl(base64: string, mimeType: string): string {
-  return `data:${mimeType};base64,${base64}`;
+  return `data:${mimeType};base64,${base64}`
 }

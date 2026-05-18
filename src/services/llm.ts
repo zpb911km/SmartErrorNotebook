@@ -6,24 +6,24 @@
 
 // ==================== 类型定义 ====================
 
-export type MessageRole = "system" | "user" | "assistant";
+export type MessageRole = 'system' | 'user' | 'assistant'
 
 export interface TextContent {
-  type: "text";
-  text: string;
+  type: 'text'
+  text: string
 }
 
 export interface ImageContent {
-  type: "image_url";
+  type: 'image_url'
   image_url: {
-    url: string;  // 可以是 base64 或公开 URL
-    detail?: "low" | "high" | "auto";  // 可选，默认 auto
-  };
+    url: string // 可以是 base64 或公开 URL
+    detail?: 'low' | 'high' | 'auto' // 可选，默认 auto
+  }
 }
 
 export interface ChatMessage {
-  role: MessageRole;
-  content: string | Array<TextContent | ImageContent>;
+  role: MessageRole
+  content: string | Array<TextContent | ImageContent>
 }
 
 /**
@@ -31,27 +31,27 @@ export interface ChatMessage {
  */
 export interface LLMConfig {
   /** API 基础 URL（如 https://api.openai.com） */
-  baseUrl: string;
+  baseUrl: string
   /** API 密钥 */
-  apiKey: string;
+  apiKey: string
   /** 模型名称（如 gpt-3.5-turbo, gpt-4 等） */
-  model: string;
+  model: string
   /** 系统提示词（默认助手角色） */
-  systemPrompt?: string;
+  systemPrompt?: string
   /** 温度参数（0-2，控制随机性，默认 1） */
-  temperature?: number;
+  temperature?: number
   /** 最大生成 token 数（默认无限制） */
-  maxTokens?: number;
+  maxTokens?: number
   /** 停止序列（可选） */
-  stop?: string[];
+  stop?: string[]
   /** top_p 采样参数（0-1，默认 1） */
-  topP?: number;
+  topP?: number
   /** 频率惩罚（-2.0 到 2.0，默认 0） */
-  frequencyPenalty?: number;
+  frequencyPenalty?: number
   /** 存在惩罚（-2.0 到 2.0，默认 0） */
-  presencePenalty?: number;
+  presencePenalty?: number
   /** 是否启用 */
-  enabled: boolean;
+  enabled: boolean
 }
 
 /**
@@ -60,27 +60,27 @@ export interface LLMConfig {
 export interface LLMResponse {
   /** 生成的消息列表 */
   choices: Array<{
-    index: number;
+    index: number
     message: {
-      role: MessageRole;
-      content: string;
-    };
-    finish_reason: string;
-  }>;
+      role: MessageRole
+      content: string
+    }
+    finish_reason: string
+  }>
   /** 使用的模型 */
-  model: string;
+  model: string
   /** 提示词使用的 token 数 */
-  prompt_tokens: number;
+  prompt_tokens: number
   /** 完成使用的 token 数 */
-  completion_tokens: number;
+  completion_tokens: number
   /** 总 token 数 */
-  total_tokens: number;
+  total_tokens: number
 }
 
 /**
  * 流式调用回调
  */
-export type StreamCallback = (chunk: string) => void;
+export type StreamCallback = (chunk: string) => void
 
 // ==================== LLM Service 类 ====================
 
@@ -89,41 +89,41 @@ export type StreamCallback = (chunk: string) => void;
  * 维护全局配置，提供简化的调用接口
  */
 export class LLMService {
-  private static instance: LLMService;
+  private static instance: LLMService
 
   // 配置属性（可直接访问和修改）
-  public config: LLMConfig;
+  public config: LLMConfig
 
   // 私有构造函数（防止外部直接实例化）
   private constructor() {
-    this.config = this.get_config_from_local_storage();
+    this.config = this.get_config_from_local_storage()
   }
 
   private get_config_from_local_storage(): LLMConfig {
-    const config = localStorage.getItem("llm_config");
+    const config = localStorage.getItem('llm_config')
     if (config) {
-      return JSON.parse(config);
+      return JSON.parse(config)
     }
     return {
-      baseUrl: "",
-      apiKey: "",
-      model: "",
-      systemPrompt: "",
+      baseUrl: '',
+      apiKey: '',
+      model: '',
+      systemPrompt: '',
       temperature: 1,
       topP: 1,
       frequencyPenalty: 0,
       presencePenalty: 0,
-      enabled: false,
+      enabled: false
     }
   }
 
   private save_config_to_local_storage(config: LLMConfig) {
-    localStorage.setItem("llm_config", JSON.stringify(config));
+    localStorage.setItem('llm_config', JSON.stringify(config))
   }
 
   public updateConfig(config: Partial<LLMConfig>): void {
-    this.config = { ...this.config, ...config };
-    this.save_config_to_local_storage(this.config);
+    this.config = { ...this.config, ...config }
+    this.save_config_to_local_storage(this.config)
   }
 
   /**
@@ -132,9 +132,9 @@ export class LLMService {
    */
   public static getInstance(): LLMService {
     if (!LLMService.instance) {
-      LLMService.instance = new LLMService();
+      LLMService.instance = new LLMService()
     }
-    return LLMService.instance;
+    return LLMService.instance
   }
 
   /**
@@ -142,7 +142,7 @@ export class LLMService {
    * @param config 配置对象
    */
   public initialize(config: Partial<LLMConfig>): void {
-    this.config = { ...this.config, ...config };
+    this.config = { ...this.config, ...config }
   }
 
   /**
@@ -150,7 +150,7 @@ export class LLMService {
    * @returns 是否配置有效
    */
   public isConfigured(): boolean {
-    return !!this.config.baseUrl && !!this.config.apiKey && !!this.config.model;
+    return !!this.config.baseUrl && !!this.config.apiKey && !!this.config.model
   }
 
   /**
@@ -161,32 +161,32 @@ export class LLMService {
    */
   public async call(
     messages: ChatMessage[],
-    overrideConfig?: Partial<LLMConfig>,
+    overrideConfig?: Partial<LLMConfig>
   ): Promise<LLMResponse> {
     if (!this.config.enabled) {
-      throw new Error("LLM 未启用");
+      throw new Error('LLM 未启用')
     }
     if (!this.isConfigured()) {
-      throw new Error("LLM 配置未初始化");
+      throw new Error('LLM 配置未初始化')
     }
     // 合并配置
-    const config = { ...this.config, ...overrideConfig };
+    const config = { ...this.config, ...overrideConfig }
 
     // 验证配置
     if (!config.baseUrl || !config.apiKey || !config.model) {
-      throw new Error("LLM 配置不完整，请先初始化 baseUrl、apiKey 和 model");
+      throw new Error('LLM 配置不完整，请先初始化 baseUrl、apiKey 和 model')
     }
 
     // 验证消息
     if (!messages || messages.length === 0) {
-      throw new Error("消息列表不能为空");
+      throw new Error('消息列表不能为空')
     }
 
     // 构建 API URL
-    let apiUrl = config.baseUrl;
+    let apiUrl = config.baseUrl
     // 如果 URL 不包含 /chat/completions，自动添加
     if (!apiUrl.includes('/chat/completions')) {
-      apiUrl = apiUrl.replace(/\/$/, '') + '/chat/completions';
+      apiUrl = apiUrl.replace(/\/$/, '') + '/chat/completions'
     }
 
     // 构建请求体
@@ -198,47 +198,47 @@ export class LLMService {
       stop: config.stop,
       top_p: config.topP ?? 1,
       frequency_penalty: config.frequencyPenalty ?? 0,
-      presence_penalty: config.presencePenalty ?? 0,
-    };
+      presence_penalty: config.presencePenalty ?? 0
+    }
 
     try {
       // 调试日志：打印请求体
-      console.log("=== LLM 请求 ===");
-      console.log("API URL:", apiUrl);
-      console.log("Request Body:", JSON.stringify(requestBody, null, 2));
-      console.log("===============");
+      console.log('=== LLM 请求 ===')
+      console.log('API URL:', apiUrl)
+      console.log('Request Body:', JSON.stringify(requestBody, null, 2))
+      console.log('===============')
 
       // 发送请求
       const response = await fetch(apiUrl, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.apiKey}`
         },
-        body: JSON.stringify(requestBody),
-      });
+        body: JSON.stringify(requestBody)
+      })
 
       // 检查响应状态
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({}))
         const errorMessage =
           errorData.error?.message ||
-          `HTTP ${response.status}: ${response.statusText}`;
-        throw new Error(errorMessage);
+          `HTTP ${response.status}: ${response.statusText}`
+        throw new Error(errorMessage)
       }
 
       // 解析响应
-      const data: LLMResponse = await response.json();
+      const data: LLMResponse = await response.json()
 
-      return data;
+      return data
     } catch (error) {
       // 处理网络错误
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        throw new Error("网络请求失败，请检查网络连接和 API URL");
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('网络请求失败，请检查网络连接和 API URL')
       }
 
       // 重新抛出其他错误
-      throw error;
+      throw error
     }
   }
 
@@ -267,58 +267,58 @@ export class LLMService {
     userPrompt: string | ChatMessage[],
     options?: {
       /** 临时覆盖的配置 */
-      config?: Partial<LLMConfig>;
-    },
+      config?: Partial<LLMConfig>
+    }
   ): Promise<string> {
     if (!this.config.enabled) {
-      throw new Error("LLM 未启用");
+      throw new Error('LLM 未启用')
     }
     // 合并配置
-    const config = { ...this.config, ...options?.config };
+    const config = { ...this.config, ...options?.config }
 
     // 验证配置
     if (!config.baseUrl || !config.apiKey || !config.model) {
-      throw new Error("LLM 配置不完整，请先初始化 baseUrl、apiKey 和 model");
+      throw new Error('LLM 配置不完整，请先初始化 baseUrl、apiKey 和 model')
     }
 
     // 准备消息（每次都重新构建）
-    let messages: ChatMessage[] = [];
-    if (typeof userPrompt === "string") {
+    let messages: ChatMessage[] = []
+    if (typeof userPrompt === 'string') {
       messages = [
         {
-          role: "system",
-          content: config.systemPrompt || "",
+          role: 'system',
+          content: config.systemPrompt || ''
         },
         {
-          role: "user",
-          content: userPrompt,
-        },
-      ];
+          role: 'user',
+          content: userPrompt
+        }
+      ]
     } else if (
       Array.isArray(userPrompt) &&
       userPrompt.length > 0 &&
-      userPrompt[0].role === "user"
+      userPrompt[0].role === 'user'
     ) {
       messages = [
         {
-          role: "system",
-          content: config.systemPrompt || "",
+          role: 'system',
+          content: config.systemPrompt || ''
         },
-        ...userPrompt,
-      ];
+        ...userPrompt
+      ]
     } else {
-      messages = userPrompt;
+      messages = userPrompt
     }
 
     // 调用 LLM
-    const response = await this.call(messages);
+    const response = await this.call(messages)
 
     // 检查响应
     if (!response.choices || response.choices.length === 0) {
-      throw new Error("LLM 未返回任何响应");
+      throw new Error('LLM 未返回任何响应')
     }
 
-    return response.choices[0].message.content;
+    return response.choices[0].message.content
   }
 }
 
@@ -348,4 +348,4 @@ export class LLMService {
  * llm.config.maxTokens = 1000;
  * ```
  */
-export const llm = LLMService.getInstance();
+export const llm = LLMService.getInstance()

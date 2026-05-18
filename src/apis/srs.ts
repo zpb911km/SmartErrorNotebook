@@ -1,7 +1,7 @@
 // SRS (间隔重复学习) API 接口
 
-import { invoke } from '@tauri-apps/api/core';
-import { SRSData } from '../types';
+import { invoke } from '@tauri-apps/api/core'
+import { SRSData } from '../types'
 
 // ==================== Input/Output Types ====================
 
@@ -10,9 +10,9 @@ import { SRSData } from '../types';
  */
 export interface CreateSRSInput {
   /** 错题 ID */
-  question_id: string;
+  question_id: string
   /** 初始难度（可选，默认 5.0）*/
-  difficulty?: number;
+  difficulty?: number
 }
 
 /**
@@ -20,12 +20,12 @@ export interface CreateSRSInput {
  */
 export interface SubmitReviewInput {
   /** 错题 ID */
-  question_id: string;
+  question_id: string
   /** 用户反馈值 [0, 1] */
   /** 0: 清除所有 SRS 状态，当作新卡片从头来过 */
   /** 1: 直接视为熟记，以后不用再复习 */
   /** (0, 1): 连续反馈值 */
-  feedback: number;
+  feedback: number
 }
 
 /**
@@ -33,13 +33,13 @@ export interface SubmitReviewInput {
  */
 export interface ReviewOutput {
   /** 下次复习间隔（天）*/
-  next_interval_days: number;
+  next_interval_days: number
   /** 更新后的稳定性 */
-  new_stability: number;
+  new_stability: number
   /** 更新后的难度 */
-  new_difficulty: number;
+  new_difficulty: number
   /** 建议的下次复习时间戳（秒）*/
-  next_review_at: number;
+  next_review_at: number
 }
 
 // ==================== API Functions ====================
@@ -50,7 +50,7 @@ export interface ReviewOutput {
  * @returns 待复习题目列表
  */
 export async function getDueQuestions(limit?: number): Promise<SRSData[]> {
-  return invoke('get_due_questions', { limit });
+  return invoke('get_due_questions', { limit })
 }
 
 /**
@@ -58,8 +58,10 @@ export async function getDueQuestions(limit?: number): Promise<SRSData[]> {
  * @param input 复习结果参数
  * @returns 复习结果（包含新的 SRS 状态）
  */
-export async function submitReviewResult(input: SubmitReviewInput): Promise<ReviewOutput> {
-  return invoke('submit_review_result', { input });
+export async function submitReviewResult(
+  input: SubmitReviewInput
+): Promise<ReviewOutput> {
+  return invoke('submit_review_result', { input })
 }
 
 /**
@@ -67,8 +69,10 @@ export async function submitReviewResult(input: SubmitReviewInput): Promise<Revi
  * @param questionId 错题 ID
  * @returns SRS 数据对象，不存在则返回 undefined
  */
-export async function getSRSStatus(questionId: string): Promise<SRSData | undefined> {
-  return invoke('get_question_srs_status', { questionId });
+export async function getSRSStatus(
+  questionId: string
+): Promise<SRSData | undefined> {
+  return invoke('get_question_srs_status', { questionId })
 }
 
 /**
@@ -77,7 +81,7 @@ export async function getSRSStatus(questionId: string): Promise<SRSData | undefi
  * @returns 更新后的 SRS 数据对象
  */
 export async function resetSRSProgress(questionId: string): Promise<SRSData> {
-  return invoke('reset_srs_progress', { questionId });
+  return invoke('reset_srs_progress', { questionId })
 }
 
 /**
@@ -85,21 +89,20 @@ export async function resetSRSProgress(questionId: string): Promise<SRSData> {
  * @returns 所有题目的 SRS 数据对象
  */
 export async function getAllSRSStatus(): Promise<SRSData[]> {
-  return invoke('get_all_cards');
+  return invoke('get_all_cards')
 }
 
 export async function getDueCount(): Promise<number> {
-  return invoke('get_due_count');
+  return invoke('get_due_count')
 }
 
 export async function getSRSStatistics(): Promise<{
-  total: number;
-  due_count: number;
-  new_cards: number;
-  avg_stability: number;
-  avg_difficulty: number;
-  total_reviews: number;
+  total: number
+  due_count: number
+  new_cards: number
+  avg_stability: number
+  avg_difficulty: number
+  total_reviews: number
 }> {
-  return invoke('get_srs_statistics');
+  return invoke('get_srs_statistics')
 }
-

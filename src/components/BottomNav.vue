@@ -1,6 +1,12 @@
 <template>
   <nav class="bottom-nav">
-    <router-link v-for="item in navItems" :key="item.path" :to="item.path" class="nav-item" :class="{ active: isActive(item.path) }">
+    <router-link
+      v-for="item in navItems"
+      :key="item.path"
+      :to="item.path"
+      class="nav-item"
+      :class="{ active: isActive(item.path) }"
+    >
       <span class="nav-icon">{{ item.icon }}</span>
       <span class="nav-label">{{ item.label }}</span>
     </router-link>

@@ -1,11 +1,16 @@
 <template>
   <Teleport to="body">
     <div v-show="show" class="conflict-overlay">
-      <div class="conflict-overlay__mask" @click.self="handleBackgroundClick"></div>
+      <div
+        class="conflict-overlay__mask"
+        @click.self="handleBackgroundClick"
+      ></div>
 
       <div class="conflict-card">
         <div class="conflict-card__header">
-          <h2 class="conflict-card__title">发现 {{ conflicts.length }} 个需要同步的冲突</h2>
+          <h2 class="conflict-card__title">
+            发现 {{ conflicts.length }} 个需要同步的冲突
+          </h2>
           <p class="conflict-card__desc">
             以下记录在多个设备上有不同的修改，请选择要保留的版本
           </p>
@@ -42,61 +47,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { ConflictInfo, ResolvedConflict } from '../apis/sync';
-import ConflictItem from './ConflictItem.vue';
+import { ref, computed } from 'vue'
+import type { ConflictInfo, ResolvedConflict } from '../apis/sync'
+import ConflictItem from './ConflictItem.vue'
 
 interface Props {
-  modelValue: boolean;
-  conflicts: ConflictInfo[];
+  modelValue: boolean
+  conflicts: ConflictInfo[]
 }
 
-const props = defineProps<Props>();
+const props = defineProps<Props>()
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void;
-  (e: 'resolve', resolutions: ResolvedConflict[]): void;
-}>();
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'resolve', resolutions: ResolvedConflict[]): void
+}>()
 
-const resolvedMap = ref<Map<string, ResolvedConflict>>(new Map());
+const resolvedMap = ref<Map<string, ResolvedConflict>>(new Map())
 
-const show = computed(() => props.modelValue && props.conflicts.length > 0);
+const show = computed(() => props.modelValue && props.conflicts.length > 0)
 
 const handleResolve = (conflictId: string, resolution: ResolvedConflict) => {
-  resolvedMap.value.set(conflictId, resolution);
+  resolvedMap.value.set(conflictId, resolution)
   // force reactivity
-  resolvedMap.value = new Map(resolvedMap.value);
-};
+  resolvedMap.value = new Map(resolvedMap.value)
+}
 
 const confirmResolved = () => {
   if (resolvedMap.value.size > 0) {
-    emit('resolve', Array.from(resolvedMap.value.values()));
+    emit('resolve', Array.from(resolvedMap.value.values()))
   }
-  emit('update:modelValue', false);
-};
+  emit('update:modelValue', false)
+}
 
 const handleAllLocal = () => {
   const all: ResolvedConflict[] = props.conflicts.map((c) => ({
     id: c.id,
-    resolution: 'keep_local' as const,
-  }));
-  emit('resolve', all);
-  emit('update:modelValue', false);
-};
+    resolution: 'keep_local' as const
+  }))
+  emit('resolve', all)
+  emit('update:modelValue', false)
+}
 
 const handleAllRemote = () => {
   const all: ResolvedConflict[] = props.conflicts.map((c) => ({
     id: c.id,
-    resolution: 'keep_remote' as const,
-  }));
-  emit('resolve', all);
-  emit('update:modelValue', false);
-};
+    resolution: 'keep_remote' as const
+  }))
+  emit('resolve', all)
+  emit('update:modelValue', false)
+}
 
 const handleBackgroundClick = () => {
   if (resolvedMap.value.size === props.conflicts.length) {
-    confirmResolved();
+    confirmResolved()
   }
-};
+}
 </script>
 
 <style scoped>

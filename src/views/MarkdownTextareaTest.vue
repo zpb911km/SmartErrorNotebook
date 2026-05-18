@@ -47,7 +47,9 @@ import { computed, ref } from 'vue'
 const previewTitle = ref('Markdown 预览')
 const showPreview = ref(true)
 
-const content = ref(`# 标题示例\n\n这是一段 **Markdown** 文本。\n\n- 列表项 1\n- 列表项 2\n\n> 这是一条引用\n\n\`\`\`ts\nconst hello = 'world'\nconsole.log(hello)\n\`\`\``)
+const content = ref(
+  `# 标题示例\n\n这是一段 **Markdown** 文本。\n\n- 列表项 1\n- 列表项 2\n\n> 这是一条引用\n\n\`\`\`ts\nconst hello = 'world'\nconsole.log(hello)\n\`\`\``
+)
 
 const readonlyDemo = ref('这个区域用于测试 `readonly` 属性透传是否生效。')
 
@@ -197,7 +199,6 @@ $$
 
 <s>删除线测试</s>
 <mark>高亮内容测试</mark>`
-
 }
 
 const clearAll = () => {

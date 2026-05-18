@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { SRSData } from '../types';
+import { invoke } from '@tauri-apps/api/core'
+import { SRSData } from '../types'
 
 // ==================== API 接口 ====================
 
@@ -12,14 +12,14 @@ import { SRSData } from '../types';
  */
 export async function createSRSData(
   questionId: string,
-  difficulty: number,
+  difficulty: number
 ): Promise<SRSData> {
   return await invoke('create_srs_data', {
     input: {
       question_id: questionId,
-      difficulty,
-    },
-  });
+      difficulty
+    }
+  })
 }
 
 /**
@@ -27,6 +27,8 @@ export async function createSRSData(
  * @param questionId 错题ID
  * @returns SRS 数据对象，如果不存在则返回 null
  */
-export async function getQuestionSRSStatus(questionId: string): Promise<SRSData | null> {
-  return await invoke('get_question_srs_status', { questionId });
+export async function getQuestionSRSStatus(
+  questionId: string
+): Promise<SRSData | null> {
+  return await invoke('get_question_srs_status', { questionId })
 }

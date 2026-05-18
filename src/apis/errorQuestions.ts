@@ -1,10 +1,10 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core'
 import {
   ErrorQuestion,
   QuestionFilter,
   UpdateQuestionInput,
-  QuestionStats,
-} from '../types';
+  QuestionStats
+} from '../types'
 
 // ==================== API 接口 ====================
 
@@ -17,8 +17,8 @@ export async function createErrorQuestion(
   request: Omit<ErrorQuestion, 'id'>
 ): Promise<ErrorQuestion> {
   return invoke('create_question', {
-    input: request,
-  });
+    input: request
+  })
 }
 
 /**
@@ -29,7 +29,7 @@ export async function createErrorQuestion(
 export async function getQuestions(
   filter?: QuestionFilter
 ): Promise<ErrorQuestion[]> {
-  return invoke('get_questions', { filter });
+  return invoke('get_questions', { filter })
 }
 
 /**
@@ -39,7 +39,7 @@ export async function getQuestions(
  * @throws 如果错题不存在则抛出错误
  */
 export async function getQuestion(id: string): Promise<ErrorQuestion> {
-  return invoke('get_question', { id });
+  return invoke('get_question', { id })
 }
 
 /**
@@ -50,7 +50,7 @@ export async function getQuestion(id: string): Promise<ErrorQuestion> {
 export async function updateQuestion(
   input: UpdateQuestionInput
 ): Promise<ErrorQuestion> {
-  return invoke('update_question', { input });
+  return invoke('update_question', { input })
 }
 
 /**
@@ -59,7 +59,7 @@ export async function updateQuestion(
  * @returns 无返回值
  */
 export async function deleteQuestion(id: string): Promise<void> {
-  return invoke('delete_question', { id });
+  return invoke('delete_question', { id })
 }
 
 /**
@@ -67,5 +67,5 @@ export async function deleteQuestion(id: string): Promise<void> {
  * @returns 错题统计信息（包含总数等）
  */
 export async function getQuestionStats(): Promise<QuestionStats> {
-  return invoke('get_question_stats');
+  return invoke('get_question_stats')
 }

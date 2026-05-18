@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { Subject } from '../types';
+import { invoke } from '@tauri-apps/api/core'
+import { Subject } from '../types'
 
 // ==================== API 接口 ====================
 
@@ -8,7 +8,7 @@ import { Subject } from '../types';
  * @returns 科目列表（已过滤软删除的记录）
  */
 export async function getSubjects(): Promise<Subject[]> {
-  return await invoke('get_subjects');
+  return await invoke('get_subjects')
 }
 
 /**
@@ -19,7 +19,7 @@ export async function getSubjects(): Promise<Subject[]> {
 export async function createSubject(
   subject: Omit<Subject, 'id'>
 ): Promise<Subject> {
-  return await invoke('create_subject', { input: subject });
+  return await invoke('create_subject', { input: subject })
 }
 
 /**
@@ -27,10 +27,8 @@ export async function createSubject(
  * @param subject 科目数据（必须包含 id）
  * @returns 更新后的科目对象
  */
-export async function updateSubject(
-  subject: Subject
-): Promise<Subject> {
-  return await invoke('update_subject', { input: subject });
+export async function updateSubject(subject: Subject): Promise<Subject> {
+  return await invoke('update_subject', { input: subject })
 }
 
 /**
@@ -39,5 +37,5 @@ export async function updateSubject(
  * @returns 无返回值
  */
 export async function deleteSubject(id: string): Promise<void> {
-  return await invoke('delete_subject', { id });
+  return await invoke('delete_subject', { id })
 }

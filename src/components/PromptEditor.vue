@@ -1,19 +1,30 @@
 <template>
   <div class="prompt-editor">
-    <div class="editor-section" v-for="(section, index) in promptSections" :key="section.tag"
-         :class="{ 'first': index === 0 }">
+    <div
+      class="editor-section"
+      v-for="(section, index) in promptSections"
+      :key="section.tag"
+      :class="{ first: index === 0 }"
+    >
       <div class="section-header">
         <div class="header-info">
           <span class="icon">{{ section.icon }}</span>
           <span class="title">{{ section.title }}</span>
         </div>
         <div class="header-actions">
-          <button class="btn-restore" @click="restoreDefault(section.tag)"
-                  title="恢复默认提示词" :disabled="isRestoring">
+          <button
+            class="btn-restore"
+            @click="restoreDefault(section.tag)"
+            title="恢复默认提示词"
+            :disabled="isRestoring"
+          >
             恢复默认
           </button>
-          <button class="btn-save" @click="savePrompt(section.tag)"
-                  :disabled="isSaving || !hasChanges(section.tag)">
+          <button
+            class="btn-save"
+            @click="savePrompt(section.tag)"
+            :disabled="isSaving || !hasChanges(section.tag)"
+          >
             保存
           </button>
         </div>
@@ -36,9 +47,7 @@
     </div>
 
     <!-- 保存状态提示 -->
-    <div v-if="saveSuccess" class="save-success">
-      ✅ 提示词已保存
-    </div>
+    <div v-if="saveSuccess" class="save-success">✅ 提示词已保存</div>
   </div>
 </template>
 
@@ -61,23 +70,29 @@ const promptSections: PromptSection[] = [
     tag: 'question_text',
     title: '题干提取',
     icon: '📄',
-    description: '用于从图片中提取题干内容，包括问题、选项、补充信息、示意图等。不要包含答案和手写信息。',
-    defaultPrompt: '**请提取图片中的题干内容，以 Markdown 格式返回。**\n\n这是一些题目和答案的图片，注意区分题干，手写作答，和答案的图片。\n其中，请观察带有题干信息的图片 (一般是前一张或若干张图片，题干包含问题，选项，补充信息，示意图等)。\n题干只是学生做题时可以看见的部分，不包括图片中的答案和手写信息。\n注意公式使用 `$` 或者 `$$` 包裹\n请提取图片中的题干内容。',
+    description:
+      '用于从图片中提取题干内容，包括问题、选项、补充信息、示意图等。不要包含答案和手写信息。',
+    defaultPrompt:
+      '**请提取图片中的题干内容，以 Markdown 格式返回。**\n\n这是一些题目和答案的图片，注意区分题干，手写作答，和答案的图片。\n其中，请观察带有题干信息的图片 (一般是前一张或若干张图片，题干包含问题，选项，补充信息，示意图等)。\n题干只是学生做题时可以看见的部分，不包括图片中的答案和手写信息。\n注意公式使用 `$` 或者 `$$` 包裹\n请提取图片中的题干内容。'
   },
   {
     tag: 'answer',
     title: '答案生成',
     icon: '✅',
-    description: '用于提取或生成题目的正确答案和解析。如果图片中有答案则提取原样内容，否则 AI 生成并标注"AI 生成答案"。',
-    defaultPrompt: '这是一些题目和答案的图片，请观察全部图片，并区分题干，手写作答，答案的图片。\n\n如果存在答案的图片，请提取图片中的答案和解析内容，并以 Markdown 格式返回;\n否则，尝试作答并给出该题的正确答案和解析，标注 ** "AI 生成答案"**，以 Markdown 格式返回。\n\n注意 **只** 输出图片中*答案*和*解析*部分的原样内容，不用给出*题干*;\n注意公式使用 `$` 或者 `$$` 包裹',
+    description:
+      '用于提取或生成题目的正确答案和解析。如果图片中有答案则提取原样内容，否则 AI 生成并标注"AI 生成答案"。',
+    defaultPrompt:
+      '这是一些题目和答案的图片，请观察全部图片，并区分题干，手写作答，答案的图片。\n\n如果存在答案的图片，请提取图片中的答案和解析内容，并以 Markdown 格式返回;\n否则，尝试作答并给出该题的正确答案和解析，标注 ** "AI 生成答案"**，以 Markdown 格式返回。\n\n注意 **只** 输出图片中*答案*和*解析*部分的原样内容，不用给出*题干*;\n注意公式使用 `$` 或者 `$$` 包裹'
   },
   {
     tag: 'analysis',
     title: '错误分析',
     icon: '💡',
-    description: '用于分析错题的错误原因。切中要害进行分析，或给更高深而精悍的点拨，无需照抄图片内容。',
-    defaultPrompt: '这是一些题目和答案的图片，请观察全部图片.\n\n请分析错题的错误原因。\n你无需照抄图片内容，只需要切中要害进行分析即可，或者给更高深而精悍的点拨\n以 Markdown 格式返回。',
-  },
+    description:
+      '用于分析错题的错误原因。切中要害进行分析，或给更高深而精悍的点拨，无需照抄图片内容。',
+    defaultPrompt:
+      '这是一些题目和答案的图片，请观察全部图片.\n\n请分析错题的错误原因。\n你无需照抄图片内容，只需要切中要害进行分析即可，或者给更高深而精悍的点拨\n以 Markdown 格式返回。'
+  }
 ]
 
 // ==================== 存储键 ====================
@@ -90,7 +105,7 @@ const tempPrompts = ref<Record<string, string>>({})
 const defaultViewModes = ref<Record<string, 'edit' | 'preview'>>({
   question_text: 'edit',
   answer: 'edit',
-  analysis: 'edit',
+  analysis: 'edit'
 })
 
 const isSaving = ref(false)
@@ -121,21 +136,22 @@ const loadCustomPrompts = () => {
     if (stored) {
       customPrompts.value = JSON.parse(stored)
       // 初始化临时变量
-      promptSections.forEach(section => {
+      promptSections.forEach((section) => {
         if (!tempPrompts.value[section.tag]) {
-          tempPrompts.value[section.tag] = customPrompts.value[section.tag] || section.defaultPrompt
+          tempPrompts.value[section.tag] =
+            customPrompts.value[section.tag] || section.defaultPrompt
         }
       })
     } else {
       // 首次使用，用默认值填充
-      promptSections.forEach(section => {
+      promptSections.forEach((section) => {
         tempPrompts.value[section.tag] = section.defaultPrompt
       })
     }
   } catch (error) {
     console.error('加载自定义提示词失败:', error)
     // 出错时使用默认值
-    promptSections.forEach(section => {
+    promptSections.forEach((section) => {
       tempPrompts.value[section.tag] = section.defaultPrompt
     })
   }
@@ -145,7 +161,7 @@ const loadCustomPrompts = () => {
  * 获取默认提示词
  */
 const getDefaultPrompt = (tag: string): string => {
-  const section = promptSections.find(s => s.tag === tag)
+  const section = promptSections.find((s) => s.tag === tag)
   return section?.defaultPrompt || ''
 }
 

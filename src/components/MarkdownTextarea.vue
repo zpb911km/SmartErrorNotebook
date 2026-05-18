@@ -1,5 +1,8 @@
 <template>
-  <div class="markdown-textarea" :class="{ 'is-previewing': viewMode === 'preview' }">
+  <div
+    class="markdown-textarea"
+    :class="{ 'is-previewing': viewMode === 'preview' }"
+  >
     <div class="markdown-textarea__toolbar">
       <div class="markdown-textarea__hint"></div>
     </div>
@@ -17,12 +20,23 @@
       <div v-if="showPreview" class="markdown-textarea__preview-pane">
         <div class="markdown-textarea__preview-header">
           <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-          <button type="button" class="markdown-textarea__mode-switch" @click="toggleViewMode">
+          <button
+            type="button"
+            class="markdown-textarea__mode-switch"
+            @click="toggleViewMode"
+          >
             {{ viewMode === 'edit' ? '专注预览' : '编辑' }}
           </button>
         </div>
-        <div ref="previewRef" class="markdown-textarea__preview-body markdown-body" :class="previewClass">
-          <div v-if="previewSegments.length === 0" class="markdown-textarea__preview-empty">
+        <div
+          ref="previewRef"
+          class="markdown-textarea__preview-body markdown-body"
+          :class="previewClass"
+        >
+          <div
+            v-if="previewSegments.length === 0"
+            class="markdown-textarea__preview-empty"
+          >
             预览会随编辑内容滚动自动对齐
           </div>
           <div
@@ -37,14 +51,26 @@
     </div>
 
     <div v-else-if="showPreview" class="markdown-textarea__preview-only">
-      <div class="markdown-textarea__preview-header markdown-textarea__preview-header--single">
+      <div
+        class="markdown-textarea__preview-header markdown-textarea__preview-header--single"
+      >
         <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-        <button type="button" class="markdown-textarea__mode-switch" @click="toggleViewMode">
+        <button
+          type="button"
+          class="markdown-textarea__mode-switch"
+          @click="toggleViewMode"
+        >
           编辑
         </button>
       </div>
-      <div class="markdown-textarea__preview-body markdown-body" :class="previewClass">
-        <div v-if="previewSegments.length === 0" class="markdown-textarea__preview-empty">
+      <div
+        class="markdown-textarea__preview-body markdown-body"
+        :class="previewClass"
+      >
+        <div
+          v-if="previewSegments.length === 0"
+          class="markdown-textarea__preview-empty"
+        >
           当前没有可预览内容
         </div>
         <div
@@ -76,9 +102,10 @@ marked.use(
 const renderer = new marked.Renderer()
 renderer.code = ({ text, lang }) => {
   const language = lang ?? ''
-  const highlighted = language && hljs.getLanguage(language)
-    ? hljs.highlight(text, { language }).value
-    : hljs.highlightAuto(text).value
+  const highlighted =
+    language && hljs.getLanguage(language)
+      ? hljs.highlight(text, { language }).value
+      : hljs.highlightAuto(text).value
   const langClass = language ? `language-${language}` : ''
   return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
 }
@@ -104,15 +131,20 @@ const props = withDefaults(defineProps<Props>(), {
   defaultViewMode: 'preview'
 })
 
-const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>()
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: string): void
+}>()
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const previewRef = ref<HTMLDivElement | null>(null)
 const viewMode = ref<'edit' | 'preview'>(props.defaultViewMode)
 const activeSegmentId = ref('segment-0')
-watch(() => props.defaultViewMode, (value) => {
-  viewMode.value = value
-})
+watch(
+  () => props.defaultViewMode,
+  (value) => {
+    viewMode.value = value
+  }
+)
 
 const normalizeMarkdown = (value: string) => {
   return (value || '')
@@ -139,10 +171,12 @@ const previewSegments = computed(() => {
   const html = renderMarkdown(props.modelValue || '')
   if (!html) return []
 
-  return [{
-    id: 'segment-0',
-    html
-  }]
+  return [
+    {
+      id: 'segment-0',
+      html
+    }
+  ]
 })
 
 const handleInput = (event: Event) => {
@@ -172,7 +206,11 @@ const returnToEdit = async () => {
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && props.showPreview) {
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    event.key === 'Enter' &&
+    props.showPreview
+  ) {
     event.preventDefault()
     toggleViewMode()
     return
@@ -184,9 +222,12 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
-watch(() => props.modelValue, () => {
-  void 0
-})
+watch(
+  () => props.modelValue,
+  () => {
+    void 0
+  }
+)
 
 onMounted(() => {
   void 0
@@ -333,7 +374,9 @@ defineExpose({ focus, blur, select, el: textareaRef })
 .markdown-body :deep(code) {
   background: rgba(25, 118, 210, 0.12);
   padding: 2px 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
 }
 
 .markdown-body :deep(pre) {

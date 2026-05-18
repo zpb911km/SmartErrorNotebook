@@ -4,13 +4,19 @@
       <div class="camera-header">
         <button class="header-btn close-btn" @click="handleClose">✕</button>
         <span class="camera-title">拍照</span>
-        <button class="header-btn switch-btn" @click="handleSwitchCamera" v-if="hasMultipleCameras">🔄</button>
+        <button
+          class="header-btn switch-btn"
+          @click="handleSwitchCamera"
+          v-if="hasMultipleCameras"
+        >
+          🔄
+        </button>
       </div>
-      
+
       <div class="camera-preview">
         <video ref="videoRef" autoplay playsinline></video>
-        <canvas ref="canvasRef" style="display: none;"></canvas>
-        
+        <canvas ref="canvasRef" style="display: none"></canvas>
+
         <!-- 错误提示 -->
         <div class="camera-error" v-if="error">
           <div class="error-icon">⚠️</div>
@@ -18,9 +24,13 @@
           <button class="retry-btn" @click="startCamera">重试</button>
         </div>
       </div>
-      
+
       <div class="camera-controls">
-        <button class="capture-btn" @click="handleCapture" :disabled="error.length > 0">
+        <button
+          class="capture-btn"
+          @click="handleCapture"
+          :disabled="error.length > 0"
+        >
           <div class="capture-inner"></div>
         </button>
       </div>
@@ -52,22 +62,25 @@ const currentCamera = ref<'user' | 'environment'>('environment')
 const hasMultipleCameras = ref(false)
 
 // 监听 visible 变化
-watch(() => props.visible, async (newVal) => {
-  if (newVal) {
-    await startCamera()
-  } else {
-    stopCamera()
+watch(
+  () => props.visible,
+  async (newVal) => {
+    if (newVal) {
+      await startCamera()
+    } else {
+      stopCamera()
+    }
   }
-})
+)
 
 // 启动相机
 const startCamera = async () => {
   error.value = ''
-  
+
   try {
     // 停止之前的流
     if (mediaStream.value) {
-      mediaStream.value.getTracks().forEach(track => track.stop())
+      mediaStream.value.getTracks().forEach((track) => track.stop())
     }
 
     // 请求摄像头权限
@@ -90,9 +103,8 @@ const startCamera = async () => {
 
     // 检查是否有多个摄像头
     const devices = await navigator.mediaDevices.enumerateDevices()
-    const cameras = devices.filter(device => device.kind === 'videoinput')
+    const cameras = devices.filter((device) => device.kind === 'videoinput')
     hasMultipleCameras.value = cameras.length > 1
-
   } catch (err: any) {
     console.error('相机启动失败:', err)
     if (err.name === 'NotAllowedError') {
@@ -111,7 +123,7 @@ const startCamera = async () => {
 // 停止相机
 const stopCamera = () => {
   if (mediaStream.value) {
-    mediaStream.value.getTracks().forEach(track => track.stop())
+    mediaStream.value.getTracks().forEach((track) => track.stop())
     mediaStream.value = null
   }
 
@@ -124,7 +136,8 @@ const stopCamera = () => {
 
 // 切换摄像头
 const handleSwitchCamera = () => {
-  currentCamera.value = currentCamera.value === 'environment' ? 'user' : 'environment'
+  currentCamera.value =
+    currentCamera.value === 'environment' ? 'user' : 'environment'
   startCamera()
 }
 

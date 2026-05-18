@@ -1,142 +1,152 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, computed } from 'vue';
-import { getErrorTags } from '../apis/errorTags';
-import { ErrorTags } from '../types';
-import { showInfo } from '../utils/notification';
+import { onMounted, ref, watch, computed } from 'vue'
+import { getErrorTags } from '../apis/errorTags'
+import { ErrorTags } from '../types'
+import { showInfo } from '../utils/notification'
 
 // 定义选中的标签信息类型
 interface SelectedTagInfo {
-  name: string;
-  color: string;
+  name: string
+  color: string
 }
 
 const getRandomRGBColor = () => {
-  const r = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  const g = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  const b = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  return `#${r}${g}${b}`;
-};
+  const r = Math.floor(Math.random() * 256)
+    .toString(16)
+    .padStart(2, '0')
+  const g = Math.floor(Math.random() * 256)
+    .toString(16)
+    .padStart(2, '0')
+  const b = Math.floor(Math.random() * 256)
+    .toString(16)
+    .padStart(2, '0')
+  return `#${r}${g}${b}`
+}
 
-const errorTags = ref<ErrorTags[]>([]);
-const selectedTags = ref<SelectedTagInfo[]>([]);
-const isExpanded = ref(false);
+const errorTags = ref<ErrorTags[]>([])
+const selectedTags = ref<SelectedTagInfo[]>([])
+const isExpanded = ref(false)
 
 // 过滤掉已删除的标签
 const filteredErrorTags = computed(() => {
-  return errorTags.value.filter(tag => !tag.name.startsWith('[已删除]'))
+  return errorTags.value.filter((tag) => !tag.name.startsWith('[已删除]'))
 })
-const showAddErrorTag = ref(false);
+const showAddErrorTag = ref(false)
 const newErrorTag = ref<Omit<ErrorTags, 'id' | 'question_id'>>({
   name: '',
-  color: getRandomRGBColor(),
-});
+  color: getRandomRGBColor()
+})
 
 const props = defineProps<{
-  currentTags?: SelectedTagInfo[];
-}>();
+  currentTags?: SelectedTagInfo[]
+}>()
 
 const emit = defineEmits<{
-  (e: 'select', tags: SelectedTagInfo[]): void;
-}>();
+  (e: 'select', tags: SelectedTagInfo[]): void
+}>()
 
 // 显示文本
 const displayText = computed(() => {
   if (selectedTags.value.length === 0) {
-    return '请选择错因';
+    return '请选择错因'
   } else if (selectedTags.value.length === 1) {
-    return selectedTags.value[0].name;
+    return selectedTags.value[0].name
   } else {
-    return `已选择 ${selectedTags.value.length} 个错因`;
+    return `已选择 ${selectedTags.value.length} 个错因`
   }
-});
+})
 
 watch(
   () => props.currentTags,
   (newVal) => {
     if (newVal) {
-      selectedTags.value = [...newVal];
+      selectedTags.value = [...newVal]
     } else {
-      selectedTags.value = [];
+      selectedTags.value = []
     }
   },
   { immediate: true }
-);
+)
 
 const handleClick = (errorTag: ErrorTags, event: Event) => {
-  event.stopPropagation();
-  const index = selectedTags.value.findIndex(tag => tag.name === errorTag.name && tag.color === errorTag.color);
+  event.stopPropagation()
+  const index = selectedTags.value.findIndex(
+    (tag) => tag.name === errorTag.name && tag.color === errorTag.color
+  )
   if (index > -1) {
     // 取消选择
-    selectedTags.value.splice(index, 1);
+    selectedTags.value.splice(index, 1)
   } else {
     // 添加选择（只保存name和color）
     selectedTags.value.push({
       name: errorTag.name,
-      color: errorTag.color,
-    });
+      color: errorTag.color
+    })
   }
-  emit('select', [...selectedTags.value]);
-};
+  emit('select', [...selectedTags.value])
+}
 
 const handleAddErrorTag = () => {
   // 不再调用API创建标签，只是添加到已选列表
-  console.log('添加错因标签', newErrorTag.value);
-  showInfo('添加成功', '错因标签添加成功');
-  
+  console.log('添加错因标签', newErrorTag.value)
+  showInfo('添加成功', '错因标签添加成功')
+
   // 添加到已选列表
   selectedTags.value.push({
     name: newErrorTag.value.name,
-    color: newErrorTag.value.color,
-  });
+    color: newErrorTag.value.color
+  })
   errorTags.value.push({
     id: '',
     question_id: '',
     name: newErrorTag.value.name,
-    color: newErrorTag.value.color,
-  });
-  
-  emit('select', [...selectedTags.value]);
-  showAddErrorTag.value = false;
-  
+    color: newErrorTag.value.color
+  })
+
+  emit('select', [...selectedTags.value])
+  showAddErrorTag.value = false
+
   // 重置新标签表单
   newErrorTag.value = {
     name: '',
-    color: getRandomRGBColor(),
-  };
-};
+    color: getRandomRGBColor()
+  }
+}
 
 // 检查标签是否被选中
 const isTagSelected = (errorTag: ErrorTags) => {
-  return selectedTags.value.some(tag => tag.name === errorTag.name && tag.color === errorTag.color);
-};
+  return selectedTags.value.some(
+    (tag) => tag.name === errorTag.name && tag.color === errorTag.color
+  )
+}
 
 // 移除标签
 const removeTag = (index: number) => {
-  selectedTags.value.splice(index, 1);
-  emit('select', [...selectedTags.value]);
-};
+  selectedTags.value.splice(index, 1)
+  emit('select', [...selectedTags.value])
+}
 
 watch(isExpanded, (newVal) => {
   if (newVal) {
     getErrorTags()
-      .then(data => {
-        errorTags.value = data;
+      .then((data) => {
+        errorTags.value = data
       })
-      .catch(error => {
-        console.error('获取错因标签失败：', error);
-      });
+      .catch((error) => {
+        console.error('获取错因标签失败：', error)
+      })
   }
 })
 
 onMounted(() => {
   getErrorTags()
-    .then(data => {
-      errorTags.value = data;
+    .then((data) => {
+      errorTags.value = data
     })
-    .catch(error => {
-      console.error('获取错因标签失败：', error);
-    });
-});
+    .catch((error) => {
+      console.error('获取错因标签失败：', error)
+    })
+})
 </script>
 
 <template>
@@ -155,13 +165,27 @@ onMounted(() => {
     </div>
 
     <!-- 选择器触发按钮 -->
-    <div class="selector-trigger" @click="isExpanded = !isExpanded" :class="{ 'expanded': isExpanded }">
+    <div
+      class="selector-trigger"
+      @click="isExpanded = !isExpanded"
+      :class="{ expanded: isExpanded }"
+    >
       <span class="selected-text">
         {{ displayText }}
       </span>
-      <svg class="arrow-icon" :class="{ 'rotated': isExpanded }" xmlns="http://www.w3.org/2000/svg" width="16"
-        height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-        stroke-linejoin="round">
+      <svg
+        class="arrow-icon"
+        :class="{ rotated: isExpanded }"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <polyline points="6 9 12 15 18 9"></polyline>
       </svg>
     </div>
@@ -174,31 +198,83 @@ onMounted(() => {
           v-for="errorTag in filteredErrorTags"
           :key="errorTag.id"
           @click="handleClick(errorTag, $event)"
-          :class="{ 'selected': isTagSelected(errorTag) }"
+          :class="{ selected: isTagSelected(errorTag) }"
         >
           <div class="option-left">
-            <span class="checkbox" :class="{ 'checked': isTagSelected(errorTag) }"></span>
+            <span
+              class="checkbox"
+              :class="{ checked: isTagSelected(errorTag) }"
+            ></span>
             <span class="option-name">{{ errorTag.name }}</span>
           </div>
-          <div class="color-indicator" :style="{ backgroundColor: errorTag.color }"></div>
+          <div
+            class="color-indicator"
+            :style="{ backgroundColor: errorTag.color }"
+          ></div>
         </div>
-        <div class="error-tag-option-add" v-if="!showAddErrorTag" @click="showAddErrorTag = true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        <div
+          class="error-tag-option-add"
+          v-if="!showAddErrorTag"
+          @click="showAddErrorTag = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
           <span>添加新错因</span>
         </div>
         <div class="add-form-container" v-if="showAddErrorTag">
           <div class="add-form-header">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v8M8 12h8" />
+            </svg>
             <span>添加新错因</span>
           </div>
-          <input v-model="newErrorTag.name" type="text" placeholder="请输入错因名称" class="add-form-input" />
+          <input
+            v-model="newErrorTag.name"
+            type="text"
+            placeholder="请输入错因名称"
+            class="add-form-input"
+          />
           <div class="add-form-footer">
-            <div class="color-picker-wrap" :style="{ backgroundColor: newErrorTag.color }">
-              <input v-model="newErrorTag.color" type="color" title="选择颜色" />
+            <div
+              class="color-picker-wrap"
+              :style="{ backgroundColor: newErrorTag.color }"
+            >
+              <input
+                v-model="newErrorTag.color"
+                type="color"
+                title="选择颜色"
+              />
             </div>
             <div class="btn-group">
-              <button @click="handleAddErrorTag" class="btn-confirm">添加</button>
-              <button @click="showAddErrorTag = false" class="btn-cancel">取消</button>
+              <button @click="handleAddErrorTag" class="btn-confirm">
+                添加
+              </button>
+              <button @click="showAddErrorTag = false" class="btn-cancel">
+                取消
+              </button>
             </div>
           </div>
         </div>
@@ -450,7 +526,9 @@ onMounted(() => {
   font-size: var(--font-size-base);
   background: var(--input-bg);
   color: var(--text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
   outline: none;
   box-sizing: border-box;
 }
@@ -477,7 +555,9 @@ onMounted(() => {
   border: 2px solid var(--border-color);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .color-picker-wrap:hover {
@@ -485,7 +565,7 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-.color-picker-wrap input[type="color"] {
+.color-picker-wrap input[type='color'] {
   position: absolute;
   top: -6px;
   left: -6px;

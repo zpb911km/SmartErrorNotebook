@@ -11,7 +11,10 @@ export interface ReviewCard {
 let _queue: ReviewCard[] = []
 let _onQueue: 'due' | 'all' = 'due'
 
-export function setReviewQueue(queue: ReviewCard[], scope: 'due' | 'all' = 'due') {
+export function setReviewQueue(
+  queue: ReviewCard[],
+  scope: 'due' | 'all' = 'due'
+) {
   _queue = queue
   _onQueue = scope
 }

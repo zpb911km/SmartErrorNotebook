@@ -4,22 +4,22 @@
  */
 
 // 科目相关
-export * from './subjects';
+export * from './subjects'
 
 // 错题相关
-export * from './errorQuestions';
+export * from './errorQuestions'
 
 // 错因标签相关
-export * from './errorTags';
+export * from './errorTags'
 
 // SRS 数据相关
-export * from './srsData';
+export * from './srsData'
 
 // SRS 间隔重复相关
-export * from './srs';
+export * from './srs'
 
 // 附件相关
-export * from './attachments';
+export * from './attachments'
 
 // 来源相关
-export * from './sources';
+export * from './sources'

@@ -13,8 +13,16 @@
         </div>
 
         <!-- 动画图标 -->
-        <div class="sync-card__icon" :class="{ 'sync-card__icon--animating': isSyncing }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div
+          class="sync-card__icon"
+          :class="{ 'sync-card__icon--animating': isSyncing }"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
             <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
@@ -26,12 +34,7 @@
         <div class="sync-card__progress">
           <svg class="progress-circle" :viewBox="circleViewBox">
             <!-- 背景圆环 -->
-            <circle
-              class="progress-circle__bg"
-              cx="50"
-              cy="50"
-              r="40"
-            />
+            <circle class="progress-circle__bg" cx="50" cy="50" r="40" />
             <!-- 进度圆环 -->
             <circle
               class="progress-circle__bar"
@@ -42,7 +45,7 @@
               :stroke-dashoffset="circleDashOffset"
               :style="{
                 transition: 'stroke-dashoffset 0.3s ease',
-                '--progress-color': progressColor,
+                '--progress-color': progressColor
               }"
             />
           </svg>
@@ -55,11 +58,15 @@
         <div class="sync-card__stats">
           <div class="stat-item">
             <span class="stat-label">已传输</span>
-            <span class="stat-value">{{ details.pulled + details.pushed }}/{{ total }}</span>
+            <span class="stat-value"
+              >{{ details.pulled + details.pushed }}/{{ total }}</span
+            >
           </div>
           <div class="stat-item" v-if="details.conflicts_resolved > 0">
             <span class="stat-label">冲突解决</span>
-            <span class="stat-value highlight">{{ details.conflicts_resolved }}</span>
+            <span class="stat-value highlight">{{
+              details.conflicts_resolved
+            }}</span>
           </div>
           <div class="stat-item" v-if="details.failed > 0">
             <span class="stat-label">失败</span>
@@ -81,93 +88,93 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from 'vue'
 
 interface Props {
   /** 是否显示 */
-  modelValue: boolean;
+  modelValue: boolean
   /** 总记录数 */
-  total: number;
+  total: number
   /** 当前进度 */
-  current: number;
+  current: number
   /** 已拉取数量 */
-  pulled: number;
+  pulled: number
   /** 已推送数量 */
-  pushed: number;
+  pushed: number
   /** 已解决冲突数 */
-  conflictsResolved: number;
+  conflictsResolved: number
   /** 失败数量 */
-  failed: number;
+  failed: number
   /** 当前阶段 */
-  phase: string;
+  phase: string
   /** 是否显示取消按钮 */
-  showCancelButton?: boolean;
+  showCancelButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showCancelButton: true,
-});
+  showCancelButton: true
+})
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void;
-  (e: 'cancel'): void;
-}>();
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'cancel'): void
+}>()
 
-const isSyncing = computed(() => props.modelValue);
+const isSyncing = computed(() => props.modelValue)
 const progressPercent = computed(() => {
-  if (props.total === 0) return 0;
-  return (props.current / props.total) * 100;
-});
+  if (props.total === 0) return 0
+  return (props.current / props.total) * 100
+})
 
-const circleViewBox = computed(() => `0 0 100 100`);
+const circleViewBox = computed(() => `0 0 100 100`)
 const circleDashArray = computed(() => {
   // 圆周长 = 2 * PI * r = 2 * PI * 40 ≈ 251.3
-  return 251.3;
-});
+  return 251.3
+})
 const circleDashOffset = computed(() => {
-  const circumference = 251.3;
-  return circumference - (progressPercent.value / 100) * circumference;
-});
+  const circumference = 251.3
+  return circumference - (progressPercent.value / 100) * circumference
+})
 
 const progressColor = computed(() => {
-  if (props.failed > 0) return '#ef4444'; // red
-  if (props.conflictsResolved > 0) return '#f59e0b'; // amber
-  return '#10b981'; // green
-});
+  if (props.failed > 0) return '#ef4444' // red
+  if (props.conflictsResolved > 0) return '#f59e0b' // amber
+  return '#10b981' // green
+})
 
 const title = computed(() => {
   switch (props.phase) {
     case 'handshake':
-      return '握手中...';
+      return '握手中...'
     case 'pulling':
-      return '正在拉取数据...';
+      return '正在拉取数据...'
     case 'pushing':
-      return '正在上传数据...';
+      return '正在上传数据...'
     case 'resolving_conflicts':
-      return '处理冲突...';
+      return '处理冲突...'
     case 'updating':
-      return '更新中...';
+      return '更新中...'
     default:
-      return '同步中';
+      return '同步中'
   }
-});
+})
 
 const statusText = computed(() => {
   switch (props.phase) {
     case 'handshake':
-      return '分析需要同步的数据';
+      return '分析需要同步的数据'
     case 'pulling':
-      return `从服务器获取 ${props.pulled} 条记录`;
+      return `从服务器获取 ${props.pulled} 条记录`
     case 'pushing':
-      return `上传到服务器 ${props.pushed} 条记录`;
+      return `上传到服务器 ${props.pushed} 条记录`
     case 'resolving_conflicts':
-      return `发现 ${props.conflictsResolved} 个冲突待解决`;
+      return `发现 ${props.conflictsResolved} 个冲突待解决`
     case 'updating':
-      return '更新本地数据库状态';
+      return '更新本地数据库状态'
     default:
-      return '';
+      return ''
   }
-});
+})
 
 const details = computed(() => ({
   pulled: props.pulled,
@@ -175,13 +182,13 @@ const details = computed(() => ({
   conflicts_resolved: props.conflictsResolved,
   failed: props.failed,
   total: props.total,
-  current: props.current,
-}));
+  current: props.current
+}))
 
 const handleCancel = () => {
-  emit('update:modelValue', false);
-  emit('cancel');
-};
+  emit('update:modelValue', false)
+  emit('cancel')
+}
 </script>
 
 <style scoped>
@@ -250,7 +257,8 @@ const handleCancel = () => {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }

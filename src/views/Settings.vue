@@ -2,7 +2,7 @@
   <div class="settings-page">
     <div class="settings-section">
       <h3>设置选项</h3>
-      
+
       <!-- 主题设置 -->
       <div class="setting-item">
         <div class="setting-info">
@@ -10,7 +10,11 @@
           <div class="setting-name">主题设置</div>
         </div>
         <div class="setting-action">
-          <select v-model="theme" class="theme-select" @change="handleThemeChange">
+          <select
+            v-model="theme"
+            class="theme-select"
+            @change="handleThemeChange"
+          >
             <option value="light">浅色主题</option>
             <option value="dark">深色主题</option>
             <option value="system">跟随系统</option>
@@ -26,7 +30,12 @@
         </div>
         <div class="setting-action">
           <div class="toggle-switch">
-            <input type="checkbox" v-model="aiEnabled" id="aiToggle" @change="handleAiToggle" />
+            <input
+              type="checkbox"
+              v-model="aiEnabled"
+              id="aiToggle"
+              @change="handleAiToggle"
+            />
             <label for="aiToggle" class="toggle-label"></label>
           </div>
         </div>
@@ -54,14 +63,16 @@
         </div>
       </div>
 
-        <!-- AI 提示词设置 -->
+      <!-- AI 提示词设置 -->
       <div class="setting-item">
         <div class="setting-info">
           <div class="setting-icon">✏️</div>
           <div class="setting-name">AI 提示词设置</div>
         </div>
         <div class="setting-action">
-          <button class="config-btn" @click="showPromptEditor = true">编辑</button>
+          <button class="config-btn" @click="showPromptEditor = true">
+            编辑
+          </button>
         </div>
       </div>
 
@@ -72,7 +83,9 @@
           <div class="setting-name">Markdown 渲染测试</div>
         </div>
         <div class="setting-action">
-          <button class="config-btn" @click="$router.push('/markdown-test')">测试</button>
+          <button class="config-btn" @click="$router.push('/markdown-test')">
+            测试
+          </button>
         </div>
       </div>
 
@@ -125,18 +138,23 @@
             <div class="form-group">
               <label>启用 LLM</label>
               <div class="toggle-switch">
-                <input type="checkbox" v-model="llmConfig.enabled" id="llmEnabledToggle" />
+                <input
+                  type="checkbox"
+                  v-model="llmConfig.enabled"
+                  id="llmEnabledToggle"
+                />
                 <label for="llmEnabledToggle" class="toggle-label"></label>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeLLMConfig">取消</button>
+            <button class="btn btn-secondary" @click="closeLLMConfig">
+              取消
+            </button>
             <button class="btn btn-primary" @click="saveLLMConfig">保存</button>
           </div>
         </div>
       </div>
-
 
       <!-- LLM 测试对话框 -->
       <div v-if="showLLMTest" class="modal-overlay" @click="closeLLMTest">
@@ -182,13 +200,19 @@
                 </button>
               </div>
             </div>
-            <button class="clear-chat-btn" @click="clearTestChat">清空对话</button>
+            <button class="clear-chat-btn" @click="clearTestChat">
+              清空对话
+            </button>
           </div>
         </div>
       </div>
 
       <!-- 提示词编辑器对话框 -->
-      <div v-if="showPromptEditor" class="modal-overlay" @click="closePromptEditor">
+      <div
+        v-if="showPromptEditor"
+        class="modal-overlay"
+        @click="closePromptEditor"
+      >
         <div class="modal large-modal" @click.stop>
           <div class="modal-header">
             <h3>AI 提示词设置</h3>
@@ -201,7 +225,9 @@
             <PromptEditor />
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closePromptEditor">关闭</button>
+            <button class="btn btn-secondary" @click="closePromptEditor">
+              关闭
+            </button>
           </div>
         </div>
       </div>
@@ -230,7 +256,9 @@ const llmConfig = ref({
 // LLM 测试对话框
 const showLLMTest = ref(false)
 const testStatus = ref<'idle' | 'success' | 'error'>('idle')
-const testMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+const testMessages = ref<
+  Array<{ role: 'user' | 'assistant'; content: string }>
+>([])
 const testInput = ref('')
 const isSending = ref(false)
 const chatMessages = ref<HTMLElement | null>(null)
@@ -250,20 +278,28 @@ const handleThemeChange = () => {
   localStorage.setItem('theme', theme.value)
 }
 const theme = ref(localStorage.getItem('theme') || 'system')
-console.log('初始化 theme 值:', theme.value, 'localStorage 中的值:', localStorage.getItem('theme'))
+console.log(
+  '初始化 theme 值:',
+  theme.value,
+  'localStorage 中的值:',
+  localStorage.getItem('theme')
+)
 
 // 应用主题
 const applyTheme = (themeValue: string) => {
   // 移除所有主题类
   document.body.classList.remove('light-theme', 'dark-theme')
-  
+
   if (themeValue === 'light') {
     document.body.classList.add('light-theme')
   } else if (themeValue === 'dark') {
     document.body.classList.add('dark-theme')
   } else if (themeValue === 'system') {
     // 跟随系统
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    if (
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    ) {
       document.body.classList.add('dark-theme')
     } else {
       document.body.classList.add('light-theme')
@@ -273,12 +309,20 @@ const applyTheme = (themeValue: string) => {
 
 // 系统主题变化处理
 const handleSystemThemeChange = () => {
-  console.log('系统主题变化事件触发，当前 theme.value:', theme.value, 'localStorage 中的值:', localStorage.getItem('theme'))
+  console.log(
+    '系统主题变化事件触发，当前 theme.value:',
+    theme.value,
+    'localStorage 中的值:',
+    localStorage.getItem('theme')
+  )
   if (theme.value === 'system') {
     console.log('执行跟随系统主题更新')
     applyTheme('system')
   } else {
-    console.log('当前主题不是 system，不执行跟随系统主题更新，当前主题:', theme.value)
+    console.log(
+      '当前主题不是 system，不执行跟随系统主题更新，当前主题:',
+      theme.value
+    )
     // 确保应用当前设置的主题
     applyTheme(theme.value)
   }
@@ -356,7 +400,7 @@ const sendTestMessage = async () => {
 
   // 添加用户消息
   testMessages.value.push({ role: 'user', content: userMessage })
-  
+
   // 滚动到底部
   await scrollToBottom()
 
@@ -365,16 +409,16 @@ const sendTestMessage = async () => {
   try {
     // 构建对话历史
     const history = testMessages.value
-    
+
     const response = await llm.chat(history)
-    
+
     testMessages.value.push({ role: 'assistant', content: response })
     testStatus.value = 'success'
   } catch (error) {
     console.error('LLM 测试失败:', error)
-    testMessages.value.push({ 
-      role: 'assistant', 
-      content: `错误: ${error instanceof Error ? error.message : '未知错误'}` 
+    testMessages.value.push({
+      role: 'assistant',
+      content: `错误: ${error instanceof Error ? error.message : '未知错误'}`
     })
     testStatus.value = 'error'
   } finally {
@@ -427,13 +471,15 @@ onMounted(() => {
   // 应用主题
   console.log('初始化主题:', theme.value)
   applyTheme(theme.value)
-  
+
   // 监听系统主题变化
   if (window.matchMedia) {
     console.log('添加系统主题变化监听器')
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', handleSystemThemeChange)
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', handleSystemThemeChange)
   }
-  
+
   // 加载 AI 配置
   aiEnabled.value = llm.config.enabled
 })
@@ -442,7 +488,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (window.matchMedia) {
     console.log('移除系统主题变化监听器')
-    window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', handleSystemThemeChange)
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .removeEventListener('change', handleSystemThemeChange)
   }
 })
 </script>
@@ -578,7 +626,7 @@ onUnmounted(() => {
 
 .toggle-label:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 18px;
   width: 18px;
   left: 3px;
@@ -871,7 +919,9 @@ input:checked + .toggle-label:before {
 }
 
 @keyframes bounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
   40% {

@@ -1,6 +1,10 @@
 <template>
   <div class="notification-container">
-    <transition-group name="notification" tag="div" class="notification-wrapper">
+    <transition-group
+      name="notification"
+      tag="div"
+      class="notification-wrapper"
+    >
       <div
         v-for="notification in notifications"
         :key="notification.id"
@@ -17,64 +21,76 @@
           <div class="notification__title">{{ notification.title }}</div>
           <div class="notification__message">{{ notification.message }}</div>
         </div>
-        <div class="notification__close" @click="removeNotification(notification.id)">×</div>
+        <div
+          class="notification__close"
+          @click="removeNotification(notification.id)"
+        >
+          ×
+        </div>
       </div>
     </transition-group>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from 'vue'
 
 export interface Notification {
-  id: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'debug';
-  title: string;
-  message: string;
-  duration?: number;
+  id: string
+  type: 'info' | 'success' | 'warning' | 'error' | 'debug'
+  title: string
+  message: string
+  duration?: number
 }
 
-const notifications = ref<Notification[]>([]);
+const notifications = ref<Notification[]>([])
 
 // 生成唯一ID
 const generateId = () => {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
-};
+  return Date.now().toString(36) + Math.random().toString(36).substr(2)
+}
 
 // 添加通知
-const addNotification = (type: Notification['type'], title: string, message: string, duration = 5000) => {
-  const id = generateId();
+const addNotification = (
+  type: Notification['type'],
+  title: string,
+  message: string,
+  duration = 5000
+) => {
+  const id = generateId()
   const notification: Notification = {
     id,
     type,
     title,
     message,
     duration
-  };
-  
-  notifications.value.push(notification);
-  
+  }
+
+  notifications.value.push(notification)
+
   // 自动移除通知
   if (duration > 0) {
     setTimeout(() => {
-      removeNotification(id);
-    }, duration);
+      removeNotification(id)
+    }, duration)
   }
-};
+}
 
 // 移除通知
 const removeNotification = (id: string) => {
-  const index = notifications.value.findIndex(notification => notification.id === id);
+  const index = notifications.value.findIndex(
+    (notification) => notification.id === id
+  )
   if (index !== -1) {
-    notifications.value.splice(index, 1);
+    notifications.value.splice(index, 1)
   }
-};
+}
 
 // 暴露方法给外部使用
 defineExpose({
   addNotification,
   removeNotification
-});
+})
 </script>
 
 <style scoped>
@@ -183,7 +199,8 @@ defineExpose({
 }
 
 /* 过渡动画 */
-.notification-enter-active, .notification-leave-active {
+.notification-enter-active,
+.notification-leave-active {
   transition: all 0.3s ease;
   transform: translateX(0);
   opacity: 1;
