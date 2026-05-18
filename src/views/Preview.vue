@@ -92,7 +92,7 @@
           <span v-if="item.knowledge" class="source-tag knowledge-tag">{{ item.knowledge }}</span>
           <span class="urgency-badge urgent">{{ item.urgencyLabel }}</span>
         </div>
-        <div class="error-content">{{ truncate(item.prompt, 80) }}</div>
+        <div class="error-content markdown-body" v-html="renderMarkdown(item.prompt)"></div>
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
           <span class="meta-item">🎯 掌握率 {{ item.recallPercent }}%</span>
@@ -113,7 +113,7 @@
           <span v-if="item.knowledge" class="source-tag knowledge-tag">{{ item.knowledge }}</span>
           <span class="urgency-badge upcoming">{{ item.urgencyLabel }}</span>
         </div>
-        <div class="error-content">{{ truncate(item.prompt, 80) }}</div>
+        <div class="error-content markdown-body" v-html="renderMarkdown(item.prompt)"></div>
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
           <span class="meta-item">📊 稳定性 {{ item.stabilityText }}</span>
@@ -146,6 +146,7 @@ import { getBooks, getChapters, getKnowledges, getSources } from '../apis/source
 import { getFullErrorTags } from '../apis/errorTags'
 import { setReviewQueue } from '../services/reviewStore'
 import type { Subject } from '../types'
+import { marked } from 'marked'
 
 const router = useRouter()
 
@@ -341,6 +342,16 @@ function getSubjectStyle(subjectId: string) {
 
 function truncate(text: string, len: number) {
   return (text || '').length > len ? text.substring(0, len) + '…' : text
+}
+
+const renderMarkdown = (content: string) => {
+  if (!content) return ''
+  const normalized = content
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+  return marked.parse(normalized, { breaks: true, gfm: true }) as string
 }
 
 // Cascade filter handlers
@@ -778,6 +789,78 @@ onMounted(async () => {
   color: var(--text-primary);
   margin-bottom: 10px;
   line-height: 1.5;
+}
+
+.error-content.markdown-body {
+  overflow: hidden;
+  max-height: 100%;
+}
+
+.error-content.markdown-body :deep(h1),
+.error-content.markdown-body :deep(h2),
+.error-content.markdown-body :deep(h3),
+.error-content.markdown-body :deep(h4),
+.error-content.markdown-body :deep(h5),
+.error-content.markdown-body :deep(h6) {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+  font-size: 1em;
+}
+
+.error-content.markdown-body :deep(p) {
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(code) {
+  background: rgba(25, 118, 210, 0.12);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.error-content.markdown-body :deep(pre) {
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #e2e8f0;
+}
+
+.error-content.markdown-body :deep(ul),
+.error-content.markdown-body :deep(ol) {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.error-content.markdown-body :deep(a) {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.error-content.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(th),
+.error-content.markdown-body :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
 }
 
 .error-footer {
