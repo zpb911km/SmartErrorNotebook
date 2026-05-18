@@ -29,7 +29,6 @@
           </button>
         </div>
         <div
-          ref="previewRef"
           class="markdown-textarea__preview-body markdown-body"
           :class="previewClass"
         >
@@ -85,10 +84,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import css from 'highlight.js/lib/languages/css'
+import sql from 'highlight.js/lib/languages/sql'
+import java from 'highlight.js/lib/languages/java'
+import cpp from 'highlight.js/lib/languages/cpp'
+import rust from 'highlight.js/lib/languages/rust'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
+import markdown from 'highlight.js/lib/languages/markdown'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('cpp', cpp)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('markdown', markdown)
+// plaintext is built-in, no registration needed
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
@@ -136,7 +163,6 @@ const emit = defineEmits<{
 }>()
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const previewRef = ref<HTMLDivElement | null>(null)
 const viewMode = ref<'edit' | 'preview'>(props.defaultViewMode)
 const activeSegmentId = ref('segment-0')
 watch(
@@ -157,6 +183,13 @@ const normalizeMarkdown = (value: string) => {
 const renderMarkdown = (value: string) => {
   const normalized = normalizeMarkdown(value)
   return marked.parse(normalized, { breaks: true, gfm: true }) as string
+}
+
+const autoResize = () => {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
 }
 
 const focusAtStart = async () => {
@@ -182,6 +215,7 @@ const previewSegments = computed(() => {
 const handleInput = (event: Event) => {
   const target = event.target as HTMLTextAreaElement
   emit('update:modelValue', target.value)
+  autoResize()
 }
 
 const focus = () => textareaRef.value?.focus()
@@ -194,6 +228,7 @@ const toggleViewMode = async () => {
   viewMode.value = viewMode.value === 'edit' ? 'preview' : 'edit'
   await nextTick()
   if (viewMode.value === 'edit') {
+    autoResize()
     await focusAtStart()
   }
 }
@@ -202,6 +237,7 @@ const returnToEdit = async () => {
   if (!props.showPreview) return
   viewMode.value = 'edit'
   await nextTick()
+  autoResize()
   await focusAtStart()
 }
 
@@ -225,16 +261,12 @@ const handleKeydown = (event: KeyboardEvent) => {
 watch(
   () => props.modelValue,
   () => {
-    void 0
+    autoResize()
   }
 )
 
 onMounted(() => {
-  void 0
-})
-
-onBeforeUnmount(() => {
-  void 0
+  autoResize()
 })
 
 defineExpose({ focus, blur, select, el: textareaRef })
