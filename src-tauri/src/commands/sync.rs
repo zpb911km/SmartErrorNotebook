@@ -514,6 +514,22 @@ pub async fn purge_synced_deletions(
             serde_json::json!({ "deleted": deleted.rows_affected }),
         );
     }
+
+    // srs_data
+    {
+        use crate::database::entities::srs_data as srs;
+        let deleted = srs::Entity::delete_many()
+            .filter(srs::Column::SyncStatus.eq("synced"))
+            .filter(srs::Column::DeletedAt.is_not_null())
+            .exec(db)
+            .await
+            .map_err(|e| format!("Failed to purge srs_data: {}", e))?;
+        results.insert(
+            "srs_data".to_string(),
+            serde_json::json!({ "deleted": deleted.rows_affected }),
+        );
+    }
+
     let rst = check_orphan_records(state).await?;
     results.insert(
         "orphan_records".to_string(),
