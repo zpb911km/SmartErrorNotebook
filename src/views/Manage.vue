@@ -1442,7 +1442,7 @@ const viewError = (error: any) => {
   z-index: 1002;
 }
 
-/* 向下展开的级联弹窗 */
+/* 向下展开的级联弹窗 — 宽度占满应用内容区，内部列使用 container query */
 .cascade-popup {
   position: absolute;
   top: 100%;
@@ -1455,10 +1455,14 @@ const viewError = (error: any) => {
   display: flex;
   gap: 0;
   z-index: 1001;
-  width: fit-content;
+  box-sizing: border-box;
+  width: calc(100vw - 40px);
+  max-width: calc(100vw - 40px);
+  padding-right: 40px;
   max-height: 500px;
   animation: cascadeSlideDown 0.2s ease-out;
-  overflow: hidden;
+  overflow-x: auto;
+  container-type: inline-size;
 }
 
 /* 关闭按钮 */
@@ -1609,10 +1613,10 @@ const viewError = (error: any) => {
   font-size: 12px;
 }
 
-/* 级联列 */
+/* 级联列 — 列宽随容器平滑变化 80~220px */
 .cascade-column {
-  flex: 0 0 160px;
-  width: 160px;
+  flex: 0 0 clamp(80px, 20cqi, 220px);
+  width: clamp(80px, 20cqi, 220px);
   border-right: 1px solid var(--border-color);
   padding: 8px 0;
   max-height: 500px;
@@ -1626,7 +1630,6 @@ const viewError = (error: any) => {
 
 .cascade-column:last-child {
   border-right: none;
-  padding-right: 40px; /* 为关闭按钮留出空间 */
 }
 
 /* 列标题 */
