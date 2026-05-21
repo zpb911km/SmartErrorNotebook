@@ -142,7 +142,8 @@
             <span class="cascade-title">科目详情</span>
             <button class="close-btn" @click="closeCascade">×</button>
           </div>
-          <div class="cascade-column-wrapper">
+          <div class="cascade-scroll-wrapper">
+            <div class="cascade-column-wrapper">
             <!-- 科目列 -->
             <div
               class="cascade-column cascade-col-1"
@@ -470,6 +471,7 @@
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
 
@@ -779,7 +781,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { getQuestionStats, getQuestions } from '../apis/errorQuestions'
 import { getDueCount, getSRSStatistics, getAllSRSStatus } from '../apis/srs'
@@ -1206,6 +1208,54 @@ async function loadData() {
 }
 
 loadData()
+
+// ==================== 级联响应式布局 ====================
+// 当展开的列触及容器右端时，自动缩小列间距以适配宽度
+function updateCascadeGap() {
+  if (!showCascade.value || !cascadeContainer.value) return
+
+  const wrapper = cascadeContainer.value.querySelector(
+    '.cascade-column-wrapper'
+  ) as HTMLElement | null
+  if (!wrapper) return
+
+  const containerWidth = cascadeContainer.value.clientWidth - 2
+  const colWidth = 160
+
+  const visibleCount =
+    1 +
+    (selectedSubject.value ? 1 : 0) +
+    (selectedBook.value ? 1 : 0) +
+    (selectedChapter.value ? 1 : 0)
+
+  if (visibleCount <= 1) {
+    wrapper.style.removeProperty('--col-gap')
+    return
+  }
+
+  const minGap = 40
+  const maxGap = 80
+  const idealGap = Math.round(
+    Math.max(
+      minGap,
+      Math.min(maxGap, (containerWidth - colWidth) / (visibleCount - 1))
+    )
+  )
+
+  wrapper.style.setProperty('--col-gap', `${idealGap}px`)
+}
+
+watch([showCascade, selectedSubject, selectedBook, selectedChapter], () => {
+  if (showCascade.value) {
+    updateCascadeGap()
+  }
+}, { flush: 'post' })
+
+function onWindowResize() {
+  if (showCascade.value) {
+    updateCascadeGap()
+  }
+}
 
 // ==================== 科目分布级联选择逻辑 ====================
 const handleSelectSubject = async (subject: Subject) => {
@@ -1807,10 +1857,12 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', onWindowResize)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', onWindowResize)
 })
 
 // ==================== 错因分布环形图 ====================
@@ -2042,6 +2094,32 @@ async function executeDeleteTag() {
   animation: slideUp 0.3s ease;
 }
 
+/* 滚动包装器 */
+.cascade-scroll-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.cascade-scroll-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.cascade-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cascade-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.cascade-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -2093,56 +2171,57 @@ async function executeDeleteTag() {
   display: flex;
   position: relative;
   overflow: visible;
+  /* 默认列宽 160px，间距 80px；JS 在列展开触边时动态缩小间距 */
+  --col-width: 160px;
+  --col-gap: 80px;
 }
 
 /* 级联列 */
 .cascade-column {
-  flex: 0 0 160px;
-  width: 160px;
+  flex: 0 0 var(--col-width);
+  width: var(--col-width);
   border-right: 1px solid var(--border-color);
   padding: 8px 0;
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
-  transition:
-    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-    z-index 0.4s ease;
   background: var(--card-bg);
   max-height: 500px;
   overflow-y: auto;
 }
 
-/* 第一列特殊样式 */
+/* 第一列 - 基准列 */
 .cascade-col-1 {
   border-left: none;
   z-index: 1;
 }
 
-/* 第二列 - 显示时向左移动80px */
+/* 第二列及之后：用负 margin 自然层叠，随视口平滑变化 */
+.cascade-col-2,
+.cascade-col-3,
+.cascade-col-4 {
+  margin-left: calc(-1 * (var(--col-width) - var(--col-gap)));
+}
+
 .cascade-col-2.show-column {
-  transform: translateX(-80px);
   z-index: 10;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 第三列 - 显示时向左移动160px */
 .cascade-col-3.show-column {
-  transform: translateX(-160px);
   z-index: 20;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 第四列 - 显示时向左移动240px */
 .cascade-col-4.show-column {
-  transform: translateX(-240px);
   z-index: 30;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
 
 /* 活动列确保在最上层 */
 .cascade-column.active-column {
-  z-index: 100;
+  z-index: 100 !important;
 }
 
 /* 列标题 */
