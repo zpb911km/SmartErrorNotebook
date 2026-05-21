@@ -288,6 +288,7 @@ interface MergedItem {
   subjectName: string
   prompt: string
   book: string
+  chapter: string
   knowledge: string
   srs: any
   stability: number
@@ -331,7 +332,7 @@ const mergedItems = computed(() => {
       : -1
     const nextAt = srs.next_review_at
     const daysUntilNext = nextAt ? Math.floor((nextAt - n) / 86400) : null
-    const isDue = !nextAt || !daysUntilNext || daysUntilNext <= 0
+    const isDue = srs.is_due
 
     console.log(srs, isDue, n)
 
@@ -371,6 +372,7 @@ const mergedItems = computed(() => {
       subjectName: subject?.name || '未知',
       prompt: q.prompt || '',
       book: sourceInfo.book || '',
+      chapter: sourceInfo.chapter || '',
       knowledge: sourceInfo.knowledge || '',
       srs,
       stability: stab,
@@ -395,10 +397,8 @@ const filteredItems = computed(() => {
     if (filters.value.subject_id && item.subjectId !== filters.value.subject_id)
       return false
     if (filters.value.book && item.book !== filters.value.book) return false
-    if (filters.value.chapter) {
-      // Chapter filter not directly on question, apply through source info
-      // The chapter info isn't stored on items directly, so skip for now
-    }
+    if (filters.value.chapter && item.chapter !== filters.value.chapter)
+      return false
     if (filters.value.knowledge && item.knowledge !== filters.value.knowledge)
       return false
     return true

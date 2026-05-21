@@ -144,7 +144,11 @@
           <span class="btn-icon">➕</span>
           <span>添加错题</span>
         </button>
-        <button class="action-btn" @click="$router.push('/review')">
+        <button v-if="hasDue" class="action-btn has-review" @click="$router.push('/review')">
+          <span class="btn-icon">📖</span>
+          <span>开始复习</span>
+        </button>
+        <button v-else class="action-btn" @click="$router.push('/review')">
           <span class="btn-icon">📖</span>
           <span>开始复习</span>
         </button>
@@ -163,11 +167,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { getDueCount } from '../apis';
 
 // 轮播组件逻辑
 const currentSlide = ref(0)
 const slideCount = 3
 let carouselInterval: number | null = null
+let hasDue = ref(false)
 
 const nextSlide = () => {
   currentSlide.value = (currentSlide.value + 1) % slideCount
@@ -217,6 +223,12 @@ onMounted(() => {
   const rightArrow = document.querySelector('.arco-carousel-arrow-right')
   if (leftArrow) leftArrow.addEventListener('click', prevSlide)
   if (rightArrow) rightArrow.addEventListener('click', nextSlide)
+
+  getDueCount().then(count => {
+    console.log('due count:', count)
+    hasDue.value = count > 0;
+    // hasDue.value = true
+  })
 })
 
 onUnmounted(() => {
@@ -340,6 +352,29 @@ onUnmounted(() => {
 
 .action-btn:active {
   transform: scale(0.98);
+}
+
+.action-btn.has-review {
+  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
+  animation: pulse-glow 0.8s ease-in-out infinite;
+}
+
+.action-btn.has-review .btn-icon {
+  filter: brightness(1.1);
+  transform: scale(1.1);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
+    transform: scale(1);
+  }
+  20% {
+    box-shadow: 0 8px 40px rgba(255, 107, 62, 0.6);
+    transform: scale(1.02);
+  }
 }
 
 .btn-icon {

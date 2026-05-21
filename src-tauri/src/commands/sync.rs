@@ -2,8 +2,16 @@
 
 use crate::AppState;
 use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, QueryFilter};
-use serde::{Serialize};
+use serde::Serialize;
 use tauri::State;
+
+/// 级联检查孤儿记录结果
+#[derive(Debug, Serialize)]
+pub struct CascadeOrphanCheckResult {
+    /// 被标记为软删除的记录 (格式："table_name:id")
+    pub orphan_records_soft_deleted: Vec<String>,
+    pub total_checked: usize,
+}
 
 /// 轻量记录头（握手用，不含 data 负载）
 #[derive(Debug, Clone, Serialize)]
@@ -19,9 +27,7 @@ pub struct SyncRecordHeader {
 
 /// 获取所有记录（无视 status），仅返回握手所需的字段，不含 data
 #[tauri::command]
-pub async fn get_all_records(
-    state: State<'_, AppState>,
-) -> Result<Vec<SyncRecordHeader>, String> {
+pub async fn get_all_records(state: State<'_, AppState>) -> Result<Vec<SyncRecordHeader>, String> {
     let db = state.db.as_ref();
     let mut results = Vec::new();
 
@@ -289,7 +295,6 @@ pub async fn get_record_for_upload(
     Err(format!("Record not found with id: {}", record_id))
 }
 
-
 #[tauri::command]
 pub async fn set_record_sync_status_version(
     state: State<'_, AppState>,
@@ -322,7 +327,8 @@ pub async fn set_record_sync_status_version(
                     let mut model: eq::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    let rst = model.update(db)
+                    let rst = model
+                        .update(db)
                         .await
                         .map_err(|e| format!("Failed to update error_questions: {}", e))?;
                     return Ok(format!("Record updated with id: {:?}", rst.id));
@@ -339,7 +345,8 @@ pub async fn set_record_sync_status_version(
                     let mut model: sub::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    let rst = model.update(db)
+                    let rst = model
+                        .update(db)
                         .await
                         .map_err(|e| format!("Failed to update subjects: {}", e))?;
                     return Ok(format!("Record updated with id: {:?}", rst.id));
@@ -347,7 +354,7 @@ pub async fn set_record_sync_status_version(
             }
             "srs_data" => {
                 use crate::database::entities::srs_data as srs;
-                use sea_orm::ActiveModelTrait;
+                use sea_orm::{ActiveModelTrait, ActiveValue};
                 if let Some(model) = srs::Entity::find_by_id(record_id.clone())
                     .one(db)
                     .await
@@ -356,7 +363,9 @@ pub async fn set_record_sync_status_version(
                     let mut model: srs::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    let rst = model.update(db)
+                    model.deleted_at = ActiveValue::Set(None);
+                    let rst = model
+                        .update(db)
                         .await
                         .map_err(|e| format!("Failed to update srs_data: {}", e))?;
                     return Ok(format!("Record updated with id: {:?}", rst.id));
@@ -373,7 +382,8 @@ pub async fn set_record_sync_status_version(
                     let mut model: att::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    let rst = model.update(db)
+                    let rst = model
+                        .update(db)
                         .await
                         .map_err(|e| format!("Failed to update attachments: {}", e))?;
                     return Ok(format!("Record updated with id: {:?}", rst.id));
@@ -390,7 +400,8 @@ pub async fn set_record_sync_status_version(
                     let mut model: tag::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    let rst = model.update(db)
+                    let rst = model
+                        .update(db)
                         .await
                         .map_err(|e| format!("Failed to update error_tags: {}", e))?;
                     return Ok(format!("Record updated with id: {:?}", rst.id));
@@ -407,7 +418,8 @@ pub async fn set_record_sync_status_version(
                     let mut model: src::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    let rst = model.update(db)
+                    let rst = model
+                        .update(db)
                         .await
                         .map_err(|e| format!("Failed to update sources: {}", e))?;
                     return Ok(format!("Record updated with id: {:?}", rst.id));
@@ -502,7 +514,11 @@ pub async fn purge_synced_deletions(
             serde_json::json!({ "deleted": deleted.rows_affected }),
         );
     }
-
+    let rst = check_orphan_records(state).await?;
+    results.insert(
+        "orphan_records".to_string(),
+        serde_json::json!({ "checked": rst.total_checked }),
+    );
     Ok(serde_json::Value::Object(results))
 }
 
@@ -524,12 +540,20 @@ where
 
     // 从原始 model 提取需要同步的字段值
     let version = obj.get("version").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
-    let status = obj.get("sync_status").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let status = obj
+        .get("sync_status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     let deleted_at = obj.get("deleted_at").and_then(|v| v.as_i64());
     let updated_at = obj.get("updated_at").and_then(|v| v.as_i64()).unwrap_or(0);
 
     SyncRecordOutput {
-        id: obj.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        id: obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         table_name,
         version,
         status,
@@ -548,12 +572,208 @@ where
     let obj = model_json.as_object().unwrap().clone();
 
     SyncRecordHeader {
-        id: obj.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        id: obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         table_name,
         version: obj.get("version").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
-        status: obj.get("sync_status").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+        status: obj
+            .get("sync_status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string(),
         deleted_at: obj.get("deleted_at").and_then(|v| v.as_i64()),
         updated_at: obj.get("updated_at").and_then(|v| v.as_i64()).unwrap_or(0),
         created_at: obj.get("created_at").and_then(|v| v.as_i64()).unwrap_or(0),
     }
+}
+
+pub async fn check_orphan_records(
+    state: State<'_, AppState>,
+) -> Result<CascadeOrphanCheckResult, String> {
+    use sea_orm::{ActiveModelTrait, ActiveValue};
+
+    let db = state.db.as_ref();
+    let now = chrono::Utc::now().timestamp();
+    let mut orphan_records_soft_deleted = Vec::new();
+    let mut total_checked = 0;
+
+    // ========== 第 1 层：检查依赖 subjects 的记录 ==========
+
+    // 1.1 检查 error_questions 依赖的 subject 是否存在且未软删除
+    {
+        use crate::database::entities::{error_question as eq, subject as sub};
+        let all_questions = eq::Entity::find()
+            .filter(eq::Column::DeletedAt.is_null())
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query error_questions: {}", e))?;
+        total_checked += all_questions.len();
+
+        for q in all_questions {
+            let subject_exists = sub::Entity::find_by_id(q.subjectid.clone())
+                .filter(sub::Column::DeletedAt.is_null())
+                .one(db)
+                .await
+                .map_err(|e| format!("Failed to query subject: {}", e))?
+                .is_some();
+
+            if !subject_exists {
+                let mut active_model: eq::ActiveModel = q.clone().into();
+                active_model.deleted_at = ActiveValue::Set(Some(now));
+                active_model.updated_at = ActiveValue::Set(now);
+                active_model.version = ActiveValue::Set(q.version);
+                active_model.sync_status = ActiveValue::Set("pending".to_string());
+                active_model
+                    .update(db)
+                    .await
+                    .map_err(|e| format!("Failed to soft delete error_question: {}", e))?;
+                orphan_records_soft_deleted.push(format!("error_question:{}", q.id));
+            }
+        }
+    }
+
+    // 1.2 检查 sources 依赖的 subject 是否存在且未软删除
+    {
+        use crate::database::entities::{source as src, subject as sub};
+        let all_sources = src::Entity::find()
+            .filter(src::Column::DeletedAt.is_null())
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query sources: {}", e))?;
+        total_checked += all_sources.len();
+
+        for s in all_sources {
+            // source 可能没有 subject_id（可选字段）
+            if let Some(ref subjectid) = s.subject_id {
+                let subject_exists = sub::Entity::find_by_id(subjectid.clone())
+                    .filter(sub::Column::DeletedAt.is_null())
+                    .one(db)
+                    .await
+                    .map_err(|e| format!("Failed to query subject: {}", e))?
+                    .is_some();
+
+                if !subject_exists {
+                    let mut active_model: src::ActiveModel = s.clone().into();
+                    active_model.deleted_at = ActiveValue::Set(Some(now));
+                    active_model.updated_at = ActiveValue::Set(now);
+                    active_model.version = ActiveValue::Set(s.version);
+                    active_model.sync_status = ActiveValue::Set("pending".to_string());
+                    active_model
+                        .update(db)
+                        .await
+                        .map_err(|e| format!("Failed to soft delete source: {}", e))?;
+                    orphan_records_soft_deleted.push(format!("source:{}", s.id));
+                }
+            }
+        }
+    }
+
+    // ========== 第 2 层：检查依赖 error_questions 的记录 ==========
+
+    // 2.1 检查 srs_data 依赖的 error_question 是否存在且未软删除
+    {
+        use crate::database::entities::{error_question as eq, srs_data as srs};
+        let all_srs = srs::Entity::find()
+            .filter(srs::Column::DeletedAt.is_null())
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query srs_data: {}", e))?;
+        total_checked += all_srs.len();
+
+        for srs_model in all_srs {
+            let parent_exists = eq::Entity::find_by_id(srs_model.question_id.clone())
+                .filter(eq::Column::DeletedAt.is_null())
+                .one(db)
+                .await
+                .map_err(|e| format!("Failed to query error_question: {}", e))?
+                .is_some();
+
+            if !parent_exists {
+                let mut active_model: srs::ActiveModel = srs_model.clone().into();
+                active_model.deleted_at = ActiveValue::Set(Some(now));
+                active_model.updated_at = ActiveValue::Set(now);
+                active_model.version = ActiveValue::Set(srs_model.version);
+                active_model.sync_status = ActiveValue::Set("pending".to_string());
+                active_model
+                    .update(db)
+                    .await
+                    .map_err(|e| format!("Failed to soft delete srs_data: {}", e))?;
+                orphan_records_soft_deleted.push(format!("srs_data:{}", srs_model.id));
+            }
+        }
+    }
+
+    // 2.2 检查 error_tag 依赖的 error_question 是否存在且未软删除
+    {
+        use crate::database::entities::{error_question as eq, error_tag as tag};
+        let all_tags = tag::Entity::find()
+            .filter(tag::Column::DeletedAt.is_null())
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query error_tags: {}", e))?;
+        total_checked += all_tags.len();
+
+        for tag_model in all_tags {
+            let parent_exists = eq::Entity::find_by_id(tag_model.question_id.clone())
+                .filter(eq::Column::DeletedAt.is_null())
+                .one(db)
+                .await
+                .map_err(|e| format!("Failed to query error_question: {}", e))?
+                .is_some();
+
+            if !parent_exists {
+                let mut active_model: tag::ActiveModel = tag_model.clone().into();
+                active_model.deleted_at = ActiveValue::Set(Some(now));
+                active_model.updated_at = ActiveValue::Set(now);
+                active_model.version = ActiveValue::Set(tag_model.version);
+                active_model.sync_status = ActiveValue::Set("pending".to_string());
+                active_model
+                    .update(db)
+                    .await
+                    .map_err(|e| format!("Failed to soft delete error_tag: {}", e))?;
+                orphan_records_soft_deleted.push(format!("error_tag:{}", tag_model.id));
+            }
+        }
+    }
+
+    // 2.3 检查 attachment 依赖的 error_question 是否存在且未软删除
+    {
+        use crate::database::entities::{attachment as att, error_question as eq};
+        let all_attachments = att::Entity::find()
+            .filter(att::Column::DeletedAt.is_null())
+            .all(db)
+            .await
+            .map_err(|e| format!("Failed to query attachments: {}", e))?;
+        total_checked += all_attachments.len();
+
+        for att_model in all_attachments {
+            let parent_exists = eq::Entity::find_by_id(att_model.question_id.clone())
+                .filter(eq::Column::DeletedAt.is_null())
+                .one(db)
+                .await
+                .map_err(|e| format!("Failed to query error_question: {}", e))?
+                .is_some();
+
+            if !parent_exists {
+                let mut active_model: att::ActiveModel = att_model.clone().into();
+                active_model.deleted_at = ActiveValue::Set(Some(now));
+                active_model.updated_at = ActiveValue::Set(now);
+                active_model.version = ActiveValue::Set(att_model.version);
+                active_model.sync_status = ActiveValue::Set("pending".to_string());
+                active_model
+                    .update(db)
+                    .await
+                    .map_err(|e| format!("Failed to soft delete attachment: {}", e))?;
+                orphan_records_soft_deleted.push(format!("attachment:{}", att_model.id));
+            }
+        }
+    }
+
+    Ok(CascadeOrphanCheckResult {
+        orphan_records_soft_deleted,
+        total_checked,
+    })
 }

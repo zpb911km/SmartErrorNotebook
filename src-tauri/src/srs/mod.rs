@@ -226,6 +226,7 @@ pub fn initialize_srs(now: i64) -> srs_data::ActiveModel {
         version: Default::default(),
         sync_status: Default::default(),
         sync_hash: Default::default(),
+        deleted_at: Set(None),
     }
 }
 

@@ -47,6 +47,7 @@ pub struct Model {
     pub version: i32,
     pub sync_status: String,
     pub sync_hash: Option<String>,
+    pub deleted_at: Option<i64>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

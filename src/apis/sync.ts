@@ -235,7 +235,7 @@ export function handshake(
       } else if (
         local_status === 'synced' &&
         local_version < server_version &&
-        !server_deleted
+        (!server_deleted || !local_deleted)
       ) {
         // 本地未修改，服务端有新版本 → 拉取
         result.pull_list.push(rec_id)

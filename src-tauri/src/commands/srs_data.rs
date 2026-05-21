@@ -5,7 +5,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, Query
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::{prelude::SrsData, srs_data};
+use crate::database::entities::prelude::SrsData;
+use crate::database::entities::srs_data;
 use crate::srs::{
     config, days_elapsed, predict_retrievability, review_card, update_feedback_history,
 };
@@ -27,6 +28,7 @@ pub struct UpsertSRSDataInput {
     pub id: String,
     pub version: i32,
     pub status: String,
+    pub deleted_at: Option<i64>,
     pub question_id: String,
     pub stability: f32,
     pub difficulty: f32,
@@ -59,6 +61,7 @@ pub struct SRSCardOutput {
     pub next_review_at: Option<i64>,
     pub last_review_at: Option<i64>,
     pub review_count: i32,
+    pub is_due: bool,
 }
 
 /// 复习结果输出
@@ -129,6 +132,7 @@ pub async fn create_srs_data(
         version: Set(0),
         sync_status: Set("pending".to_string()),
         sync_hash: Set(None),
+        deleted_at: Set(None),
     };
 
     let _ = new_srs_data.insert(db).await;
@@ -153,8 +157,12 @@ pub async fn get_due_questions(
     let now = chrono::Utc::now().timestamp();
     let limit = limit.unwrap_or(1000);
 
-    // 获取所有 SRS 数据
-    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+    // 获取所有 SRS 数据（排除已软删除的）
+    let all_srs = SrsData::find()
+        .filter(srs_data::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|e| e.to_string())?;
 
     // 过滤出到期的题目
     let mut due_cards: Vec<srs_data::Model> = all_srs
@@ -188,6 +196,7 @@ pub async fn get_due_questions(
             next_review_at: srs.next_review_at,
             last_review_at: srs.lastreviewed_at,
             review_count: srs.review_count,
+            is_due: true,
         })
         .collect())
 }
@@ -226,7 +235,7 @@ pub async fn submit_review_result(
     update_model.updated_at = Set(now);
     update_model.version = Set(srs_model.version);
     update_model.sync_status = Set("pending".to_string());
-
+    update_model.deleted_at = Set(None);
     update_model.update(db).await.map_err(|e| e.to_string())?;
 
     Ok(ReviewOutput {
@@ -247,25 +256,15 @@ pub async fn get_question_srs_status(
 
     let srs_model = SrsData::find()
         .filter(srs_data::Column::QuestionId.eq(&question_id))
+        .filter(srs_data::Column::DeletedAt.is_null())
         .one(db)
         .await
         .map_err(|e| e.to_string())?;
 
-    // let elapsed_days = if let Some(last_review_at) = srs_model.as_ref().and_then(|srs| srs.lastreviewed_at) {
-    //     days_elapsed(Some(last_review_at), chrono::Utc::now().timestamp())
-    // } else {
-    //     -1.0
-    // };
-
-    // let recall_percentage = if let Some(srs) = srs_model.as_ref() {
-    //     predict_retrievability(srs.stability, elapsed_days)
-    // } else {
-    //     -1.0
-    // };
-
     Ok(srs_model.map(|srs| {
         let elapsed_days = days_elapsed(srs.lastreviewed_at, chrono::Utc::now().timestamp());
         let recall_rate = predict_retrievability(srs.stability, elapsed_days);
+        let is_due = srs.next_review_at.map(|next| srs.next_review_at.is_none() || next <= chrono::Utc::now().timestamp()).unwrap_or(true);
 
         SRSCardOutput {
             id: srs.id,
@@ -276,6 +275,7 @@ pub async fn get_question_srs_status(
             next_review_at: srs.next_review_at,
             last_review_at: srs.lastreviewed_at,
             review_count: srs.review_count,
+            is_due: is_due,
         }
     }))
 }
@@ -289,9 +289,10 @@ pub async fn reset_srs_progress(
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
-    // 查找现有 SRS 记录
+    // 查找现有 SRS 记录（排除已软删除的）
     let srs_model = SrsData::find()
         .filter(srs_data::Column::QuestionId.eq(&question_id))
+        .filter(srs_data::Column::DeletedAt.is_null())
         .one(db)
         .await
         .map_err(|e| e.to_string())?;
@@ -336,7 +337,11 @@ pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
-    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+    let all_srs = SrsData::find()
+        .filter(srs_data::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let count = all_srs
         .into_iter()
@@ -354,7 +359,11 @@ pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
 pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatistics, String> {
     let db = state.db.as_ref();
 
-    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+    let all_srs = SrsData::find()
+        .filter(srs_data::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if all_srs.is_empty() {
         return Ok(SRSStatistics {
@@ -400,7 +409,11 @@ pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatist
 #[tauri::command]
 pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutput>, String> {
     let db = state.db.as_ref();
-    let all_srs = SrsData::find().all(db).await.map_err(|e| e.to_string())?;
+    let all_srs = SrsData::find()
+        .filter(srs_data::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(all_srs
         .into_iter()
@@ -416,6 +429,7 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
             next_review_at: srs.next_review_at,
             last_review_at: srs.lastreviewed_at,
             review_count: srs.review_count,
+            is_due: srs.next_review_at.map(|next| srs.next_review_at.is_none() || next <= chrono::Utc::now().timestamp()).unwrap_or(true),
         })
         .collect())
 }
@@ -450,7 +464,7 @@ pub async fn upsert_srs_data(
         active_model.updated_at = Set(now);
         active_model.version = Set(input.version);
         active_model.sync_status = Set("synced".to_string());
-
+        active_model.deleted_at = Set(input.deleted_at);
         active_model.update(db).await.map_err(|e| e.to_string())?;
     } else {
         // 插入新记录
@@ -468,6 +482,7 @@ pub async fn upsert_srs_data(
             version: Set(input.version),
             sync_status: Set("synced".to_string()),
             sync_hash: Set(None),
+            deleted_at: Set(None),
         };
 
         let _ = new_srs.insert(db).await;
