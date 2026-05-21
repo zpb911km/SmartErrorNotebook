@@ -137,11 +137,15 @@
             :default-view-mode="'edit'"
             preview-title="题目预览"
           />
-          <div
+          <MarkdownTextarea
             v-else
-            class="markdown-preview"
-            v-html="renderMarkdown(editForm.prompt)"
-          ></div>
+            :model-value="editForm.prompt"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
@@ -158,11 +162,15 @@
             :default-view-mode="'edit'"
             preview-title="答案预览"
           />
-          <div
+          <MarkdownTextarea
             v-else
-            class="markdown-preview"
-            v-html="renderMarkdown(editForm.answer)"
-          ></div>
+            :model-value="editForm.answer"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
@@ -179,11 +187,15 @@
             :default-view-mode="'edit'"
             preview-title="解析预览"
           />
-          <div
+          <MarkdownTextarea
             v-else
-            class="markdown-preview"
-            v-html="renderMarkdown(editForm.analysis)"
-          ></div>
+            :model-value="editForm.analysis"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
@@ -232,11 +244,15 @@
             :default-view-mode="'edit'"
             preview-title="笔记预览"
           />
-          <div
+          <MarkdownTextarea
             v-else
-            class="markdown-preview"
-            v-html="renderMarkdown(editForm.error_note)"
-          ></div>
+            :model-value="editForm.error_note"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
@@ -942,16 +958,6 @@ const handleSourceSelect = (sourceId: string) => {
   }, 100)
 }
 
-// 渲染 Markdown
-const renderMarkdown = (content: string) => {
-  if (!content) return ''
-  const normalized = content
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-  return marked.parse(normalized, { breaks: true, gfm: true }) as string
-}
 
 // 构建图片src
 const buildImageSrc = (attachment: any) => {
@@ -1916,6 +1922,43 @@ onMounted(() => {
     font-weight: 500;
     color: var(--text-primary);
     text-align: right;
+  }
+
+  /* 移动端 - 删除弹窗适配 */
+  .modal-overlay {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-content.confirm-modal {
+    width: 100%;
+    max-width: unset;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+
+  .confirm-modal .modal-header h3 {
+    font-size: 16px;
+  }
+
+  .confirm-modal .modal-body p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .modal-footer {
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .btn-cancel,
+  .btn-confirm {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
   }
 }
 
