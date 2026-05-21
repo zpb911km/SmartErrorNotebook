@@ -2,6 +2,7 @@ import { getSubjects } from '../apis'
 import { llm } from '../services'
 import { ImageContent, TextContent } from '../services'
 import { QuestionType } from '../types'
+import { format } from './formatter'
 
 // ==================== 提示词构造辅助函数 ====================
 const getExistingSubjects = async (): Promise<string[]> => {
@@ -354,12 +355,7 @@ export const inquiryAIAddInfo = async (
           }
         } else {
           console.log(`[${prompt.tag}] 纯文本结果:`, response)
-          parsedContent = response
-            .replace(/\\\\/g, '\\')
-            .replace(/\$\$/g, '<math-block>')
-            .replace(/\$/g, '<math-inline>')
-            .replace(/<math-block>/g, ' $$ ')
-            .replace(/<math-inline>/g, ' $ ')
+          parsedContent = format(response)
           console.log(`替换后结果：${parsedContent}`)
         }
 
