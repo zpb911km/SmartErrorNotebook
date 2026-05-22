@@ -363,7 +363,6 @@ pub async fn set_record_sync_status_version(
                     let mut model: srs::ActiveModel = model.into();
                     model.sync_status = ActiveValue::Set(status.clone());
                     model.version = ActiveValue::Set(version);
-                    model.deleted_at = ActiveValue::Set(None);
                     let rst = model
                         .update(db)
                         .await
@@ -529,12 +528,6 @@ pub async fn purge_synced_deletions(
             serde_json::json!({ "deleted": deleted.rows_affected }),
         );
     }
-
-    let rst = check_orphan_records(state).await?;
-    results.insert(
-        "orphan_records".to_string(),
-        serde_json::json!({ "checked": rst.total_checked }),
-    );
     Ok(serde_json::Value::Object(results))
 }
 
@@ -606,6 +599,7 @@ where
     }
 }
 
+#[tauri::command]
 pub async fn check_orphan_records(
     state: State<'_, AppState>,
 ) -> Result<CascadeOrphanCheckResult, String> {

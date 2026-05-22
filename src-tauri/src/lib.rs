@@ -48,6 +48,7 @@ pub fn run() {
             commands::set_record_sync_status_version,
             commands::get_all_records,
             commands::purge_synced_deletions,
+            commands::check_orphan_records,
             // Subject
             commands::get_subjects,
             commands::create_subject,

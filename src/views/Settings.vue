@@ -239,7 +239,8 @@
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { llm } from '../services'
 import PromptEditor from '../components/PromptEditor.vue'
-import { purgeSyncedDeletions } from '../apis/sync'
+import { checkAndDeleteOrphans, purgeSyncedDeletions } from '../apis/sync'
+import { showInfo, showSuccess } from '../utils/notification'
 
 // AI 选项
 const aiEnabled = ref(false)
@@ -457,10 +458,18 @@ const confirmPurge = async () => {
       }
     }
     if (total > 0) {
-      alert(`清理完成！共删除 ${total} 条记录\n${parts.join('\n')}`)
+      showSuccess(`清理完成！`, `共删除 ${total} 条记录\n${parts.join('\n')}`, 5000)
     } else {
-      alert('没有需要清理的记录')
+      showInfo('没有需要清理的记录', '')
     }
+    checkAndDeleteOrphans().then((orphans) => {
+      console.log('checkAndDeleteOrphans result:', orphans)
+      showSuccess(
+        "自动检查完成",
+        `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`,
+        5000
+      )
+    })
   } catch (e) {
     alert(`清理失败：${e}`)
   }

@@ -57,10 +57,10 @@
         <div class="info-row info-row--action">
           <button
             class="btn btn-secondary btn--sm"
-            @click="checkConnection"
+            @click="() => { checkConnection(); refreshSyncStats();}"
             :disabled="checking"
           >
-            {{ checking ? '检测中...' : '检测连接' }}
+            {{ checking ? '......' : '刷新连接' }}
           </button>
           <span v-if="checkMessage" class="check-msg" :class="checkMsgClass">{{
             checkMessage
@@ -163,7 +163,8 @@ import {
   uploadRecord,
   applyPullRecords,
   getAllLocalRecords,
-  downloadRecord
+  downloadRecord,
+  checkAndDeleteOrphans
 } from '../apis/sync'
 import type {
   SyncHandshakeResult,
@@ -349,7 +350,14 @@ const refreshSyncStats = async () => {
 
 onMounted(() => {
   checkConnection()
-  refreshSyncStats()
+  checkAndDeleteOrphans().then((orphans) => {
+    console.log('checkAndDeleteOrphans result:', orphans)
+    showSuccess(
+      "自动检查完成",
+      `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`
+    )
+    refreshSyncStats()
+  })
 })
 
 // ---------- 同步流程 ----------

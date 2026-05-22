@@ -385,6 +385,7 @@ pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatist
 
     for srs in &all_srs {
         if srs.next_review_at.is_none() || now >= srs.next_review_at.unwrap() {
+            println!("Due: {}", srs.question_id);
             due_count += 1;
         }
         if srs.review_count == 1 {
@@ -394,6 +395,7 @@ pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatist
         difficulty_sum += srs.difficulty as f64;
         total_reviews += srs.review_count as i64;
     }
+    println!("Total: {}", all_srs.len());
 
     Ok(SRSStatistics {
         total: all_srs.len() as i32,
