@@ -392,6 +392,17 @@ import { getFullErrorTags } from '../apis/errorTags'
 import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
 import type { Subject } from '../types'
 import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+
+marked.use(
+  markedKatex({
+    throwOnError: false,
+    output: 'html'
+  })
+)
+
+const renderer = new marked.Renderer()
+marked.use({ renderer })
 
 const router = useRouter()
 const route = useRoute()

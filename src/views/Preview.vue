@@ -229,6 +229,17 @@ import { getFullErrorTags } from '../apis/errorTags'
 import { setReviewQueue } from '../services/reviewStore'
 import type { Subject } from '../types'
 import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+
+marked.use(
+  markedKatex({
+    throwOnError: false,
+    output: 'html'
+  })
+)
+
+const renderer = new marked.Renderer()
+marked.use({ renderer })
 
 const router = useRouter()
 
@@ -434,12 +445,7 @@ function getSubjectStyle(subjectId: string) {
 
 const renderMarkdown = (content: string) => {
   if (!content) return ''
-  const normalized = content
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-  return marked.parse(normalized, { breaks: true, gfm: true }) as string
+  return marked.parse(content, { breaks: true, gfm: true }) as unknown as string
 }
 
 // Cascade filter handlers
