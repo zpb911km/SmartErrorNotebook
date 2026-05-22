@@ -33,7 +33,7 @@ impl MigrationTrait for Migration {
 
 #[derive(DeriveIden)]
 enum EqCols {
-    Table,
+    _Table,
     Id,
     Userid,
     Subjectid,
@@ -92,7 +92,7 @@ async fn rebuild_error_questions(
 
 #[derive(DeriveIden)]
 enum SrsCols {
-    Table,
+    _Table,
     Id,
     QuestionId,
     Stability,
@@ -144,7 +144,7 @@ async fn rebuild_srs_data(
 
 #[derive(DeriveIden)]
 enum TagCols {
-    Table,
+    _Table,
     Id,
     QuestionId,
     Name,
@@ -190,7 +190,7 @@ async fn rebuild_error_tags(
 
 #[derive(DeriveIden)]
 enum AttCols {
-    Table,
+    _Table,
     Id,
     QuestionId,
     #[sea_orm(iden = "type")]
