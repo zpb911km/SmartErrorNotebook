@@ -1,3 +1,5 @@
+// 为 srs_data 表添加 deleted_at 字段，支持级联软删除
+
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -9,32 +11,27 @@ impl MigrationTrait for Migration {
         manager
             .alter_table(
                 Table::alter()
-                    .table(ErrorQuestions::Table)
-                    .drop_column(ErrorQuestions::Prompt)
+                    .table(SrsData::Table)
+                    .add_column(ColumnDef::new(SrsData::DeletedAt).big_integer().null())
                     .to_owned(),
             )
-            .await?;
+            .await
+    }
 
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .alter_table(
                 Table::alter()
-                    .table(ErrorQuestions::Table)
-                    .add_column(ColumnDef::new(ErrorQuestions::Prompt).text().not_null())
+                    .table(SrsData::Table)
+                    .drop_column(SrsData::DeletedAt)
                     .to_owned(),
             )
-            .await?;
-        
-
-        Ok(())
-    }
-
-    async fn down(&self, _manager: &SchemaManager) -> Result<(), DbErr> {
-        Ok(())
+            .await
     }
 }
 
-#[derive(DeriveIden)]
-enum ErrorQuestions {
+#[derive(Iden)]
+enum SrsData {
     Table,
-    Prompt,
+    DeletedAt,
 }

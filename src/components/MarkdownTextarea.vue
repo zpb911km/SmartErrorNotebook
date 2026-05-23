@@ -13,6 +13,7 @@
         v-bind="$attrs"
         :class="['markdown-textarea__input', textareaClass]"
         :value="modelValue"
+        :readonly="props.readonly"
         @input="handleInput"
         @keydown="handleKeydown"
       ></textarea>
@@ -21,6 +22,7 @@
         <div class="markdown-textarea__preview-header">
           <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
           <button
+            v-if="!props.readonly"
             type="button"
             class="markdown-textarea__mode-switch"
             @click="toggleViewMode"
@@ -29,19 +31,19 @@
           </button>
         </div>
         <div
-          class="markdown-textarea__preview-body markdown-body"
+          class="markdown-textarea__preview-segment"
           :class="previewClass"
         >
           <div
             v-if="previewSegments.length === 0"
             class="markdown-textarea__preview-empty"
           >
-            预览会随编辑内容滚动自动对齐
+            当前没有可预览内容
           </div>
           <div
             v-for="segment in previewSegments"
             :key="segment.id"
-            class="markdown-textarea__preview-segment"
+            class="markdown-textarea__preview-body markdown-body"
             :class="{ 'is-active': segment.id === activeSegmentId }"
             v-html="segment.html"
           ></div>
@@ -55,6 +57,7 @@
       >
         <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
         <button
+          v-if="!props.readonly"
           type="button"
           class="markdown-textarea__mode-switch"
           @click="toggleViewMode"
@@ -63,7 +66,7 @@
         </button>
       </div>
       <div
-        class="markdown-textarea__preview-body markdown-body"
+        class="markdown-textarea__preview-segment"
         :class="previewClass"
       >
         <div
@@ -75,7 +78,7 @@
         <div
           v-for="segment in previewSegments"
           :key="segment.id"
-          class="markdown-textarea__preview-segment"
+          class="markdown-textarea__preview-body markdown-body"
           v-html="segment.html"
         ></div>
       </div>
@@ -147,6 +150,7 @@ interface Props {
   textareaClass?: string
   previewClass?: string
   defaultViewMode?: 'edit' | 'preview'
+  readonly?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -155,7 +159,8 @@ const props = withDefaults(defineProps<Props>(), {
   previewTitle: 'Markdown 预览',
   textareaClass: '',
   previewClass: '',
-  defaultViewMode: 'preview'
+  defaultViewMode: 'preview',
+  readonly: false
 })
 
 const emit = defineEmits<{
@@ -223,7 +228,7 @@ const blur = () => textareaRef.value?.blur()
 const select = () => textareaRef.value?.select()
 
 const toggleViewMode = async () => {
-  if (!props.showPreview) return
+  if (!props.showPreview || props.readonly) return
 
   viewMode.value = viewMode.value === 'edit' ? 'preview' : 'edit'
   await nextTick()
@@ -234,7 +239,7 @@ const toggleViewMode = async () => {
 }
 
 const returnToEdit = async () => {
-  if (!props.showPreview) return
+  if (!props.showPreview || props.readonly) return
   viewMode.value = 'edit'
   await nextTick()
   autoResize()
@@ -245,14 +250,15 @@ const handleKeydown = (event: KeyboardEvent) => {
   if (
     (event.ctrlKey || event.metaKey) &&
     event.key === 'Enter' &&
-    props.showPreview
+    props.showPreview &&
+    !props.readonly
   ) {
     event.preventDefault()
     toggleViewMode()
     return
   }
 
-  if (event.key === 'Escape' && props.showPreview) {
+  if (event.key === 'Escape' && props.showPreview && !props.readonly) {
     event.preventDefault()
     returnToEdit()
   }
@@ -326,6 +332,13 @@ defineExpose({ focus, blur, select, el: textareaRef })
   resize: vertical;
 }
 
+.markdown-textarea__input:read-only {
+  background: var(--bg-secondary);
+  cursor: not-allowed;
+  color: var(--text-primary);
+  resize: none;
+}
+
 .markdown-textarea__input:focus {
   outline: none;
   border-color: var(--primary-color);
@@ -339,7 +352,6 @@ defineExpose({ focus, blur, select, el: textareaRef })
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* min-height: 360px; */
 }
 
 .markdown-textarea__preview-header {
@@ -380,13 +392,15 @@ defineExpose({ focus, blur, select, el: textareaRef })
 }
 
 .markdown-textarea__preview-segment {
+  background: var(--bg-markdown-primary);
   padding: 8px 10px;
   border-radius: 8px;
+  color: var(--text-primary);
   transition: background-color 0.2s ease;
 }
 
 .markdown-textarea__preview-segment.is-active {
-  background: rgba(25, 118, 210, 0.08);
+  background: var(--bg-markdown-primary);
 }
 
 .markdown-body :deep(h1),
@@ -462,4 +476,20 @@ defineExpose({ focus, blur, select, el: textareaRef })
 .markdown-textarea__preview-only {
   margin-top: 12px;
 }
+
+/* 只预览模式下的预览区域样式 */
+.markdown-textarea__preview-only .markdown-textarea__preview-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  color: var(--text-primary);
+}
+
+/* readonly模式下的预览区域样式 */
+.markdown-textarea__input:read-only {
+  background: var(--bg-secondary);
+  cursor: not-allowed;
+  color: var(--text-primary);
+  resize: none;
+}
+
 </style>

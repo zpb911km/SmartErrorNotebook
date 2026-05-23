@@ -1,0 +1,234 @@
+name: 'publish'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'ubuntu-22.04-arm'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: install frontend dependencies
+        run: pnpm install
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__
+          releaseName: 'v__VERSION__'
+          releaseBody: ''
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  android-build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: 'aarch64'
+            arch_name: arm64
+            abi: arm64-v8a
+            rust_target: aarch64-linux-android
+          - target: 'armv7'
+            arch_name: arm32
+            abi: armeabi-v7a
+            rust_target: arm-linux-androideabi
+          - target: 'x86_64'
+            arch_name: x64
+            abi: x86_64
+            rust_target: x86_64-linux-android
+          - target: 'i686'
+            arch_name: x86
+            abi: x86
+            rust_target: i686-linux-android
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils openjdk-17-jdk gradle
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: install frontend dependencies
+        run: pnpm install
+
+      - name: backup custom android config
+        run: |
+          mkdir -p /tmp/android-config/app/src/main
+          cp src-tauri/gen/android/app/src/main/AndroidManifest.xml /tmp/android-config/
+          cp src-tauri/gen/android/app/build.gradle.kts /tmp/android-config/
+
+      - name: clean old android build
+        run: rm -rf src-tauri/gen/android
+
+      - name: prepare android
+        run: pnpm tauri android init
+
+      - name: restore custom android config
+        run: |
+          cp -f /tmp/android-config/AndroidManifest.xml src-tauri/gen/android/app/src/main/
+          cp -f /tmp/android-config/build.gradle.kts src-tauri/gen/android/app/
+
+      - name: fix android icon
+        run: pnpm tauri icon
+
+      - name: build APK
+        run: pnpm tauri android build --target=${{ matrix.target }}
+
+      - name: get version and name from cargo.toml
+        id: meta
+        run: |
+          VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version *= *"\([^"]*\)"/\1/')
+          NAME=$(grep '^name = ' src-tauri/Cargo.toml | head -1 | sed 's/name *= *"\([^"]*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "NAME=$NAME" >> $GITHUB_OUTPUT
+          echo "App: $NAME v$VERSION"
+
+      - name: debug apk location before upload
+        run: |
+          echo "=== Matrix info ==="
+          echo "arch_name: ${{ matrix.arch_name }}"
+          echo "target: ${{ matrix.target }}"
+          echo ""
+          echo "=== Tauri output dir ==="
+          ls -la src-tauri/gen/android/app/build/outputs/apk/universal/release/ || echo "Dir not found!"
+          echo ""
+          echo "=== Full find for apks ==="
+          find src-tauri -name "*.apk" 2>/dev/null || echo "No APKs found"
+
+      - name: prepare and upload APK
+        run: |
+          mkdir -p android-apks-${{ matrix.arch_name }}
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-Android-${{ matrix.arch_name }}.apk"
+          ls -la "android-apks-${{ matrix.arch_name }}/"
+
+      - name: debug uploaded artifact content
+        run: |
+          tar -tzf android-apks-${{ matrix.arch_name }}.zip 2>/dev/null || ls -la android-apks-${{ matrix.arch_name }}/
+
+      - name: upload APK with arch in name
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks-${{ matrix.arch_name }}
+          path: android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-Android-${{ matrix.arch_name }}.apk
+
+  android-release:
+    needs: [android-build, publish-tauri]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: download all apks
+        uses: actions/download-artifact@v4
+        with:
+          pattern: android-apks-*
+          path: apk-files
+          merge-multiple: true
+
+      - name: debug downloaded artifact structure
+        run: |
+          echo "=== Root apk-files ==="
+          ls -la apk-files/
+          echo ""
+          echo "=== All directories recursively ==="
+          find apk-files -type d | head -20
+          echo ""
+          echo "=== All APKs found ==="
+          find apk-files -name "*.apk"
+
+      - name: get version and name from cargo.toml
+        id: meta
+        run: |
+          VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version *= *"\([^"]*\)"/\1/')
+          NAME=$(grep '^name = ' src-tauri/Cargo.toml | head -1 | sed 's/name *= *"\([^"]*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "NAME=$NAME" >> $GITHUB_OUTPUT
+          echo "App: $NAME v$VERSION"
+
+      - name: release to one github release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: apk-files/*.apk
+          tag_name: app-v${{ steps.meta.outputs.VERSION }}
+          name: v${{ steps.meta.outputs.VERSION }}
+          generate_release_notes: true
+          draft: true
+          prerelease: false

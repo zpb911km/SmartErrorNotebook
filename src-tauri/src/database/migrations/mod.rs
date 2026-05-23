@@ -15,6 +15,7 @@ mod m20260428_000005_alter_srs_data_sdr_model;
 mod m20260512_000001_alter_attachments_base64_to_blob;
 mod m20260512_000002_alter_errorquestion_prompt_to_text;
 mod m20260516_000001_remove_foreign_keys;
+mod m20260521_000003_add_deleted_at_to_srs_data;
 
 pub struct Migrator;
 
@@ -35,6 +36,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260512_000001_alter_attachments_base64_to_blob::Migration),
             Box::new(m20260512_000002_alter_errorquestion_prompt_to_text::Migration),
             Box::new(m20260516_000001_remove_foreign_keys::Migration),
+            Box::new(m20260521_000003_add_deleted_at_to_srs_data::Migration),
         ]
     }
 }

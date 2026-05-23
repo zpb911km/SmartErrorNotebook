@@ -235,7 +235,7 @@ export function handshake(
       } else if (
         local_status === 'synced' &&
         local_version < server_version &&
-        !server_deleted
+        (!server_deleted || !local_deleted)
       ) {
         // 本地未修改，服务端有新版本 → 拉取
         result.pull_list.push(rec_id)
@@ -409,6 +409,16 @@ export async function purgeSyncedDeletions(): Promise<
  */
 export async function getAllLocalRecords(): Promise<SyncRecordHeader[]> {
   return invoke('get_all_records')
+}
+
+/**
+ * 检查并删除孤儿记录
+ */
+export async function checkAndDeleteOrphans(): Promise<{
+  orphan_records_soft_deleted: string[],
+  total_checked: number
+}> {
+  return invoke('check_orphan_records')
 }
 
 // ==================== 导出 ====================

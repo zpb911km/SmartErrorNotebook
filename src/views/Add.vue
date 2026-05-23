@@ -98,10 +98,10 @@
           <option v-for="type in everyQuestionType" :key="type" :value="type">
             {{ type }}
           </option>
-          <div class="loading-spinner" v-if="typeLoading">
-            <div class="spinner"></div>
-          </div>
         </select>
+        <div class="loading-spinner" v-if="promptLoading">
+          <div class="spinner"></div>
+        </div>
       </div>
 
       <div class="form-group">

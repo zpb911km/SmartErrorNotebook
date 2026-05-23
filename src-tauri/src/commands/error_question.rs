@@ -1,6 +1,7 @@
 // 错题相关命令
 
 use crate::AppState;
+use crate::database::entities::srs_data;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set,
@@ -232,12 +233,28 @@ pub async fn update_question(
     Ok(question)
 }
 
-/// 删除错题（软删除）
+/// 删除错题（软删除 + 级联软删除 SRS 数据）
 #[tauri::command]
 pub async fn delete_question(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
+    // 1. 先级联软删除对应的 SRS 数据（一对一）
+    if let Some(model) = srs_data::Entity::find()
+        .filter(srs_data::Column::QuestionId.eq(&id))
+        .one(db)
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        let mut active_model: srs_data::ActiveModel = model.into();
+        active_model.deleted_at = Set(Some(now));
+        active_model.updated_at = Set(now);
+        active_model.version = Set(active_model.version.unwrap());
+        active_model.sync_status = Set("pending".to_string());
+        active_model.update(db).await.map_err(|e| e.to_string())?;
+    }
+
+    // 2. 再软删除错题本身
     let question = ErrorQuestion::find_by_id(id.clone())
         .one(db)
         .await
