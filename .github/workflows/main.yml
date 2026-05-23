@@ -152,17 +152,77 @@ jobs:
       - name: upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-android-${{ matrix.arch_name }}
+          name: android-apks
           path: src-tauri/gen/android/app/build/outputs/apk/**/**/*.apk
 
-      - name: release apk
+  android-release:
+    needs: android-build
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: download all apks
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: apk-files
+
+      - name: list downloaded files
+        run: ls -la apk-files/
+
+      - name: get version from cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: upload apk release (arm64)
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: src-tauri/gen/android/app/build/outputs/apk/**/**/*.apk
-          tag_name: app-v__VERSION__-android-${{ matrix.arch_name }}
-          name: App v__VERSION__ Android ${{ matrix.arch_name }}
-          body: Android APK for ${{ matrix.abi }} devices
+          files: apk-files/*arm64*.apk
+          tag_name: app-v${{ needs.android-release.outputs.version }}-android-arm64
+          name: App v${{ needs.android-release.outputs.version }} Android ARM64
+          body: Android APK for arm64 devices
           draft: true
           prerelease: false
+
+      - name: upload apk release (arm32)
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: apk-files/*arm32*.apk
+          tag_name: app-v${{ needs.android-release.outputs.version }}-android-arm32
+          name: App v${{ needs.android-release.outputs.version }} Android ARM32
+          body: Android APK for arm32 devices
+          draft: true
+          prerelease: false
+
+      - name: upload apk release (x64)
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: apk-files/*x64*.apk
+          tag_name: app-v${{ needs.android-release.outputs.version }}-android-x64
+          name: App v${{ needs.android-release.outputs.version }} Android x64
+          body: Android APK for x64 devices
+          draft: true
+          prerelease: false
+
+      - name: upload apk release (x86)
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: apk-files/*x86*.apk
+          tag_name: app-v${{ needs.android-release.outputs.version }}-android-x86
+          name: App v${{ needs.android-release.outputs.version }} Android x86
+          body: Android APK for x86 devices
+          draft: true
+          prerelease: false
+
