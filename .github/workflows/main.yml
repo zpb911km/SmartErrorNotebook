@@ -173,7 +173,7 @@ jobs:
       - name: prepare and upload APK
         run: |
           mkdir -p android-apks-${{ matrix.arch_name }}
-          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ matrix.arch_name }}.apk"
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-Android-${{ matrix.arch_name }}.apk"
           ls -la "android-apks-${{ matrix.arch_name }}/"
 
       - name: debug uploaded artifact content
@@ -184,7 +184,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-apks-${{ matrix.arch_name }}
-          path: android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ matrix.arch_name }}.apk
+          path: android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-Android-${{ matrix.arch_name }}.apk
 
 
   android-release:
@@ -213,12 +213,6 @@ jobs:
           echo "=== All APKs found ==="
           find apk-files -name "*.apk"
 
-      - name: list apk files before rename
-        run: |
-          find apk-files -type f -name "*.apk"
-          echo "---"
-          ls -la apk-files/android-apks-*/
-
       - name: get version and name from cargo.toml
         id: meta
         run: |
@@ -228,29 +222,14 @@ jobs:
           echo "NAME=$NAME" >> $GITHUB_OUTPUT
           echo "App: $NAME v$VERSION"
 
-      - name: collect all apks to flat structure
-        run: |
-          # Copy from arch-specific folders to flat structure for release
-          cp apk-files/*/*.apk apk-files/
-          ls -la apk-files/*.apk
-          rm -rf apk-files/android-apks-*
-
-      - name: list apk files
-        run: ls -la apk-files/
-
       - name: release to one github release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: apk-files/*.apk
-          tag_name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-android
-          name: ${{ steps.meta.outputs.NAME }} ${{ steps.meta.outputs.VERSION }} Android (all architectures)
-          body: |
-            Android APKs for all architectures:
-            - arm64-v8a (aarch64)
-            - armeabi-v7a (armv7)
-            - x86_64
-            - x86
+          tag_name: app-v${{ steps.meta.outputs.VERSION }}
+          name: App v${{ steps.meta.outputs.VERSION }}
+          body: See the assets to download this version and install.
           draft: true
           prerelease: false
