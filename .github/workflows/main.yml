@@ -114,9 +114,9 @@ jobs:
 
       - name: backup custom android config
         run: |
-          mkdir -p /tmp/android-config/app/src/main /tmp/android-config/app/build
-          cp src-tauri/gen/android/app/src/main/AndroidManifest.xml /tmp/android-config/app/src/main/
-          cp src-tauri/gen/android/app/build.gradle.kts /tmp/android-config/app/build/
+          mkdir -p /tmp/android-config/app/src/main
+          cp src-tauri/gen/android/app/src/main/AndroidManifest.xml /tmp/android-config/
+          cp src-tauri/gen/android/app/build.gradle.kts /tmp/android-config/
 
       - name: clean old android build
         run: rm -rf src-tauri/gen/android
@@ -126,8 +126,8 @@ jobs:
 
       - name: restore custom android config
         run: |
-          cp -f /tmp/android-config/app/src/main/AndroidManifest.xml src-tauri/gen/android/app/src/main/
-          cp -f /tmp/android-config/app/build.gradle.kts src-tauri/gen/android/app/build/
+          cp -f /tmp/android-config/AndroidManifest.xml src-tauri/gen/android/app/src/main/
+          cp -f /tmp/android-config/build.gradle.kts src-tauri/gen/android/app/
 
       - name: fix android icon
         run: pnpm tauri icon
