@@ -109,11 +109,22 @@ jobs:
       - name: setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: install frontend dependencies
-        run: pnpm install
+      - name: backup custom android config
+        run: |
+          mkdir -p /tmp/android-config/app/src/main /tmp/android-config/app/build
+          cp src-tauri/gen/android/app/src/main/AndroidManifest.xml /tmp/android-config/app/src/main/
+          cp src-tauri/gen/android/app/build.gradle.kts /tmp/android-config/app/build/
+
+      - name: clean old android build
+        run: rm -rf src-tauri/gen/android
 
       - name: prepare android
         run: pnpm tauri android init
+
+      - name: restore custom android config
+        run: |
+          cp -f /tmp/android-config/app/src/main/AndroidManifest.xml src-tauri/gen/android/app/src/main/
+          cp -f /tmp/android-config/app/build.gradle.kts src-tauri/gen/android/app/build/
 
       - name: fix android icon
         run: pnpm tauri icon
