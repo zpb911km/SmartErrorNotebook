@@ -71,6 +71,22 @@ jobs:
   android-build:
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: 'aarch64'
+            arch_name: arm64
+            abi: arm64-v8a
+          - target: 'armv7'
+            arch_name: arm32
+            abi: armeabi-v7a
+          - target: 'x86_64'
+            arch_name: x64
+            abi: x86_64
+          - target: 'i686'
+            arch_name: x86
+            abi: x86
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -93,7 +109,7 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android
+          targets: ${{ matrix.target }}-linux-android
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -133,10 +149,20 @@ jobs:
         run: pnpm tauri icon
 
       - name: build APK
-        run: pnpm tauri android build --target=aarch64
+        run: pnpm tauri android build --target=${{ matrix.target }}
 
       - name: upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-android-arm64
-          path: src-tauri/target/aarch64-android/release/bundle/apk/*.apk
+          name: app-android-${{ matrix.arch_name }}
+          path: src-tauri/gen/android/app/build/outputs/apk/**/**/*.apk
+
+      - name: release apk
+        uses: softprops/action-gh-release@v1
+        with:
+          files: src-tauri/gen/android/app/build/outputs/apk/**/**/*.apk
+          tag_name: app-v__VERSION__-android-${{ matrix.arch_name }}
+          name: App v__VERSION__ Android ${{ matrix.arch_name }}
+          body: Android APK for ${{ matrix.abi }} devices
+          draft: true
+          prerelease: false
