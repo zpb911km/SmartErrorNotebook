@@ -149,80 +149,72 @@ jobs:
       - name: build APK
         run: pnpm tauri android build --target=${{ matrix.target }}
 
-      - name: upload APK
+      - name: upload APK with arch in name
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks
+          name: android-apks-${{ matrix.arch_name }}
           path: src-tauri/gen/android/app/build/outputs/apk/**/**/*.apk
 
   android-release:
     needs: android-build
     runs-on: ubuntu-22.04
-    outputs:
-      version: ${{ steps.version.outputs.VERSION }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
       - name: download all apks
         uses: actions/download-artifact@v4
         with:
-          name: android-apks
+          pattern: android-apks-*
           path: apk-files
+          merge-multiple: true
 
-      - name: list downloaded files
+      - name: list apk files before rename
+        run: find apk-files -type f -name "*.apk"
+
+      - name: get version and name from cargo.toml
+        id: meta
+        run: |
+          VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version *= *"\([^"]*\)"/\1/')
+          NAME=$(grep '^name = ' src-tauri/Cargo.toml | head -1 | sed 's/name *= *"\([^"]*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "NAME=$NAME" >> $GITHUB_OUTPUT
+          echo "App: $NAME v$VERSION"
+
+      - name: rename apks to standard format
+        run: |
+          # Rename based on folder structure (android-apks-{arch})
+          for dir in apk-files/android-apks-*/; do
+            arch="${dir##*android-apks-}"
+            arch="${arch%/}"
+            for file in "$dir"*.apk; do
+              if [ -f "$file" ]; then
+                new_name="${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-android-${arch}.apk"
+                cp "$file" "apk-files/${new_name}"
+                echo "Renamed $(basename $file) -> ${new_name}"
+              fi
+            done
+          done
+          rm -rf apk-files/android-apks-*
+          ls -la apk-files/*.apk
+
+      - name: list apk files
         run: ls -la apk-files/
 
-      - name: get version from cargo.toml
-        id: version
-        run: |
-          VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: upload apk release (arm64)
+      - name: release to one github release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: apk-files/*arm64*.apk
-          tag_name: app-v${{ needs.android-release.outputs.version }}-android-arm64
-          name: App v${{ needs.android-release.outputs.version }} Android ARM64
-          body: Android APK for arm64 devices
+          files: apk-files/*.apk
+          tag_name: ${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-android
+          name: ${{ steps.meta.outputs.NAME }} ${{ steps.meta.outputs.VERSION }} Android (all architectures)
+          body: |
+            Android APKs for all architectures:
+            - arm64-v8a (aarch64)
+            - armeabi-v7a (armv7)
+            - x86_64
+            - x86
           draft: true
           prerelease: false
-
-      - name: upload apk release (arm32)
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: apk-files/*arm32*.apk
-          tag_name: app-v${{ needs.android-release.outputs.version }}-android-arm32
-          name: App v${{ needs.android-release.outputs.version }} Android ARM32
-          body: Android APK for arm32 devices
-          draft: true
-          prerelease: false
-
-      - name: upload apk release (x64)
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: apk-files/*x64*.apk
-          tag_name: app-v${{ needs.android-release.outputs.version }}-android-x64
-          name: App v${{ needs.android-release.outputs.version }} Android x64
-          body: Android APK for x64 devices
-          draft: true
-          prerelease: false
-
-      - name: upload apk release (x86)
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: apk-files/*x86*.apk
-          tag_name: app-v${{ needs.android-release.outputs.version }}-android-x86
-          name: App v${{ needs.android-release.outputs.version }} Android x86
-          body: Android APK for x86 devices
-          draft: true
-          prerelease: false
-
