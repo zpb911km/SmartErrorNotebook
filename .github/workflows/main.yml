@@ -3,7 +3,7 @@ name: 'publish'
 on:
   workflow_dispatch:
   push:
-    branches: [ "test-actions" ]
+    branches: ['main']
 
 jobs:
   publish-tauri:
@@ -56,8 +56,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: app-v__VERSION__
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'v__VERSION__'
+          releaseBody: ''
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
@@ -179,16 +179,15 @@ jobs:
       - name: debug uploaded artifact content
         run: |
           tar -tzf android-apks-${{ matrix.arch_name }}.zip 2>/dev/null || ls -la android-apks-${{ matrix.arch_name }}/
-      
+
       - name: upload APK with arch in name
         uses: actions/upload-artifact@v4
         with:
           name: android-apks-${{ matrix.arch_name }}
           path: android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-Android-${{ matrix.arch_name }}.apk
 
-
   android-release:
-    needs: android-build
+    needs: [android-build, publish-tauri]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -229,7 +228,7 @@ jobs:
         with:
           files: apk-files/*.apk
           tag_name: app-v${{ steps.meta.outputs.VERSION }}
-          name: App v${{ steps.meta.outputs.VERSION }}
-          body: See the assets to download this version and install.
+          name: v${{ steps.meta.outputs.VERSION }}
+          generate_release_notes: true
           draft: true
           prerelease: false
