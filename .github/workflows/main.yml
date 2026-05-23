@@ -149,11 +149,27 @@ jobs:
       - name: build APK
         run: pnpm tauri android build --target=${{ matrix.target }}
 
-      - name: upload APK with arch in name
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apks-${{ matrix.arch_name }}
-          path: src-tauri/gen/android/app/build/outputs/apk/**/**/*.apk
+      - name: debug apk location before upload
+        run: |
+          echo "=== Matrix info ==="
+          echo "arch_name: ${{ matrix.arch_name }}"
+          echo "target: ${{ matrix.target }}"
+          echo ""
+          echo "=== Tauri output dir ==="
+          ls -la src-tauri/gen/android/app/build/outputs/apk/universal/release/ || echo "Dir not found!"
+          echo ""
+          echo "=== Full find for apks ==="
+          find src-tauri -name "*.apk" 2>/dev/null || echo "No APKs found"
+
+      - name: prepare and upload APK
+        run: |
+          mkdir -p android-apks-${{ matrix.arch_name }}
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "android-apks-${{ matrix.arch_name }}/smarterrornotebook-${{ matrix.arch_name }}.apk"
+          ls -la "android-apks-${{ matrix.arch_name }}/"
+
+      - name: debug uploaded artifact content
+        run: |
+          tar -tzf android-apks-${{ matrix.arch_name }}.zip 2>/dev/null || ls -la android-apks-${{ matrix.arch_name }}/
 
   android-release:
     needs: android-build
@@ -170,8 +186,22 @@ jobs:
           path: apk-files
           merge-multiple: true
 
+      - name: debug downloaded artifact structure
+        run: |
+          echo "=== Root apk-files ==="
+          ls -la apk-files/
+          echo ""
+          echo "=== All directories recursively ==="
+          find apk-files -type d | head -20
+          echo ""
+          echo "=== All APKs found ==="
+          find apk-files -name "*.apk"
+
       - name: list apk files before rename
-        run: find apk-files -type f -name "*.apk"
+        run: |
+          find apk-files -type f -name "*.apk"
+          echo "---"
+          ls -la apk-files/android-apks-*/
 
       - name: get version and name from cargo.toml
         id: meta
@@ -182,22 +212,12 @@ jobs:
           echo "NAME=$NAME" >> $GITHUB_OUTPUT
           echo "App: $NAME v$VERSION"
 
-      - name: rename apks to standard format
+      - name: collect all apks to flat structure
         run: |
-          # Rename based on folder structure (android-apks-{arch})
-          for dir in apk-files/android-apks-*/; do
-            arch="${dir##*android-apks-}"
-            arch="${arch%/}"
-            for file in "$dir"*.apk; do
-              if [ -f "$file" ]; then
-                new_name="${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-android-${arch}.apk"
-                cp "$file" "apk-files/${new_name}"
-                echo "Renamed $(basename $file) -> ${new_name}"
-              fi
-            done
-          done
-          rm -rf apk-files/android-apks-*
+          # Copy from arch-specific folders to flat structure for release
+          cp apk-files/*/*.apk apk-files/
           ls -la apk-files/*.apk
+          rm -rf apk-files/android-apks-*
 
       - name: list apk files
         run: ls -la apk-files/
