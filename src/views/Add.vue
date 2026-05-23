@@ -1,12 +1,21 @@
 <template>
   <div class="add-page">
     <!-- 相机模态框组件 -->
-    <CameraModal :visible="showCamera" @close="handleCameraClose" @capture="handleCameraCapture"
-      @error="disableCamera" />
+    <CameraModal
+      :visible="showCamera"
+      @close="handleCameraClose"
+      @capture="handleCameraCapture"
+      @error="disableCamera"
+    />
 
     <!-- 图片编辑模态框组件 -->
-    <ImageEditor :visible="showEdit" :imageData="editImageData" :autoDetect="autoDetect" @close="handleEditClose"
-      @confirm="handleEditConfirm" />
+    <ImageEditor
+      :visible="showEdit"
+      :imageData="editImageData"
+      :autoDetect="autoDetect"
+      @close="handleEditClose"
+      @confirm="handleEditConfirm"
+    />
 
     <div class="upload-area">
       <div class="upload-content">
@@ -14,27 +23,60 @@
         <div class="upload-buttons">
           <div class="upload-ctn">
             <button class="upload-btn">选择文件</button>
-            <input type="file" accept="image/*" @change="handleFileSelect" class="file-input" ref="fileInputRef">
+            <input
+              type="file"
+              accept="image/*"
+              @change="handleFileSelect"
+              class="file-input"
+              ref="fileInputRef"
+            />
           </div>
-          <button class="upload-btn" @click="handlePhotoClick" :disabled="cameraDisabled" :hidden="cameraDisabled">📷拍照</button>
+          <button
+            class="upload-btn"
+            @click="handlePhotoClick"
+            :disabled="cameraDisabled"
+            :hidden="cameraDisabled"
+          >
+            📷拍照
+          </button>
         </div>
       </div>
       <div class="image-preview-list" v-if="imageUrls.length > 0">
-        <div class="image-preview-item" v-for="(url, index) in imageUrls" :key="index">
-          <img :src="url" :alt="`题目图片 ${index + 1}`">
+        <div
+          class="image-preview-item"
+          v-for="(url, index) in imageUrls"
+          :key="index"
+        >
+          <img :src="url" :alt="`题目图片 ${index + 1}`" />
           <div class="image-actions">
-            <button class="action-btn edit-btn" @click="openEdit(url, index, true)" title="编辑">✎</button>
-            <button class="action-btn remove-btn" @click="removeImage(index)" title="删除">✕</button>
+            <button
+              class="action-btn edit-btn"
+              @click="openEdit(url, index, true)"
+              title="编辑"
+            >
+              ✎
+            </button>
+            <button
+              class="action-btn remove-btn"
+              @click="removeImage(index)"
+              title="删除"
+            >
+              ✕
+            </button>
           </div>
           <div class="image-index">{{ index + 1 }}</div>
         </div>
       </div>
     </div>
 
-    
     <div class="form-section">
       <div class="ai-button-container">
-        <button v-if="!aiButtonLoading" @click="inquiryAI()" :disabled="aiButtonLoading" class="ai-btn">
+        <button
+          v-if="!aiButtonLoading"
+          @click="inquiryAI()"
+          :disabled="aiButtonLoading"
+          class="ai-btn"
+        >
           AI 查询
         </button>
         <!-- <div class="loading-spinner" v-if="aiButtonLoading">
@@ -42,57 +84,83 @@
         </div> -->
       </div>
       <h3>题目信息</h3>
-      <div class="form-group" :class="{ 'loading': subjectLoading }">
+      <div class="form-group" :class="{ loading: subjectLoading }">
         <label>科目</label>
-        <SubjectSelector
-          v-model="form.subject"
-          @select="handleSubjectSelect"
-        />
+        <SubjectSelector v-model="form.subject" @select="handleSubjectSelect" />
         <div class="loading-spinner" v-if="subjectLoading">
           <div class="spinner"></div>
         </div>
       </div>
 
-      <div class="form-group" :class="{ 'loading': typeLoading }">
+      <div class="form-group" :class="{ loading: typeLoading }">
         <label>题型</label>
         <select v-model="form.type">
-          <option v-for="type in everyQuestionType" :key="type" :value="type">{{ type }}</option>
-        <div class="loading-spinner" v-if="typeLoading">
-          <div class="spinner"></div>
-        </div>
+          <option v-for="type in everyQuestionType" :key="type" :value="type">
+            {{ type }}
+          </option>
         </select>
-      </div>
-
-      <div class="form-group">
-        <label>来源</label>
-        <SourceSelector :currentSourceId="form.source" :subjectId="form.subject"
-          @select="(source_id) => { form.source = source_id; console.log('source_id:', source_id); }" />
-      </div>
-
-      <div class="form-group">
-        <label>错因</label>
-        <ErrorTagSelector :currentTags="form.error_tags" @select="(tags) => { form.error_tags = tags }" />
-      </div>
-
-      <div class="form-group" :class="{ 'loading': promptLoading }">
-        <label>题目</label>
-        <MarkdownTextarea v-model="form.prompt" placeholder="请输入题目..." rows="3"></MarkdownTextarea>  
         <div class="loading-spinner" v-if="promptLoading">
           <div class="spinner"></div>
         </div>
       </div>
 
-      <div class="form-group" :class="{ 'loading': answerLoading }">
+      <div class="form-group">
+        <label>来源</label>
+        <SourceSelector
+          :currentSourceId="form.source"
+          :subjectId="form.subject"
+          @select="
+            (source_id) => {
+              form.source = source_id
+              console.log('source_id:', source_id)
+            }
+          "
+        />
+      </div>
+
+      <div class="form-group">
+        <label>错因</label>
+        <ErrorTagSelector
+          :currentTags="form.error_tags"
+          @select="
+            (tags) => {
+              form.error_tags = tags
+            }
+          "
+        />
+      </div>
+
+      <div class="form-group" :class="{ loading: promptLoading }">
+        <label>题目</label>
+        <MarkdownTextarea
+          v-model="form.prompt"
+          placeholder="请输入题目..."
+          rows="3"
+        ></MarkdownTextarea>
+        <div class="loading-spinner" v-if="promptLoading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <div class="form-group" :class="{ loading: answerLoading }">
         <label>答案</label>
-        <MarkdownTextarea v-model="form.answer" placeholder="请输入答案..." rows="3"></MarkdownTextarea>
+        <MarkdownTextarea
+          v-model="form.answer"
+          placeholder="请输入答案..."
+          rows="3"
+        ></MarkdownTextarea>
         <div class="loading-spinner" v-if="answerLoading">
           <div class="spinner"></div>
         </div>
       </div>
 
-      <div class="form-group" :class="{ 'loading': analysisLoading }">
+      <div class="form-group" :class="{ loading: analysisLoading }">
         <label>解析</label>
-        <MarkdownTextarea v-model="form.analysis" placeholder="请输入解析..." rows="3"></MarkdownTextarea>
+        <MarkdownTextarea
+          v-model="form.analysis"
+          placeholder="请输入解析..."
+          rows="3"
+        ></MarkdownTextarea>
         <div class="loading-spinner" v-if="analysisLoading">
           <div class="spinner"></div>
         </div>
@@ -100,13 +168,19 @@
 
       <div class="form-group">
         <label>错题小记</label>
-        <MarkdownTextarea v-model="form.error_note" placeholder="请输入错题小记..." rows="3"></MarkdownTextarea>
+        <MarkdownTextarea
+          v-model="form.error_note"
+          placeholder="请输入错题小记..."
+          rows="3"
+        ></MarkdownTextarea>
       </div>
     </div>
 
     <div class="action-buttons">
       <button class="btn cancel" @click="resetForm">取消</button>
-      <button class="btn save" @click="saveError" :disabled="isSaving">保存</button>
+      <button class="btn save" @click="saveError" :disabled="isSaving">
+        保存
+      </button>
     </div>
   </div>
 </template>
@@ -122,7 +196,10 @@ import { QuestionType } from '../types'
 import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
-import { createAttachmentsForQuestion, blobUrlToBase64, base64ToArrayBuffer } from '../apis/attachments'
+import {
+  createAttachmentsForQuestion,
+  blobUrlToBase64
+} from '../apis/attachments'
 import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
@@ -140,9 +217,9 @@ const analysisLoading = ref(false)
 const aiButtonLoading = ref(false)
 
 const selectedSource = ref<{
-  book: string;
-  chapter: string | undefined;
-  knowledge: string | undefined;
+  book: string
+  chapter: string | undefined
+  knowledge: string | undefined
 } | null>(null)
 
 // 相机相关状态
@@ -175,7 +252,7 @@ const form = ref({
   // error tag info
   error_tags: [] as Array<{ name: string; color: string }>,
   // SRS info
-  difficulty: 5,
+  difficulty: 5
 })
 
 // 查询AI建议
@@ -190,19 +267,21 @@ const inquiryAI = async () => {
 
   // 创建所有查询的Promise
   const subjectPromise = inquiryAIAddInfo(imageUrls.value, ['subject'])
-    .then(result => {
+    .then((result) => {
       const subjectName = result[0]?.parsedContent?.subject || ''
       if (subjectName) {
-        return getSubjects().then(subjects => {
-          const subj = subjects.find(i => i.name === subjectName)
-          if (subj) {
-            form.value.subject = subj.id
-          }
-          return subjectName
-        }).catch(error => {
-          console.error('获取科目列表失败:', error)
-          return ''
-        })
+        return getSubjects()
+          .then((subjects) => {
+            const subj = subjects.find((i) => i.name === subjectName)
+            if (subj) {
+              form.value.subject = subj.id
+            }
+            return subjectName
+          })
+          .catch((error) => {
+            console.error('获取科目列表失败:', error)
+            return ''
+          })
       }
       return ''
     })
@@ -211,7 +290,7 @@ const inquiryAI = async () => {
     })
 
   const promptPromise = inquiryAIAddInfo(imageUrls.value, ['question_text'])
-    .then(result => {
+    .then((result) => {
       form.value.prompt = result[0]?.parsedContent || ''
     })
     .finally(() => {
@@ -219,7 +298,7 @@ const inquiryAI = async () => {
     })
 
   const typePromise = inquiryAIAddInfo(imageUrls.value, ['question_type'])
-    .then(result => {
+    .then((result) => {
       form.value.type = result[0]?.parsedContent?.questionType || ''
     })
     .finally(() => {
@@ -227,7 +306,7 @@ const inquiryAI = async () => {
     })
 
   const answerPromise = inquiryAIAddInfo(imageUrls.value, ['answer'])
-    .then(result => {
+    .then((result) => {
       form.value.answer = result[0]?.parsedContent || ''
     })
     .finally(() => {
@@ -235,7 +314,7 @@ const inquiryAI = async () => {
     })
 
   const analysisPromise = inquiryAIAddInfo(imageUrls.value, ['analysis'])
-    .then(result => {
+    .then((result) => {
       form.value.analysis = result[0]?.parsedContent || ''
     })
     .finally(() => {
@@ -244,7 +323,13 @@ const inquiryAI = async () => {
 
   try {
     // 等待所有查询完成
-    await Promise.all([subjectPromise, promptPromise, typePromise, answerPromise, analysisPromise])
+    await Promise.all([
+      subjectPromise,
+      promptPromise,
+      typePromise,
+      answerPromise,
+      analysisPromise
+    ])
     console.log('AI查询完成，表单已更新:', {
       subject: form.value.subject,
       prompt: form.value.prompt,
@@ -286,7 +371,7 @@ const handlePhotoClick = async () => {
 
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-    stream.getTracks().forEach(track => track.stop())
+    stream.getTracks().forEach((track) => track.stop())
     cameraDisabled.value = false
     showCamera.value = true
   } catch {
@@ -332,7 +417,11 @@ const handleCameraCapture = (imageData: string) => {
 }
 
 // 打开图片编辑
-const openEdit = (imageData: string, index: number, shouldAutoDetect: boolean = false) => {
+const openEdit = (
+  imageData: string,
+  index: number,
+  shouldAutoDetect: boolean = false
+) => {
   console.log('Add.vue openEdit, shouldAutoDetect:', shouldAutoDetect)
   editImageData.value = imageData
   editingImageIndex.value = index
@@ -384,7 +473,7 @@ const resetForm = () => {
     // error tag info
     error_tags: [],
     // SRS info
-    difficulty: 5,
+    difficulty: 5
   }
   imageUrls.value = []
   currentPresetId.value = ''
@@ -396,22 +485,14 @@ const resetForm = () => {
 const saveError = async () => {
   // 验证必填字段
   if (!form.value.subject) {
-    showError('错误', '请选择科目')
-    return
+    // 弹窗询问是否继续
+    if (!confirm('您未选择科目，是否继续保存？')) {
+      return
+    }
   }
 
   if (!form.value.prompt) {
     showError('错误', '请输入题目')
-    return
-  }
-
-  if (!form.value.type) {
-    showError('错误', '请选择题型')
-    return
-  }
-
-  if (imageUrls.value.length === 0) {
-    showError('错误', '请至少添加一张图片')
     return
   }
 
@@ -427,44 +508,46 @@ const saveError = async () => {
       type: form.value.type as QuestionType,
       answer: form.value.answer || undefined,
       analysis: form.value.analysis || undefined,
-      error_note: form.value.error_note || undefined,
-    });
+      error_note: form.value.error_note || undefined
+    })
 
     // 2. 批量创建错因标签
     if (form.value.error_tags.length > 0) {
-      await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags);
+      await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags)
     }
 
     // 3. 创建SRS数据
-    await createSRSData(
-      errorQuestion.id,
-      form.value.difficulty
-    );
+    await createSRSData(errorQuestion.id, form.value.difficulty)
 
     // 4. 批量上传图片
     if (imageUrls.value.length > 0) {
       const attachmentsData = await Promise.all(
         imageUrls.value.map(async (url, index) => {
           try {
-            const base64Data = await blobUrlToBase64(url);
+            const base64Data = await blobUrlToBase64(url)
             return {
               question_id: errorQuestion.id,
               type_: 'original',
               file_type: 'image',
-              base64_data: base64Data,
-            };
+              base64_data: base64Data
+            }
           } catch (error) {
-            console.error(`转换图片 ${index + 1} 失败:`, error);
-            throw error;
+            console.error(`转换图片 ${index + 1} 失败:`, error)
+            throw error
           }
         })
-      );
+      )
 
-      await createAttachmentsForQuestion(errorQuestion.id, attachmentsData);
+      await createAttachmentsForQuestion(errorQuestion.id, attachmentsData)
     }
-    showInfo('成功', `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`)
+    showInfo(
+      '错题添加成功',
+      `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`
+    )
     // 重置表单
     resetForm()
+  } catch (e) {
+    console.log(e)
   } finally {
     isSaving.value = false
   }
@@ -686,8 +769,12 @@ const saveError = async () => {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .ai-suggestion {
@@ -764,12 +851,28 @@ const saveError = async () => {
   color: white;
   font-size: 16px;
   cursor: pointer;
-  transition: background-color 0.3s, transform 0.3s;
+  transition:
+    background-color 0.3s,
+    transform 0.3s;
 }
 .ai-btn:hover {
   background-color: var(--primary-dark);
 }
 .ai-btn:active {
   transform: scale(0.98);
+}
+
+/* ===== 暗色模式适配 ===== */
+body.dark-theme .spinner {
+  border-color: rgba(255, 255, 255, 0.15);
+  border-left-color: #4fc3f7;
+}
+
+body.dark-theme .btn.cancel {
+  border: 1px solid var(--border-color);
+}
+
+body.dark-theme .upload-area.drag-over {
+  background: rgba(25, 118, 210, 0.2);
 }
 </style>

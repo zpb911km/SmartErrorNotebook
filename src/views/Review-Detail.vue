@@ -9,14 +9,23 @@
 
     <!-- 进度条 -->
     <div class="progress-bar">
-      <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+      <div
+        class="progress-fill"
+        :style="{ width: progressPercent + '%' }"
+      ></div>
     </div>
 
     <div v-if="currentCard" class="review-content">
       <!-- 科目标签 -->
       <div class="card-meta">
-        <span class="subject-tag" :style="getSubjectStyle(currentCard.question)">{{ subjectName }}</span>
-        <span class="difficulty-info">稳定性: {{ currentCard.srs.stability?.toFixed(1) }}天</span>
+        <span
+          class="subject-tag"
+          :style="getSubjectStyle(currentCard.question)"
+          >{{ subjectName }}</span
+        >
+        <span class="difficulty-info"
+          >稳定性: {{ currentCard.srs.stability?.toFixed(1) }}天</span
+        >
       </div>
 
       <!-- 题目区 (始终可见, MarkdownTextarea 预览模式) -->
@@ -87,7 +96,9 @@
           </div>
           <div class="slider-value">
             反馈值: <strong>{{ feedbackValue.toFixed(2) }}</strong>
-            <span class="feedback-tag" :style="{ color: feedbackColor }">{{ feedbackLabel }}</span>
+            <span class="feedback-tag" :style="{ color: feedbackColor }">{{
+              feedbackLabel
+            }}</span>
           </div>
         </div>
 
@@ -97,20 +108,40 @@
             SRS Details {{ showDebug ? '▲' : '▼' }}
           </div>
           <div v-if="showDebug" class="debug-body">
-            <div class="debug-row"><span>stability</span><span>{{ currentCard.srs.stability }}</span></div>
-            <div class="debug-row"><span>difficulty</span><span>{{ currentCard.srs.difficulty }}</span></div>
-            <div class="debug-row"><span>recall_rate</span><span>{{ currentCard.srs.recall_rate }}</span></div>
-            <div class="debug-row"><span>review_count</span><span>{{ currentCard.srs.review_count }}</span></div>
-            <div class="debug-row"><span>next_review_at</span><span>{{ formatTs(currentCard.srs.next_review_at) }}</span></div>
-            <div class="debug-row"><span>last_review_at</span><span>{{ formatTs(currentCard.srs.last_review_at) }}</span></div>
-            <div class="debug-row" v-if="lastResult">
-              <span>→ new_stability</span><span>{{ lastResult.new_stability?.toFixed(2) }}</span>
+            <div class="debug-row">
+              <span>stability</span><span>{{ currentCard.srs.stability }}</span>
+            </div>
+            <div class="debug-row">
+              <span>difficulty</span
+              ><span>{{ currentCard.srs.difficulty }}</span>
+            </div>
+            <div class="debug-row">
+              <span>recall_rate</span
+              ><span>{{ currentCard.srs.recall_rate }}</span>
+            </div>
+            <div class="debug-row">
+              <span>review_count</span
+              ><span>{{ currentCard.srs.review_count }}</span>
+            </div>
+            <div class="debug-row">
+              <span>next_review_at</span
+              ><span>{{ formatTs(currentCard.srs.next_review_at) }}</span>
+            </div>
+            <div class="debug-row">
+              <span>last_review_at</span
+              ><span>{{ formatTs(currentCard.srs.last_review_at) }}</span>
             </div>
             <div class="debug-row" v-if="lastResult">
-              <span>→ new_difficulty</span><span>{{ lastResult.new_difficulty?.toFixed(2) }}</span>
+              <span>→ new_stability</span
+              ><span>{{ lastResult.new_stability?.toFixed(2) }}</span>
             </div>
             <div class="debug-row" v-if="lastResult">
-              <span>→ next_interval</span><span>{{ lastResult.next_interval_days?.toFixed(1) }} 天</span>
+              <span>→ new_difficulty</span
+              ><span>{{ lastResult.new_difficulty?.toFixed(2) }}</span>
+            </div>
+            <div class="debug-row" v-if="lastResult">
+              <span>→ next_interval</span
+              ><span>{{ lastResult.next_interval_days?.toFixed(1) }} 天</span>
             </div>
           </div>
         </div>
@@ -159,13 +190,17 @@ const analysisText = ref('')
 
 const subjectName = computed(() => currentCard.value?.subjectName || '')
 
-watch(currentCard, (card) => {
-  if (card) {
-    promptText.value = card.question?.prompt || ''
-    answerText.value = card.question?.answer || ''
-    analysisText.value = card.question?.analysis || ''
-  }
-}, { immediate: true })
+watch(
+  currentCard,
+  (card) => {
+    if (card) {
+      promptText.value = card.question?.prompt || ''
+      answerText.value = card.question?.answer || ''
+      analysisText.value = card.question?.analysis || ''
+    }
+  },
+  { immediate: true }
+)
 
 const progressPercent = computed(() => {
   if (queue.length === 0) return 0
@@ -205,12 +240,12 @@ async function submitReview() {
   try {
     const result = await submitReviewResult({
       question_id: currentCard.value.questionId,
-      feedback: feedbackValue.value,
+      feedback: feedbackValue.value
     })
     lastResult.value = result
 
     // 延迟后进入下一题
-    await new Promise(r => setTimeout(r, 400))
+    await new Promise((r) => setTimeout(r, 400))
 
     if (currentIndex.value < queue.length - 1) {
       currentIndex.value++
@@ -234,7 +269,7 @@ function goToDetail() {
   if (!currentCard.value) return
   router.push({
     name: 'ManageDetail',
-    params: { id: currentCard.value.questionId },
+    params: { id: currentCard.value.questionId }
   })
 }
 
@@ -514,13 +549,15 @@ onMounted(() => {
 .submitting-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(255,255,255,0.3);
+  border: 4px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 16px;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

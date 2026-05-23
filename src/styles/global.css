@@ -22,7 +22,9 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-secondary);
   min-height: 100vh;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* 滚动条样式 */
@@ -45,7 +47,12 @@ body {
 }
 
 /* 通用样式 */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--text-primary);
@@ -98,7 +105,10 @@ button {
 }
 
 /* 深色主题下的按钮边框 */
-body.dark-theme button:not(.btn):not(.action-btn):not(.primary-action):not(.secondary-action):not(.tip-card button):not(.ai-card button) {
+body.dark-theme
+  button:not(.btn):not(.action-btn):not(.primary-action):not(
+    .secondary-action
+  ):not(.tip-card button):not(.ai-card button) {
   border: 1px solid var(--button-border, rgba(255, 255, 255, 0.1));
   border-radius: var(--radius-md);
 }

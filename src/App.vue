@@ -8,7 +8,7 @@ import Notification from './components/Notification.vue'
 const route = useRoute()
 
 const pageTitle = computed(() => {
-  return route.meta.title as string || '智能错题本'
+  return (route.meta.title as string) || '智能错题本'
 })
 
 const showTopBar = computed(() => {
@@ -23,14 +23,17 @@ const showBottomNav = computed(() => {
 const applyTheme = (themeValue: string) => {
   // 移除所有主题类
   document.body.classList.remove('light-theme', 'dark-theme')
-  
+
   if (themeValue === 'light') {
     document.body.classList.add('light-theme')
   } else if (themeValue === 'dark') {
     document.body.classList.add('dark-theme')
   } else if (themeValue === 'system') {
     // 跟随系统
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    if (
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches
+    ) {
       document.body.classList.add('dark-theme')
     } else {
       document.body.classList.add('light-theme')
@@ -42,15 +45,17 @@ const applyTheme = (themeValue: string) => {
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme') || 'system'
   applyTheme(savedTheme)
-  
+
   // 监听系统主题变化
   if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      const currentTheme = localStorage.getItem('theme') || 'system'
-      if (currentTheme === 'system') {
-        applyTheme('system')
-      }
-    })
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', () => {
+        const currentTheme = localStorage.getItem('theme') || 'system'
+        if (currentTheme === 'system') {
+          applyTheme('system')
+        }
+      })
   }
 })
 </script>
@@ -58,7 +63,10 @@ onMounted(() => {
 <template>
   <div id="app">
     <TopBar v-if="showTopBar" :title="pageTitle" />
-    <main class="main-content" :class="{ 'with-top-bar': showTopBar, 'with-bottom-nav': showBottomNav }">
+    <main
+      class="main-content"
+      :class="{ 'with-top-bar': showTopBar, 'with-bottom-nav': showBottomNav }"
+    >
       <router-view />
     </main>
     <BottomNav v-if="showBottomNav" />

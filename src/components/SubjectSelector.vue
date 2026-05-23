@@ -1,41 +1,49 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { createSubject, getSubjects } from '../apis/subjects';
-import { Subject } from '../types';
-import { showInfo } from '../utils/notification';
-
+import { onMounted, ref, watch } from 'vue'
+import { createSubject, getSubjects } from '../apis/subjects'
+import { Subject } from '../types'
+import { showInfo } from '../utils/notification'
 
 const getRandomRGBColor = () => {
-  const r = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  const g = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  const b = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
-  return `#${r}${g}${b}`;
-};
+  const r = Math.floor(Math.random() * 256)
+    .toString(16)
+    .padStart(2, '0')
+  const g = Math.floor(Math.random() * 256)
+    .toString(16)
+    .padStart(2, '0')
+  const b = Math.floor(Math.random() * 256)
+    .toString(16)
+    .padStart(2, '0')
+  return `#${r}${g}${b}`
+}
 
-const subjects = ref<Subject[]>([]);
-const selectedSubject = ref<Subject | null>(null);
-const isExpanded = ref(false);
-const showAddSubject = ref(false);
+const subjects = ref<Subject[]>([])
+const selectedSubject = ref<Subject | null>(null)
+const isExpanded = ref(false)
+const showAddSubject = ref(false)
 const newSubject = ref<Subject>({
   id: '',
   name: '',
-  color: getRandomRGBColor(),
-});
+  color: getRandomRGBColor()
+})
 
 const props = defineProps<{
-  modelValue: string;
-  disabled?: boolean;
-}>();
+  modelValue: string
+  disabled?: boolean
+}>()
 
 const emit = defineEmits<{
-  (e: 'select', subject_id: string): void;
-}>();
+  (e: 'select', subject_id: string): void
+}>()
 // 添加一个监听器监听disable，如果disable为true，则收起
-watch(() => props.disabled, (disabled) => {
-  if (disabled) {
-    isExpanded.value = false;
+watch(
+  () => props.disabled,
+  (disabled) => {
+    if (disabled) {
+      isExpanded.value = false
+    }
   }
-});
+)
 watch(
   () => props.modelValue,
   (newVal) => {
@@ -46,7 +54,7 @@ watch(
     }
     // 如果科目列表已加载，立即查找
     if (subjects.value.length > 0) {
-      const subject = subjects.value.find(s => s.id === newVal)
+      const subject = subjects.value.find((s) => s.id === newVal)
       if (subject) {
         selectedSubject.value = subject
         console.log('找到对应科目:', subject.name)
@@ -62,87 +70,101 @@ watch(
     newSubject.value = {
       id: '',
       name: '',
-      color: getRandomRGBColor(),
-    };
+      color: getRandomRGBColor()
+    }
   }
 )
 
 const handleClick = (subject: Subject) => {
-  selectedSubject.value = subject;
-  emit('select', subject.id);
-  isExpanded.value = false;
-};
+  selectedSubject.value = subject
+  emit('select', subject.id)
+  isExpanded.value = false
+}
 
 const handleAddSubject = () => {
   createSubject(newSubject.value)
     .then((data) => {
       console.log(data)
-      showInfo('添加成功', '科目添加成功');
-      subjects.value.push({...data});
-      selectedSubject.value = {...data};
-      showAddSubject.value = false;
-      isExpanded.value = false;
+      showInfo('添加成功', '科目添加成功')
+      subjects.value.push({ ...data })
+      selectedSubject.value = { ...data }
+      showAddSubject.value = false
+      isExpanded.value = false
       newSubject.value = {
         id: '',
         name: '',
-        color: getRandomRGBColor(),
-      };
-      emit('select', selectedSubject.value.id);
+        color: getRandomRGBColor()
+      }
+      emit('select', selectedSubject.value.id)
     })
-    .catch(error => {
-      console.error('创建科目失败：', error);
-    });
-};
+    .catch((error) => {
+      console.error('创建科目失败：', error)
+    })
+}
 
 watch(isExpanded, (newVal) => {
   if (newVal) {
     getSubjects()
-      .then(data => {
-        subjects.value = data;
+      .then((data) => {
+        subjects.value = data
         // 加载完科目列表后，根据modelValue重新设置选中状态
         if (props.modelValue) {
-          const found = data.find(s => s.id === props.modelValue)
+          const found = data.find((s) => s.id === props.modelValue)
           if (found) {
             selectedSubject.value = found
             console.log('展开时恢复选中科目:', found.name)
           }
         }
       })
-      .catch(error => {
-        console.error('获取科目失败：', error);
-      });
+      .catch((error) => {
+        console.error('获取科目失败：', error)
+      })
   }
 })
 
 onMounted(() => {
   getSubjects()
-    .then(data => {
-      subjects.value = data;
+    .then((data) => {
+      subjects.value = data
       // 初始化时根据modelValue设置选中状态
       if (props.modelValue) {
-        const found = data.find(s => s.id === props.modelValue)
+        const found = data.find((s) => s.id === props.modelValue)
         if (found) {
           selectedSubject.value = found
           console.log('初始化时设置选中科目:', found.name)
         }
       }
     })
-    .catch(error => {
-      console.error('获取科目失败：', error);
-    });
-});
+    .catch((error) => {
+      console.error('获取科目失败：', error)
+    })
+})
 </script>
 
 <template>
   <div class="subject-selector">
     <!-- 选择器触发按钮 -->
-    <div class="selector-trigger" @click="!props.disabled && (isExpanded = !isExpanded)" :class="{ 'expanded': isExpanded, 'disabled': props.disabled }">
+    <div
+      class="selector-trigger"
+      @click="!props.disabled && (isExpanded = !isExpanded)"
+      :class="{ expanded: isExpanded, disabled: props.disabled }"
+    >
       <span class="selected-text">
         {{ selectedSubject ? selectedSubject.name : '请选择科目' }}
       </span>
-      <svg class="arrow-icon" :class="{ 'rotated': isExpanded }" xmlns="http://www.w3.org/2000/svg" width="16"
-        height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-        stroke-linejoin="round">
+      <svg
+        class="arrow-icon"
+        :class="{ rotated: isExpanded }"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <polyline points="6 9 12 15 18 9"></polyline>
       </svg>
     </div>
@@ -150,33 +172,81 @@ onMounted(() => {
     <!-- 下拉选项 -->
     <transition name="slide-down">
       <div v-if="isExpanded" class="dropdown-container">
-        <div class="subject-option" v-for="subject in subjects" :key="subject.id" @click="handleClick(subject)">
+        <div
+          class="subject-option"
+          v-for="subject in subjects"
+          :key="subject.id"
+          @click="handleClick(subject)"
+        >
           <span class="option-name">{{ subject.name }}</span>
-          <div class="color-indicator" :style="{ backgroundColor: subject.color }"></div>
+          <div
+            class="color-indicator"
+            :style="{ backgroundColor: subject.color }"
+          ></div>
         </div>
-        <div v-if="!showAddSubject" class="subject-option-add" @click="showAddSubject = true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        <div
+          v-if="!showAddSubject"
+          class="subject-option-add"
+          @click="showAddSubject = true"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v8M8 12h8" />
+          </svg>
           <span>添加新科目</span>
         </div>
         <div class="add-form-container" v-if="showAddSubject">
           <div class="add-form-header">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v8M8 12h8" />
+            </svg>
             <span>添加新科目</span>
           </div>
-          <input v-model="newSubject.name" type="text" placeholder="请输入科目名称" class="add-form-input" />
+          <input
+            v-model="newSubject.name"
+            type="text"
+            placeholder="请输入科目名称"
+            class="add-form-input"
+          />
           <div class="add-form-footer">
-            <div class="color-picker-wrap" :style="{ backgroundColor: newSubject.color }">
+            <div
+              class="color-picker-wrap"
+              :style="{ backgroundColor: newSubject.color }"
+            >
               <input v-model="newSubject.color" type="color" title="选择颜色" />
             </div>
             <div class="btn-group">
-              <button @click="handleAddSubject" class="btn-confirm">添加</button>
-              <button @click="showAddSubject = false" class="btn-cancel">取消</button>
+              <button @click="handleAddSubject" class="btn-confirm">
+                添加
+              </button>
+              <button @click="showAddSubject = false" class="btn-cancel">
+                取消
+              </button>
             </div>
           </div>
         </div>
-        <div v-if="subjects.length === 0" class="no-options">
-          暂无科目数据
-        </div>
+        <div v-if="subjects.length === 0" class="no-options">暂无科目数据</div>
       </div>
     </transition>
   </div>
@@ -370,7 +440,9 @@ onMounted(() => {
   font-size: var(--font-size-base);
   background: var(--input-bg);
   color: var(--text-primary);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
   outline: none;
   box-sizing: border-box;
 }
@@ -397,7 +469,9 @@ onMounted(() => {
   border: 2px solid var(--border-color);
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .color-picker-wrap:hover {
@@ -405,7 +479,7 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-.color-picker-wrap input[type="color"] {
+.color-picker-wrap input[type='color'] {
   position: absolute;
   top: -6px;
   left: -6px;

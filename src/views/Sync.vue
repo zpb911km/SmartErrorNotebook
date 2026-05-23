@@ -13,9 +13,16 @@
           </div>
         </div>
         <div v-if="showUrlInput" class="auth-input-row">
-          <input v-model="urlInput" type="text" placeholder="http://localhost:5000" class="input" />
+          <input
+            v-model="urlInput"
+            type="text"
+            placeholder="http://localhost:5000"
+            class="input"
+          />
           <button class="btn btn-primary" @click="saveServerUrl">保存</button>
-          <button class="btn btn-secondary" @click="showUrlInput = false">取消</button>
+          <button class="btn btn-secondary" @click="showUrlInput = false">
+            取消
+          </button>
         </div>
         <div class="info-row">
           <span class="info-label">授权码</span>
@@ -23,24 +30,41 @@
             <span class="status-dot" :class="authStatusClass"></span>
             <template v-if="authKey">
               <code class="auth-key">{{ maskedAuthKey }}</code>
-              <button class="btn-text" @click="showAuthInput = true">更换</button>
+              <button class="btn-text" @click="showAuthInput = true">
+                更换
+              </button>
             </template>
             <template v-else>
               <span class="text-warning">未配置</span>
-              <button class="btn-text" @click="showAuthInput = true">去设置</button>
+              <button class="btn-text" @click="showAuthInput = true">
+                去设置
+              </button>
             </template>
           </div>
         </div>
         <div v-if="showAuthInput" class="auth-input-row">
-          <input v-model="authInput" type="text" placeholder="输入授权码..." class="input" />
+          <input
+            v-model="authInput"
+            type="text"
+            placeholder="输入授权码..."
+            class="input"
+          />
           <button class="btn btn-primary" @click="saveAuthKey">保存</button>
-          <button class="btn btn-secondary" @click="showAuthInput = false">取消</button>
+          <button class="btn btn-secondary" @click="showAuthInput = false">
+            取消
+          </button>
         </div>
         <div class="info-row info-row--action">
-          <button class="btn btn-secondary btn--sm" @click="checkConnection" :disabled="checking">
-            {{ checking ? '检测中...' : '检测连接' }}
+          <button
+            class="btn btn-secondary btn--sm"
+            @click="() => { checkConnection(); refreshSyncStats();}"
+            :disabled="checking"
+          >
+            {{ checking ? '......' : '刷新连接' }}
           </button>
-          <span v-if="checkMessage" class="check-msg" :class="checkMsgClass">{{ checkMessage }}</span>
+          <span v-if="checkMessage" class="check-msg" :class="checkMsgClass">{{
+            checkMessage
+          }}</span>
         </div>
       </div>
     </section>
@@ -61,7 +85,9 @@
           <span class="info-label">待下载</span>
           <span class="info-value">
             <span class="badge" :class="statsDownloadClass">
-              {{ syncStats.toDownload !== null ? syncStats.toDownload : '未知' }}
+              {{
+                syncStats.toDownload !== null ? syncStats.toDownload : '未知'
+              }}
             </span>
           </span>
         </div>
@@ -69,22 +95,27 @@
           <span class="info-label">待处理（冲突）</span>
           <span class="info-value">
             <span class="badge" :class="statsConflictClass">
-              {{ syncStats.toConflicts !== null ? syncStats.toConflicts : '未知' }}
+              {{
+                syncStats.toConflicts !== null ? syncStats.toConflicts : '未知'
+              }}
             </span>
           </span>
         </div>
       </div>
 
-      <button
-        class="sync-btn"
-        :disabled="syncing"
-        @click="handleSync"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-          <path d="M3 3v5h5"/>
-          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-          <path d="M16 16h5v5"/>
+      <button class="sync-btn" :disabled="syncing" @click="handleSync">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          width="20"
+          height="20"
+        >
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+          <path d="M16 16h5v5" />
         </svg>
         {{ syncing ? '同步中...' : '开始同步' }}
       </button>
@@ -126,8 +157,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { handshake, getAllSyncData, uploadRecord, applyPullRecords, getAllLocalRecords, downloadRecord } from '../apis/sync'
-import type { SyncHandshakeResult, ConflictInfo, ResolvedConflict, ServerRecord, SyncRecordHeader } from '../apis/sync'
+import {
+  handshake,
+  getAllSyncData,
+  uploadRecord,
+  applyPullRecords,
+  getAllLocalRecords,
+  downloadRecord,
+  checkAndDeleteOrphans
+} from '../apis/sync'
+import type {
+  SyncHandshakeResult,
+  ConflictInfo,
+  ResolvedConflict,
+  ServerRecord
+} from '../apis/sync'
 import SyncOverlay from '../components/SyncOverlay.vue'
 import ConflictResolver from '../components/ConflictResolver.vue'
 import { showError, showSuccess } from '../utils/notification'
@@ -136,7 +180,9 @@ const AUTH_STORAGE_KEY = 'auth_key'
 const URL_STORAGE_KEY = 'sync_server_url'
 
 // ---------- 服务器地址 ----------
-const serverUrl = ref(localStorage.getItem(URL_STORAGE_KEY) || 'http://localhost:5000')
+const serverUrl = ref(
+  localStorage.getItem(URL_STORAGE_KEY) || 'http://localhost:5000'
+)
 const showUrlInput = ref(false)
 const urlInput = ref('')
 
@@ -190,7 +236,7 @@ const authStatusClass = computed(() => {
   return authValid.value ? 'dot-online' : 'dot-offline'
 })
 
-const checkMsgClass = computed(() => checkOk.value ? 'msg-ok' : 'msg-err')
+const checkMsgClass = computed(() => (checkOk.value ? 'msg-ok' : 'msg-err'))
 
 const checkConnection = async () => {
   checking.value = true
@@ -239,7 +285,7 @@ const syncProgress = ref({
   phase: 'handshake' as string,
   current: 0,
   total: 0,
-  details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 },
+  details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 }
 })
 
 const syncTotal = computed(() => {
@@ -270,19 +316,23 @@ const statsConflictClass = computed(() => {
 const refreshSyncStats = async () => {
   try {
     const localPending = await invoke<ServerRecord[]>('get_all_pending_records')
-    syncStats.value = { toUpload: localPending.length, toDownload: null, toConflicts: null }
+    syncStats.value = {
+      toUpload: localPending.length,
+      toDownload: null,
+      toConflicts: null
+    }
 
     const key = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!key) return  // 无密钥，其余两项显示未知
+    if (!key) return // 无密钥，其余两项显示未知
 
     const { checkServerHealth, getAllSyncData } = await import('../apis/sync')
     const online = await checkServerHealth()
-    if (!online) return  // 服务不可达，其余两项显示未知
+    if (!online) return // 服务不可达，其余两项显示未知
 
     // 服务在线且有密钥 → 使用全量记录握手
     const [allLocal, remoteRecords] = await Promise.all([
       getAllLocalRecords(),
-      getAllSyncData(key),
+      getAllSyncData(key)
     ])
     console.log('all local records:', allLocal)
     console.log('remote records:', remoteRecords)
@@ -291,7 +341,7 @@ const refreshSyncStats = async () => {
     syncStats.value = {
       toUpload: result.push_list.length,
       toDownload: result.pull_list.length,
-      toConflicts: result.conflicts.length,
+      toConflicts: result.conflicts.length
     }
   } catch (e) {
     console.warn('Failed to refresh sync stats:', e)
@@ -300,7 +350,14 @@ const refreshSyncStats = async () => {
 
 onMounted(() => {
   checkConnection()
-  refreshSyncStats()
+  checkAndDeleteOrphans().then((orphans) => {
+    console.log('checkAndDeleteOrphans result:', orphans)
+    showSuccess(
+      "自动检查完成",
+      `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`
+    )
+    refreshSyncStats()
+  })
 })
 
 // ---------- 同步流程 ----------
@@ -312,12 +369,17 @@ const handleSync = async () => {
 
   syncing.value = true
   showProgress.value = true
-  syncProgress.value = { phase: 'handshake', current: 0, total: 0, details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 } }
+  syncProgress.value = {
+    phase: 'handshake',
+    current: 0,
+    total: 0,
+    details: { pulled: 0, pushed: 0, conflicts_resolved: 0, failed: 0 }
+  }
 
   try {
     const [allLocal, remoteRecords] = await Promise.all([
       getAllLocalRecords(),
-      getAllSyncData(authKey.value),
+      getAllSyncData(authKey.value)
     ])
 
     const result = handshake(allLocal, remoteRecords)
@@ -355,7 +417,9 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
   for (const recordId of result.push_list) {
     syncProgress.value.phase = 'pushing'
     try {
-      const record = await invoke<ServerRecord>('get_record_for_upload', { recordId })
+      const record = await invoke<ServerRecord>('get_record_for_upload', {
+        recordId
+      })
       record.status = 'synced'
       record.version = record.version + 1
       const uploadRes = await uploadRecord(record.id, record, key)
@@ -364,7 +428,7 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
           await invoke('set_record_sync_status_version', {
             recordId: record.id,
             version: uploadRes.new_version,
-            status: 'synced',
+            status: 'synced'
           })
         }
         syncProgress.value.details.pushed++
@@ -380,7 +444,7 @@ const doSync = async (result: SyncHandshakeResult, key: string) => {
   }
 
   // 逐个下载，及时更新进度
-  let downloaded = [];
+  let downloaded = []
   for (const rc_id of result.pull_list) {
     syncProgress.value.phase = 'pulling'
     try {
@@ -417,7 +481,7 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
     const resolvedPullList = []
 
     for (const res of resolutions) {
-      const conflict = conflicts.find(c => c.id === res.id)
+      const conflict = conflicts.find((c) => c.id === res.id)
       if (!conflict) continue
 
       // const newVersion = Math.max(conflict.local_version, conflict.server_version) + 1
@@ -435,7 +499,7 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
     const merged: SyncHandshakeResult = {
       push_list: [...handshakeResult.value.push_list, ...resolvedPushList],
       pull_list: [...handshakeResult.value.pull_list, ...resolvedPullList],
-      conflicts: [],
+      conflicts: []
     }
 
     await doSync(merged, authKey.value)

@@ -10,7 +10,7 @@ interface Props {
   size?: 'small' | 'medium' | 'large'
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   type: 'primary',
   size: 'medium'
 })

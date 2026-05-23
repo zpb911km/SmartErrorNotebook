@@ -3,8 +3,18 @@
     <!-- 顶部导航栏 -->
     <div class="detail-header">
       <button class="back-btn" @click="goBack">
-        <svg class="back-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        <svg
+          class="back-icon"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
         <span>返回</span>
       </button>
@@ -13,7 +23,9 @@
         <button class="action-btn edit-btn" @click="toggleEditMode">
           {{ isEditing ? '取消编辑' : '编辑' }}
         </button>
-        <button class="action-btn delete-btn" @click="confirmDelete">删除</button>
+        <button class="action-btn delete-btn" @click="confirmDelete">
+          删除
+        </button>
       </div>
     </div>
 
@@ -21,11 +33,11 @@
       <!-- 基本信息区域 -->
       <div class="info-section">
         <div class="section-title">基本信息</div>
-        
+
         <!-- 科目选择 -->
         <div class="form-group">
           <label>科目</label>
-          <SubjectSelector 
+          <SubjectSelector
             :modelValue="editForm.subject_id"
             :disabled="!isEditing"
             @select="handleSubjectSelect"
@@ -35,7 +47,7 @@
         <!-- 来源信息 -->
         <div class="form-group">
           <label>来源信息</label>
-          <SourceSelector 
+          <SourceSelector
             :disable="!isEditing || sourceSelectorDisabled"
             :currentSourceId="editForm.source_id"
             :subjectId="editForm.subject_id"
@@ -46,8 +58,8 @@
         <!-- 题型 -->
         <div class="form-group">
           <label>题型</label>
-          <select 
-            v-model="editForm.type" 
+          <select
+            v-model="editForm.type"
             :disabled="!isEditing"
             class="form-select"
           >
@@ -66,23 +78,30 @@
       <!-- 题目内容区域 -->
       <div class="content-section">
         <div class="section-title">题目内容</div>
-        
+
         <!-- 题目图片展示 -->
-        <div v-if="(isEditing ? tempQuestionImages.length : questionImages.length) > 0" class="images-gallery">
+        <div
+          v-if="
+            (isEditing ? tempQuestionImages.length : questionImages.length) > 0
+          "
+          class="images-gallery"
+        >
           <div class="gallery-title">题目图片（点击预览）</div>
           <div class="image-grid">
-            <div 
-              v-for="(image, index) in (isEditing ? tempQuestionImages : questionImages)" 
-              :key="image.id || `temp-${index}`" 
+            <div
+              v-for="(image, index) in isEditing
+                ? tempQuestionImages
+                : questionImages"
+              :key="image.id || `temp-${index}`"
               class="image-item"
               @click="previewImage(image)"
             >
-              <img 
-                :src="buildImageSrc(image)" 
-                :alt="'题目图片'" 
+              <img
+                :src="buildImageSrc(image)"
+                :alt="'题目图片'"
                 class="question-image"
-              >
-              <button 
+              />
+              <button
                 v-if="isEditing"
                 class="delete-image-btn"
                 @click.stop="deleteTempImage(image)"
@@ -93,89 +112,121 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 添加图片按钮（仅编辑模式） -->
         <div v-if="isEditing" class="upload-section">
-          <button 
-            class="btn-add-images"
-            @click="triggerImageUpload"
-          >
+          <button class="btn-add-images" @click="triggerImageUpload">
             📷 添加图片
           </button>
-          <input 
-            ref="imageInput" 
-            type="file" 
-            accept="image/*" 
+          <input
+            ref="imageInput"
+            type="file"
+            accept="image/*"
             multiple
-            style="display: none;"
+            style="display: none"
             @change="handleImageSelect"
           />
         </div>
-        
+
         <div class="form-group">
           <!-- <label>题干</label> -->
-          <MarkdownTextarea 
+          <MarkdownTextarea
             v-if="isEditing"
-            v-model="editForm.prompt" 
+            v-model="editForm.prompt"
             :show-preview="true"
             :default-view-mode="'edit'"
             preview-title="题目预览"
           />
-          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.prompt)"></div>
+          <MarkdownTextarea
+            v-else
+            :model-value="editForm.prompt"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
       <!-- 答案区域 -->
       <div class="answer-section">
         <div class="section-title">参考答案</div>
-        
+
         <div class="form-group">
           <!-- <label>参考答案</label> -->
-          <MarkdownTextarea 
+          <MarkdownTextarea
             v-if="isEditing"
-            v-model="editForm.answer" 
+            v-model="editForm.answer"
             :show-preview="true"
             :default-view-mode="'edit'"
             preview-title="答案预览"
           />
-          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.answer)"></div>
+          <MarkdownTextarea
+            v-else
+            :model-value="editForm.answer"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
       <!-- 解析区域 -->
       <div class="analysis-section">
         <div class="section-title">解析</div>
-        
+
         <div class="form-group">
           <!-- <label>解析</label> -->
-          <MarkdownTextarea 
+          <MarkdownTextarea
             v-if="isEditing"
-            v-model="editForm.analysis" 
+            v-model="editForm.analysis"
             :show-preview="true"
             :default-view-mode="'edit'"
             preview-title="解析预览"
           />
-          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.analysis)"></div>
+          <MarkdownTextarea
+            v-else
+            :model-value="editForm.analysis"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
       <!-- 错因标签区域 -->
       <div class="tags-section">
         <div class="section-title">错因标签</div>
-        
+
         <!-- 非编辑模式：只显示标签 -->
         <div v-if="!isEditing" class="tags-display">
-          <span v-for="tag in filteredErrorTags" :key="tag.id" class="tag-item" :style="{ backgroundColor: tag.color + '20', color: tag.color }">
+          <span
+            v-for="tag in filteredErrorTags"
+            :key="tag.id"
+            class="tag-item"
+            :style="{ backgroundColor: tag.color + '20', color: tag.color }"
+          >
             {{ tag.name }}
           </span>
-          <span v-if="filteredErrorTags.length === 0" class="no-tags">暂无标签</span>
+          <span v-if="filteredErrorTags.length === 0" class="no-tags"
+            >暂无标签</span
+          >
         </div>
-        
+
         <!-- 编辑模式：使用标签选择器 -->
         <div v-else class="tags-edit">
-          <ErrorTagSelector 
+          <ErrorTagSelector
             :currentTags="tempErrorTags"
-            @select="(tags) => { tempErrorTags = tags }"
+            @select="
+              (tags) => {
+                tempErrorTags = tags
+              }
+            "
           />
         </div>
       </div>
@@ -183,24 +234,32 @@
       <!-- 错题笔记区域 -->
       <div class="note-section">
         <div class="section-title">错题笔记</div>
-        
+
         <div class="form-group">
           <!-- <label>笔记内容</label> -->
-          <MarkdownTextarea 
+          <MarkdownTextarea
             v-if="isEditing"
-            v-model="editForm.error_note" 
+            v-model="editForm.error_note"
             :show-preview="true"
             :default-view-mode="'edit'"
             preview-title="笔记预览"
           />
-          <div v-else class="markdown-preview" v-html="renderMarkdown(editForm.error_note)"></div>
+          <MarkdownTextarea
+            v-else
+            :model-value="editForm.error_note"
+            :show-preview="true"
+            :default-view-mode="'preview'"
+            preview-title=""
+            :textarea-class="'readonly-textarea'"
+            readonly
+          />
         </div>
       </div>
 
       <!-- SRS 数据展示 -->
       <div class="srs-section">
         <div class="section-title">学习数据</div>
-        
+
         <div v-if="srsData" class="srs-stats">
           <div class="stat-item">
             <span class="stat-label">掌握程度</span>
@@ -216,15 +275,21 @@
           </div>
           <div class="stat-item">
             <span class="stat-label">最后复习</span>
-            <span class="stat-value">{{ formatTimestamp(srsData.last_review_at) }}</span>
+            <span class="stat-value">{{
+              formatTimestamp(srsData.last_review_at)
+            }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">稳定性</span>
-            <span class="stat-value">{{ srsData.stability.toFixed(2) }} 天</span>
+            <span class="stat-value"
+              >{{ srsData.stability.toFixed(2) }} 天</span
+            >
           </div>
           <div class="stat-item">
             <span class="stat-label">召回率</span>
-            <span class="stat-value">{{ (srsData.recall_rate * 100).toFixed(1) }}%</span>
+            <span class="stat-value"
+              >{{ (srsData.recall_rate * 100).toFixed(1) }}%</span
+            >
           </div>
         </div>
         <div v-else class="no-srs-data">
@@ -238,11 +303,15 @@
         <div class="time-info">
           <div class="time-item">
             <span class="time-label">创建时间：</span>
-            <span class="time-value">{{ formatTimestamp(errorDetail.created_at) }}</span>
+            <span class="time-value">{{
+              formatTimestamp(errorDetail.created_at)
+            }}</span>
           </div>
           <div class="time-item">
             <span class="time-label">更新时间：</span>
-            <span class="time-value">{{ formatTimestamp(errorDetail.updated_at) }}</span>
+            <span class="time-value">{{
+              formatTimestamp(errorDetail.updated_at)
+            }}</span>
           </div>
         </div>
       </div>
@@ -264,7 +333,9 @@
           <p>确定要删除这道错题吗？此操作不可恢复。</p>
         </div>
         <div class="modal-footer">
-          <button class="btn-cancel" @click="showDeleteConfirm = false">取消</button>
+          <button class="btn-cancel" @click="showDeleteConfirm = false">
+            取消
+          </button>
           <button class="btn-confirm" @click="deleteError">确认删除</button>
         </div>
       </div>
@@ -278,17 +349,17 @@
     </div>
 
     <!-- 非编辑模式：简单图片预览 -->
-    <ImagePreview 
+    <ImagePreview
       v-if="!isEditing"
-      :visible="showImagePreview" 
+      :visible="showImagePreview"
       :imageUrl="previewImageUrl"
       @close="closeImagePreview"
     />
 
     <!-- 编辑模式：图片编辑器预览 -->
-    <ImageEditor 
+    <ImageEditor
       v-if="isEditing"
-      :visible="showImagePreview" 
+      :visible="showImagePreview"
       :imageData="previewImageUrl"
       :autoDetect="false"
       @close="closeImagePreview"
@@ -312,16 +383,31 @@ marked.use(
   })
 )
 
-import { 
-  getQuestion, 
-  updateQuestion, 
-  deleteQuestion 
+import {
+  getQuestion,
+  updateQuestion,
+  deleteQuestion
 } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
-import { getErrorTagByQuestionId, createErrorTagsForQuestion, deleteErrorTagById } from '../apis/errorTags'
-import { getAttachmentsByQuestion, buildDataUrl, createAttachmentsForQuestion, fileToBase64, deleteAttachment, base64ToArrayBuffer } from '../apis/attachments'
+import {
+  getErrorTagByQuestionId,
+  createErrorTagsForQuestion,
+  deleteErrorTagById
+} from '../apis/errorTags'
+import {
+  getAttachmentsByQuestion,
+  buildDataUrl,
+  createAttachmentsForQuestion,
+  fileToBase64,
+  deleteAttachment
+} from '../apis/attachments'
 import { getQuestionSRSStatus } from '../apis/srsData'
-import type { ErrorQuestion, Subject, ErrorTags as ErrorTagType, Attachment } from '../types'
+import type {
+  ErrorQuestion,
+  Subject,
+  ErrorTags as ErrorTagType,
+  Attachment
+} from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
@@ -336,7 +422,9 @@ const route = useRoute()
 const errorId = computed(() => route.params.id as string)
 
 // 数据状态
-const errorDetail = ref<ErrorQuestion & { created_at?: number; updated_at?: number } | null>(null)
+const errorDetail = ref<
+  (ErrorQuestion & { created_at?: number; updated_at?: number }) | null
+>(null)
 const subjects = ref<Subject[]>([])
 const errorTags = ref<ErrorTagType[]>([])
 const srsData = ref<any>(null)
@@ -356,7 +444,7 @@ const tempErrorTags = ref<Array<{ name: string; color: string }>>([])
 
 // 过滤掉已删除的标签
 const filteredErrorTags = computed(() => {
-  return errorTags.value.filter(tag => !tag.name.startsWith('[已删除]'))
+  return errorTags.value.filter((tag) => !tag.name.startsWith('[已删除]'))
 })
 
 // 编辑状态
@@ -380,14 +468,14 @@ const showDeleteConfirm = ref(false)
 const fetchErrorDetail = async () => {
   console.log('========== 开始获取错题详情 ==========')
   console.log('错题ID:', errorId.value)
-  
+
   try {
     const question = await getQuestion(errorId.value)
     console.log('========== 后端返回的原始数据 ==========')
     console.log('question 对象:', question)
     console.log('question 类型:', typeof question)
     console.log('question.keys:', Object.keys(question))
-    
+
     // 详细记录所有字段
     console.log('========== 字段详细检查 ==========')
     console.log('question.id:', (question as any).id)
@@ -403,7 +491,7 @@ const fetchErrorDetail = async () => {
     console.log('question.answer:', (question as any).answer)
     console.log('question.analysis:', (question as any).analysis)
     console.log('question.error_note:', (question as any).error_note)
-    
+
     // 处理后端返回的字段映射（subjectid -> subject_id, sourceid -> source_id 等）
     // 注意：使用 ?? 运算符以正确保留 null 值
     const mappedQuestion = {
@@ -415,17 +503,20 @@ const fetchErrorDetail = async () => {
       created_at: (question as any).created_at,
       updated_at: (question as any).updated_at
     } as any
-    
+
     console.log('========== 映射后的数据 ==========')
     console.log('mappedQuestion:', mappedQuestion)
     console.log('mappedQuestion.subject_id:', mappedQuestion.subject_id)
     console.log('mappedQuestion.source_id:', mappedQuestion.source_id)
-    console.log('mappedQuestion.source_id 类型:', typeof mappedQuestion.source_id)
+    console.log(
+      'mappedQuestion.source_id 类型:',
+      typeof mappedQuestion.source_id
+    )
     console.log('mappedQuestion.source_id 是否为空:', !mappedQuestion.source_id)
-    
+
     errorDetail.value = mappedQuestion
     console.log('errorDetail.value 已设置')
-    
+
     // 初始化编辑表单
     // 注意：source_id 使用 ?? 保留 null 值，避免 || 运算符将 null 转换为 undefined
     editForm.value = {
@@ -437,12 +528,15 @@ const fetchErrorDetail = async () => {
       analysis: mappedQuestion.analysis || '',
       error_note: mappedQuestion.error_note || ''
     }
-    
+
     console.log('========== 编辑表单初始化 ==========')
     console.log('editForm.value:', editForm.value)
     console.log('editForm.value.subject_id:', editForm.value.subject_id)
     console.log('editForm.value.source_id:', editForm.value.source_id)
-    console.log('editForm.value.source_id 类型:', typeof editForm.value.source_id)
+    console.log(
+      'editForm.value.source_id 类型:',
+      typeof editForm.value.source_id
+    )
     console.log('editForm.value.source_id 是否为空:', !editForm.value.source_id)
 
     // 获取标签
@@ -454,29 +548,31 @@ const fetchErrorDetail = async () => {
     } catch (error) {
       console.error('获取标签失败:', error)
     }
-    
+
     // 获取题目图片
     try {
       console.log('开始获取题目附件...')
       console.log('错题ID:', errorId.value)
-      
+
       if (!errorId.value) {
         console.error('错题ID为空，无法获取附件')
         return
       }
-      
+
       const attachments = await getAttachmentsByQuestion(errorId.value)
       console.log('获取到的附件:', attachments)
-      
+
       // 分类附件（注意：后端字段名是 type_ 不是 type）
-      questionImages.value = attachments.filter((a: any) => a.type_ === 'original')
+      questionImages.value = attachments.filter(
+        (a: any) => a.type_ === 'original'
+      )
       answerImages.value = attachments.filter((a: any) => a.type_ === 'answer')
       console.log('题目图片数量:', questionImages.value.length)
       console.log('答案图片数量:', answerImages.value.length)
     } catch (error) {
       console.error('获取附件失败:', error)
     }
-    
+
     // 获取 SRS 数据
     try {
       console.log('开始获取 SRS 数据...')
@@ -511,7 +607,7 @@ const toggleEditMode = () => {
   if (isEditing.value) {
     // 取消编辑，恢复原值
     console.log('取消编辑，恢复原始状态...')
-    
+
     if (errorDetail.value) {
       editForm.value = {
         subject_id: errorDetail.value.subject_id,
@@ -523,21 +619,21 @@ const toggleEditMode = () => {
         error_note: errorDetail.value.error_note || ''
       }
     }
-    
+
     // 清空临时数据（不需要重新加载，因为原始数据还在）
     tempQuestionImages.value = []
     imagesToDelete.value = []
     imagesToAdd.value = []
     tempErrorTags.value = []
-    
+
     console.log('已恢复原始状态')
   } else {
     // 进入编辑模式，初始化临时列表（使用深拷贝避免引用污染）
-    tempQuestionImages.value = questionImages.value.map(img => ({...img}))
+    tempQuestionImages.value = questionImages.value.map((img) => ({ ...img }))
     imagesToDelete.value = []
     imagesToAdd.value = []
     // 初始化临时标签列表
-    tempErrorTags.value = errorTags.value.map(tag => ({
+    tempErrorTags.value = errorTags.value.map((tag) => ({
       name: tag.name,
       color: tag.color
     }))
@@ -548,18 +644,18 @@ const toggleEditMode = () => {
 // 保存修改
 const saveChanges = async () => {
   if (!errorDetail.value) return
-  
+
   console.log('========== 开始保存流程 ==========')
   console.log('1. 先禁用SourceSelector')
-  
+
   // 1. 先禁用SourceSelector，确保下拉框收起
   sourceSelectorDisabled.value = true
-  
+
   // 2. 等待一小段时间，确保组件响应disabled状态并收起
-  await new Promise(resolve => setTimeout(resolve, 100))
-  
+  await new Promise((resolve) => setTimeout(resolve, 100))
+
   console.log('2. SourceSelector已禁用，开始执行保存操作')
-  
+
   saving.value = true
   try {
     // 1. 更新题目基本信息
@@ -567,22 +663,25 @@ const saveChanges = async () => {
     console.log('editForm:', JSON.parse(JSON.stringify(editForm.value)))
     console.log('editForm.source_id:', editForm.value.source_id)
     console.log('editForm.subject_id:', editForm.value.subject_id)
-    
+
     const updateData = {
       id: errorId.value,
       ...editForm.value
     }
-    console.log('准备发送给后端的 updateData:', JSON.parse(JSON.stringify(updateData)))
-    
+    console.log(
+      '准备发送给后端的 updateData:',
+      JSON.parse(JSON.stringify(updateData))
+    )
+
     await updateQuestion(updateData)
     console.log('题目基本信息保存成功')
-    
+
     // 3. 处理图片更新（包括新增、删除和编辑）
     console.log('========== 开始处理图片 ==========')
     console.log('原始图片数量:', questionImages.value.length)
     console.log('临时图片数量:', tempQuestionImages.value.length)
     console.log('待删除图片ID:', imagesToDelete.value)
-    
+
     // 3.1 找出被编辑过的图片（在临时列表中存在但 base64_data 已改变的图片）
     const editedImageIds: string[] = []
     console.log('开始检测编辑过的图片...')
@@ -590,30 +689,35 @@ const saveChanges = async () => {
       console.log('\n--- 检查图片 ---')
       console.log('图片ID:', tempImg.id)
       console.log('是否为临时图片:', tempImg.id.startsWith('temp-'))
-      
+
       // 跳过新添加的临时图片（ID以temp-开头）
       if (tempImg.id.startsWith('temp-')) {
         console.log('跳过新添加的临时图片')
         continue
       }
-      
+
       // 查找原始图片列表中对应的图片
-      const originalImg = questionImages.value.find(img => img.id === tempImg.id)
+      const originalImg = questionImages.value.find(
+        (img) => img.id === tempImg.id
+      )
       console.log('找到原始图片:', !!originalImg)
-      
+
       if (originalImg) {
         const originalLen = originalImg.base64_data?.length || 0
         const tempLen = tempImg.base64_data?.length || 0
         const isSame = originalImg.base64_data === tempImg.base64_data
-        
+
         console.log('原始 base64 长度:', originalLen)
         console.log('临时 base64 长度:', tempLen)
         console.log('长度差异:', Math.abs(originalLen - tempLen))
         console.log('base64 是否相同:', isSame)
-        
+
         if (!isSame) {
           console.log('✅ 发现编辑过的图片:', tempImg.id)
-          console.log('   原始前50字符:', originalImg.base64_data?.substring(0, 50))
+          console.log(
+            '   原始前50字符:',
+            originalImg.base64_data?.substring(0, 50)
+          )
           console.log('   临时前50字符:', tempImg.base64_data?.substring(0, 50))
           editedImageIds.push(tempImg.id)
         } else {
@@ -625,7 +729,7 @@ const saveChanges = async () => {
     }
     console.log('\n========== 编辑过的图片ID列表 ==========')
     console.log(editedImageIds)
-    
+
     // 3.2 删除所有需要删除或更新的图片（包括显式删除的和编辑过的）
     const allImagesToDelete = [...imagesToDelete.value, ...editedImageIds]
     if (allImagesToDelete.length > 0) {
@@ -635,10 +739,10 @@ const saveChanges = async () => {
         console.log('已删除图片:', imageId)
       }
     }
-    
+
     // 3.3 上传需要新增或更新的图片（只上传编辑后的和新添加的）
     const imagesToUpload: any[] = []
-    
+
     // 添加编辑后的图片（使用新的 base64 数据）
     console.log('\n========== 准备上传编辑后的图片 ==========')
     for (const tempImg of tempQuestionImages.value) {
@@ -648,7 +752,7 @@ const saveChanges = async () => {
         console.log('  type_:', (tempImg as any).type_ || tempImg.type)
         console.log('  file_type:', tempImg.file_type)
         console.log('  base64_data 长度:', tempImg.base64_data?.length || 0)
-        
+
         imagesToUpload.push({
           question_id: errorId.value,
           type_: (tempImg as any).type_ || tempImg.type,
@@ -657,29 +761,29 @@ const saveChanges = async () => {
         })
       }
     }
-    
+
     // 添加新上传的图片（优先使用 tempQuestionImages 中已编辑的数据）
     console.log('\n========== 准备上传新添加的图片 ==========')
     console.log('imagesToAdd 数量:', imagesToAdd.value.length)
     console.log('tempQuestionImages 数量:', tempQuestionImages.value.length)
-    
+
     if (imagesToAdd.value.length > 0) {
       for (let i = 0; i < imagesToAdd.value.length; i++) {
         const file = imagesToAdd.value[i]
         console.log(`\n处理新图片 ${i + 1}:`, file.name)
-        
+
         // 查找对应的临时图片对象（可能已经被编辑过）
-        const tempImg = tempQuestionImages.value.find(img => {
+        const tempImg = tempQuestionImages.value.find((img) => {
           if (!img.id.startsWith('temp-')) return false
           const imgAny = img as any
           return imgAny._file === file
         })
-        
+
         if (tempImg && tempImg.base64_data && tempImg.base64_data.length > 0) {
           // 如果临时图片已经有 base64_data（可能被编辑过），直接使用
           console.log('✅ 使用已编辑的 base64 数据')
           console.log('  base64_data 长度:', tempImg.base64_data.length)
-          
+
           imagesToUpload.push({
             question_id: errorId.value,
             type_: 'original',
@@ -709,21 +813,27 @@ const saveChanges = async () => {
         }
       }
     }
-    
+
     // 批量创建所有需要保留的图片
     if (imagesToUpload.length > 0) {
       console.log('开始上传', imagesToUpload.length, '张图片')
       await createAttachmentsForQuestion(errorId.value, imagesToUpload)
       console.log('图片上传成功')
     }
-    
+
     // 4. 处理标签更新
     console.log('========== 开始更新标签 ==========')
     console.log('旧标签数量:', errorTags.value.length)
-    console.log('旧标签列表:', errorTags.value.map(t => `${t.name}(${t.id})`))
+    console.log(
+      '旧标签列表:',
+      errorTags.value.map((t) => `${t.name}(${t.id})`)
+    )
     console.log('新标签数量:', tempErrorTags.value.length)
-    console.log('新标签列表:', tempErrorTags.value.map(t => `${t.name}(${t.color})`))
-    
+    console.log(
+      '新标签列表:',
+      tempErrorTags.value.map((t) => `${t.name}(${t.color})`)
+    )
+
     // 4.1 删除当前题目的所有旧标签（使用ID精确删除）
     if (errorTags.value.length > 0) {
       console.log('开始删除', errorTags.value.length, '个旧标签...')
@@ -740,28 +850,31 @@ const saveChanges = async () => {
     } else {
       console.log('没有旧标签需要删除')
     }
-    
+
     // 4.2 创建新标签（只为当前题目创建）
     if (tempErrorTags.value.length > 0) {
       console.log('开始创建', tempErrorTags.value.length, '个新标签...')
-      const createdTags = await createErrorTagsForQuestion(errorId.value, tempErrorTags.value)
+      const createdTags = await createErrorTagsForQuestion(
+        errorId.value,
+        tempErrorTags.value
+      )
       console.log('新标签创建成功，创建了', createdTags.length, '个标签')
       console.log('创建的标签:', createdTags)
     } else {
       console.log('没有新标签需要创建')
     }
-    
+
     console.log('========== 标签更新完成 ==========')
-    
+
     // 5. 重新获取详情（包括最新的图片和标签）
     await fetchErrorDetail()
     isEditing.value = false
-    
+
     // 清空临时数据
     tempQuestionImages.value = []
     imagesToDelete.value = []
     imagesToAdd.value = []
-    
+
     // 显示成功提示
     alert('保存成功！')
   } catch (error) {
@@ -783,17 +896,19 @@ const confirmDelete = () => {
 // 计算掌握程度
 const calculateMastery = (srs: any): number => {
   if (!srs) return 0
-  
+
   const reviewCount = srs.review_count || 0
   const stability = srs.stability || 0
   const recallRate = srs.recall_rate || 0
-  
+
   // 综合计算掌握程度（0-100%）
   const reviewScore = Math.min(reviewCount / 10, 1) * 100
   const stabilityScore = Math.min(stability / 30, 1) * 100
   const recallScore = recallRate * 100
-  
-  return Math.round(reviewScore * 0.3 + stabilityScore * 0.3 + recallScore * 0.4)
+
+  return Math.round(
+    reviewScore * 0.3 + stabilityScore * 0.3 + recallScore * 0.4
+  )
 }
 
 // 删除错题
@@ -836,23 +951,13 @@ const handleSourceSelect = (sourceId: string) => {
   console.log('选中前 editForm.source_id:', editForm.value.source_id)
   editForm.value.source_id = sourceId
   console.log('选中后 editForm.source_id:', editForm.value.source_id)
-  
+
   // 验证是否真的更新了
   setTimeout(() => {
     console.log('100ms 后 editForm.source_id:', editForm.value.source_id)
   }, 100)
 }
 
-// 渲染 Markdown
-const renderMarkdown = (content: string) => {
-  if (!content) return ''
-  const normalized = content
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-  return marked.parse(normalized, { breaks: true, gfm: true }) as string
-}
 
 // 构建图片src
 const buildImageSrc = (attachment: any) => {
@@ -869,15 +974,15 @@ const buildImageSrc = (attachment: any) => {
       } else if (attachment.file_type === 'gif') {
         mimeType = 'image/gif'
       }
-      
+
       return buildDataUrl(attachment.base64_data, mimeType)
     }
-    
+
     // 如果没有 base64_data，但有原始文件引用（仅用于未编辑的临时图片）
     if (attachment._file) {
       return URL.createObjectURL(attachment._file)
     }
-    
+
     // 根据文件类型确定MIME类型
     let mimeType = 'image/png'
     if (attachment.file_type === 'jpeg' || attachment.file_type === 'jpg') {
@@ -887,7 +992,7 @@ const buildImageSrc = (attachment: any) => {
     } else if (attachment.file_type === 'gif') {
       mimeType = 'image/gif'
     }
-    
+
     // 使用 base64ToBlobUrl 或构建 data URL
     return buildDataUrl(attachment.base64_data, mimeType)
   } catch (error) {
@@ -916,45 +1021,63 @@ const handlePreviewConfirm = (imageData: string) => {
   console.log('imageData 前100字符:', imageData.substring(0, 100))
   console.log('imageData 长度:', imageData.length)
   console.log('tempQuestionImages 数量:', tempQuestionImages.value.length)
-  console.log('tempQuestionImages IDs:', tempQuestionImages.value.map(img => img.id))
-  
+  console.log(
+    'tempQuestionImages IDs:',
+    tempQuestionImages.value.map((img) => img.id)
+  )
+
   if (!editingImageId.value) {
     console.error('没有正在编辑的图片ID')
     closeImagePreview()
     return
   }
-  
+
   // 查找并更新临时图片列表中的对应图片
-  const imageIndex = tempQuestionImages.value.findIndex(img => img.id === editingImageId.value)
-  
+  const imageIndex = tempQuestionImages.value.findIndex(
+    (img) => img.id === editingImageId.value
+  )
+
   console.log('找到的索引:', imageIndex)
-  
+
   if (imageIndex !== -1) {
     console.log('找到对应的图片，索引:', imageIndex)
-    console.log('原始 base64_data 长度:', tempQuestionImages.value[imageIndex].base64_data?.length || 0)
-    console.log('原始 file_type:', tempQuestionImages.value[imageIndex].file_type)
-    
+    console.log(
+      '原始 base64_data 长度:',
+      tempQuestionImages.value[imageIndex].base64_data?.length || 0
+    )
+    console.log(
+      '原始 file_type:',
+      tempQuestionImages.value[imageIndex].file_type
+    )
+
     // 将 base64 数据转换为纯 base64 字符串（去掉 data:image/jpeg;base64, 前缀）
     const base64Data = imageData.split(',')[1] || imageData
-    
+
     console.log('新的 base64_data 长度:', base64Data.length)
     console.log('新数据前缀:', imageData.substring(0, 30))
-    
+
     // 更新图片的 base64_data
     tempQuestionImages.value[imageIndex].base64_data = base64Data
-    
+
     console.log('✅ 更新成功！')
-    console.log('更新后 base64_data 长度:', tempQuestionImages.value[imageIndex].base64_data.length)
+    console.log(
+      '更新后 base64_data 长度:',
+      tempQuestionImages.value[imageIndex].base64_data.length
+    )
     console.log('更新后的图片对象:', {
       id: tempQuestionImages.value[imageIndex].id,
-      base64_data_length: tempQuestionImages.value[imageIndex].base64_data.length,
+      base64_data_length:
+        tempQuestionImages.value[imageIndex].base64_data.length,
       file_type: tempQuestionImages.value[imageIndex].file_type
     })
   } else {
     console.error('❌ 未找到对应的图片ID:', editingImageId.value)
-    console.error('当前所有图片ID:', tempQuestionImages.value.map(img => img.id))
+    console.error(
+      '当前所有图片ID:',
+      tempQuestionImages.value.map((img) => img.id)
+    )
   }
-  
+
   // 关闭预览
   closeImagePreview()
 }
@@ -963,12 +1086,12 @@ const handlePreviewConfirm = (imageData: string) => {
 const previewImage = (attachment: any) => {
   console.log('预览图片:', attachment)
   const imageUrl = buildImageSrc(attachment)
-  
+
   if (!imageUrl) {
     console.error('图片URL为空，无法预览')
     return
   }
-  
+
   console.log('预览图片URL:', imageUrl.substring(0, 50) + '...')
   previewImageUrl.value = imageUrl
   editingImageId.value = attachment.id // 记录当前编辑的图片ID
@@ -987,28 +1110,28 @@ const triggerImageUpload = () => {
 const handleImageSelect = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = target.files
-  
+
   if (!files || files.length === 0) {
     console.log('未选择文件')
     return
   }
-  
+
   console.log('选择了', files.length, '个文件')
-  
+
   try {
     // 将文件添加到待添加列表
     for (let i = 0; i < files.length; i++) {
       imagesToAdd.value.push(files[i])
       console.log(`添加文件到临时列表:`, files[i].name)
     }
-    
+
     // 创建临时的 Attachment 对象用于显示
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
-      
+
       // 将文件转换为 base64
       const base64Data = await fileToBase64(file)
-      
+
       const tempAttachment: any = {
         id: `temp-${Date.now()}-${i}`,
         question_id: errorId.value,
@@ -1019,7 +1142,7 @@ const handleImageSelect = async (event: Event) => {
         _file: file // 保存原始文件引用
       }
       tempQuestionImages.value.push(tempAttachment)
-      
+
       // 如果是第一张图片，自动打开编辑器
       if (i === 0) {
         console.log('自动打开图片编辑器')
@@ -1028,7 +1151,7 @@ const handleImageSelect = async (event: Event) => {
         showImagePreview.value = true
       }
     }
-    
+
     console.log('临时图片列表:', tempQuestionImages.value.length, '个')
   } catch (error) {
     console.error('处理图片失败:', error)
@@ -1043,15 +1166,17 @@ const handleImageSelect = async (event: Event) => {
 // 删除临时图片
 const deleteTempImage = (image: any) => {
   console.log('删除临时图片:', image.id)
-  
+
   // 如果是已有图片（有真实ID），加入待删除列表
   if (image.id && !image.id.startsWith('temp-')) {
     imagesToDelete.value.push(image.id)
     console.log('标记为待删除:', image.id)
   }
-  
+
   // 从临时列表中移除
-  tempQuestionImages.value = tempQuestionImages.value.filter(img => img.id !== image.id)
+  tempQuestionImages.value = tempQuestionImages.value.filter(
+    (img) => img.id !== image.id
+  )
   console.log('删除成功，剩余图片:', tempQuestionImages.value.length, '个')
 }
 
@@ -1370,7 +1495,9 @@ onMounted(() => {
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   background: var(--bg-secondary);
   aspect-ratio: 3/2;
   border: 2px solid transparent;
@@ -1586,7 +1713,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 弹窗样式 */
@@ -1728,44 +1857,44 @@ onMounted(() => {
     padding: 16px;
     padding-bottom: 100px;
   }
-  
+
   .detail-header {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 8px;
   }
-  
+
   .detail-header h2 {
     font-size: 18px;
     text-align: center;
     grid-column: 2;
   }
-  
+
   .back-btn {
     grid-column: 1;
     justify-self: start;
     padding: 6px 10px;
     font-size: 13px;
   }
-  
+
   .back-icon {
     width: 14px;
     height: 14px;
   }
-  
+
   .header-actions {
     grid-column: 3;
     justify-self: end;
     display: flex;
     gap: 8px;
   }
-  
+
   .action-btn {
     padding: 6px 12px;
     font-size: 13px;
   }
-  
+
   /* 移动端 - 双列布局（无表格线） */
   .srs-stats {
     display: grid;
@@ -1775,24 +1904,61 @@ onMounted(() => {
     border-radius: 8px;
     padding: 12px;
   }
-  
+
   .stat-item {
     display: contents;
   }
-  
+
   .stat-label {
     padding: 8px 0;
     font-size: 12px;
     color: var(--text-secondary);
     text-align: left;
   }
-  
+
   .stat-value {
     padding: 8px 0;
     font-size: 14px;
     font-weight: 500;
     color: var(--text-primary);
     text-align: right;
+  }
+
+  /* 移动端 - 删除弹窗适配 */
+  .modal-overlay {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-content.confirm-modal {
+    width: 100%;
+    max-width: unset;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+
+  .confirm-modal .modal-header h3 {
+    font-size: 16px;
+  }
+
+  .confirm-modal .modal-body p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .modal-footer {
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .btn-cancel,
+  .btn-confirm {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
   }
 }
 
@@ -1803,13 +1969,13 @@ onMounted(() => {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 20px;
   }
-  
+
   /* 表单元素优化 */
   .form-select,
   .form-textarea {
     font-size: 15px;
   }
-  
+
   /* 弹窗宽度优化 */
   .modal-content {
     max-width: 900px;

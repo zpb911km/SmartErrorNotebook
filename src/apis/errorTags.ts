@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
-import { ErrorTags } from '../types';
+import { invoke } from '@tauri-apps/api/core'
+import { ErrorTags } from '../types'
 
 // ==================== API 接口 ====================
 
@@ -8,7 +8,7 @@ import { ErrorTags } from '../types';
  * @returns 错因标签列表
  */
 export async function getErrorTags(): Promise<ErrorTags[]> {
-  return await invoke('get_error_tags');
+  return await invoke('get_error_tags')
 }
 
 /**
@@ -16,7 +16,7 @@ export async function getErrorTags(): Promise<ErrorTags[]> {
  * @returns 错因标签列表
  */
 export async function getFullErrorTags(): Promise<ErrorTags[]> {
-  return await invoke('get_full_error_tags');
+  return await invoke('get_full_error_tags')
 }
 
 /**
@@ -24,10 +24,12 @@ export async function getFullErrorTags(): Promise<ErrorTags[]> {
  * @param questionId 错题ID
  * @returns 错因标签列表
  */
-export async function getErrorTagByQuestionId(questionId: string): Promise<ErrorTags[]> {
-  return await invoke("get_error_tags_for_question", {
+export async function getErrorTagByQuestionId(
+  questionId: string
+): Promise<ErrorTags[]> {
+  return await invoke('get_error_tags_for_question', {
     questionId: questionId
-  });
+  })
 }
 
 /**
@@ -45,31 +47,35 @@ export async function createErrorTagsForQuestion(
       question_id: questionId,
       tags: tags
     }
-  });
+  })
 }
 
 export async function deleteErrorTagById(tagId: string): Promise<number> {
   return await invoke('delete_error_tag', {
     tagId: tagId
-  });
+  })
 }
 
-export async function updateErrorTagById(tagId: string, name: string, color: string): Promise<number> {
+export async function updateErrorTagById(
+  tagId: string,
+  name: string,
+  color: string
+): Promise<number> {
   return await invoke('update_error_tag_by_id', {
     tag_id: tagId,
     new_tag_name: name,
     new_tag_color: color
-  });
+  })
 }
 /*
  * 获取所有唯一的错因标签名称列表
  * @returns 不重复的标签名称数组
  */
 export async function getAllUniqueTags(): Promise<string[]> {
-  const allTags = await invoke('get_error_tags');
-  const tagNames = (allTags as ErrorTags[]).map(tag => tag.name);
+  const allTags = await invoke('get_error_tags')
+  const tagNames = (allTags as ErrorTags[]).map((tag) => tag.name)
   // 去重
-  return [...new Set(tagNames)];
+  return [...new Set(tagNames)]
 }
 
 // 注意：以下接口后端暂未实现

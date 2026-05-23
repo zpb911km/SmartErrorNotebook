@@ -4,35 +4,67 @@
     <div class="filter-bar">
       <div class="filter-select-wrapper">
         <div class="custom-select" @click="toggleSubjectDropdown">
-          <div class="custom-select-value">{{ selectedSubjectName || '全部科目' }}</div>
-          <span class="custom-select-arrow" :class="{ rotated: subjectDropdownVisible }">▼</span>
+          <div class="custom-select-value">
+            {{ selectedSubjectName || '全部科目' }}
+          </div>
+          <span
+            class="custom-select-arrow"
+            :class="{ rotated: subjectDropdownVisible }"
+            >▼</span
+          >
         </div>
 
-        <div v-if="subjectDropdownVisible || cascadeVisible" class="cascade-popup">
-          <button class="cascade-close-btn" @click="closeCascadeWindow">×</button>
+        <div
+          v-if="subjectDropdownVisible || cascadeVisible"
+          class="cascade-popup"
+        >
+          <button class="cascade-close-btn" @click="closeCascadeWindow">
+            ×
+          </button>
 
           <div class="cascade-column">
             <div class="column-title">科目</div>
             <div class="column-items">
-              <div class="cascade-item" :class="{ active: !filters.subject_id }" @click="selectSubject('')">
+              <div
+                class="cascade-item"
+                :class="{ active: !filters.subject_id }"
+                @click="selectSubject('')"
+              >
                 全部
               </div>
-              <div v-for="subj in subjects" :key="subj.id" class="cascade-item"
-                :class="{ active: filters.subject_id === subj.id }" @click="handleSubjectClick(subj.id)">
+              <div
+                v-for="subj in subjects"
+                :key="subj.id"
+                class="cascade-item"
+                :class="{ active: filters.subject_id === subj.id }"
+                @click="handleSubjectClick(subj.id)"
+              >
                 {{ subj.name }}
                 <span class="arrow-indicator">›</span>
               </div>
             </div>
           </div>
 
-          <div v-if="currentSubjectId && books.length > 0" class="cascade-column">
+          <div
+            v-if="currentSubjectId && books.length > 0"
+            class="cascade-column"
+          >
             <div class="column-title">书名</div>
             <div class="column-items">
-              <div class="cascade-item" :class="{ active: !filters.book }" @click="handleBookClick('')">
+              <div
+                class="cascade-item"
+                :class="{ active: !filters.book }"
+                @click="handleBookClick('')"
+              >
                 全部
               </div>
-              <div v-for="b in books" :key="b" class="cascade-item"
-                :class="{ active: filters.book === b }" @click="handleBookClick(b)">
+              <div
+                v-for="b in books"
+                :key="b"
+                class="cascade-item"
+                :class="{ active: filters.book === b }"
+                @click="handleBookClick(b)"
+              >
                 {{ b || '未分类' }}
                 <span class="arrow-indicator">›</span>
               </div>
@@ -42,25 +74,46 @@
           <div v-if="currentBook && chapters.length > 0" class="cascade-column">
             <div class="column-title">章节</div>
             <div class="column-items">
-              <div class="cascade-item" :class="{ active: !filters.chapter }" @click="handleChapterClick('')">
+              <div
+                class="cascade-item"
+                :class="{ active: !filters.chapter }"
+                @click="handleChapterClick('')"
+              >
                 全部
               </div>
-              <div v-for="ch in chapters" :key="ch" class="cascade-item"
-                :class="{ active: filters.chapter === ch }" @click="handleChapterClick(ch)">
+              <div
+                v-for="ch in chapters"
+                :key="ch"
+                class="cascade-item"
+                :class="{ active: filters.chapter === ch }"
+                @click="handleChapterClick(ch)"
+              >
                 {{ ch || '未分类' }}
                 <span class="arrow-indicator">›</span>
               </div>
             </div>
           </div>
 
-          <div v-if="currentChapter && knowledges.length > 0" class="cascade-column">
+          <div
+            v-if="currentChapter && knowledges.length > 0"
+            class="cascade-column"
+          >
             <div class="column-title">知识点</div>
             <div class="column-items">
-              <div class="cascade-item" :class="{ active: !filters.knowledge }" @click="selectKnowledge('')">
+              <div
+                class="cascade-item"
+                :class="{ active: !filters.knowledge }"
+                @click="selectKnowledge('')"
+              >
                 全部
               </div>
-              <div v-for="k in knowledges" :key="k" class="cascade-item"
-                :class="{ active: filters.knowledge === k }" @click="selectKnowledge(k)">
+              <div
+                v-for="k in knowledges"
+                :key="k"
+                class="cascade-item"
+                :class="{ active: filters.knowledge === k }"
+                @click="selectKnowledge(k)"
+              >
                 {{ k || '未分类' }}
               </div>
             </div>
@@ -86,13 +139,25 @@
     </div>
 
     <div v-if="dueList.length > 0" class="card-list">
-      <div v-for="item in dueList" :key="item.id" class="error-card" @click="reviewCard(item)">
+      <div
+        v-for="item in dueList"
+        :key="item.id"
+        class="error-card"
+        @click="reviewCard(item)"
+      >
         <div class="error-header">
-          <span class="subject-tag" :style="getSubjectStyle(item.subjectId)">{{ item.subjectName }}</span>
-          <span v-if="item.knowledge" class="source-tag knowledge-tag">{{ item.knowledge }}</span>
+          <span class="subject-tag" :style="getSubjectStyle(item.subjectId)">{{
+            item.subjectName
+          }}</span>
+          <span v-if="item.knowledge" class="source-tag knowledge-tag">{{
+            item.knowledge
+          }}</span>
           <span class="urgency-badge urgent">{{ item.urgencyLabel }}</span>
         </div>
-        <div class="error-content">{{ truncate(item.prompt, 80) }}</div>
+        <div
+          class="error-content markdown-body"
+          v-html="renderMarkdown(item.prompt)"
+        ></div>
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
           <span class="meta-item">🎯 掌握率 {{ item.recallPercent }}%</span>
@@ -107,13 +172,25 @@
 
     <!-- 无需复习列表 -->
     <div v-if="notDueList.length > 0" class="card-list">
-      <div v-for="item in notDueList" :key="item.id" class="error-card" @click="reviewCard(item)">
+      <div
+        v-for="item in notDueList"
+        :key="item.id"
+        class="error-card"
+        @click="reviewCard(item)"
+      >
         <div class="error-header">
-          <span class="subject-tag" :style="getSubjectStyle(item.subjectId)">{{ item.subjectName }}</span>
-          <span v-if="item.knowledge" class="source-tag knowledge-tag">{{ item.knowledge }}</span>
+          <span class="subject-tag" :style="getSubjectStyle(item.subjectId)">{{
+            item.subjectName
+          }}</span>
+          <span v-if="item.knowledge" class="source-tag knowledge-tag">{{
+            item.knowledge
+          }}</span>
           <span class="urgency-badge upcoming">{{ item.urgencyLabel }}</span>
         </div>
-        <div class="error-content">{{ truncate(item.prompt, 80) }}</div>
+        <div
+          class="error-content markdown-body"
+          v-html="renderMarkdown(item.prompt)"
+        ></div>
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
           <span class="meta-item">📊 稳定性 {{ item.stabilityText }}</span>
@@ -142,10 +219,27 @@ import { useRouter } from 'vue-router'
 import { getSubjects } from '../apis/subjects'
 import { getQuestions } from '../apis/errorQuestions'
 import { getAllSRSStatus } from '../apis/srs'
-import { getBooks, getChapters, getKnowledges, getSources } from '../apis/sources'
+import {
+  getBooks,
+  getChapters,
+  getKnowledges,
+  getSources
+} from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
 import { setReviewQueue } from '../services/reviewStore'
 import type { Subject } from '../types'
+import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
+
+marked.use(
+  markedKatex({
+    throwOnError: false,
+    output: 'html'
+  })
+)
+
+const renderer = new marked.Renderer()
+marked.use({ renderer })
 
 const router = useRouter()
 
@@ -160,7 +254,7 @@ const filters = ref({
   subject_id: '',
   book: '',
   chapter: '',
-  knowledge: '',
+  knowledge: ''
 })
 
 // Cascade state
@@ -176,19 +270,22 @@ const knowledges = ref<string[]>([])
 // ============ Computed ============
 const selectedSubjectName = computed(() => {
   if (!filters.value.subject_id) return ''
-  const subj = subjects.value.find(s => s.id === filters.value.subject_id)
+  const subj = subjects.value.find((s) => s.id === filters.value.subject_id)
   return subj?.name || ''
 })
 
 const activeFilters = computed(() => {
   const list: { key: string; label: string }[] = []
   if (filters.value.subject_id) {
-    const s = subjects.value.find(x => x.id === filters.value.subject_id)
+    const s = subjects.value.find((x) => x.id === filters.value.subject_id)
     if (s) list.push({ key: 'subject_id', label: s.name })
   }
-  if (filters.value.book) list.push({ key: 'book', label: `📖 ${filters.value.book}` })
-  if (filters.value.chapter) list.push({ key: 'chapter', label: `📑 ${filters.value.chapter}` })
-  if (filters.value.knowledge) list.push({ key: 'knowledge', label: `🏷 ${filters.value.knowledge}` })
+  if (filters.value.book)
+    list.push({ key: 'book', label: `📖 ${filters.value.book}` })
+  if (filters.value.chapter)
+    list.push({ key: 'chapter', label: `📑 ${filters.value.chapter}` })
+  if (filters.value.knowledge)
+    list.push({ key: 'knowledge', label: `🏷 ${filters.value.knowledge}` })
   return list
 })
 
@@ -202,6 +299,7 @@ interface MergedItem {
   subjectName: string
   prompt: string
   book: string
+  chapter: string
   knowledge: string
   srs: any
   stability: number
@@ -230,7 +328,9 @@ const mergedItems = computed(() => {
     const srs = srsByQId.get(q.id)
     if (!srs) continue
 
-    const subject = subjects.value.find(s => s.id === (q.subjectid || q.subject_id))
+    const subject = subjects.value.find(
+      (s) => s.id === (q.subjectid || q.subject_id)
+    )
     const sourceId = q.sourceid || q.source_id
     const sourceInfo = sourceInfoMap.value.get(sourceId) || {}
 
@@ -238,10 +338,12 @@ const mergedItems = computed(() => {
     const recallPercent = Math.round(recallRate * 100)
     const n = now()
     const lastAt = srs.last_review_at ?? srs.lastreviewed_at
-    const daysSinceLast = lastAt ? Math.max(0, Math.floor((n - lastAt) / 86400)) : -1
+    const daysSinceLast = lastAt
+      ? Math.max(0, Math.floor((n - lastAt) / 86400))
+      : -1
     const nextAt = srs.next_review_at
     const daysUntilNext = nextAt ? Math.floor((nextAt - n) / 86400) : null
-    const isDue = !nextAt || !daysUntilNext || daysUntilNext <= 0
+    const isDue = srs.is_due
 
     console.log(srs, isDue, n)
 
@@ -268,7 +370,8 @@ const mergedItems = computed(() => {
       } else {
         urgencyLabel = '⚪ 待安排'
       }
-      nextReviewLabel = daysUntilNext !== null ? `${daysUntilNext} 天后` : '待安排'
+      nextReviewLabel =
+        daysUntilNext !== null ? `${daysUntilNext} 天后` : '待安排'
       lastReviewLabel = daysSinceLast >= 0 ? `${daysSinceLast} 天前` : '未复习'
       stabilityText = `${stab.toFixed(1)}`
     }
@@ -280,6 +383,7 @@ const mergedItems = computed(() => {
       subjectName: subject?.name || '未知',
       prompt: q.prompt || '',
       book: sourceInfo.book || '',
+      chapter: sourceInfo.chapter || '',
       knowledge: sourceInfo.knowledge || '',
       srs,
       stability: stab,
@@ -293,28 +397,28 @@ const mergedItems = computed(() => {
       lastReviewLabel,
       nextReviewLabel,
       stabilityText,
-      isDue: isDue,
+      isDue: isDue
     })
   }
   return items
 })
 
 const filteredItems = computed(() => {
-  return mergedItems.value.filter(item => {
-    if (filters.value.subject_id && item.subjectId !== filters.value.subject_id) return false
+  return mergedItems.value.filter((item) => {
+    if (filters.value.subject_id && item.subjectId !== filters.value.subject_id)
+      return false
     if (filters.value.book && item.book !== filters.value.book) return false
-    if (filters.value.chapter) {
-      // Chapter filter not directly on question, apply through source info
-      // The chapter info isn't stored on items directly, so skip for now
-    }
-    if (filters.value.knowledge && item.knowledge !== filters.value.knowledge) return false
+    if (filters.value.chapter && item.chapter !== filters.value.chapter)
+      return false
+    if (filters.value.knowledge && item.knowledge !== filters.value.knowledge)
+      return false
     return true
   })
 })
 
 const dueList = computed(() => {
   return filteredItems.value
-    .filter(item => {
+    .filter((item) => {
       return item.isDue
     })
     .sort((a, b) => a.recallRate - b.recallRate)
@@ -322,7 +426,7 @@ const dueList = computed(() => {
 
 const notDueList = computed(() => {
   return filteredItems.value
-    .filter(item => {
+    .filter((item) => {
       return !item.isDue
     })
     .sort((a, b) => (a.nextReviewAt ?? Infinity) - (b.nextReviewAt ?? Infinity))
@@ -332,15 +436,16 @@ const allFiltered = computed(() => [...dueList.value, ...notDueList.value])
 
 // ============ Methods ============
 function getSubjectStyle(subjectId: string) {
-  const subject = subjects.value.find(s => s.id === subjectId)
+  const subject = subjects.value.find((s) => s.id === subjectId)
   if (subject?.color) {
     return { backgroundColor: `${subject.color}20`, color: subject.color }
   }
   return { backgroundColor: '#e3f2fd', color: '#1976d2' }
 }
 
-function truncate(text: string, len: number) {
-  return (text || '').length > len ? text.substring(0, len) + '…' : text
+const renderMarkdown = (content: string) => {
+  if (!content) return ''
+  return marked.parse(content, { breaks: true, gfm: true }) as unknown as string
 }
 
 // Cascade filter handlers
@@ -361,7 +466,13 @@ function handleSubjectClick(id: string) {
   knowledges.value = []
   cascadeVisible.value = true
   if (id) {
-    getBooks(id).then(b => { books.value = b }).catch(() => { books.value = [] })
+    getBooks(id)
+      .then((b) => {
+        books.value = b
+      })
+      .catch(() => {
+        books.value = []
+      })
   } else {
     books.value = []
   }
@@ -375,7 +486,13 @@ function handleBookClick(book: string) {
   currentChapter.value = null
   knowledges.value = []
   if (filters.value.subject_id && book) {
-    getChapters(book, filters.value.subject_id).then(c => { chapters.value = c }).catch(() => { chapters.value = [] })
+    getChapters(book, filters.value.subject_id)
+      .then((c) => {
+        chapters.value = c
+      })
+      .catch(() => {
+        chapters.value = []
+      })
   } else {
     chapters.value = []
   }
@@ -386,7 +503,13 @@ function handleChapterClick(ch: string) {
   filters.value.knowledge = ''
   currentChapter.value = ch || null
   if (filters.value.subject_id && filters.value.book && ch) {
-    getKnowledges(filters.value.book, ch, filters.value.subject_id).then(k => { knowledges.value = k }).catch(() => { knowledges.value = [] })
+    getKnowledges(filters.value.book, ch, filters.value.subject_id)
+      .then((k) => {
+        knowledges.value = k
+      })
+      .catch(() => {
+        knowledges.value = []
+      })
   } else {
     knowledges.value = []
   }
@@ -405,7 +528,13 @@ function selectSubject(id: string) {
   if (id) {
     currentSubjectId.value = id
     cascadeVisible.value = true
-    getBooks(id).then(b => { books.value = b }).catch(() => { books.value = [] })
+    getBooks(id)
+      .then((b) => {
+        books.value = b
+      })
+      .catch(() => {
+        books.value = []
+      })
   } else {
     closeCascadeWindow()
   }
@@ -445,8 +574,8 @@ function buildReviewCard(item: MergedItem): any {
   return {
     questionId: item.questionId,
     srs: item.srs,
-    question: questions.value.find(q => q.id === item.questionId) || {},
-    subjectName: item.subjectName,
+    question: questions.value.find((q) => q.id === item.questionId) || {},
+    subjectName: item.subjectName
   }
 }
 
@@ -470,7 +599,7 @@ onMounted(async () => {
       getQuestions(),
       getAllSRSStatus(),
       getFullErrorTags(),
-      getSources(),
+      getSources()
     ])
     subjects.value = subs
     questions.value = qs as any[]
@@ -487,7 +616,11 @@ onMounted(async () => {
 
     const sourceMap = new Map<string, any>()
     ;(srcs as any[]).forEach((src: any) => {
-      sourceMap.set(src.id, { book: src.book || '', chapter: src.chapter || '', knowledge: src.knowledge || '' })
+      sourceMap.set(src.id, {
+        book: src.book || '',
+        chapter: src.chapter || '',
+        knowledge: src.knowledge || ''
+      })
     })
     sourceInfoMap.value = sourceMap
   } catch (e) {
@@ -594,8 +727,14 @@ onMounted(async () => {
 }
 
 @keyframes cascadeSlideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .cascade-column {
@@ -606,8 +745,13 @@ onMounted(async () => {
   max-height: 500px;
   overflow-y: auto;
 }
-.cascade-column:first-child { padding-left: 8px; }
-.cascade-column:last-child { border-right: none; padding-right: 40px; }
+.cascade-column:first-child {
+  padding-left: 8px;
+}
+.cascade-column:last-child {
+  border-right: none;
+  padding-right: 40px;
+}
 
 .column-title {
   padding: 8px 12px;
@@ -684,7 +828,9 @@ onMounted(async () => {
   padding: 0;
   opacity: 0.8;
 }
-.filter-tag-close:hover { opacity: 1; }
+.filter-tag-close:hover {
+  opacity: 1;
+}
 .clear-all-btn {
   padding: 4px 12px;
   background: var(--bg-secondary);
@@ -780,6 +926,78 @@ onMounted(async () => {
   line-height: 1.5;
 }
 
+.error-content.markdown-body {
+  overflow: hidden;
+  max-height: 100%;
+}
+
+.error-content.markdown-body :deep(h1),
+.error-content.markdown-body :deep(h2),
+.error-content.markdown-body :deep(h3),
+.error-content.markdown-body :deep(h4),
+.error-content.markdown-body :deep(h5),
+.error-content.markdown-body :deep(h6) {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+  font-size: 1em;
+}
+
+.error-content.markdown-body :deep(p) {
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(code) {
+  background: rgba(25, 118, 210, 0.12);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.error-content.markdown-body :deep(pre) {
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: #e2e8f0;
+}
+
+.error-content.markdown-body :deep(ul),
+.error-content.markdown-body :deep(ol) {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.error-content.markdown-body :deep(a) {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.error-content.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.error-content.markdown-body :deep(th),
+.error-content.markdown-body :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+}
+
 .error-footer {
   display: flex;
   justify-content: space-between;
@@ -813,8 +1031,14 @@ onMounted(async () => {
   padding: 60px 20px;
   color: var(--text-secondary);
 }
-.empty-icon { font-size: 64px; margin-bottom: 16px; }
-.empty-state p { font-size: 16px; margin: 0; }
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
+}
 
 /* ===== FAB ===== */
 .fab {
@@ -840,7 +1064,9 @@ onMounted(async () => {
   transform: scale(0.95);
   box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 }
-.fab-icon { font-size: 18px; }
+.fab-icon {
+  font-size: 18px;
+}
 .fab-badge {
   background: rgba(255, 255, 255, 0.25);
   padding: 2px 10px;

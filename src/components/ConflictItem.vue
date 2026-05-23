@@ -11,12 +11,16 @@
       <div class="conflict-item__body">
         <div class="conflict-section">
           <h4 class="conflict-section__title">本地版本</h4>
-          <pre class="conflict-section__content json-preview">{{ localPreviewText }}</pre>
+          <pre class="conflict-section__content json-preview">{{
+            localPreviewText
+          }}</pre>
         </div>
         <div class="divider"></div>
         <div class="conflict-section">
           <h4 class="conflict-section__title">服务端版本</h4>
-          <pre class="conflict-section__content json-preview">{{ serverPreviewText }}</pre>
+          <pre class="conflict-section__content json-preview">{{
+            serverPreviewText
+          }}</pre>
         </div>
       </div>
     </div>
@@ -32,7 +36,11 @@
 
     <div v-else class="conflict-item__resolved">
       <span class="resolved-badge">
-        {{ currentChoice === 'keep_local' ? '已选择: 本地版本' : '已选择: 服务端版本' }}
+        {{
+          currentChoice === 'keep_local'
+            ? '已选择: 本地版本'
+            : '已选择: 服务端版本'
+        }}
       </span>
     </div>
   </div>
@@ -69,10 +77,14 @@ const serverRaw = ref<any>(null)
 onMounted(async () => {
   // 加载本地数据
   try {
-    const local = await invoke<any>('get_record_for_upload', { recordId: props.conflict.id })
+    const local = await invoke<any>('get_record_for_upload', {
+      recordId: props.conflict.id
+    })
     localRaw.value = local.data
     tableName.value = local.table_name
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // 加载服务端数据
   const authKey = localStorage.getItem('auth_key') || ''
@@ -81,7 +93,9 @@ onMounted(async () => {
       const server = await downloadRecord(props.conflict.id, authKey)
       serverRaw.value = server.data
       if (!tableName.value) tableName.value = server.table_name
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 })
 
@@ -96,9 +110,10 @@ function formatPreview(obj: any): string {
   return Object.entries(cleaned)
     .map(([key, val]) => {
       const str = typeof val === 'object' ? JSON.stringify(val) : String(val)
-      const truncated = str.length > PREVIEW_MAX_LENGTH
-        ? str.slice(0, PREVIEW_MAX_LENGTH) + '...'
-        : str
+      const truncated =
+        str.length > PREVIEW_MAX_LENGTH
+          ? str.slice(0, PREVIEW_MAX_LENGTH) + '...'
+          : str
       return `${key}: ${truncated}`
     })
     .join('\n')
@@ -111,7 +126,7 @@ const serverPreviewText = computed(() => formatPreview(serverRaw.value))
 const handleResolve = (choice: 'keep_local' | 'keep_remote') => {
   emit('resolve', props.conflict.id, {
     id: props.conflict.id,
-    resolution: choice,
+    resolution: choice
   })
 }
 </script>

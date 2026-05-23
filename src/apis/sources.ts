@@ -1,10 +1,10 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core'
 import {
   Source,
   CreateSourceInput,
   UpdateSourceInput,
-  SourceFilter,
-} from '../types';
+  SourceFilter
+} from '../types'
 
 // ==================== API 接口 ====================
 
@@ -14,8 +14,8 @@ import {
  * @returns 来源列表（已过滤软删除的记录）
  */
 export async function getSources(subjectId?: string): Promise<Source[]> {
-  const filter: SourceFilter = subjectId ? { subject_id: subjectId } : {};
-  return await invoke('get_sources', { filter });
+  const filter: SourceFilter = subjectId ? { subject_id: subjectId } : {}
+  return await invoke('get_sources', { filter })
 }
 
 /**
@@ -25,7 +25,7 @@ export async function getSources(subjectId?: string): Promise<Source[]> {
  * @throws 如果来源不存在则抛出错误
  */
 export async function getSource(id: string): Promise<Source> {
-  return await invoke('get_source', { id });
+  return await invoke('get_source', { id })
 }
 
 /**
@@ -34,7 +34,7 @@ export async function getSource(id: string): Promise<Source> {
  * @returns 书名列表
  */
 export async function getBooks(subjectId?: string): Promise<string[]> {
-  return await invoke('get_books', { subjectId });
+  return await invoke('get_books', { subjectId })
 }
 
 /**
@@ -47,7 +47,7 @@ export async function getChapters(
   book: string,
   subjectId?: string
 ): Promise<string[]> {
-  return await invoke('get_chapters', { book, subjectId });
+  return await invoke('get_chapters', { book, subjectId })
 }
 
 /**
@@ -62,7 +62,7 @@ export async function getKnowledges(
   chapter: string,
   subjectId?: string
 ): Promise<string[]> {
-  return await invoke('get_knowledges', { book, chapter, subjectId });
+  return await invoke('get_knowledges', { book, chapter, subjectId })
 }
 
 /**
@@ -70,10 +70,8 @@ export async function getKnowledges(
  * @param source 来源数据（不包含 id 和 question_id）
  * @returns 创建的来源对象
  */
-export async function createSource(
-  source: CreateSourceInput
-): Promise<Source> {
-  return await invoke('create_source', { input: source });
+export async function createSource(source: CreateSourceInput): Promise<Source> {
+  return await invoke('create_source', { input: source })
 }
 
 /**
@@ -81,10 +79,8 @@ export async function createSource(
  * @param source 来源数据（必须包含 id）
  * @returns 更新后的来源对象
  */
-export async function updateSource(
-  source: UpdateSourceInput
-): Promise<Source> {
-  return await invoke('update_source', { input: source });
+export async function updateSource(source: UpdateSourceInput): Promise<Source> {
+  return await invoke('update_source', { input: source })
 }
 
 /**
@@ -93,7 +89,7 @@ export async function updateSource(
  * @returns 无返回值
  */
 export async function deleteSource(sourceId: string): Promise<void> {
-  return await invoke('delete_source', { id: sourceId });
+  return await invoke('delete_source', { id: sourceId })
 }
 
 /**
@@ -105,5 +101,5 @@ export async function deleteSource(sourceId: string): Promise<void> {
 export async function getOrCreateSourceId(
   source: CreateSourceInput
 ): Promise<string> {
-  return await invoke('get_or_create_source_id', { input: source });
+  return await invoke('get_or_create_source_id', { input: source })
 }

@@ -7,25 +7,129 @@
 
     <!-- 轮播组件 -->
     <div class="carousel-section">
-      <div class="arco-carousel arco-carousel-indicator-position-bottom" style="width: 100%; height: 200px; margin-bottom: 30px;">
+      <div
+        class="arco-carousel arco-carousel-indicator-position-bottom"
+        style="width: 100%; height: 200px; margin-bottom: 30px"
+      >
         <div class="arco-carousel-slide arco-carousel-horizontal">
-          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 0, 'arco-carousel-item-next': currentSlide === 2, 'arco-carousel-item-prev': currentSlide === 1 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(54, 77, 121); color: white; text-align: center; line-height: 200px; font-size: 30px;">欢迎使用智能错题本</div>
-          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 1, 'arco-carousel-item-next': currentSlide === 0, 'arco-carousel-item-prev': currentSlide === 2 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(0, 168, 84); color: white; text-align: center; line-height: 200px; font-size: 30px;">好好学习，天天向上！</div>
-          <div class="arco-carousel-item" :class="{ 'arco-carousel-item-current': currentSlide === 2, 'arco-carousel-item-next': currentSlide === 1, 'arco-carousel-item-prev': currentSlide === 0 }" style="transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); transition-duration: 500ms; animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1); animation-duration: 500ms; background: rgb(245, 34, 45); color: white; text-align: center; line-height: 200px; font-size: 30px;">不要把梦想埋没！</div>
+          <div
+            class="arco-carousel-item"
+            :class="{
+              'arco-carousel-item-current': currentSlide === 0,
+              'arco-carousel-item-next': currentSlide === 2,
+              'arco-carousel-item-prev': currentSlide === 1
+            }"
+            style="
+              transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
+              transition-duration: 500ms;
+              animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
+              animation-duration: 500ms;
+              background: rgb(54, 77, 121);
+              color: white;
+              text-align: center;
+              line-height: 200px;
+              font-size: 30px;
+            "
+          >
+            欢迎使用智能错题本
+          </div>
+          <div
+            class="arco-carousel-item"
+            :class="{
+              'arco-carousel-item-current': currentSlide === 1,
+              'arco-carousel-item-next': currentSlide === 0,
+              'arco-carousel-item-prev': currentSlide === 2
+            }"
+            style="
+              transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
+              transition-duration: 500ms;
+              animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
+              animation-duration: 500ms;
+              background: rgb(0, 168, 84);
+              color: white;
+              text-align: center;
+              line-height: 200px;
+              font-size: 30px;
+            "
+          >
+            好好学习，天天向上！
+          </div>
+          <div
+            class="arco-carousel-item"
+            :class="{
+              'arco-carousel-item-current': currentSlide === 2,
+              'arco-carousel-item-next': currentSlide === 1,
+              'arco-carousel-item-prev': currentSlide === 0
+            }"
+            style="
+              transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
+              transition-duration: 500ms;
+              animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
+              animation-duration: 500ms;
+              background: rgb(245, 34, 45);
+              color: white;
+              text-align: center;
+              line-height: 200px;
+              font-size: 30px;
+            "
+          >
+            不要把梦想埋没！
+          </div>
         </div>
-        <div class="swiper-pagination swiper-pagination-clickable swiper-pagination-bullets">
-          <span data-index="0" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 0 }" tabindex="0" role="button" aria-label="Go to slide 1"></span>
-          <span data-index="1" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 1 }" tabindex="0" role="button" aria-label="Go to slide 2"></span>
-          <span data-index="2" class="swiper-pagination-bullet" :class="{ 'swiper-pagination-bullet-active': currentSlide === 2 }" tabindex="0" role="button" aria-label="Go to slide 3"></span>
+        <div
+          class="swiper-pagination swiper-pagination-clickable swiper-pagination-bullets"
+        >
+          <span
+            data-index="0"
+            class="swiper-pagination-bullet"
+            :class="{ 'swiper-pagination-bullet-active': currentSlide === 0 }"
+            tabindex="0"
+            role="button"
+            aria-label="Go to slide 1"
+          ></span>
+          <span
+            data-index="1"
+            class="swiper-pagination-bullet"
+            :class="{ 'swiper-pagination-bullet-active': currentSlide === 1 }"
+            tabindex="0"
+            role="button"
+            aria-label="Go to slide 2"
+          ></span>
+          <span
+            data-index="2"
+            class="swiper-pagination-bullet"
+            :class="{ 'swiper-pagination-bullet-active': currentSlide === 2 }"
+            tabindex="0"
+            role="button"
+            aria-label="Go to slide 3"
+          ></span>
         </div>
         <div class="arco-carousel-arrow">
           <div class="arco-carousel-arrow-left">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" class="arco-icon arco-icon-left" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              stroke="currentColor"
+              class="arco-icon arco-icon-left"
+              stroke-width="4"
+              stroke-linecap="butt"
+              stroke-linejoin="miter"
+            >
               <path d="M32 8.4 16.444 23.956 32 39.513"></path>
             </svg>
           </div>
           <div class="arco-carousel-arrow-right">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" class="arco-icon arco-icon-right" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter">
+            <svg
+              viewBox="0 0 48 48"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              stroke="currentColor"
+              class="arco-icon arco-icon-right"
+              stroke-width="4"
+              stroke-linecap="butt"
+              stroke-linejoin="miter"
+            >
               <path d="m16 39.513 15.556-15.557L16 8.4"></path>
             </svg>
           </div>
@@ -40,7 +144,11 @@
           <span class="btn-icon">➕</span>
           <span>添加错题</span>
         </button>
-        <button class="action-btn" @click="$router.push('/review')">
+        <button v-if="hasDue" class="action-btn has-review" @click="$router.push('/review')">
+          <span class="btn-icon">📖</span>
+          <span>开始复习</span>
+        </button>
+        <button v-else class="action-btn" @click="$router.push('/review')">
           <span class="btn-icon">📖</span>
           <span>开始复习</span>
         </button>
@@ -59,16 +167,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-
-const stats = ref({
-  total: 128,
-  mastered: 89
-})
+import { getDueCount } from '../apis';
 
 // 轮播组件逻辑
 const currentSlide = ref(0)
 const slideCount = 3
 let carouselInterval: number | null = null
+let hasDue = ref(false)
 
 const nextSlide = () => {
   currentSlide.value = (currentSlide.value + 1) % slideCount
@@ -88,7 +193,11 @@ const goToSlide = (index: number) => {
 const updateSlideClasses = () => {
   const slides = document.querySelectorAll('.arco-carousel-item')
   slides.forEach((slide, index) => {
-    slide.classList.remove('arco-carousel-item-current', 'arco-carousel-item-next', 'arco-carousel-item-prev')
+    slide.classList.remove(
+      'arco-carousel-item-current',
+      'arco-carousel-item-next',
+      'arco-carousel-item-prev'
+    )
     if (index === currentSlide.value) {
       slide.classList.add('arco-carousel-item-current')
     } else if (index === (currentSlide.value + 1) % slideCount) {
@@ -102,18 +211,24 @@ const updateSlideClasses = () => {
 onMounted(() => {
   // 启动自动轮播
   carouselInterval = window.setInterval(nextSlide, 3000)
-  
+
   // 添加指示器点击事件
   const indicators = document.querySelectorAll('.swiper-pagination-bullet')
   indicators.forEach((indicator, index) => {
     indicator.addEventListener('click', () => goToSlide(index))
   })
-  
+
   // 添加箭头点击事件
   const leftArrow = document.querySelector('.arco-carousel-arrow-left')
   const rightArrow = document.querySelector('.arco-carousel-arrow-right')
   if (leftArrow) leftArrow.addEventListener('click', prevSlide)
   if (rightArrow) rightArrow.addEventListener('click', nextSlide)
+
+  getDueCount().then(count => {
+    console.log('due count:', count)
+    hasDue.value = count > 0;
+    // hasDue.value = true
+  })
 })
 
 onUnmounted(() => {
@@ -237,6 +352,29 @@ onUnmounted(() => {
 
 .action-btn:active {
   transform: scale(0.98);
+}
+
+.action-btn.has-review {
+  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
+  animation: pulse-glow 0.8s ease-in-out infinite;
+}
+
+.action-btn.has-review .btn-icon {
+  filter: brightness(1.1);
+  transform: scale(1.1);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
+    transform: scale(1);
+  }
+  20% {
+    box-shadow: 0 8px 40px rgba(255, 107, 62, 0.6);
+    transform: scale(1.02);
+  }
 }
 
 .btn-icon {

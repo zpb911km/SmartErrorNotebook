@@ -1,5 +1,8 @@
 <template>
-  <div class="markdown-textarea" :class="{ 'is-previewing': viewMode === 'preview' }">
+  <div
+    class="markdown-textarea"
+    :class="{ 'is-previewing': viewMode === 'preview' }"
+  >
     <div class="markdown-textarea__toolbar">
       <div class="markdown-textarea__hint"></div>
     </div>
@@ -10,6 +13,7 @@
         v-bind="$attrs"
         :class="['markdown-textarea__input', textareaClass]"
         :value="modelValue"
+        :readonly="props.readonly"
         @input="handleInput"
         @keydown="handleKeydown"
       ></textarea>
@@ -17,18 +21,29 @@
       <div v-if="showPreview" class="markdown-textarea__preview-pane">
         <div class="markdown-textarea__preview-header">
           <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-          <button type="button" class="markdown-textarea__mode-switch" @click="toggleViewMode">
+          <button
+            v-if="!props.readonly"
+            type="button"
+            class="markdown-textarea__mode-switch"
+            @click="toggleViewMode"
+          >
             {{ viewMode === 'edit' ? '专注预览' : '编辑' }}
           </button>
         </div>
-        <div ref="previewRef" class="markdown-textarea__preview-body markdown-body" :class="previewClass">
-          <div v-if="previewSegments.length === 0" class="markdown-textarea__preview-empty">
-            预览会随编辑内容滚动自动对齐
+        <div
+          class="markdown-textarea__preview-segment"
+          :class="previewClass"
+        >
+          <div
+            v-if="previewSegments.length === 0"
+            class="markdown-textarea__preview-empty"
+          >
+            当前没有可预览内容
           </div>
           <div
             v-for="segment in previewSegments"
             :key="segment.id"
-            class="markdown-textarea__preview-segment"
+            class="markdown-textarea__preview-body markdown-body"
             :class="{ 'is-active': segment.id === activeSegmentId }"
             v-html="segment.html"
           ></div>
@@ -37,20 +52,33 @@
     </div>
 
     <div v-else-if="showPreview" class="markdown-textarea__preview-only">
-      <div class="markdown-textarea__preview-header markdown-textarea__preview-header--single">
+      <div
+        class="markdown-textarea__preview-header markdown-textarea__preview-header--single"
+      >
         <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-        <button type="button" class="markdown-textarea__mode-switch" @click="toggleViewMode">
+        <button
+          v-if="!props.readonly"
+          type="button"
+          class="markdown-textarea__mode-switch"
+          @click="toggleViewMode"
+        >
           编辑
         </button>
       </div>
-      <div class="markdown-textarea__preview-body markdown-body" :class="previewClass">
-        <div v-if="previewSegments.length === 0" class="markdown-textarea__preview-empty">
+      <div
+        class="markdown-textarea__preview-segment"
+        :class="previewClass"
+      >
+        <div
+          v-if="previewSegments.length === 0"
+          class="markdown-textarea__preview-empty"
+        >
           当前没有可预览内容
         </div>
         <div
           v-for="segment in previewSegments"
           :key="segment.id"
-          class="markdown-textarea__preview-segment"
+          class="markdown-textarea__preview-body markdown-body"
           v-html="segment.html"
         ></div>
       </div>
@@ -59,10 +87,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import bash from 'highlight.js/lib/languages/bash'
+import json from 'highlight.js/lib/languages/json'
+import css from 'highlight.js/lib/languages/css'
+import sql from 'highlight.js/lib/languages/sql'
+import java from 'highlight.js/lib/languages/java'
+import cpp from 'highlight.js/lib/languages/cpp'
+import rust from 'highlight.js/lib/languages/rust'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
+import markdown from 'highlight.js/lib/languages/markdown'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('bash', bash)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('css', css)
+hljs.registerLanguage('sql', sql)
+hljs.registerLanguage('java', java)
+hljs.registerLanguage('cpp', cpp)
+hljs.registerLanguage('rust', rust)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('yaml', yaml)
+hljs.registerLanguage('markdown', markdown)
+// plaintext is built-in, no registration needed
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
@@ -76,9 +132,10 @@ marked.use(
 const renderer = new marked.Renderer()
 renderer.code = ({ text, lang }) => {
   const language = lang ?? ''
-  const highlighted = language && hljs.getLanguage(language)
-    ? hljs.highlight(text, { language }).value
-    : hljs.highlightAuto(text).value
+  const highlighted =
+    language && hljs.getLanguage(language)
+      ? hljs.highlight(text, { language }).value
+      : hljs.highlightAuto(text).value
   const langClass = language ? `language-${language}` : ''
   return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
 }
@@ -93,6 +150,7 @@ interface Props {
   textareaClass?: string
   previewClass?: string
   defaultViewMode?: 'edit' | 'preview'
+  readonly?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -101,18 +159,23 @@ const props = withDefaults(defineProps<Props>(), {
   previewTitle: 'Markdown 预览',
   textareaClass: '',
   previewClass: '',
-  defaultViewMode: 'preview'
+  defaultViewMode: 'preview',
+  readonly: false
 })
 
-const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>()
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: string): void
+}>()
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const previewRef = ref<HTMLDivElement | null>(null)
 const viewMode = ref<'edit' | 'preview'>(props.defaultViewMode)
 const activeSegmentId = ref('segment-0')
-watch(() => props.defaultViewMode, (value) => {
-  viewMode.value = value
-})
+watch(
+  () => props.defaultViewMode,
+  (value) => {
+    viewMode.value = value
+  }
+)
 
 const normalizeMarkdown = (value: string) => {
   return (value || '')
@@ -127,6 +190,13 @@ const renderMarkdown = (value: string) => {
   return marked.parse(normalized, { breaks: true, gfm: true }) as string
 }
 
+const autoResize = () => {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
 const focusAtStart = async () => {
   await nextTick()
   const el = textareaRef.value
@@ -139,15 +209,18 @@ const previewSegments = computed(() => {
   const html = renderMarkdown(props.modelValue || '')
   if (!html) return []
 
-  return [{
-    id: 'segment-0',
-    html
-  }]
+  return [
+    {
+      id: 'segment-0',
+      html
+    }
+  ]
 })
 
 const handleInput = (event: Event) => {
   const target = event.target as HTMLTextAreaElement
   emit('update:modelValue', target.value)
+  autoResize()
 }
 
 const focus = () => textareaRef.value?.focus()
@@ -155,45 +228,51 @@ const blur = () => textareaRef.value?.blur()
 const select = () => textareaRef.value?.select()
 
 const toggleViewMode = async () => {
-  if (!props.showPreview) return
+  if (!props.showPreview || props.readonly) return
 
   viewMode.value = viewMode.value === 'edit' ? 'preview' : 'edit'
   await nextTick()
   if (viewMode.value === 'edit') {
+    autoResize()
     await focusAtStart()
   }
 }
 
 const returnToEdit = async () => {
-  if (!props.showPreview) return
+  if (!props.showPreview || props.readonly) return
   viewMode.value = 'edit'
   await nextTick()
+  autoResize()
   await focusAtStart()
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && props.showPreview) {
+  if (
+    (event.ctrlKey || event.metaKey) &&
+    event.key === 'Enter' &&
+    props.showPreview &&
+    !props.readonly
+  ) {
     event.preventDefault()
     toggleViewMode()
     return
   }
 
-  if (event.key === 'Escape' && props.showPreview) {
+  if (event.key === 'Escape' && props.showPreview && !props.readonly) {
     event.preventDefault()
     returnToEdit()
   }
 }
 
-watch(() => props.modelValue, () => {
-  void 0
-})
+watch(
+  () => props.modelValue,
+  () => {
+    autoResize()
+  }
+)
 
 onMounted(() => {
-  void 0
-})
-
-onBeforeUnmount(() => {
-  void 0
+  autoResize()
 })
 
 defineExpose({ focus, blur, select, el: textareaRef })
@@ -253,6 +332,13 @@ defineExpose({ focus, blur, select, el: textareaRef })
   resize: vertical;
 }
 
+.markdown-textarea__input:read-only {
+  background: var(--bg-secondary);
+  cursor: not-allowed;
+  color: var(--text-primary);
+  resize: none;
+}
+
 .markdown-textarea__input:focus {
   outline: none;
   border-color: var(--primary-color);
@@ -266,7 +352,6 @@ defineExpose({ focus, blur, select, el: textareaRef })
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* min-height: 360px; */
 }
 
 .markdown-textarea__preview-header {
@@ -307,13 +392,15 @@ defineExpose({ focus, blur, select, el: textareaRef })
 }
 
 .markdown-textarea__preview-segment {
+  background: var(--bg-markdown-primary);
   padding: 8px 10px;
   border-radius: 8px;
+  color: var(--text-primary);
   transition: background-color 0.2s ease;
 }
 
 .markdown-textarea__preview-segment.is-active {
-  background: rgba(25, 118, 210, 0.08);
+  background: var(--bg-markdown-primary);
 }
 
 .markdown-body :deep(h1),
@@ -333,7 +420,9 @@ defineExpose({ focus, blur, select, el: textareaRef })
 .markdown-body :deep(code) {
   background: rgba(25, 118, 210, 0.12);
   padding: 2px 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
 }
 
 .markdown-body :deep(pre) {
@@ -387,4 +476,20 @@ defineExpose({ focus, blur, select, el: textareaRef })
 .markdown-textarea__preview-only {
   margin-top: 12px;
 }
+
+/* 只预览模式下的预览区域样式 */
+.markdown-textarea__preview-only .markdown-textarea__preview-body {
+  max-height: 70vh;
+  overflow-y: auto;
+  color: var(--text-primary);
+}
+
+/* readonly模式下的预览区域样式 */
+.markdown-textarea__input:read-only {
+  background: var(--bg-secondary);
+  cursor: not-allowed;
+  color: var(--text-primary);
+  resize: none;
+}
+
 </style>
