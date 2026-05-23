@@ -13,13 +13,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
-            args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
-            args: '--target x86_64-apple-darwin'
           - platform: 'ubuntu-22.04'
             args: ''
-          - platform: 'ubuntu-22.04-arm' # Only available in public repos.
+          - platform: 'ubuntu-22.04-arm'
             args: ''
           - platform: 'windows-latest'
             args: ''
@@ -46,8 +42,6 @@ jobs:
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -78,15 +72,19 @@ jobs:
           - target: 'aarch64'
             arch_name: arm64
             abi: arm64-v8a
+            rust_target: aarch64-linux-android
           - target: 'armv7'
             arch_name: arm32
             abi: armeabi-v7a
+            rust_target: arm-linux-androideabi
           - target: 'x86_64'
             arch_name: x64
             abi: x86_64
+            rust_target: x86_64-linux-android
           - target: 'i686'
             arch_name: x86
             abi: x86
+            rust_target: i686-linux-android
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -109,7 +107,7 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}-linux-android
+          targets: ${{ matrix.rust_target }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
