@@ -109,6 +109,9 @@ jobs:
       - name: setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: install frontend dependencies
+        run: pnpm install
+
       - name: backup custom android config
         run: |
           mkdir -p /tmp/android-config/app/src/main /tmp/android-config/app/build
