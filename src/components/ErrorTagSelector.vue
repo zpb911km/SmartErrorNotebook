@@ -157,7 +157,7 @@ onMounted(() => {
         class="tag-chip"
         v-for="(tag, index) in selectedTags"
         :key="`${tag.name}-${tag.color}`"
-        :style="{ backgroundColor: tag.color }"
+        :style="{ backgroundColor: tag.color + '20', color: tag.color }"
       >
         {{ tag.name }}
         <span class="remove-tag" @click.stop="removeTag(index)">✕</span>
@@ -303,19 +303,19 @@ onMounted(() => {
 .tag-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  gap: 4px;
+  padding: 6px 12px;
   border-radius: 16px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .remove-tag {
-  margin-left: 6px;
   cursor: pointer;
-  opacity: 0.8;
+  opacity: 0.7;
   transition: opacity 0.2s;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .remove-tag:hover {
@@ -622,5 +622,19 @@ onMounted(() => {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: var(--gray-400);
+}
+
+/* ===== 暗色模式适配 ===== */
+body.dark-theme .error-tag-option:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-theme .error-tag-option-add {
+  border-color: var(--gray-500);
+}
+
+body.dark-theme .error-tag-option-add:hover {
+  background-color: rgba(25, 118, 210, 0.15);
+  border-color: var(--primary-color);
 }
 </style>
