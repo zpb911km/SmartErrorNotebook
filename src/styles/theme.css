@@ -139,6 +139,8 @@ body.dark-theme {
   --divider-color: #616161;
   --button-border: rgba(255, 255, 255, 0.1);
 
+  --primary-light: rgba(25, 118, 210, 0.25);
+
   /* 灰度色阶（深色主题） */
   --gray-100: #424242;
   --gray-200: #525252;

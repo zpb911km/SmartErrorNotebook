@@ -861,4 +861,18 @@ const saveError = async () => {
 .ai-btn:active {
   transform: scale(0.98);
 }
+
+/* ===== 暗色模式适配 ===== */
+body.dark-theme .spinner {
+  border-color: rgba(255, 255, 255, 0.15);
+  border-left-color: #4fc3f7;
+}
+
+body.dark-theme .btn.cancel {
+  border: 1px solid var(--border-color);
+}
+
+body.dark-theme .upload-area.drag-over {
+  background: rgba(25, 118, 210, 0.2);
+}
 </style>
