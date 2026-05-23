@@ -149,6 +149,15 @@ jobs:
       - name: build APK
         run: pnpm tauri android build --target=${{ matrix.target }}
 
+      - name: get version and name from cargo.toml
+        id: meta
+        run: |
+          VERSION=$(grep '^version = ' src-tauri/Cargo.toml | head -1 | sed 's/version *= *"\([^"]*\)"/\1/')
+          NAME=$(grep '^name = ' src-tauri/Cargo.toml | head -1 | sed 's/name *= *"\([^"]*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "NAME=$NAME" >> $GITHUB_OUTPUT
+          echo "App: $NAME v$VERSION"
+
       - name: debug apk location before upload
         run: |
           echo "=== Matrix info ==="
@@ -164,12 +173,19 @@ jobs:
       - name: prepare and upload APK
         run: |
           mkdir -p android-apks-${{ matrix.arch_name }}
-          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "android-apks-${{ matrix.arch_name }}/smarterrornotebook-${{ matrix.arch_name }}.apk"
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ matrix.arch_name }}.apk"
           ls -la "android-apks-${{ matrix.arch_name }}/"
 
       - name: debug uploaded artifact content
         run: |
           tar -tzf android-apks-${{ matrix.arch_name }}.zip 2>/dev/null || ls -la android-apks-${{ matrix.arch_name }}/
+      
+      - name: upload APK with arch in name
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks-${{ matrix.arch_name }}
+          path: android-apks-${{ matrix.arch_name }}/${{ steps.meta.outputs.NAME }}-${{ steps.meta.outputs.VERSION }}-${{ matrix.arch_name }}.apk
+
 
   android-release:
     needs: android-build
