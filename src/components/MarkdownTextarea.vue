@@ -125,7 +125,8 @@ import 'katex/dist/katex.min.css'
 marked.use(
   markedKatex({
     throwOnError: false,
-    output: 'html'
+    output: 'html',
+    nonStandard: true
   })
 )
 
@@ -179,8 +180,8 @@ watch(
 
 const normalizeMarkdown = (value: string) => {
   return (value || '')
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
+    .replace(/\\\[/g, '$$$$')
+    .replace(/\\\]/g, '$$$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
 }
@@ -482,14 +483,6 @@ defineExpose({ focus, blur, select, el: textareaRef })
   max-height: 70vh;
   overflow-y: auto;
   color: var(--text-primary);
-}
-
-/* readonly模式下的预览区域样式 */
-.markdown-textarea__input:read-only {
-  background: var(--bg-secondary);
-  cursor: not-allowed;
-  color: var(--text-primary);
-  resize: none;
 }
 
 </style>

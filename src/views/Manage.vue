@@ -397,7 +397,8 @@ import markedKatex from 'marked-katex-extension'
 marked.use(
   markedKatex({
     throwOnError: false,
-    output: 'html'
+    output: 'html',
+    nonStandard: true
   })
 )
 
@@ -901,8 +902,8 @@ const formatDate = (timestamp: number) => {
 const renderMarkdown = (content: string) => {
   if (!content) return ''
   const normalized = content
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
+    .replace(/\\\[/g, '$$$$')
+    .replace(/\\\]/g, '$$$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
   return marked.parse(normalized, { breaks: true, gfm: true }) as string

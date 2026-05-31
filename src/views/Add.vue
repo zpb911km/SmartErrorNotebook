@@ -203,7 +203,6 @@ import {
 import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
-import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)

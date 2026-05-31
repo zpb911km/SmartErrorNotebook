@@ -20,7 +20,12 @@ export function format(input: string): string {
  * @returns
  */
 function removeMarkdownOuterTags(input: string): string {
-  return input.replace(/```[markdown|Markdown]*?```/g, '').trim()
+  // 去除 AI 返回内容中包裹的 ```markdown / ``` 代码块标记
+  // 例如：```markdown\n内容...\n```  →  内容...
+  return input
+    .replace(/^```markdown\s*[\r\n]+([\s\S]*?)[\r\n]+\s*```\s*$/im, '$1')
+    .replace(/^```markdown\s*([\s\S]*?)\s*```\s*$/im, '$1')
+    .trim()
 }
 
 
@@ -39,7 +44,7 @@ function mathFormat(input: string): string {
   let text = input
 
   // ── 1. 转换 LaTeX 风格为 KaTeX 风格 ──
-  text = text.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')
+  text = text.replace(/\\\[/g, '$$$$').replace(/\\\]/g, '$$$$')
   text = text.replace(/\\\(/g, '$').replace(/\\\)/g, '$')
 
   const result: string[] = []

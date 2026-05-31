@@ -379,7 +379,8 @@ import 'katex/dist/katex.min.css'
 marked.use(
   markedKatex({
     throwOnError: false,
-    output: 'html'
+    output: 'html',
+    nonStandard: true
   })
 )
 
