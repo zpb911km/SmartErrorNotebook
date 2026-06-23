@@ -60,6 +60,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '同步' }
   },
   {
+    path: '/community',
+    name: 'Community',
+    component: () => import('../views/Community.vue'),
+    meta: { title: '错题社区' }
+  },
+  {
     path: '/markdown-test',
     name: 'MarkdownTextareaTest',
     component: () => import('../views/MarkdownTextareaTest.vue'),

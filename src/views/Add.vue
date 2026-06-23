@@ -186,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
@@ -204,6 +204,7 @@ import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { getSubjects } from '../apis'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
+import { getSharedData, clearSharedData } from '../services/shareStore'
 
 const imageUrls = ref<string[]>([])
 const isSaving = ref(false)
@@ -253,6 +254,19 @@ const form = ref({
   error_tags: [] as Array<{ name: string; color: string }>,
   // SRS info
   difficulty: 5
+})
+
+// 从社区分享预填数据
+onMounted(() => {
+  const sharedData = getSharedData()
+  if (sharedData) {
+    form.value.prompt = sharedData.prompt
+    form.value.type = sharedData.type_
+    form.value.answer = sharedData.answer
+    form.value.analysis = sharedData.analysis
+    form.value.error_note = sharedData.error_note
+    clearSharedData()
+  }
 })
 
 // 查询AI建议
