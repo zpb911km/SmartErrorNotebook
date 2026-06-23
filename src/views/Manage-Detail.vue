@@ -20,6 +20,22 @@
       </button>
       <h2>错题详情管理</h2>
       <div class="header-actions">
+        <button
+          v-if="shareCheckDone && isShared && !isEditing"
+          class="action-btn share-btn shared"
+          :disabled="shareLoading"
+          @click="handleRevokeShare"
+        >
+          {{ shareLoading ? '...' : '↩️ 撤回分享' }}
+        </button>
+        <button
+          v-if="shareCheckDone && !isShared && serverConfigured && !isEditing"
+          class="action-btn share-btn"
+          :disabled="shareLoading"
+          @click="handleShare"
+        >
+          {{ shareLoading ? '...' : '📤 分享到社区' }}
+        </button>
         <button class="action-btn edit-btn" @click="toggleEditMode">
           {{ isEditing ? '取消编辑' : '编辑' }}
         </button>
@@ -402,6 +418,7 @@ import {
   deleteAttachment
 } from '../apis/attachments'
 import { getQuestionSRSStatus } from '../apis/srsData'
+import { publishShare, revokeShare, checkShare } from '../apis/share'
 import type {
   ErrorQuestion,
   Subject,
@@ -463,6 +480,84 @@ const editForm = ref({
 
 // 弹窗状态
 const showDeleteConfirm = ref(false)
+
+// 分享状态
+const shareLoading = ref(false)
+const shareCheckDone = ref(false)
+const isShared = ref(false)
+const serverConfigured = ref(false)
+
+/**
+ * 检查服务器是否已配置
+ */
+function checkServerConfig(): boolean {
+  const url = localStorage.getItem('sync_server_url')
+  const auth = localStorage.getItem('auth_key')
+  return !!(url && auth)
+}
+
+/**
+ * 检查当前题目是否已分享
+ */
+async function checkShareStatus() {
+  if (!serverConfigured.value) return
+
+  const authKey = localStorage.getItem('auth_key') || ''
+  try {
+    isShared.value = await checkShare({ auth_key: authKey, id: errorId.value })
+  } catch {
+    isShared.value = false
+  } finally {
+    shareCheckDone.value = true
+  }
+}
+
+/**
+ * 分享当前错题到社区
+ */
+async function handleShare() {
+  if (!errorDetail.value || shareLoading.value) return
+
+  shareLoading.value = true
+  const authKey = localStorage.getItem('auth_key') || ''
+  const detail = errorDetail.value as any
+
+  try {
+    await publishShare({
+      auth_key: authKey,
+      id: errorId.value,
+      prompt: detail.prompt,
+      type_: detail.type_ || detail.type || '',
+      answer: detail.answer || '',
+      analysis: detail.analysis || '',
+      error_note: detail.error_note || '',
+    })
+    isShared.value = true
+  } catch (e: any) {
+    alert('分享失败: ' + (e.message || '未知错误'))
+  } finally {
+    shareLoading.value = false
+  }
+}
+
+/**
+ * 撤回分享
+ */
+async function handleRevokeShare() {
+  if (shareLoading.value) return
+
+  shareLoading.value = true
+  const authKey = localStorage.getItem('auth_key') || ''
+
+  try {
+    await revokeShare({ auth_key: authKey, id: errorId.value })
+    isShared.value = false
+  } catch (e: any) {
+    alert('撤回失败: ' + (e.message || '未知错误'))
+  } finally {
+    shareLoading.value = false
+  }
+}
 
 // 获取错题详情
 const fetchErrorDetail = async () => {
@@ -914,6 +1009,13 @@ const calculateMastery = (srs: any): number => {
 // 删除错题
 const deleteError = async () => {
   try {
+    // 如果已分享，异步撤回（不阻塞主操作）
+    if (isShared.value && serverConfigured.value) {
+      const authKey = localStorage.getItem('auth_key') || ''
+      revokeShare({ auth_key: authKey, id: errorId.value }).catch(() => {
+        // 忽略撤回失败，删除是主要操作
+      })
+    }
     await deleteQuestion(errorId.value)
     showDeleteConfirm.value = false
     // 返回管理页面
@@ -1181,7 +1283,12 @@ const deleteTempImage = (image: any) => {
 }
 
 onMounted(() => {
-  fetchErrorDetail()
+  serverConfigured.value = checkServerConfig()
+  fetchErrorDetail().then(() => {
+    if (serverConfigured.value) {
+      checkShareStatus()
+    }
+  })
   fetchSubjects()
 })
 </script>
@@ -1290,6 +1397,30 @@ onMounted(() => {
 
 .delete-btn:hover {
   background: #d32f2f;
+}
+
+.share-btn {
+  background: var(--success-color);
+  color: white;
+}
+
+.share-btn:hover {
+  background: var(--success-color);
+  filter: brightness(0.85);
+}
+
+.share-btn.shared {
+  background: var(--warning-color);
+}
+
+.share-btn.shared:hover {
+  background: var(--warning-color);
+  filter: brightness(0.85);
+}
+
+.share-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* 内容区域 */

@@ -121,6 +121,30 @@
       </button>
     </section>
 
+    <!-- 错题社区（仅在有服务器配置时显示） -->
+    <section v-if="hasServerConfig" class="sync-section">
+      <h2 class="section-title">错题社区</h2>
+      <div class="community-card" role="button" tabindex="0" @click="goCommunity" @keydown.enter="goCommunity">
+        <div class="community-card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div class="community-card-body">
+          <div class="community-card-title">发现错题</div>
+          <div class="community-card-desc">浏览其他用户分享的错题，一键获取到自己的错题本</div>
+        </div>
+        <div class="community-card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+    </section>
+
     <!-- 使用说明 -->
     <section class="sync-section">
       <h2 class="section-title">使用说明</h2>
@@ -237,6 +261,15 @@ const authStatusClass = computed(() => {
 })
 
 const checkMsgClass = computed(() => (checkOk.value ? 'msg-ok' : 'msg-err'))
+
+// 社区入口
+const goCommunity = () => {
+  window.location.hash = '#/community'
+}
+
+const hasServerConfig = computed(() => {
+  return !!serverUrl.value && serverOnline.value === true
+})
 
 const checkConnection = async () => {
   checking.value = true
@@ -766,5 +799,95 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 
 .help-text p {
   margin: 0;
+}
+
+/* 错题社区卡片 */
+.community-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+  outline: none;
+}
+
+.community-card:hover {
+  border-color: #c7d2fe;
+  background: linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.community-card:focus-visible {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.community-card:active {
+  transform: scale(0.995);
+}
+
+.community-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  flex-shrink: 0;
+}
+
+.community-card-icon svg {
+  width: 20px;
+  height: 20px;
+  color: #ffffff;
+}
+
+.community-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.community-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+  line-height: 1.4;
+}
+
+.community-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.community-card-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #9ca3af;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.community-card-arrow svg {
+  width: 18px;
+  height: 18px;
+}
+
+.community-card:hover .community-card-arrow {
+  transform: translateX(3px);
+  color: #6366f1;
 }
 </style>
