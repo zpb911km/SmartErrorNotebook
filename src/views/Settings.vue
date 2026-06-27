@@ -6,7 +6,7 @@
       <!-- 主题设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🎨</div>
+          <Icon name="palette" :size="22" class="setting-icon" />
           <div class="setting-name">主题设置</div>
         </div>
         <div class="setting-action">
@@ -25,7 +25,7 @@
       <!-- AI 选项 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🤖</div>
+          <Icon name="bot" :size="22" class="setting-icon" />
           <div class="setting-name">AI 辅助</div>
         </div>
         <div class="setting-action">
@@ -44,7 +44,7 @@
       <!-- LLM 配置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">⚙️</div>
+          <Icon name="settings" :size="22" class="setting-icon" />
           <div class="setting-name">LLM 配置</div>
         </div>
         <div class="setting-action">
@@ -55,7 +55,7 @@
       <!-- LLM 测试 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🧪</div>
+          <Icon name="flask-conical" :size="22" class="setting-icon" />
           <div class="setting-name">LLM 测试</div>
         </div>
         <div class="setting-action">
@@ -66,7 +66,7 @@
       <!-- AI 提示词设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">✏️</div>
+          <Icon name="pencil" :size="22" class="setting-icon" />
           <div class="setting-name">AI 提示词设置</div>
         </div>
         <div class="setting-action">
@@ -79,7 +79,7 @@
       <!--- Markdown 渲染测试-->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">📄</div>
+          <Icon name="file-text" :size="22" class="setting-icon" />
           <div class="setting-name">Markdown 渲染测试</div>
         </div>
         <div class="setting-action">
@@ -92,7 +92,7 @@
       <!-- 数据清理 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🗑️</div>
+          <Icon name="trash-2" :size="22" class="setting-icon" />
           <div class="setting-name">清理已同步的软删除数据</div>
         </div>
         <div class="setting-action">
@@ -105,7 +105,7 @@
         <div class="modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 配置</h3>
-            <button class="close-btn" @click="closeLLMConfig">×</button>
+            <button class="close-btn" @click="closeLLMConfig"><Icon name="x" :size="18" /></button>
           </div>
           <div class="modal-body">
             <div class="form-group">
@@ -161,7 +161,7 @@
         <div class="modal test-modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 测试</h3>
-            <button class="close-btn" @click="closeLLMTest">×</button>
+            <button class="close-btn" @click="closeLLMTest"><Icon name="x" :size="18" /></button>
           </div>
           <div class="modal-body test-body">
             <div class="test-status">
@@ -216,7 +216,7 @@
         <div class="modal large-modal" @click.stop>
           <div class="modal-header">
             <h3>AI 提示词设置</h3>
-            <button class="close-btn" @click="closePromptEditor">×</button>
+            <button class="close-btn" @click="closePromptEditor"><Icon name="x" :size="18" /></button>
           </div>
           <div class="modal-body">
             <p class="prompt-description">

@@ -43,7 +43,7 @@
             @click="closeCascadeWindow"
             title="关闭"
           >
-            ×
+            <Icon name="x" :size="16" />
           </button>
 
           <!-- 科目列 -->
@@ -307,7 +307,7 @@
       >
         {{ filter.label }}
         <button @click="removeFilter(filter.key)" class="filter-tag-close">
-          ×
+          <Icon name="x" :size="14" />
         </button>
       </span>
       <button @click="clearAllFilters" class="clear-all-btn">清除所有</button>

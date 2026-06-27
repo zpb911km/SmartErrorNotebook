@@ -42,7 +42,7 @@
       <!-- 显示答案按钮 / 答案区 -->
       <div v-if="!showAnswer" class="action-row">
         <button class="btn-reveal" @click="showAnswer = true">
-          💭 显示答案
+          <Icon name="message-square" :size="18" /> 显示答案
         </button>
       </div>
 
@@ -71,7 +71,7 @@
 
         <!-- 链接 -->
         <div class="action-row">
-          <button class="btn-link" @click="goToDetail">🔗 查看/编辑详细</button>
+          <button class="btn-link" @click="goToDetail"><Icon name="link" :size="16" /> 查看/编辑详细</button>
         </div>
 
         <!-- 滑动条评分 -->

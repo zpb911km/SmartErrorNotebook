@@ -2,13 +2,13 @@
   <div class="top-bar">
     <div class="top-bar-left">
       <button v-if="showBack" class="back-btn" @click="goBack">
-        <span>←</span>
+        <Icon name="arrow-left" :size="20" />
       </button>
       <h1 class="page-title">{{ title }}</h1>
     </div>
     <div class="top-bar-right">
       <button class="icon-btn" @click="handleSearch" v-if="showSearch">
-        <span>🔍</span>
+        <Icon name="search" :size="20" />
       </button>
       <button class="icon-btn" @click="handleSync" v-if="showSync">
         <svg
@@ -26,7 +26,7 @@
         </svg>
       </button>
       <button class="icon-btn" @click="handleSettings" v-if="showSettings">
-        <span>⚙️</span>
+        <Icon name="settings" :size="20" />
       </button>
     </div>
   </div>

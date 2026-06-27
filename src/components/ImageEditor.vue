@@ -1,7 +1,7 @@
 <template>
   <div class="edit-modal" v-if="visible">
     <div class="edit-header">
-      <button class="header-btn close-btn" @click="handleCancel">✕</button>
+      <button class="header-btn close-btn" @click="handleCancel"><Icon name="x" :size="18" /></button>
       <span class="edit-title">图片编辑</span>
       <button class="header-btn confirm-btn" @click="handleConfirm">✓</button>
     </div>
@@ -40,7 +40,7 @@
 
       <div class="toolbar-divider"></div>
 
-      <button class="tool-btn" @click="resetAll" title="重置">🔄</button>
+      <button class="tool-btn" @click="resetAll" title="重置"><Icon name="refresh-cw" :size="16" /></button>
     </div>
 
     <!-- 调整面板 -->
@@ -48,7 +48,7 @@
       <div class="panel-header">
         <span>{{ currentToolName }}</span>
         <button class="panel-close" @click="showAdjustmentPanel = false">
-          ✕
+          <Icon name="x" :size="16" />
         </button>
       </div>
 

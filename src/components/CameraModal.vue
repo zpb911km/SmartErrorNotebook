@@ -2,14 +2,14 @@
   <div class="camera-modal" v-if="visible">
     <div class="camera-container">
       <div class="camera-header">
-        <button class="header-btn close-btn" @click="handleClose">✕</button>
+        <button class="header-btn close-btn" @click="handleClose"><Icon name="x" :size="18" /></button>
         <span class="camera-title">拍照</span>
         <button
           class="header-btn switch-btn"
           @click="handleSwitchCamera"
           v-if="hasMultipleCameras"
         >
-          🔄
+          <Icon name="refresh-cw" :size="18" />
         </button>
       </div>
 
@@ -19,7 +19,7 @@
 
         <!-- 错误提示 -->
         <div class="camera-error" v-if="error">
-          <div class="error-icon">⚠️</div>
+          <Icon name="triangle-alert" :size="32" class="error-icon" />
           <p>{{ error }}</p>
           <button class="retry-btn" @click="startCamera">重试</button>
         </div>

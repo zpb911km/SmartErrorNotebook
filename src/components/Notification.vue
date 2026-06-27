@@ -11,22 +11,22 @@
         :class="['notification', `notification--${notification.type}`]"
       >
         <div class="notification__icon">
-          <span v-if="notification.type === 'info'">ℹ️</span>
-          <span v-if="notification.type === 'success'">✅</span>
-          <span v-if="notification.type === 'warning'">⚠️</span>
-          <span v-if="notification.type === 'error'">❌</span>
-          <span v-if="notification.type === 'debug'">🔧</span>
+          <Icon v-if="notification.type === 'info'" name="info" :size="20" />
+          <Icon v-if="notification.type === 'success'" name="circle-check" :size="20" />
+          <Icon v-if="notification.type === 'warning'" name="triangle-alert" :size="20" />
+          <Icon v-if="notification.type === 'error'" name="circle-x" :size="20" />
+          <Icon v-if="notification.type === 'debug'" name="wrench" :size="20" />
         </div>
         <div class="notification__content">
           <div class="notification__title">{{ notification.title }}</div>
           <div class="notification__message">{{ notification.message }}</div>
         </div>
-        <div
+        <button
           class="notification__close"
           @click="removeNotification(notification.id)"
         >
-          ×
-        </div>
+          <Icon name="x" :size="16" />
+        </button>
       </div>
     </transition-group>
   </div>
@@ -141,28 +141,7 @@ defineExpose({
   border-left-color: var(--secondary-color);
 }
 
-.notification--info {
-  border-left-color: #2196f3;
-}
-
-.notification--success {
-  border-left-color: #4caf50;
-}
-
-.notification--warning {
-  border-left-color: #ff9800;
-}
-
-.notification--error {
-  border-left-color: #f44336;
-}
-
-.notification--debug {
-  border-left-color: #9c27b0;
-}
-
 .notification__icon {
-  font-size: 1.2em;
   margin-right: 12px;
   display: flex;
   align-items: center;
@@ -188,10 +167,15 @@ defineExpose({
 
 .notification__close {
   cursor: pointer;
-  font-size: 1.5em;
-  padding: 0 5px;
+  background: none;
+  border: none;
+  padding: 4px;
   color: var(--text-disabled);
-  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color var(--transition-fast);
 }
 
 .notification__close:hover {

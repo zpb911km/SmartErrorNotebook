@@ -19,7 +19,7 @@
 
     <div class="upload-area">
       <div class="upload-content">
-        <div class="upload-icon">📷</div>
+        <Icon name="camera" :size="48" class="upload-icon" />
         <div class="upload-buttons">
           <div class="upload-ctn">
             <button class="upload-btn">选择文件</button>
@@ -37,7 +37,7 @@
             :disabled="cameraDisabled"
             :hidden="cameraDisabled"
           >
-            📷拍照
+            <Icon name="camera" :size="16" /> 拍照
           </button>
         </div>
       </div>
@@ -54,14 +54,14 @@
               @click="openEdit(url, index, true)"
               title="编辑"
             >
-              ✎
+              <Icon name="square-pen" :size="16" />
             </button>
             <button
               class="action-btn remove-btn"
               @click="removeImage(index)"
               title="删除"
             >
-              ✕
+              <Icon name="x" :size="16" />
             </button>
           </div>
           <div class="image-index">{{ index + 1 }}</div>

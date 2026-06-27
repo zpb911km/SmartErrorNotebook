@@ -123,7 +123,7 @@
                 @click.stop="deleteTempImage(image)"
                 title="删除图片"
               >
-                ×
+                <Icon name="x" :size="16" />
               </button>
             </div>
           </div>
@@ -132,7 +132,7 @@
         <!-- 添加图片按钮（仅编辑模式） -->
         <div v-if="isEditing" class="upload-section">
           <button class="btn-add-images" @click="triggerImageUpload">
-            📷 添加图片
+            <Icon name="camera" :size="16" /> 添加图片
           </button>
           <input
             ref="imageInput"

@@ -141,23 +141,23 @@
       <h2>快捷操作</h2>
       <div class="action-grid">
         <button class="action-btn" @click="$router.push('/add')">
-          <span class="btn-icon">➕</span>
+          <Icon name="plus" :size="24" class="btn-icon" />
           <span>添加错题</span>
         </button>
         <button v-if="hasDue" class="action-btn has-review" @click="$router.push('/review')">
-          <span class="btn-icon">📖</span>
+          <Icon name="book-open" :size="24" class="btn-icon" />
           <span>开始复习</span>
         </button>
         <button v-else class="action-btn" @click="$router.push('/review')">
-          <span class="btn-icon">📖</span>
+          <Icon name="book-open" :size="24" class="btn-icon" />
           <span>开始复习</span>
         </button>
         <button class="action-btn" @click="$router.push('/manage')">
-          <span class="btn-icon">📋</span>
+          <Icon name="clipboard-list" :size="24" class="btn-icon" />
           <span>错题管理</span>
         </button>
         <button class="action-btn" @click="$router.push('/stats')">
-          <span class="btn-icon">📊</span>
+          <Icon name="chart-column" :size="24" class="btn-icon" />
           <span>数据分析</span>
         </button>
       </div>

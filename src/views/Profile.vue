@@ -27,7 +27,7 @@
       <!-- 概览卡片 -->
       <div class="overview-cards">
         <div class="overview-card">
-          <div class="card-icon">📊</div>
+          <Icon name="chart-column" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value">{{ overview.total }}</div>
             <div class="card-label">总题目数</div>
@@ -38,21 +38,21 @@
           @click="$router.push('/review')"
           style="cursor: pointer"
         >
-          <div class="card-icon">⏰</div>
+          <Icon name="alarm-clock" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value due">{{ overview.dueCount }}</div>
             <div class="card-label">待复习</div>
           </div>
         </div>
         <div class="overview-card">
-          <div class="card-icon">🧠</div>
+          <Icon name="brain" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value memory">{{ overview.currentMemory }}</div>
             <div class="card-label">目前记忆</div>
           </div>
         </div>
         <div class="overview-card">
-          <div class="card-icon">🆕</div>
+          <Icon name="sparkles" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value new">{{ overview.newCards }}</div>
             <div class="card-label">新卡片数</div>
@@ -87,7 +87,7 @@
         <div class="section-header">
           <h3>科目分布</h3>
           <button class="manage-btn" @click="openManageCascade">
-            <span class="manage-icon">⚙️</span>
+            <Icon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
           </button>
         </div>
@@ -140,7 +140,7 @@
         >
           <div class="cascade-header">
             <span class="cascade-title">科目详情</span>
-            <button class="close-btn" @click="closeCascade">×</button>
+            <button class="close-btn" @click="closeCascade"><Icon name="x" :size="16" /></button>
           </div>
           <div class="cascade-scroll-wrapper">
             <div class="cascade-column-wrapper">
@@ -186,7 +186,7 @@
                     >
                       ✓
                     </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                    <button class="btn-cancel" @click="cancelEdit"><Icon name="x" :size="16" /></button>
                   </div>
                 </div>
                 <template v-else>
@@ -205,13 +205,13 @@
                       class="action-btn edit-btn"
                       @click.stop="startEditSubject(subject, index)"
                     >
-                      ✏️
+                      <Icon name="pencil" :size="16" />
                     </button>
                     <button
                       class="action-btn delete-btn"
                       @click.stop="confirmDeleteSubject(subject)"
                     >
-                      🗑️
+                      <Icon name="trash-2" :size="16" />
                     </button>
                   </div>
                 </template>
@@ -263,7 +263,7 @@
                     <button class="btn-save" @click="saveEditBook(book, index)">
                       ✓
                     </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                    <button class="btn-cancel" @click="cancelEdit"><Icon name="x" :size="16" /></button>
                   </div>
                 </div>
                 <template v-else>
@@ -278,13 +278,13 @@
                       class="action-btn edit-btn"
                       @click.stop="startEditBook(book, index)"
                     >
-                      ✏️
+                      <Icon name="pencil" :size="16" />
                     </button>
                     <button
                       class="action-btn delete-btn"
                       @click.stop="confirmDeleteBook(book)"
                     >
-                      🗑️
+                      <Icon name="trash-2" :size="16" />
                     </button>
                   </div>
                 </template>
@@ -339,7 +339,7 @@
                     >
                       ✓
                     </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                    <button class="btn-cancel" @click="cancelEdit"><Icon name="x" :size="16" /></button>
                   </div>
                 </div>
                 <template v-else>
@@ -354,13 +354,13 @@
                       class="action-btn edit-btn"
                       @click.stop="startEditChapter(chapter, index)"
                     >
-                      ✏️
+                      <Icon name="pencil" :size="16" />
                     </button>
                     <button
                       class="action-btn delete-btn"
                       @click.stop="confirmDeleteChapter(chapter)"
                     >
-                      🗑️
+                      <Icon name="trash-2" :size="16" />
                     </button>
                   </div>
                 </template>
@@ -415,7 +415,7 @@
                     >
                       ✓
                     </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
+                    <button class="btn-cancel" @click="cancelEdit"><Icon name="x" :size="16" /></button>
                   </div>
                 </div>
                 <template v-else>
@@ -431,13 +431,13 @@
                       class="action-btn edit-btn"
                       @click.stop="startEditKnowledge(knowledge, index)"
                     >
-                      ✏️
+                      <Icon name="pencil" :size="16" />
                     </button>
                     <button
                       class="action-btn delete-btn"
                       @click.stop="confirmDeleteKnowledge(knowledge)"
                     >
-                      🗑️
+                      <Icon name="trash-2" :size="16" />
                     </button>
                   </div>
                 </template>
@@ -480,7 +480,7 @@
         <div class="section-header">
           <h3>错因分布</h3>
           <button class="manage-btn" @click="openManageModal">
-            <span class="manage-icon">⚙️</span>
+            <Icon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
           </button>
         </div>
@@ -611,13 +611,13 @@
                       class="action-btn edit-btn"
                       @click="startEditTag(index)"
                     >
-                      <span>✏️</span>
+                      <Icon name="pencil" :size="16" />
                     </button>
                     <button
                       class="action-btn delete-btn"
                       @click="confirmDeleteTag(tag)"
                     >
-                      <span>🗑️</span>
+                      <Icon name="trash-2" :size="16" />
                     </button>
                   </div>
                   <div v-else class="actions-group">
@@ -631,7 +631,7 @@
                       class="action-btn cancel-btn"
                       @click="cancelTagEdit"
                     >
-                      <span>✕</span>
+                      <Icon name="x" :size="16" />
                     </button>
                   </div>
                 </div>

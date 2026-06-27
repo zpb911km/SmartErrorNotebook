@@ -160,7 +160,7 @@ onMounted(() => {
         :style="{ backgroundColor: tag.color + '20', color: tag.color }"
       >
         {{ tag.name }}
-        <span class="remove-tag" @click.stop="removeTag(index)">✕</span>
+        <span class="remove-tag" @click.stop="removeTag(index)"><Icon name="x" :size="14" /></span>
       </div>
     </div>
 

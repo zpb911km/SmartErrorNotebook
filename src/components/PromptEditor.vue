@@ -47,7 +47,7 @@
     </div>
 
     <!-- 保存状态提示 -->
-    <div v-if="saveSuccess" class="save-success">✅ 提示词已保存</div>
+    <div v-if="saveSuccess" class="save-success"><Icon name="circle-check" :size="18" /> 提示词已保存</div>
   </div>
 </template>
 
