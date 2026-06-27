@@ -122,25 +122,38 @@ hljs.registerLanguage('markdown', markdown)
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
+// 防止 ```markdown 嵌套递归渲染的深度计数器
+let _renderDepth = 0
+
 marked.use(
   markedKatex({
     throwOnError: false,
     output: 'html',
     nonStandard: true
-  })
+  }),
+  {
+    renderer: {
+      code({ text, lang }) {
+        // AI 经常用 ```markdown ... ``` 包裹返回内容，此时应渲染为 markdown 而非代码高亮
+        if (lang?.toLowerCase() === 'markdown' && _renderDepth < 3) {
+          _renderDepth++
+          try {
+            return marked.parse(text, { breaks: true, gfm: true }) as string
+          } finally {
+            _renderDepth--
+          }
+        }
+        const language = lang ?? ''
+        const highlighted =
+          language && hljs.getLanguage(language)
+            ? hljs.highlight(text, { language }).value
+            : hljs.highlightAuto(text).value
+        const langClass = language ? `language-${language}` : ''
+        return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
+      }
+    }
+  }
 )
-
-const renderer = new marked.Renderer()
-renderer.code = ({ text, lang }) => {
-  const language = lang ?? ''
-  const highlighted =
-    language && hljs.getLanguage(language)
-      ? hljs.highlight(text, { language }).value
-      : hljs.highlightAuto(text).value
-  const langClass = language ? `language-${language}` : ''
-  return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
-}
-marked.use({ renderer })
 
 defineOptions({ inheritAttrs: false })
 
@@ -188,7 +201,16 @@ const normalizeMarkdown = (value: string) => {
 
 const renderMarkdown = (value: string) => {
   const normalized = normalizeMarkdown(value)
-  return marked.parse(normalized, { breaks: true, gfm: true }) as string
+  // AI 生成的 markdown 常用缩进做视觉对齐，但 marked GFM 会把
+  // ≥4空格的缩进行整行误判为 <pre><code> 代码块，导致 KaTeX 无法处理其中的公式。
+  // 解决方案：去除行首缩进（跳过 ``` 围栏代码块内的行，避免破坏代码缩进）。
+  let inFence = false
+  const deindented = normalized.split('\n').map(line => {
+    if (/^\s*```/.test(line.trim())) inFence = !inFence
+    if (!inFence && /^[ ]{4,}(.+)$/.test(line)) return line.replace(/^[ ]{4,}/, '')
+    return line
+  }).join('\n')
+  return marked.parse(deindented, { breaks: true, gfm: true }) as string
 }
 
 const autoResize = () => {
