@@ -144,10 +144,9 @@ marked.use(
           }
         }
         const language = lang ?? ''
-        const highlighted =
-          language && hljs.getLanguage(language)
-            ? hljs.highlight(text, { language }).value
-            : hljs.highlightAuto(text).value
+        const highlighted = language && hljs.getLanguage(language)
+          ? hljs.highlight(text, { language }).value
+          : text  // 无语言标签时不染色，直接展示原文，避免 highlightAuto 猜错
         const langClass = language ? `language-${language}` : ''
         return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
       }

@@ -73,7 +73,7 @@ const promptSections: PromptSection[] = [
     description:
       '用于从图片中提取题干内容，包括问题、选项、补充信息、示意图等。不要包含答案和手写信息。',
     defaultPrompt:
-      '**请提取图片中的题干内容，以 Markdown 格式返回。**\n\n这是一些题目和答案的图片，注意区分题干，手写作答，和答案的图片。\n其中，请观察带有题干信息的图片 (一般是前一张或若干张图片，题干包含问题，选项，补充信息，示意图等)。\n题干只是学生做题时可以看见的部分，不包括图片中的答案和手写信息。\n注意公式使用 `$` 或者 `$$` 包裹\n请提取图片中的题干内容。'
+      '**请提取图片中的题干内容，以 Markdown 格式返回。**\n\n这是一些题目和答案的图片，注意区分题干，手写作答，和答案的图片。\n其中，请观察带有题干信息的图片 (一般是前一张或若干张图片，题干包含问题，选项，补充信息，示意图等)。\n题干只是学生做题时可以看见的部分，不包括图片中的答案和手写信息。\n注意公式使用 `$` 或者 `$$` 包裹\n请提取图片中的题干内容。\n\n【格式要求】\n- 不要在行首添加多余的空格或缩进，缩进会被误判为代码块，导致公式无法渲染\n- 不要用 ```markdown 包裹返回内容，直接输出 Markdown 纯文本\n- 公式前后不要加多余空格，用 $...$（行内）或 $$...$$（块级）包裹即可'
   },
   {
     tag: 'answer',
@@ -82,7 +82,7 @@ const promptSections: PromptSection[] = [
     description:
       '用于提取或生成题目的正确答案和解析。如果图片中有答案则提取原样内容，否则 AI 生成并标注"AI 生成答案"。',
     defaultPrompt:
-      '这是一些题目和答案的图片，请观察全部图片，并区分题干，手写作答，答案的图片。\n\n如果存在答案的图片，请提取图片中的答案和解析内容，并以 Markdown 格式返回;\n否则，尝试作答并给出该题的正确答案和解析，标注 ** "AI 生成答案"**，以 Markdown 格式返回。\n\n注意 **只** 输出图片中*答案*和*解析*部分的原样内容，不用给出*题干*;\n注意公式使用 `$` 或者 `$$` 包裹'
+      '这是一些题目和答案的图片，请观察全部图片，并区分题干，手写作答，答案的图片。\n\n如果存在答案的图片，请提取图片中的答案和解析内容，并以 Markdown 格式返回;\n否则，尝试作答并给出该题的正确答案和解析，标注 ** "AI 生成答案"**，以 Markdown 格式返回。\n\n注意 **只** 输出图片中*答案*和*解析*部分的原样内容，不用给出*题干*;\n注意公式使用 `$` 或者 `$$` 包裹\n\n【格式要求】\n- 不要在行首添加多余的空格或缩进，缩进会被误判为代码块，导致公式无法渲染\n- 不要用 ```markdown 包裹返回内容，直接输出 Markdown 纯文本\n- 公式前后不要加多余空格，用 $...$（行内）或 $$...$$（块级）包裹即可'
   },
   {
     tag: 'analysis',
@@ -91,7 +91,7 @@ const promptSections: PromptSection[] = [
     description:
       '用于分析错题的错误原因。切中要害进行分析，或给更高深而精悍的点拨，无需照抄图片内容。',
     defaultPrompt:
-      '这是一些题目和答案的图片，请观察全部图片.\n\n请分析错题的错误原因。\n你无需照抄图片内容，只需要切中要害进行分析即可，或者给更高深而精悍的点拨\n以 Markdown 格式返回。'
+      '这是一些题目和答案的图片，请观察全部图片.\n\n请分析错题的错误原因。\n你无需照抄图片内容，只需要切中要害进行分析即可，或者给更高深而精悍的点拨\n以 Markdown 格式返回。\n\n【格式要求】\n- 不要在行首添加多余的空格或缩进，缩进会被误判为代码块，导致公式无法渲染\n- 不要用 ```markdown 包裹返回内容，直接输出 Markdown 纯文本\n- 公式前后不要加多余空格，用 $...$（行内）或 $$...$$（块级）包裹即可'
   }
 ]
 
@@ -115,7 +115,7 @@ const saveSuccess = ref(false)
 // ==================== 计算属性 ====================
 
 const hasChanges = (tag: string) => {
-  const original = customPrompts.value[tag] || getDefaultPrompt(tag)
+  const original = customPrompts.value[tag] ?? getDefaultPrompt(tag)
   return tempPrompts.value[tag] !== original
 }
 
@@ -139,7 +139,7 @@ const loadCustomPrompts = () => {
       promptSections.forEach((section) => {
         if (!tempPrompts.value[section.tag]) {
           tempPrompts.value[section.tag] =
-            customPrompts.value[section.tag] || section.defaultPrompt
+            customPrompts.value[section.tag] ?? section.defaultPrompt
         }
       })
     } else {
