@@ -140,23 +140,23 @@
     <div class="quick-actions">
       <h2>快捷操作</h2>
       <div class="action-grid">
-        <button class="action-btn" @click="$router.push('/add')">
+        <button v-ripple class="action-btn" @click="$router.push('/add')">
           <Icon name="plus" :size="24" class="btn-icon" />
           <span>添加错题</span>
         </button>
-        <button v-if="hasDue" class="action-btn has-review" @click="$router.push('/review')">
+        <button v-if="hasDue" v-ripple class="action-btn has-review" @click="$router.push('/review')">
           <Icon name="book-open" :size="24" class="btn-icon" />
           <span>开始复习</span>
         </button>
-        <button v-else class="action-btn" @click="$router.push('/review')">
+        <button v-else v-ripple class="action-btn" @click="$router.push('/review')">
           <Icon name="book-open" :size="24" class="btn-icon" />
           <span>开始复习</span>
         </button>
-        <button class="action-btn" @click="$router.push('/manage')">
+        <button v-ripple class="action-btn" @click="$router.push('/manage')">
           <Icon name="clipboard-list" :size="24" class="btn-icon" />
           <span>错题管理</span>
         </button>
-        <button class="action-btn" @click="$router.push('/stats')">
+        <button v-ripple class="action-btn" @click="$router.push('/stats')">
           <Icon name="chart-column" :size="24" class="btn-icon" />
           <span>数据分析</span>
         </button>

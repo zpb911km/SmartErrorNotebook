@@ -506,3 +506,15 @@ img {
   max-width: 240px;
   line-height: 1.5;
 }
+
+/* ===== 点击水波纹 keyframe ===== */
+@keyframes ripple-anim {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
