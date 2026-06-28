@@ -510,8 +510,8 @@
                 :r="hoveredIndex === index ? 42 : 40"
                 fill="none"
                 :stroke="segment.color"
-                :stroke-width="hoveredIndex === index ? 22 : 20"
-                :stroke-dasharray="`${segment.percent} ${251.2}`"
+                :stroke-width="hoveredIndex === index ? 24 : 20"
+                :stroke-dasharray="`${segment.percent} ${251.33}`"
                 :stroke-dashoffset="`${segment.offset}`"
                 :stroke-linecap="
                   (segment.linecap as
@@ -1883,18 +1883,20 @@ const donutSegments = computed(() => {
     linecap?: string
   }[] = []
   let currentOffset = 0
-  const circumference = 251.2 // 2 * Math.PI * 40 ≈ 251.2
+  const circumference = 251.33 // 2 * Math.PI * 40
+  const gap = 0               // 扇区间隙
 
   errorTagDistribution.value.forEach((tag, _index) => {
     const percent = tag.count / totalTags.value
-    const strokeLength = percent * circumference
+    const rawLength = percent * circumference
+    const drawnLength = Math.max(0.5, rawLength - gap)
     segments.push({
-      percent: strokeLength,
+      percent: drawnLength,
       offset: currentOffset,
       color: tag.color,
       linecap: 'butt'
     })
-    currentOffset -= strokeLength
+    currentOffset -= rawLength
   })
 
   return segments
@@ -2393,6 +2395,7 @@ async function executeDeleteTag() {
   height: 100%;
   transform: rotate(-90deg);
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+  overflow: visible;
 }
 
 .donut-segment {

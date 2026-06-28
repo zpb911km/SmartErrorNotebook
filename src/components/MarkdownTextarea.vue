@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { marked } from 'marked'
+import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -125,7 +125,8 @@ import 'katex/dist/katex.min.css'
 // 防止 ```markdown 嵌套递归渲染的深度计数器
 let _renderDepth = 0
 
-marked.use(
+// 创建独立的 marked 实例，避免污染全局 marked
+const _marked = new Marked(
   markedKatex({
     throwOnError: false,
     output: 'html',
@@ -138,7 +139,7 @@ marked.use(
         if (lang?.toLowerCase() === 'markdown' && _renderDepth < 3) {
           _renderDepth++
           try {
-            return marked.parse(text, { breaks: true, gfm: true }) as string
+            return _marked.parse(text, { breaks: true, gfm: true }) as string
           } finally {
             _renderDepth--
           }
@@ -192,8 +193,8 @@ watch(
 
 const normalizeMarkdown = (value: string) => {
   return (value || '')
-    .replace(/\\\[/g, '$$$$')
-    .replace(/\\\]/g, '$$$$')
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
 }
@@ -202,14 +203,25 @@ const renderMarkdown = (value: string) => {
   const normalized = normalizeMarkdown(value)
   // AI 生成的 markdown 常用缩进做视觉对齐，但 marked GFM 会把
   // ≥4空格的缩进行整行误判为 <pre><code> 代码块，导致 KaTeX 无法处理其中的公式。
-  // 解决方案：去除行首缩进（跳过 ``` 围栏代码块内的行，避免破坏代码缩进）。
+  // 解决方案：只去掉前面是空行时的 4 空格缩进（此时 marked 才会解析为代码块），
+  // 而跟在列表项后面的缩进（列表嵌套）则保留不动。
   let inFence = false
+  let prevLineBlank = true  // 文档开头视作"前面是空行"
   const deindented = normalized.split('\n').map(line => {
-    if (/^\s*```/.test(line.trim())) inFence = !inFence
-    if (!inFence && /^[ ]{4,}(.+)$/.test(line)) return line.replace(/^[ ]{4,}/, '')
+    const trimmed = line.trim()
+    if (/^```/.test(trimmed)) {
+      inFence = !inFence
+      prevLineBlank = false
+      return line
+    }
+    if (!inFence && prevLineBlank && /^[ ]{4,}(.+)$/.test(line)) {
+      prevLineBlank = false
+      return line.replace(/^[ ]{4,}/, '')
+    }
+    prevLineBlank = trimmed === ''
     return line
   }).join('\n')
-  return marked.parse(deindented, { breaks: true, gfm: true }) as string
+  return _marked.parse(deindented, { breaks: true, gfm: true }) as string
 }
 
 const autoResize = () => {
