@@ -611,14 +611,16 @@ onUnmounted(() => {
 /* 开关按钮 */
 .toggle-switch {
   position: relative;
-  width: 50px;
-  height: 24px;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
 }
 
 .toggle-switch input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 }
 
 .toggle-label {
@@ -628,29 +630,48 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--border-color);
-  transition: 0.4s;
-  border-radius: 24px;
+  background-color: var(--gray-400);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 26px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .toggle-label:before {
   position: absolute;
   content: '';
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   background-color: white;
-  transition: 0.4s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-label:hover:before {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
 }
 
 input:checked + .toggle-label {
   background-color: var(--primary-color);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--primary-dark);
 }
 
 input:checked + .toggle-label:before {
-  transform: translateX(26px);
+  left: calc(100% - 24px);
+  transform: translateY(-50%);
+  box-shadow: 0 1px 4px rgba(25, 118, 210, 0.3);
+}
+
+input:focus-visible + .toggle-label {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+input:active + .toggle-label:before {
+  width: 22px;
 }
 
 /* AI 嵌套选项 */

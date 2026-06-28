@@ -1,7 +1,7 @@
 <template>
   <div class="manage-detail-page">
     <!-- 顶部导航栏 -->
-    <div class="detail-header">
+    <div class="detail-header" ref="detailHeaderRef">
       <button class="back-btn" @click="goBack">
         <svg
           class="back-icon"
@@ -19,14 +19,19 @@
         <span>返回</span>
       </button>
       <h2>错题详情管理</h2>
-      <div class="header-actions">
+      <div class="header-actions" ref="headerActionsRef" :class="{ collapsed: actionsCollapsed }">
         <button
           v-if="shareCheckDone && isShared && !isEditing"
           class="action-btn share-btn shared"
           :disabled="shareLoading"
           @click="handleRevokeShare"
         >
-          {{ shareLoading ? '...' : '↩️ 撤回分享' }}
+          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          <span class="btn-label">{{ shareLoading ? '...' : '撤回分享' }}</span>
         </button>
         <button
           v-if="shareCheckDone && !isShared && serverConfigured && !isEditing"
@@ -34,13 +39,26 @@
           :disabled="shareLoading"
           @click="handleShare"
         >
-          {{ shareLoading ? '...' : '📤 分享到社区' }}
+          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+          <span class="btn-label">{{ shareLoading ? '...' : '分享到社区' }}</span>
         </button>
         <button class="action-btn edit-btn" @click="toggleEditMode">
-          {{ isEditing ? '取消编辑' : '编辑' }}
+          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
         </button>
         <button class="action-btn delete-btn" @click="confirmDelete">
-          删除
+          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span class="btn-label">删除</span>
         </button>
       </div>
     </div>
@@ -385,7 +403,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -468,7 +486,16 @@ const filteredErrorTags = computed(() => {
 // 编辑状态
 const isEditing = ref(false)
 const saving = ref(false)
-const sourceSelectorDisabled = ref(false) // 控制SourceSelector的disabled状态
+const sourceSelectorDisabled = ref(false) // 控制SourceSelector的启用状态
+
+// 按钮自适应：空间不足时折叠文字只留图标
+const headerActionsRef = ref<HTMLElement | null>(null)
+const detailHeaderRef = ref<HTMLElement | null>(null)
+const actionsCollapsed = ref(false)
+const fullButtonsWidth = ref(0)    // 挂载时测量的按钮全宽（含文字）
+const backBtnWidth = ref(0)        // 挂载时测量的返回按钮宽度
+const titleMinWidth = ref(0)       // 挂载时测量的标题最小宽度
+let actionsObserver: ResizeObserver | null = null
 const editForm = ref({
   subject_id: '',
   source_id: '',
@@ -1291,6 +1318,47 @@ onMounted(() => {
     }
   })
   fetchSubjects()
+
+  // 按钮自适应：测量参考宽度 → 观察网格容器总宽度 → 判断折叠/展开
+  // 关键在于 fullButtonsWidth 只在挂载时测量一次（此时按钮完整展开）
+  // 后续观察的是 .detail-header（网格容器），其总宽度不随折叠状态变化
+  nextTick(() => {
+    // 确保挂载完成、按钮以完整文字渲染后，测量参考宽度
+    if (headerActionsRef.value) {
+      fullButtonsWidth.value = headerActionsRef.value.scrollWidth
+    }
+    if (detailHeaderRef.value) {
+      const back = detailHeaderRef.value.querySelector('.back-btn')
+      if (back) backBtnWidth.value = (back as HTMLElement).offsetWidth
+      const title = detailHeaderRef.value.querySelector('h2')
+      if (title) titleMinWidth.value = (title as HTMLElement).scrollWidth
+    }
+
+    actionsObserver = new ResizeObserver(([entry]) => {
+      const totalWidth = entry.target.clientWidth
+      // 整体所需空间 = 返回按钮 + 按钮全宽 + 标题最小宽 + gap(8)×2
+      const totalNeeded = backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+
+      if (actionsCollapsed.value) {
+        // 已折叠：多 30px hysteresis 再展开
+        if (totalWidth >= totalNeeded + 30) {
+          actionsCollapsed.value = false
+        }
+      } else {
+        // 未折叠：空间不够容纳全部就折叠
+        if (totalWidth < totalNeeded - 2) {
+          actionsCollapsed.value = true
+        }
+      }
+    })
+    if (detailHeaderRef.value) {
+      actionsObserver.observe(detailHeaderRef.value)
+    }
+  })
+})
+
+onUnmounted(() => {
+  actionsObserver?.disconnect()
 })
 </script>
 
@@ -1315,15 +1383,29 @@ onMounted(() => {
 
 /* 顶部导航 */
 .detail-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
+  gap: 8px;
+}
+
+.detail-header h2 {
+  grid-column: 2;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
 }
 
 .back-btn {
+  grid-column: 1;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1362,24 +1444,52 @@ onMounted(() => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.detail-header h2 {
-  font-size: 20px;
-  margin: 0;
-  color: var(--text-primary);
-}
-
 .header-actions {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
 }
 
 .action-btn {
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.btn-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.btn-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 6px;
+}
+
+/* 空间不足时隐藏文字，只留图标 */
+.header-actions.collapsed .action-btn {
+  padding: 8px 6px;
+}
+
+.header-actions.collapsed .btn-label {
+  display: none;
 }
 
 .edit-btn {
@@ -1990,22 +2100,11 @@ onMounted(() => {
     padding-bottom: 100px;
   }
 
-  .detail-header {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 8px;
-  }
-
   .detail-header h2 {
     font-size: 18px;
-    text-align: center;
-    grid-column: 2;
   }
 
   .back-btn {
-    grid-column: 1;
-    justify-self: start;
     padding: 6px 10px;
     font-size: 13px;
   }
@@ -2016,14 +2115,11 @@ onMounted(() => {
   }
 
   .header-actions {
-    grid-column: 3;
-    justify-self: end;
-    display: flex;
     gap: 8px;
   }
 
   .action-btn {
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 13px;
   }
 

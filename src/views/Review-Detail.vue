@@ -82,23 +82,47 @@
             <span>基本对了</span>
             <span>完美记住</span>
           </div>
-          <div class="slider-track-wrapper">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.000000000001"
-              v-model.number="feedbackValue"
-              @touchend="submitReview"
-              @mouseup="submitReview"
-              class="gradient-slider"
-            />
-          </div>
-          <div class="slider-value">
-            反馈值: <strong>{{ feedbackValue.toFixed(2) }}</strong>
-            <span class="feedback-tag" :style="{ color: feedbackColor }">{{
-              feedbackLabel
-            }}</span>
+
+          <div class="slider-container">
+            <div
+              class="slider-wrapper"
+              @mouseenter="sScale = 1.08"
+              @mouseleave="sScale = 1; sOverflow = 0; sRegion = 'middle'"
+              @touchstart.passive="sScale = 1.08"
+              @touchend="sScale = 1; sOverflow = 0; sRegion = 'middle'; submitReview()"
+              :style="{ transform: `scale(${sScale})`, opacity: 0.7 + 0.3 * (sScale - 1) / 0.2 }"
+            >
+              <!-- 滑块轨道 -->
+              <div
+                ref="sliderRef"
+                class="slider-root"
+                @pointermove="onSliderMove"
+                @pointerdown="onSliderDown"
+                @pointerup="onSliderUp"
+                @pointercancel="onSliderUp"
+                @lostpointercapture="onSliderUp"
+              >
+                <div
+                  class="slider-track-fx"
+                  :style="{
+                    transform: `scaleX(${sTrackScaleX}) scaleY(${sTrackScaleY})`,
+                    transformOrigin: sTrackOrigin,
+                    height: sTrackHeight,
+                    transition: 'transform 0.05s linear, height 0.2s'
+                  }"
+                >
+                  <div class="slider-track-bg">
+                    <div class="slider-range" :style="{ width: sRangePercent + '%', background: sRangeColor }" />
+                  </div>
+                </div>
+              </div>
+
+              </div>
+
+            <div class="slider-value-row">
+              <span class="feedback-tag" :style="{ color: feedbackColor }">{{ feedbackLabel }}</span>
+              <span class="value-indicator">{{ Math.round(feedbackValue * 100) }}</span>
+            </div>
           </div>
         </div>
 
@@ -179,6 +203,108 @@ const feedbackValue = ref(0.5)
 const showDebug = ref(false)
 const submitting = ref(false)
 const lastResult = ref<ReviewOutput | null>(null)
+
+// ============ 滑动条交互状态 ============
+const MAX_OVERFLOW = 50
+const sliderRef = ref<HTMLElement | null>(null)
+const sRegion = ref<'left' | 'middle' | 'right'>('middle')
+const sOverflow = ref(0)
+const sScale = ref(1)
+// 缓存轨道尺寸，避免每次 move 都 getBoundingClientRect
+let _sliderLeft = 0
+let _sliderWidth = 1
+
+function sDecay(value: number, max: number) {
+  if (max === 0) return 0
+  const entry = value / max
+  const sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5)
+  return sigmoid * max
+}
+
+const sRangePercent = computed(() => feedbackValue.value * 100)
+
+function lerpColor(t: number): string {
+  if (t <= 0) return '#f44336'
+  if (t >= 1) return '#4caf50'
+  if (t < 0.33) {
+    const p = t / 0.33
+    const r = 244 + (255 - 244) * p
+    const g = 51 + (152 - 51) * p
+    const b = 54 + (7 - 54) * p
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+  } else if (t < 0.66) {
+    const p = (t - 0.33) / 0.33
+    const r = 255
+    const g = 152 + (193 - 152) * p
+    const b = 7
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+  } else {
+    const p = (t - 0.66) / 0.34
+    const r = 255 + (76 - 255) * p
+    const g = 193 + (175 - 193) * p
+    const b = 7 + (80 - 7) * p
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`
+  }
+}
+
+const sRangeColor = computed(() => lerpColor(feedbackValue.value))
+
+const sTrackScaleX = computed(() => {
+  return 1 + sOverflow.value / _sliderWidth
+})
+
+const sTrackScaleY = computed(() => {
+  return 1 - (sOverflow.value / MAX_OVERFLOW) * 0.2
+})
+
+const sTrackOrigin = computed(() => {
+  // 基于缓存的 left，不需要 getBoundingClientRect
+  return 'center'
+})
+
+const sTrackHeight = computed(() => {
+  const base = 14
+  const max = 20
+  const h = base + (max - base) * (sScale.value - 1) / 0.2
+  return h + 'px'
+})
+
+function onSliderDown(e: PointerEvent) {
+  // 缓存轨道尺寸，避免 move 时反复 reflow
+  const rect = sliderRef.value?.getBoundingClientRect()
+  if (rect) {
+    _sliderLeft = rect.left
+    _sliderWidth = rect.width
+  }
+  onSliderMove(e)
+  ;(e.currentTarget as HTMLElement)?.setPointerCapture(e.pointerId)
+}
+
+function onSliderMove(e: PointerEvent) {
+  if (e.buttons === 0) return
+  // 使用缓存的 left/width，不调用 getBoundingClientRect
+  let newVal = (e.clientX - _sliderLeft) / _sliderWidth
+  newVal = Math.min(Math.max(newVal, 0), 1)
+  feedbackValue.value = newVal
+  // 溢出计算
+  const rightEdge = _sliderLeft + _sliderWidth
+  if (e.clientX < _sliderLeft) {
+    sRegion.value = 'left'
+    sOverflow.value = sDecay(_sliderLeft - e.clientX, MAX_OVERFLOW)
+  } else if (e.clientX > rightEdge) {
+    sRegion.value = 'right'
+    sOverflow.value = sDecay(e.clientX - rightEdge, MAX_OVERFLOW)
+  } else {
+    sRegion.value = 'middle'
+    sOverflow.value = 0
+  }
+}
+
+function onSliderUp(_e: PointerEvent) {
+  sOverflow.value = 0
+  sRegion.value = 'middle'
+  submitReview()
+}
 
 // ============ Computed ============
 const currentCard = computed(() => queue[currentIndex.value] || null)
@@ -408,7 +534,7 @@ onMounted(() => {
 /* ===== Slider Section ===== */
 .slider-section {
   margin: 24px 0 16px;
-  padding: 16px;
+  padding: 20px 16px;
   background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -417,61 +543,91 @@ onMounted(() => {
 .slider-labels {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
   font-size: 11px;
   color: var(--text-secondary);
+  padding: 0 4px;
 }
 
-.slider-track-wrapper {
-  padding: 4px 0;
+/* ===== 新滑动条 ===== */
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.gradient-slider {
-  -webkit-appearance: none;
-  appearance: none;
+.slider-wrapper {
+  display: flex;
   width: 100%;
-  height: 10px;
-  border-radius: 5px;
-  outline: none;
-  background: linear-gradient(to right, #f44336, #ff9800, #ffc107, #4caf50);
-  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}.slider-root {
+  position: relative;
+  display: flex;
+  flex: 1;
+  max-width: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  align-items: center;
+  padding: 1.2rem 0;
 }
 
-.gradient-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: white;
-  border: 3px solid var(--primary-color);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-.gradient-slider::-webkit-slider-thumb:active {
-  transform: scale(1.15);
+.slider-root:active {
+  cursor: grabbing;
 }
 
-.gradient-slider::-moz-range-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: white;
-  border: 3px solid var(--primary-color);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
+.slider-track-fx {
+  display: flex;
+  flex: 1;
+  height: 14px;
+  will-change: transform;
 }
 
-.slider-value {
-  text-align: center;
-  margin-top: 12px;
-  font-size: 14px;
-  color: var(--text-primary);
+.slider-track-bg {
+  position: relative;
+  height: 100%;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--bg-tertiary);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+
+.slider-range {
+  position: absolute;
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.05s linear;
+}
+
+.slider-value-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .feedback-tag {
-  margin-left: 8px;
+  font-size: 13px;
   font-weight: 600;
+}
+
+.value-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===== SRS Debug ===== */
@@ -495,21 +651,22 @@ onMounted(() => {
 }
 .debug-body {
   padding: 10px 14px;
-  background: #1a1a2e;
-  font-family: 'Courier New', monospace;
+  background: var(--bg-secondary);
+  font-family: var(--font-family-mono);
   font-size: 12px;
 }
 .debug-row {
   display: flex;
   justify-content: space-between;
   padding: 3px 0;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }
 .debug-row span:first-child {
-  color: #7ec8e3;
+  color: var(--text-secondary);
 }
+
 .debug-row span:last-child {
-  color: #a8e6cf;
+  color: var(--primary-color);
   font-weight: 500;
 }
 
