@@ -341,8 +341,13 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .action-btn.primary {
@@ -352,6 +357,7 @@ onUnmounted(() => {
 
 .action-btn:active {
   transform: scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .action-btn.has-review {
@@ -411,13 +417,82 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   opacity: 0;
-  transition: all 0.5s cubic-bezier(0.34, 0.69, 0.1, 1);
+  transition: all 0.6s cubic-bezier(0.34, 0.69, 0.1, 1);
   pointer-events: none;
+  /* 非当前 slide：右侧预备 + 缩小 + 模糊（默认去向） */
+  transform: translateX(40px) scale(0.92);
+  filter: brightness(0.6) blur(3px);
 }
 
+/* 当前 slide：居中完全可见 */
 .arco-carousel-item.arco-carousel-item-current {
   opacity: 1;
   pointer-events: auto;
+  transform: translateX(0) scale(1);
+  filter: brightness(1) blur(0);
+}
+
+/* 下一张（右侧预备进入） */
+.arco-carousel-item.arco-carousel-item-next {
+  transform: translateX(40px) scale(0.92);
+  opacity: 0;
+  filter: brightness(0.6) blur(3px);
+}
+
+/* 上一张（左侧预备进入） */
+.arco-carousel-item.arco-carousel-item-prev {
+  transform: translateX(-40px) scale(0.92);
+  opacity: 0;
+  filter: brightness(0.6) blur(3px);
+}
+
+/* ===== 光影效果：移动光斑 ===== */
+.arco-carousel-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 30% 0%, rgba(255,255,255,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 70% 100%, rgba(255,255,255,0.08) 0%, transparent 50%);
+  animation: lightOrbit 5s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.6s ease;
+}
+
+@keyframes lightOrbit {
+  0% {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255,255,255,0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(255,255,255,0.06) 0%, transparent 50%);
+  }
+  50% {
+    background:
+      radial-gradient(ellipse 80% 60% at 70% 5%, rgba(255,255,255,0.14) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 30% 95%, rgba(255,255,255,0.12) 0%, transparent 50%);
+  }
+  100% {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 15%, rgba(255,255,255,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 60% 85%, rgba(255,255,255,0.08) 0%, transparent 50%);
+  }
+}
+
+/* ===== 光影效果：边缘辉光呼吸 ===== */
+.arco-carousel-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 0 30px rgba(255,255,255,0.04);
+  animation: edgeGlow 3s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes edgeGlow {
+  0%   { box-shadow: inset 0 0 20px rgba(255,255,255,0.02); }
+  100% { box-shadow: inset 0 0 50px rgba(255,255,255,0.08); }
 }
 
 /* Swiper Pagination */
@@ -437,11 +512,18 @@ onUnmounted(() => {
   height: 36px;
   background: url('../assets/carousel-indicator-inactive.png') no-repeat center;
   background-size: 100%;
-  transition: all 0.5s;
+  transition: all 0.5s cubic-bezier(0.34, 0.69, 0.1, 1);
   opacity: 0.5;
   transform: scale(0.85);
   border: none;
   outline: none;
+  cursor: pointer;
+  filter: grayscale(0.3);
+}
+
+.swiper-pagination-bullet:hover {
+  opacity: 0.8;
+  transform: scale(0.95);
 }
 
 .swiper-pagination-bullet-active {
@@ -449,6 +531,17 @@ onUnmounted(() => {
   background-size: 100%;
   opacity: 1;
   transform: scale(1);
+  filter: grayscale(0);
+  animation: indicatorPulse 2s ease-in-out infinite;
+}
+
+@keyframes indicatorPulse {
+  0%, 100% {
+    filter: grayscale(0) drop-shadow(0 0 4px rgba(255,255,255,0.3));
+  }
+  50% {
+    filter: grayscale(0) drop-shadow(0 0 10px rgba(255,255,255,0.6));
+  }
 }
 
 .arco-carousel-arrow {
@@ -465,21 +558,50 @@ onUnmounted(() => {
 
 .arco-carousel-arrow-left,
 .arco-carousel-arrow-right {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s cubic-bezier(0.34, 0.69, 0.1, 1);
   color: white;
+  backdrop-filter: blur(4px);
+  position: relative;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+}
+
+.arco-carousel-arrow-left::after,
+.arco-carousel-arrow-right::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 0.69, 0.1, 1);
+  transform: scale(0.8);
 }
 
 .arco-carousel-arrow-left:hover,
 .arco-carousel-arrow-right:hover {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+}
+
+.arco-carousel-arrow-left:hover::after,
+.arco-carousel-arrow-right:hover::after {
+  opacity: 1;
+  transform: scale(1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.arco-carousel-arrow-left:active,
+.arco-carousel-arrow-right:active {
+  transform: scale(0.95);
 }
 
 .arco-icon {

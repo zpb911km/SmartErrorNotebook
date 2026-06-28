@@ -67,7 +67,11 @@ onMounted(() => {
       class="main-content"
       :class="{ 'with-top-bar': showTopBar, 'with-bottom-nav': showBottomNav }"
     >
-      <router-view />
+      <router-view v-slot="{ Component, route: r }">
+        <transition name="page-fade" mode="out-in">
+          <component :is="Component" :key="r.path" />
+        </transition>
+      </router-view>
     </main>
     <BottomNav v-if="showBottomNav" />
     <Notification />

@@ -29,7 +29,7 @@
         <div class="overview-card">
           <Icon name="chart-column" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value">{{ overview.total }}</div>
+            <div class="card-value">{{ animatedTotal }}</div>
             <div class="card-label">总题目数</div>
           </div>
         </div>
@@ -40,21 +40,21 @@
         >
           <Icon name="alarm-clock" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value due">{{ overview.dueCount }}</div>
+            <div class="card-value due">{{ animatedDue }}</div>
             <div class="card-label">待复习</div>
           </div>
         </div>
         <div class="overview-card">
           <Icon name="brain" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value memory">{{ overview.currentMemory }}</div>
+            <div class="card-value memory">{{ animatedMemory }}</div>
             <div class="card-label">目前记忆</div>
           </div>
         </div>
         <div class="overview-card">
           <Icon name="sparkles" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value new">{{ overview.newCards }}</div>
+            <div class="card-value new">{{ animatedNewCards }}</div>
             <div class="card-label">新卡片数</div>
           </div>
         </div>
@@ -796,6 +796,7 @@ import {
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
 import type { Subject, Source, ErrorTags } from '../types'
+import { useCountUp } from '../composables/useCountUp'
 
 // ==================== 状态 ====================
 const loading = ref(true)
@@ -925,6 +926,17 @@ const overview = computed(() => ({
   currentMemory: Math.max(0, questionTotal.value - dueCount.value),
   newCards: srsStats.value.new_cards
 }))
+
+// 数字滚动计数
+const totalRef = computed(() => overview.value.total)
+const dueRef = computed(() => overview.value.dueCount)
+const memoryRef = computed(() => overview.value.currentMemory)
+const newCardsRef = computed(() => overview.value.newCards)
+
+const { displayValue: animatedTotal } = useCountUp(totalRef)
+const { displayValue: animatedDue } = useCountUp(dueRef)
+const { displayValue: animatedMemory } = useCountUp(memoryRef)
+const { displayValue: animatedNewCards } = useCountUp(newCardsRef)
 
 // ==================== 科目 × 难度热力图 ====================
 
@@ -2584,12 +2596,18 @@ async function executeDeleteTag() {
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .overview-card:active {
   transform: scale(0.97);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .card-icon {
@@ -2630,7 +2648,13 @@ async function executeDeleteTag() {
   border-radius: 8px;
   padding: 12px 8px;
   text-align: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .stat-label {
