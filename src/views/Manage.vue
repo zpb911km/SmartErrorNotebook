@@ -315,8 +315,9 @@
 
     <div class="error-list">
       <div
-        v-for="error in filteredErrors"
+        v-for="(error, index) in filteredErrors"
         :key="error.id"
+        v-scroll-reveal="{ delay: index * 80 }"
         class="error-card"
         @click="viewError(error)"
       >
@@ -370,9 +371,10 @@
       </div>
     </div>
 
-    <div v-if="filteredErrors.length === 0" class="empty-state">
-      <div class="empty-icon">📭</div>
-      <p>暂无错题</p>
+    <div v-if="filteredErrors.length === 0" class="empty-illustration">
+      <div class="empty-icon"></div>
+      <div class="empty-title">暂无错题</div>
+      <div class="empty-desc">添加你的第一道错题，开始高效复习吧</div>
     </div>
   </div>
 </template>

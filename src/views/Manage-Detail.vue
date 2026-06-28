@@ -22,7 +22,7 @@
       <div class="header-actions" ref="headerActionsRef" :class="{ collapsed: actionsCollapsed }">
         <button
           v-if="shareCheckDone && isShared && !isEditing"
-          class="action-btn share-btn shared"
+          class="action-btn share-btn shared glare-btn"
           :disabled="shareLoading"
           @click="handleRevokeShare"
         >
@@ -35,7 +35,7 @@
         </button>
         <button
           v-if="shareCheckDone && !isShared && serverConfigured && !isEditing"
-          class="action-btn share-btn"
+          class="action-btn share-btn glare-btn"
           :disabled="shareLoading"
           @click="handleShare"
         >
@@ -46,14 +46,14 @@
           </svg>
           <span class="btn-label">{{ shareLoading ? '...' : '分享到社区' }}</span>
         </button>
-        <button class="action-btn edit-btn" @click="toggleEditMode">
+        <button class="action-btn edit-btn glare-btn" @click="toggleEditMode">
           <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
           <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
         </button>
-        <button class="action-btn delete-btn" @click="confirmDelete">
+        <button class="action-btn delete-btn glare-btn" @click="confirmDelete">
           <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -377,7 +377,7 @@
 
     <!-- 保存按钮 -->
     <div v-if="isEditing" class="save-bar">
-      <button class="save-btn" @click="saveChanges" :disabled="saving">
+      <button class="save-btn glare-btn" @click="saveChanges" :disabled="saving">
         {{ saving ? '保存中...' : '保存修改' }}
       </button>
     </div>
@@ -1312,47 +1312,55 @@ const deleteTempImage = (image: any) => {
 
 onMounted(() => {
   serverConfigured.value = checkServerConfig()
-  fetchErrorDetail().then(() => {
-    if (serverConfigured.value) {
-      checkShareStatus()
-    }
-  })
   fetchSubjects()
 
-  // 按钮自适应：测量参考宽度 → 观察网格容器总宽度 → 判断折叠/展开
-  // 关键在于 fullButtonsWidth 只在挂载时测量一次（此时按钮完整展开）
-  // 后续观察的是 .detail-header（网格容器），其总宽度不随折叠状态变化
-  nextTick(() => {
-    // 确保挂载完成、按钮以完整文字渲染后，测量参考宽度
-    if (headerActionsRef.value) {
-      fullButtonsWidth.value = headerActionsRef.value.scrollWidth
-    }
-    if (detailHeaderRef.value) {
-      const back = detailHeaderRef.value.querySelector('.back-btn')
-      if (back) backBtnWidth.value = (back as HTMLElement).offsetWidth
-      const title = detailHeaderRef.value.querySelector('h2')
-      if (title) titleMinWidth.value = (title as HTMLElement).scrollWidth
-    }
+  // 按钮自适应：等数据加载完成（分享按钮 v-if 依赖 shareCheckDone），再测量+启动观察
+  const setupAdaptive = () => {
+    nextTick(() => {
+      if (headerActionsRef.value) {
+        fullButtonsWidth.value = headerActionsRef.value.scrollWidth
+      }
+      if (detailHeaderRef.value) {
+        const back = detailHeaderRef.value.querySelector('.back-btn')
+        if (back) backBtnWidth.value = (back as HTMLElement).offsetWidth
+        const title = detailHeaderRef.value.querySelector('h2')
+        if (title) titleMinWidth.value = (title as HTMLElement).scrollWidth
+      }
 
-    actionsObserver = new ResizeObserver(([entry]) => {
-      const totalWidth = entry.target.clientWidth
-      // 整体所需空间 = 返回按钮 + 按钮全宽 + 标题最小宽 + gap(8)×2
-      const totalNeeded = backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+      actionsObserver = new ResizeObserver(([entry]) => {
+        const totalWidth = entry.target.clientWidth
+        const totalNeeded = backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
 
-      if (actionsCollapsed.value) {
-        // 已折叠：多 30px hysteresis 再展开
-        if (totalWidth >= totalNeeded + 30) {
-          actionsCollapsed.value = false
+        if (actionsCollapsed.value) {
+          if (totalWidth >= totalNeeded + 30) {
+            actionsCollapsed.value = false
+          }
+        } else {
+          if (totalWidth < totalNeeded - 2) {
+            actionsCollapsed.value = true
+          }
         }
-      } else {
-        // 未折叠：空间不够容纳全部就折叠
-        if (totalWidth < totalNeeded - 2) {
+      })
+      if (detailHeaderRef.value) {
+        actionsObserver.observe(detailHeaderRef.value)
+        // 初始检测：页面加载完立即判断，不等 resize
+        const initWidth = detailHeaderRef.value.clientWidth
+        const initNeeded = backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+        if (initWidth < initNeeded - 2) {
           actionsCollapsed.value = true
         }
       }
     })
-    if (detailHeaderRef.value) {
-      actionsObserver.observe(detailHeaderRef.value)
+  }
+
+  // 等异步数据全部到位后再测量
+  fetchErrorDetail().then(() => {
+    if (serverConfigured.value) {
+      checkShareStatus().finally(() => {
+        setupAdaptive()
+      })
+    } else {
+      setupAdaptive()
     }
   })
 })
@@ -1858,8 +1866,11 @@ onUnmounted(() => {
 }
 
 .no-tags {
-  color: var(--text-secondary);
-  font-size: 14px;
+  color: var(--text-disabled);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+  display: block;
 }
 
 .tags-edit {
@@ -1869,13 +1880,14 @@ onUnmounted(() => {
 /* SRS 统计 */
 .no-srs-data {
   text-align: center;
-  padding: 20px;
-  color: var(--text-secondary);
+  padding: 24px;
 }
 
 .no-srs-data p {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
+  color: var(--text-disabled);
+  font-style: italic;
 }
 
 .srs-stats {
@@ -2076,12 +2088,21 @@ onUnmounted(() => {
   bottom: 60px;
   left: 0;
   right: 0;
-  background: var(--card-bg);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   padding: 16px 20px;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: center;
   z-index: 1001;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 暗色主题适配 */
+body.dark-theme .save-bar {
+  background: rgba(47, 47, 47, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .save-btn {

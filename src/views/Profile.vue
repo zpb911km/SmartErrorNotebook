@@ -26,7 +26,7 @@
     <template v-else>
       <!-- 概览卡片 -->
       <div class="overview-cards">
-        <div class="overview-card">
+        <div v-scroll-reveal="{ delay: 0 }" class="overview-card">
           <Icon name="chart-column" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value">{{ animatedTotal }}</div>
@@ -34,6 +34,7 @@
           </div>
         </div>
         <div
+          v-scroll-reveal="{ delay: 80 }"
           class="overview-card"
           @click="$router.push('/review')"
           style="cursor: pointer"
@@ -44,14 +45,14 @@
             <div class="card-label">待复习</div>
           </div>
         </div>
-        <div class="overview-card">
+        <div v-scroll-reveal="{ delay: 160 }" class="overview-card">
           <Icon name="brain" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value memory">{{ animatedMemory }}</div>
             <div class="card-label">目前记忆</div>
           </div>
         </div>
-        <div class="overview-card">
+        <div v-scroll-reveal="{ delay: 240 }" class="overview-card">
           <Icon name="sparkles" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value new">{{ animatedNewCards }}</div>
@@ -62,21 +63,21 @@
 
       <!-- SRS 详细指标 -->
       <div class="stats-row">
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 100 }" class="stat-item">
           <div class="stat-label">平均稳定性</div>
           <div class="stat-value">
             {{ srsStats.avg_stability.toFixed(1) }} 天
           </div>
         </div>
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 180 }" class="stat-item">
           <div class="stat-label">平均难度</div>
           <div class="stat-value">{{ srsStats.avg_difficulty.toFixed(2) }}</div>
         </div>
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 260 }" class="stat-item">
           <div class="stat-label">累计复习</div>
           <div class="stat-value">{{ srsStats.total_reviews }} 次</div>
         </div>
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 340 }" class="stat-item">
           <div class="stat-label">SRS 卡片</div>
           <div class="stat-value">{{ srsStats.total }}</div>
         </div>

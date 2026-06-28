@@ -199,9 +199,10 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-if="allFiltered.length === 0" class="empty-state">
-      <div class="empty-icon">📭</div>
-      <p>没有符合条件的错题</p>
+    <div v-if="allFiltered.length === 0" class="empty-illustration">
+      <div class="empty-icon"></div>
+      <div class="empty-title">没有符合条件的错题</div>
+      <div class="empty-desc">调整筛选条件，或添加更多错题吧</div>
     </div>
 
     <!-- FAB -->

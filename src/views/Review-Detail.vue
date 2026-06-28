@@ -173,9 +173,11 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else class="empty-state">
-      <p>没有待复习的题目</p>
-      <button class="btn-back" @click="exitReview">返回</button>
+    <div v-else class="empty-illustration">
+      <div class="empty-icon"></div>
+      <div class="empty-title">没有待复习的题目</div>
+      <div class="empty-desc">所有错题都已复习完毕，做得很棒！</div>
+      <button class="btn-back" @click="exitReview" style="margin-top: 16px;">返回</button>
     </div>
 
     <!-- 提交中遮罩 -->

@@ -34,16 +34,18 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="items.length === 0" class="state-box">
-      <p>暂无分享的错题</p>
-      <p class="hint-text">还没有人分享错题，快来分享第一道吧！</p>
+    <div v-else-if="items.length === 0" class="empty-illustration">
+      <div class="empty-icon is-share"></div>
+      <div class="empty-title">暂无分享的错题</div>
+      <div class="empty-desc">还没有人分享错题，快来分享第一道吧！</div>
     </div>
 
     <!-- 分享列表 -->
     <div v-else class="community-list">
       <div
-        v-for="item in items"
+        v-for="(item, index) in items"
         :key="item.id"
+        v-scroll-reveal="{ delay: index * 80 }"
         class="share-card"
       >
         <!-- 题目预览 -->
