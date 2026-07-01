@@ -6,7 +6,7 @@
         <input
           type="text"
           v-model="filters.keyword"
-          placeholder="搜索题干..."
+          placeholder="搜索题干、科目、书名、知识点...（模糊搜索）"
           @focus="onSearchFocus"
         />
       </div>
