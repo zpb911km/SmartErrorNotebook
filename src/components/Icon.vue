@@ -38,7 +38,9 @@ import {
   Folder,
   SquarePen,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  Download,
+  Upload
 } from 'lucide-vue-next'
 
 const iconMap: Record<string, any> = {
@@ -74,7 +76,9 @@ const iconMap: Record<string, any> = {
   folder: Folder,
   'square-pen': SquarePen,
   'arrow-left': ArrowLeft,
-  'refresh-cw': RefreshCw
+  'refresh-cw': RefreshCw,
+  download: Download,
+  upload: Upload
 }
 
 const props = withDefaults(

@@ -1,16 +1,15 @@
 // 错题相关命令
 
 use crate::AppState;
-use crate::database::entities::srs_data;
+use crate::database::entities::{error_question, error_tag, srs_data};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, Set,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, Set,
 };
 use tauri::State;
 use uuid::Uuid;
 
 use crate::database::entities::{
-    error_question,
     prelude::{ErrorQuestion, Subject},
 };
 
@@ -68,6 +67,9 @@ pub struct QuestionFilter {
     pub search: Option<String>,
     pub limit: Option<u64>,
     pub offset: Option<u64>,
+    pub tag_ids: Option<Vec<String>>,
+    pub date_from: Option<i64>,
+    pub date_to: Option<i64>,
 }
 
 /// 获取所有错题
@@ -95,6 +97,30 @@ pub async fn get_questions(
                 .or(error_question::Column::Analysis.like(&pattern))
                 .or(error_question::Column::ErrorNote.like(&pattern)),
         );
+    }
+
+    // 按标签 ID 筛选（先查 error_tags 表获取匹配的 question_id）
+    if let Some(tag_ids) = filter.tag_ids {
+        if !tag_ids.is_empty() {
+            let question_ids: Vec<String> = error_tag::Entity::find()
+                .select_only()
+                .column(error_tag::Column::QuestionId)
+                .filter(error_tag::Column::Id.is_in(tag_ids.clone()))
+                .filter(error_tag::Column::DeletedAt.is_null())
+                .into_tuple()
+                .all(db)
+                .await
+                .map_err(|e| e.to_string())?;
+            query = query.filter(error_question::Column::Id.is_in(question_ids));
+        }
+    }
+
+    // 时间范围筛选
+    if let Some(date_from) = filter.date_from {
+        query = query.filter(error_question::Column::UpdatedAt.gte(date_from));
+    }
+    if let Some(date_to) = filter.date_to {
+        query = query.filter(error_question::Column::UpdatedAt.lte(date_to));
     }
 
     // 排序

@@ -52,6 +52,25 @@
         </div>
       </div>
 
+      <!-- 导出设置 -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <Icon name="file-text" :size="22" class="setting-icon" />
+          <div class="setting-name">HTML 导出包含答案和解析</div>
+        </div>
+        <div class="setting-action">
+          <div class="toggle-switch">
+            <input
+              type="checkbox"
+              v-model="exportIncludeAnswer"
+              id="exportAnswerToggle"
+              @change="handleExportAnswerToggle"
+            />
+            <label for="exportAnswerToggle" class="toggle-label"></label>
+          </div>
+        </div>
+      </div>
+
       <!-- LLM 测试 -->
       <div class="setting-item">
         <div class="setting-info">
@@ -247,6 +266,12 @@ const aiEnabled = ref(false)
 
 // LLM 配置对话框
 const showLLMConfig = ref(false)
+
+// 导出设置
+const exportIncludeAnswer = ref(localStorage.getItem('export_include_answer') === 'true')
+const handleExportAnswerToggle = () => {
+  localStorage.setItem('export_include_answer', String(exportIncludeAnswer.value))
+}
 const llmConfig = ref({
   baseUrl: '',
   apiKey: '',

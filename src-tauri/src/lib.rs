@@ -16,6 +16,7 @@ pub struct AppState {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // 初始化数据库
             let db = tauri::async_runtime::block_on(async {
@@ -100,6 +101,8 @@ pub fn run() {
             commands::get_source,
             commands::get_or_create_source_id,
             commands::upsert_source,
+            // Export
+            commands::write_pdf_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

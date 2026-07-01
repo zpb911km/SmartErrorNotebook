@@ -1,75 +1,45 @@
 <template>
   <div class="manage-page">
-    <!-- 搜索栏 - 第一行 -->
+    <!-- 搜索栏 -->
     <div class="search-bar">
       <div class="search-box" :class="{ blinking: isSearchBlinking }">
         <input
           type="text"
           v-model="filters.keyword"
-          placeholder="搜索错题、科目、书名、知识点、标签..."
+          placeholder="搜索题干..."
           @focus="onSearchFocus"
-          @click="onSearchFocus"
         />
       </div>
     </div>
 
-    <!-- 筛选栏 - 第二行 -->
+    <!-- 筛选栏 -->
     <div class="filter-bar">
-      <!-- 科目筛选 - 向右展开的级联菜单 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': subjectDropdownVisible || cascadeVisible }"
-      >
-        <!-- 自定义下拉框 -->
+      <!-- 科目级联菜单 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': subjectDropdownVisible || cascadeVisible }">
         <div class="custom-select" @click="toggleSubjectDropdown">
-          <div class="custom-select-value">
-            {{ selectedSubjectName || '全部科目' }}
-          </div>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: subjectDropdownVisible }"
-            >▼</span
-          >
+          <span class="custom-select-value">{{ selectedSubjectName || '选择科目' }}</span>
+          <span class="custom-select-arrow" :class="{ rotated: subjectDropdownVisible || cascadeVisible }">▼</span>
         </div>
-
-        <!-- 向下展开的级联窗口 -->
-        <div
-          v-if="subjectDropdownVisible || cascadeVisible"
-          class="cascade-popup"
-        >
-          <!-- 关闭按钮 -->
-          <button
-            class="cascade-close-btn"
-            @click="closeCascadeWindow"
-            title="关闭"
-          >
-            <Icon name="x" :size="16" />
-          </button>
-
-          <!-- 科目列 -->
+        <!-- 级联弹窗 -->
+        <div v-if="cascadeVisible" class="cascade-popup" @mouseenter="clearHideTimer" @mouseleave="hideAllMenus">
           <div class="cascade-column">
             <div class="column-title">科目</div>
-            <div class="column-items">
+            <div class="cascade-items">
               <div
-                v-for="subject in subjects"
-                :key="subject.id"
+                v-for="subj in subjects"
+                :key="subj.id"
                 class="cascade-item"
-                :class="{ active: filters.subject_id === subject.id }"
-                @click="handleSubjectClick(subject.id)"
+                :class="{ active: filters.subject_id === subj.id }"
+                @click="handleSubjectClick(subj.id)"
               >
-                {{ subject.name }}
-                <span class="arrow-indicator">›</span>
+                {{ subj.name }}
+                <span v-if="booksOf(subj.id).length" class="arrow-indicator">›</span>
               </div>
             </div>
           </div>
-
-          <!-- 书名列 -->
-          <div
-            v-if="currentSubjectId && books.length > 0"
-            class="cascade-column"
-          >
+          <div v-if="currentSubjectId && books.length" class="cascade-column">
             <div class="column-title">书名</div>
-            <div class="column-items">
+            <div class="cascade-items">
               <div
                 v-for="book in books"
                 :key="book"
@@ -78,72 +48,50 @@
                 @click="handleBookClick(book)"
               >
                 {{ book || '未分类' }}
-                <span class="arrow-indicator">›</span>
+                <span v-if="chaptersOf(book).length" class="arrow-indicator">›</span>
               </div>
             </div>
           </div>
-
-          <!-- 章节列 -->
-          <div v-if="currentBook && chapters.length > 0" class="cascade-column">
+          <div v-if="currentBook && chapters.length" class="cascade-column">
             <div class="column-title">章节</div>
-            <div class="column-items">
+            <div class="cascade-items">
               <div
-                v-for="chapter in chapters"
-                :key="chapter"
+                v-for="ch in chapters"
+                :key="ch"
                 class="cascade-item"
-                :class="{ active: filters.chapter === chapter }"
-                @click="handleChapterClick(chapter)"
+                :class="{ active: filters.chapter === ch }"
+                @click="handleChapterClick(ch)"
               >
-                {{ chapter || '未分类' }}
-                <span class="arrow-indicator">›</span>
+                {{ ch || '未分类' }}
+                <span v-if="knowledges.length" class="arrow-indicator">›</span>
               </div>
             </div>
           </div>
-
-          <!-- 知识点列 -->
-          <div
-            v-if="currentChapter && knowledges.length > 0"
-            class="cascade-column"
-          >
+          <div v-if="currentChapter && knowledges.length" class="cascade-column">
             <div class="column-title">知识点</div>
-            <div class="column-items">
+            <div class="cascade-items">
               <div
-                v-for="knowledge in knowledges"
-                :key="knowledge"
+                v-for="kw in knowledges"
+                :key="kw"
                 class="cascade-item"
-                :class="{ active: filters.knowledge === knowledge }"
-                @click="selectKnowledge(knowledge)"
+                :class="{ active: filters.knowledge === kw }"
+                @click="selectKnowledge(kw)"
               >
-                {{ knowledge || '未分类' }}
+                {{ kw || '未分类' }}
               </div>
             </div>
           </div>
+          <button class="cascade-close-btn" @click="closeCascadeWindow">×</button>
         </div>
       </div>
-      <!-- 标签筛选 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': tagDropdownVisible }"
-      >
-        <div class="custom-select" @click="toggleTagDropdown">
-          <div class="custom-select-value">
-            {{ selectedTagsText || '全部标签' }}
-          </div>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: tagDropdownVisible }"
-            >▼</span
-          >
-        </div>
 
+      <!-- 标签下拉 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': tagDropdownVisible }">
+        <div class="custom-select" @click="toggleTagDropdown">
+          <span class="custom-select-value">{{ selectedTagsText || '选择标签' }}</span>
+          <span class="custom-select-arrow" :class="{ rotated: tagDropdownVisible }">▼</span>
+        </div>
         <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.tags.length === 0 }"
-            @click="clearTags"
-          >
-            全部标签
-          </div>
           <div
             v-for="tag in availableTags"
             :key="tag"
@@ -151,150 +99,66 @@
             :class="{ active: filters.tags.includes(tag) }"
             @click="toggleTag(tag)"
           >
-            <span class="checkbox">{{
-              filters.tags.includes(tag) ? '✓' : ''
-            }}</span>
+            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
             {{ tag }}
+          </div>
+          <div v-if="filters.tags.length > 0" class="dropdown-item" style="border-top:1px solid var(--border-color);color:var(--primary-color);font-weight:500;" @click="clearTags">
+            清除选择
           </div>
         </div>
       </div>
-      <!-- 难度排序 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': difficultyDropdownVisible }"
-      >
-        <div class="custom-select" @click="toggleDifficultyDropdown">
-          <div class="custom-select-value">
-            难度排序
-            <span v-if="difficultySort !== 'none'" class="sort-indicator">{{
-              difficultySort === 'desc' ? '↓' : '↑'
-            }}</span>
-          </div>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: difficultyDropdownVisible }"
-            >▼</span
-          >
-        </div>
 
+      <!-- 难度排序 -->
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': difficultyDropdownVisible }">
+        <div class="custom-select" @click="toggleDifficultyDropdown">
+          <span class="custom-select-value">{{ difficultySort === 'none' ? '难度排序' : difficultySort === 'asc' ? '难度 ↑' : '难度 ↓' }}</span>
+          <span class="custom-select-arrow" :class="{ rotated: difficultyDropdownVisible }">▼</span>
+        </div>
         <div v-if="difficultyDropdownVisible" class="dropdown-popup">
-          <!-- 排序选项 - 竖向排列 -->
-          <div
-            class="dropdown-item"
-            :class="{ active: difficultySort === 'none' }"
-            @click="setDifficultySort('none')"
-          >
-            无排序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: difficultySort === 'asc' }"
-            @click="setDifficultySort('asc')"
-          >
-            ↑ 正序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: difficultySort === 'desc' }"
-            @click="setDifficultySort('desc')"
-          >
-            ↓ 倒序
-          </div>
+          <div class="dropdown-item" :class="{ active: difficultySort === 'none' }" @click="setDifficultySort('none')">无排序</div>
+          <div class="dropdown-item" :class="{ active: difficultySort === 'asc' }" @click="setDifficultySort('asc')">↑ 正序</div>
+          <div class="dropdown-item" :class="{ active: difficultySort === 'desc' }" @click="setDifficultySort('desc')">↓ 倒序</div>
         </div>
       </div>
 
       <!-- 掌握程度排序 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': masteryDropdownVisible }"
-      >
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': masteryDropdownVisible }">
         <div class="custom-select" @click="toggleMasteryDropdown">
-          <div class="custom-select-value">
-            掌握程度排序
-            <span v-if="masterySort !== 'none'" class="sort-indicator">{{
-              masterySort === 'desc' ? '↓' : '↑'
-            }}</span>
-          </div>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: masteryDropdownVisible }"
-            >▼</span
-          >
+          <span class="custom-select-value">{{ masterySort === 'none' ? '掌握程度' : masterySort === 'asc' ? '掌握 ↑' : '掌握 ↓' }}</span>
+          <span class="custom-select-arrow" :class="{ rotated: masteryDropdownVisible }">▼</span>
         </div>
-
         <div v-if="masteryDropdownVisible" class="dropdown-popup">
-          <!-- 排序选项 - 竖向排列 -->
-          <div
-            class="dropdown-item"
-            :class="{ active: masterySort === 'none' }"
-            @click="setMasterySort('none')"
-          >
-            无排序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: masterySort === 'asc' }"
-            @click="setMasterySort('asc')"
-          >
-            ↑ 正序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: masterySort === 'desc' }"
-            @click="setMasterySort('desc')"
-          >
-            ↓ 倒序
-          </div>
+          <div class="dropdown-item" :class="{ active: masterySort === 'none' }" @click="setMasterySort('none')">无排序</div>
+          <div class="dropdown-item" :class="{ active: masterySort === 'asc' }" @click="setMasterySort('asc')">↑ 正序</div>
+          <div class="dropdown-item" :class="{ active: masterySort === 'desc' }" @click="setMasterySort('desc')">↓ 倒序</div>
         </div>
       </div>
 
       <!-- 时间范围筛选 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': dateRangeDropdownVisible }"
-      >
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': dateRangeDropdownVisible }">
         <div class="custom-select" @click="toggleDateRangeDropdown">
-          <div class="custom-select-value">
-            {{ dateRangeText || '全部时间' }}
-          </div>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: dateRangeDropdownVisible }"
-            >▼</span
-          >
+          <span class="custom-select-value">{{ dateRangeText || '时间范围' }}</span>
+          <span class="custom-select-arrow" :class="{ rotated: dateRangeDropdownVisible }">▼</span>
         </div>
-
         <div v-if="dateRangeDropdownVisible" class="dropdown-popup">
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === 'all' }"
-            @click="selectDateRange('all')"
-          >
-            全部时间
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === '7days' }"
-            @click="selectDateRange('7days')"
-          >
-            最近7天
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === '30days' }"
-            @click="selectDateRange('30days')"
-          >
-            最近30天
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === '90days' }"
-            @click="selectDateRange('90days')"
-          >
-            最近90天
-          </div>
+          <div class="dropdown-item" :class="{ active: filters.date_range === 'all' }" @click="selectDateRange('all')">全部时间</div>
+          <div class="dropdown-item" :class="{ active: filters.date_range === '7days' }" @click="selectDateRange('7days')">最近7天</div>
+          <div class="dropdown-item" :class="{ active: filters.date_range === '30days' }" @click="selectDateRange('30days')">最近30天</div>
+          <div class="dropdown-item" :class="{ active: filters.date_range === '90days' }" @click="selectDateRange('90days')">最近90天</div>
         </div>
       </div>
+    </div>
+
+    <!-- 操作栏：导入/导出 -->
+    <div class="action-bar">
+      <button class="action-btn import-btn" @click="showImportModal = true">
+        <Icon name="plus" :size="16" />
+        <span>导入</span>
+      </button>
+      <button class="action-btn export-btn" @click="showExportModal = true">
+        <Icon name="file-text" :size="16" />
+        <span>导出</span>
+      </button>
     </div>
 
     <!-- 已选筛选条件 -->
@@ -376,6 +240,20 @@
       <div class="empty-title">暂无错题</div>
       <div class="empty-desc">添加你的第一道错题，开始高效复习吧</div>
     </div>
+
+    <!-- 导出弹窗 -->
+    <ExportModal
+      v-if="showExportModal"
+      :questions="filteredErrors as any"
+      @close="showExportModal = false"
+    />
+
+    <!-- 导入弹窗 -->
+    <ImportModal
+      v-if="showImportModal"
+      @close="showImportModal = false"
+      @import-complete="handleImportComplete"
+    />
   </div>
 </template>
 
@@ -392,6 +270,8 @@ import {
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
 import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
+import ExportModal from '../components/ExportModal.vue'
+import ImportModal from '../components/ImportModal.vue'
 import type { Subject } from '../types'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -469,6 +349,15 @@ const srsDataMap = ref<Map<string, any>>(new Map())
 const difficultySort = ref<'asc' | 'desc' | 'none'>('none')
 const masterySort = ref<'asc' | 'desc' | 'none'>('none')
 
+// 导入/导出弹窗状态
+const showExportModal = ref(false)
+const showImportModal = ref(false)
+
+// 导入完成后刷新数据
+const handleImportComplete = () => {
+  fetchData()
+}
+
 // 计算选中的科目名称
 const selectedSubjectName = computed(() => {
   if (!filters.value.subject_id) return ''
@@ -486,6 +375,35 @@ const dateRangeText = computed(() => {
   }
   return dateRangeMap[filters.value.date_range] || ''
 })
+
+/** 从已有数据中提取某科目所有的书 */
+const booksOf = (subjectId: string): string[] => {
+  const sourceIds = errors.value
+    .filter((q: any) => q.subjectid === subjectId && q.sourceid)
+    .map((q: any) => q.sourceid)
+  const names = new Set<string>()
+  for (const sid of sourceIds) {
+    const info = sourceInfoMap.value.get(sid)
+    if (info?.book) names.add(info.book)
+  }
+  return [...names]
+}
+
+/** 从已有数据中提取某书名下所有章节 */
+const chaptersOf = (book: string): string[] => {
+  const sourceIds = errors.value
+    .filter((q: any) => {
+      const info = sourceInfoMap.value.get(q.sourceid)
+      return info?.book === book
+    })
+    .map((q: any) => q.sourceid)
+  const names = new Set<string>()
+  for (const sid of sourceIds) {
+    const info = sourceInfoMap.value.get(sid)
+    if (info?.chapter) names.add(info.chapter)
+  }
+  return [...names]
+}
 
 // 停止闪烁
 // 切换科目下拉框
@@ -694,6 +612,14 @@ const hideAllMenus = () => {
     hasBookClicked.value = false
     hasChapterClicked.value = false
   }, 200)
+}
+
+// 清除隐藏定时器（鼠标进入级联弹窗时调用）
+const clearHideTimer = () => {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
 }
 
 // 手动关闭级联窗口
@@ -1133,6 +1059,10 @@ const filteredErrors = computed(() => {
         difficulty,
         difficultyName: getDifficultyName(difficulty),
         content: question.prompt || '',
+        // 保留原始字段供导出使用
+        prompt: question.prompt || '',
+        answer: question.answer || '',
+        analysis: question.analysis || '',
         // 后端返回的是秒级时间戳
         date: formatDate(question.updated_at || question.created_at || 0),
         timestamp: question.updated_at || question.created_at || 0,
@@ -1430,6 +1360,46 @@ const viewError = (error: any) => {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
+}
+
+/* 操作栏 */
+.action-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+
+.import-btn:hover {
+  border-color: var(--success-color);
+  background: var(--success-light);
+  color: var(--success-color);
+}
+
+.export-btn:hover {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+  color: var(--primary-color);
 }
 
 .filter-select {

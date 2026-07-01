@@ -45,6 +45,47 @@ interface QuestionFilter {
   limit?: number
   /** 偏移量（可选，用于分页） */
   offset?: number
+  /** 错因标签 ID 列表（可选，多选） */
+  tag_ids?: string[]
+  /** 起始日期（可选，秒级时间戳） */
+  date_from?: number
+  /** 截止日期（可选，秒级时间戳） */
+  date_to?: number
+}
+
+/**
+ * JSON 导出 Schema
+ */
+interface ExportJSONSchema {
+  /** Schema 版本号 */
+  version: string
+  /** 导出时间（ISO 8601） */
+  exportedAt: string
+  /** 题目数量 */
+  count: number
+  /** 题目列表 */
+  questions: Array<{
+    /** 题干 */
+    prompt: string
+    /** 标准答案 */
+    answer: string
+    /** 解析 */
+    analysis: string
+  }>
+}
+
+/**
+ * 导入结果
+ */
+interface ImportResult {
+  /** 成功导入数量 */
+  success: number
+  /** 跳过数量（重复） */
+  skipped: number
+  /** 失败数量 */
+  failed: number
+  /** 错误详情列表 */
+  errors: string[]
 }
 
 /**
@@ -305,5 +346,7 @@ export type {
   CreateSourceInput,
   UpdateSourceInput,
   SourceFilter,
-  CreateAttachmentInput
+  CreateAttachmentInput,
+  ExportJSONSchema,
+  ImportResult
 }
