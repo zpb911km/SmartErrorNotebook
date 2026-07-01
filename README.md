@@ -125,6 +125,41 @@ graph LR
 
 ---
 
-   ## 🚀 未来规划
+## 🚀 未来规划
 
+---
 
+## 🙏 致谢
+
+感谢以下开源项目与社区的贡献：
+
+### MIT / ISC 协议
+
+- **[Vue](https://github.com/vuejs/core)** (MIT) — 前端框架
+- **[Vue Router](https://github.com/vuejs/router)** (MIT) — 前端路由
+- **[KaTeX](https://github.com/KaTeX/KaTeX)** (MIT) — 数学公式渲染
+- **[marked](https://github.com/markedjs/marked)** (MIT) — Markdown 解析
+- **[html2canvas](https://github.com/niklasvh/html2canvas)** (MIT) — 截图导出
+- **[jsPDF](https://github.com/parallax/jsPDF)** (MIT) — PDF 生成
+- **[dom-to-image-more](https://github.com/1904labs/dom-to-image-more)** (MIT) — DOM 转图片
+- **[uuid](https://github.com/uuidjs/uuid)** (MIT) — UUID 生成
+- **[Lucide](https://github.com/lucide-icons/lucide)** (ISC) — 图标库
+- **[Tauri](https://github.com/tauri-apps/tauri)** (MIT / Apache-2.0) — 跨平台框架
+- **[tauri-plugin-share](https://github.com/lindongchen/tauri-plugin-share)** (MIT) — 移动端分享，Copyright (c) 2025 lindongchen
+
+### BSD-3-Clause
+
+- **[highlight.js](https://github.com/highlightjs/highlight.js)** — 代码语法高亮
+
+### 专有许可 (No Charge)
+
+- **[GSAP](https://gsap.com)** (Standard 'No Charge' License) — 动画引擎，由 Webflow 赞助支持，在不对最终用户收费的前提下可免费使用
+
+### Rust 生态
+
+- **[Tokio](https://github.com/tokio-rs/tokio)** (MIT) — 异步运行时
+- **[Serde](https://github.com/serde-rs/serde)** (MIT / Apache-2.0) — 序列化框架
+- **[SeaORM](https://github.com/SeaQL/sea-orm)** (MIT / Apache-2.0) — ORM 框架
+- **[Chrono](https://github.com/chronotope/chrono)** (MIT / Apache-2.0) — 日期时间库
+
+感谢所有开源贡献者的辛勤付出 ❤️
