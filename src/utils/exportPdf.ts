@@ -2,7 +2,7 @@ import { showError } from './notification'
 import type { ErrorQuestion } from '../types'
 import { jsPDF } from 'jspdf'
 import { save } from '@tauri-apps/plugin-dialog'
-import { invoke } from '@tauri-apps/api/core'
+import { writeFile } from '@tauri-apps/plugin-fs'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import html2canvas from 'html2canvas'
@@ -29,7 +29,6 @@ export async function exportQuestionsToPDF(questions: ErrorQuestion[]): Promise<
     const cards = questions.map((q,i)=>buildCardHtml(q,i)).join('\n')
     const date = new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'})
 
-    // 容器放在视口内（不移出屏幕），html2canvas fillText 精度与主应用接近
     const container = document.createElement('div')
     container.style.cssText = 'position:fixed;top:0;left:0;width:800px;z-index:-1000;pointer-events:none'
     container.innerHTML = `<div id="pdfr" style="font-family:'Microsoft YaHei','PingFang SC','Noto Sans SC','KaTeX_Main',serif;color:#333;line-height:1.7;padding:0;background:#fff;width:800px;font-size:14px">
@@ -47,13 +46,10 @@ export async function exportQuestionsToPDF(questions: ErrorQuestion[]): Promise<
 
     await document.fonts.ready
 
-    // html2canvas 截图（始终在视口内，精度最佳）
     const canvas = await html2canvas(root, {
       scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
-      width: 800,
-      height: root.scrollHeight,
-      windowWidth: 800,
-      windowHeight: root.scrollHeight
+      width: 800, height: root.scrollHeight,
+      windowWidth: 800, windowHeight: root.scrollHeight
     })
 
     document.body.removeChild(container)
@@ -74,12 +70,18 @@ export async function exportQuestionsToPDF(questions: ErrorQuestion[]): Promise<
       pdf.text(`- ${p+1} / ${total} -`, 105, 291, { align:'center' })
     }
 
-    const fp = await save({
+    // 弹出保存对话框 → 通过 Tauri fs 写入（移动端兼容）
+    const filePath = await save({
       defaultPath: `错题集_${new Date().toISOString().slice(0,10)}.pdf`,
       filters: [{ name:'PDF 文件', extensions:['pdf'] }]
     })
-    if (!fp) return false
-    await invoke('write_pdf_file', { path: fp, dataBase64: pdf.output('datauristring').split(',')[1] })
+    if (!filePath) return false
+
+    // jsPDF blob → Uint8Array → writeFile
+    const blob = pdf.output('blob')
+    const arrayBuffer = await blob.arrayBuffer()
+    const uint8Array = new Uint8Array(arrayBuffer)
+    await writeFile(filePath, uint8Array)
     return true
   } catch(e) {
     console.error('导出 PDF 失败:', e)

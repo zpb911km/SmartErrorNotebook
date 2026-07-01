@@ -45,12 +45,6 @@ interface QuestionFilter {
   limit?: number
   /** 偏移量（可选，用于分页） */
   offset?: number
-  /** 错因标签 ID 列表（可选，多选） */
-  tag_ids?: string[]
-  /** 起始日期（可选，秒级时间戳） */
-  date_from?: number
-  /** 截止日期（可选，秒级时间戳） */
-  date_to?: number
 }
 
 /**

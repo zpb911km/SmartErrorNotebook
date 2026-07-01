@@ -101,8 +101,6 @@ pub fn run() {
             commands::get_source,
             commands::get_or_create_source_id,
             commands::upsert_source,
-            // Export
-            commands::write_pdf_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
