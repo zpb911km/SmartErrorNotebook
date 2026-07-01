@@ -126,7 +126,7 @@ import 'katex/dist/katex.min.css'
 let _renderDepth = 0
 
 // 创建独立的 marked 实例，避免污染全局 marked
-const _marked = new Marked(
+const _marked: Marked = new Marked(
   markedKatex({
     throwOnError: false,
     output: 'html',
@@ -134,7 +134,7 @@ const _marked = new Marked(
   }),
   {
     renderer: {
-      code({ text, lang }) {
+      code({ text, lang }): string {
         // AI 经常用 ```markdown ... ``` 包裹返回内容，此时应渲染为 markdown 而非代码高亮
         if (lang?.toLowerCase() === 'markdown' && _renderDepth < 3) {
           _renderDepth++

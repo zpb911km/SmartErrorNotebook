@@ -1,4 +1,3 @@
-import { open } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import {
   createErrorQuestion
@@ -9,7 +8,7 @@ import type {
   ErrorQuestion,
   ImportResult
 } from '../types'
-import { showError, showSuccess, showWarning } from './notification'
+import { showSuccess, showWarning } from './notification'
 
 /**
  * 从 JSON 文件读取并校验导入数据

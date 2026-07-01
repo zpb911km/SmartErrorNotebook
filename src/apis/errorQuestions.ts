@@ -1,8 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import {
   ErrorQuestion,
-  ExportJSONSchema,
-  ImportResult,
   QuestionFilter,
   UpdateQuestionInput,
   QuestionStats

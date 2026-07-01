@@ -59,7 +59,7 @@ interface Props {
   questions: ErrorQuestion[]
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
 const exportDate = computed(() => {
   return new Date().toLocaleDateString('zh-CN', {
