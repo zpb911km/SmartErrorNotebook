@@ -2,7 +2,17 @@
   <div class="sync-page">
     <!-- 配置区 -->
     <section class="sync-section">
-      <h2 class="section-title">同步服务器</h2>
+      <div class="section-header">
+        <h2 class="section-title">同步服务器</h2>
+        <button class="btn-icon-refresh" @click="checkConnection" :disabled="checking" title="刷新连接">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :class="{ spinning: checking }">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+        </button>
+      </div>
       <div class="info-card">
         <div class="info-row">
           <span class="info-label">服务器地址</span>
@@ -54,18 +64,7 @@
             取消
           </button>
         </div>
-        <div class="info-row info-row--action">
-          <button
-            class="btn btn-secondary btn--sm"
-            @click="checkConnection"
-            :disabled="checking"
-          >
-            {{ checking ? '......' : '刷新连接' }}
-          </button>
-          <span v-if="checkMessage" class="check-msg" :class="checkMsgClass">{{
-            checkMessage
-          }}</span>
-        </div>
+
       </div>
     </section>
 
@@ -257,9 +256,6 @@ const saveAuthKey = () => {
 const serverOnline = ref<boolean | null>(null)
 const authValid = ref<boolean | null>(null)
 const checking = ref(false)
-const checkMessage = ref('')
-const checkOk = ref(true)
-
 const serverStatusClass = computed(() => {
   if (serverOnline.value === null) return ''
   return serverOnline.value ? 'dot-online' : 'dot-offline'
@@ -269,8 +265,6 @@ const authStatusClass = computed(() => {
   if (authValid.value === null) return ''
   return authValid.value ? 'dot-online' : 'dot-offline'
 })
-
-const checkMsgClass = computed(() => (checkOk.value ? 'msg-ok' : 'msg-err'))
 
 // 社区入口
 const goCommunity = () => {
@@ -283,7 +277,6 @@ const hasServerConfig = computed(() => {
 
 const checkConnection = async () => {
   checking.value = true
-  checkMessage.value = ''
 
   const { checkServerHealth, validateAuthKey } = await import('../apis/sync')
 
@@ -292,8 +285,6 @@ const checkConnection = async () => {
   serverOnline.value = online
 
   if (!online) {
-    checkOk.value = false
-    checkMessage.value = '无法连接到服务器'
     checking.value = false
     return
   }
@@ -302,17 +293,8 @@ const checkConnection = async () => {
   if (authKey.value) {
     const valid = await validateAuthKey(authKey.value)
     authValid.value = valid
-    if (valid) {
-      checkOk.value = true
-      checkMessage.value = '服务器在线，授权码有效'
-    } else {
-      checkOk.value = false
-      checkMessage.value = '服务器在线，但授权码无效'
-    }
   } else {
     authValid.value = null
-    checkOk.value = true
-    checkMessage.value = '服务器在线（未配置授权码）'
   }
 
   checking.value = false
@@ -644,30 +626,6 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 .status-dot.dot-offline {
   background: #ef4444;
   box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
-}
-
-/* 检测连接行 */
-.info-row--action {
-  justify-content: flex-start;
-  gap: 12px;
-  background: var(--input-bg, #f9fafb);
-}
-
-.btn--sm {
-  padding: 6px 14px;
-  font-size: 13px;
-}
-
-.check-msg {
-  font-size: 13px;
-}
-
-.check-msg.msg-ok {
-  color: #10b981;
-}
-
-.check-msg.msg-err {
-  color: #ef4444;
 }
 
 .text-warning {
