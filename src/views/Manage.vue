@@ -15,10 +15,10 @@
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <!-- 科目级联菜单 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': subjectDropdownVisible || cascadeVisible }">
+      <div class="filter-select-wrapper" :class="{ 'dropdown-open': cascadeVisible }">
         <div class="custom-select" @click="toggleSubjectDropdown">
           <span class="custom-select-value">{{ selectedSubjectName || '选择科目' }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: subjectDropdownVisible || cascadeVisible }">▼</span>
+          <span class="custom-select-arrow" :class="{ rotated: cascadeVisible }">▼</span>
         </div>
         <!-- 级联弹窗 -->
         <div v-if="cascadeVisible" class="cascade-popup" @mouseenter="clearHideTimer" @mouseleave="hideAllMenus">
@@ -333,9 +333,6 @@ const hasClicked = ref(false)
 const hasBookClicked = ref(false)
 const hasChapterClicked = ref(false)
 
-// 科目下拉框状态
-const subjectDropdownVisible = ref(false)
-
 // 其他筛选器下拉框状态
 const difficultyDropdownVisible = ref(false)
 const masteryDropdownVisible = ref(false)
@@ -408,9 +405,9 @@ const chaptersOf = (book: string): string[] => {
 // 停止闪烁
 // 切换科目下拉框
 const toggleSubjectDropdown = () => {
-  subjectDropdownVisible.value = !subjectDropdownVisible.value
+  cascadeVisible.value = !cascadeVisible.value
   // 如果关闭下拉框，也隐藏级联菜单
-  if (!subjectDropdownVisible.value) {
+  if (!cascadeVisible.value) {
     hideAllMenus()
   }
   // 关闭其他下拉框
@@ -443,7 +440,7 @@ const toggleTagDropdown = () => {
 
 // 关闭其他下拉框
 const closeOtherDropdowns = (current: string) => {
-  if (current !== 'subject') subjectDropdownVisible.value = false
+  if (current !== 'subject') cascadeVisible.value = false
   if (current !== 'difficulty') difficultyDropdownVisible.value = false
   if (current !== 'mastery') masteryDropdownVisible.value = false
   if (current !== 'dateRange') dateRangeDropdownVisible.value = false
@@ -600,7 +597,6 @@ const showCascadeMenuForSubject = async (subjectId: string) => {
 // 隐藏所有菜单
 const hideAllMenus = () => {
   hideTimer = window.setTimeout(() => {
-    subjectDropdownVisible.value = false
     cascadeVisible.value = false
     currentSubjectId.value = null
     currentBook.value = null
@@ -628,7 +624,6 @@ const closeCascadeWindow = () => {
     clearTimeout(hideTimer)
     hideTimer = null
   }
-  subjectDropdownVisible.value = false
   cascadeVisible.value = false
   currentSubjectId.value = null
   currentBook.value = null
@@ -655,7 +650,6 @@ const selectBook = (book: string) => {
 const selectKnowledge = (knowledge: string) => {
   filters.value.knowledge = knowledge
   // 关闭所有菜单
-  subjectDropdownVisible.value = false
   cascadeVisible.value = false
   currentSubjectId.value = null
   currentBook.value = null
