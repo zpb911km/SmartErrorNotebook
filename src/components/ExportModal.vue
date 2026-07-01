@@ -125,7 +125,7 @@ const handleShareJSON = async () => {
   if (isExporting.value) return
   if (!props.questions.length) { showError('分享失败','没有可分享的错题'); return }
   isExporting.value = true
-  try { await shareQuestionsToJSON(props.questions) }
+  try { shareQuestionsToJSON(props.questions) }
   finally { isExporting.value = false; emit('close') }
 }
 
@@ -133,7 +133,7 @@ const handleShareHTML = async () => {
   if (isExporting.value) return
   if (!props.questions.length) { showError('分享失败','没有可分享的错题'); return }
   isExporting.value = true
-  try { await shareQuestionsToHTML(props.questions) }
+  try { shareQuestionsToHTML(props.questions) }
   finally { isExporting.value = false; emit('close') }
 }
 </script>
