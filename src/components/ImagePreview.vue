@@ -311,8 +311,8 @@ const handleMouseDown = (e: MouseEvent) => {
   user-select: none;
   cursor: grab;
   pointer-events: auto;
-  border-radius: 4px;
-  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 8px 60px rgba(0, 0, 0, 0.5);
   will-change: transform;
 }
 
