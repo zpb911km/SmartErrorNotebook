@@ -26,7 +26,7 @@
           :disabled="shareLoading"
           @click="handleRevokeShare"
         >
-          {{ shareLoading ? '...' : '↩️ 撤回分享' }}
+          {{ shareLoading ? '...' : '撤回' }}
         </button>
         <button
           v-if="shareCheckDone && !isShared && serverConfigured && !isEditing"
@@ -34,7 +34,7 @@
           :disabled="shareLoading"
           @click="handleShare"
         >
-          {{ shareLoading ? '...' : '📤 分享到社区' }}
+          {{ shareLoading ? '...' : '分享' }}
         </button>
         <button class="action-btn edit-btn" @click="toggleEditMode">
           {{ isEditing ? '取消编辑' : '编辑' }}
@@ -1898,7 +1898,7 @@ onMounted(() => {
 .modal-body {
   padding: 20px;
 }
-/* 
+/*
 .source-modal-body {
   min-height: 40px;
   padding: 24px;

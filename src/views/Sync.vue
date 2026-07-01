@@ -57,7 +57,7 @@
         <div class="info-row info-row--action">
           <button
             class="btn btn-secondary btn--sm"
-            @click="() => { checkConnection(); refreshSyncStats();}"
+            @click="checkConnection"
             :disabled="checking"
           >
             {{ checking ? '......' : '刷新连接' }}
@@ -71,7 +71,17 @@
 
     <!-- 同步状态区 -->
     <section class="sync-section">
-      <h2 class="section-title">数据同步</h2>
+      <div class="section-header">
+        <h2 class="section-title">数据同步</h2>
+        <button class="btn-icon-refresh" @click="refreshSyncStats" :disabled="refreshingStats" title="刷新统计">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :class="{ spinning: refreshingStats }">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+        </button>
+      </div>
       <div class="info-card">
         <div class="info-row">
           <span class="info-label">待上传</span>
@@ -310,6 +320,7 @@ const checkConnection = async () => {
 
 // ---------- 同步状态 ----------
 const syncing = ref(false)
+const refreshingStats = ref(false)
 const showProgress = ref(false)
 const showConflictResolver = ref(false)
 const conflictsToResolve = ref<ConflictInfo[]>([])
@@ -347,6 +358,8 @@ const statsConflictClass = computed(() => {
 
 /** 尝试握手并刷新三栏统计 */
 const refreshSyncStats = async () => {
+  if (refreshingStats.value) return
+  refreshingStats.value = true
   try {
     const localPending = await invoke<ServerRecord[]>('get_all_pending_records')
     syncStats.value = {
@@ -378,6 +391,8 @@ const refreshSyncStats = async () => {
     }
   } catch (e) {
     console.warn('Failed to refresh sync stats:', e)
+  } finally {
+    refreshingStats.value = false
   }
 }
 
@@ -757,6 +772,45 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
   color: #dc2626;
 }
 
+/* 分区头部（标题 + 操作图标） */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-icon-refresh {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-secondary, #6b7280);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.btn-icon-refresh:hover {
+  color: var(--text-primary, #111827);
+  background: var(--hover-bg, rgba(0, 0, 0, 0.05));
+}
+
+.btn-icon-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 /* 同步按钮 */
 .sync-btn {
   display: flex;
@@ -817,9 +871,9 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 }
 
 .community-card:hover {
-  border-color: #c7d2fe;
-  background: linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+  border-color: var(--hover-card-border, #c7d2fe);
+  background: var(--hover-card-bg, linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%));
+  box-shadow: var(--hover-card-shadow, 0 2px 8px rgba(99, 102, 241, 0.08));
 }
 
 .community-card:focus-visible {
