@@ -35,6 +35,7 @@ thiserror = "1"
 dirs = "5"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-share = "2.0.5"
 
 [profile.release]
 codegen-units = 1 # 允许 LLVM 执行更好的优化。

@@ -19,27 +19,26 @@ function renderHtml(t: string|undefined|null): string {
 }
 
 /**
- * 将错题导出为独立 HTML 文件
+ * 构建独立 HTML 字符串（纯函数，不涉及 IO）
  *
  * 根据 localStorage 中 export_include_answer 的值决定是否包含答案和解析。
  * 默认只导出题目（prompt），可在设置页修改。
+ *
+ * @param questions     错题列表
+ * @param includeAnswer 是否包含答案和解析（不传则从 localStorage 读取）
+ * @returns HTML 字符串
  */
-export async function exportQuestionsToHTML(
-  questions: ErrorQuestion[]
-): Promise<boolean> {
-  if (questions.length === 0) {
-    showError('导出失败', '当前筛选条件下没有可导出的错题')
-    return false
-  }
-
+export function buildQuestionsHTML(
+  questions: ErrorQuestion[],
+  includeAnswer?: boolean
+): string {
   // 读取是否包含答案和解析的设置（默认 false）
-  const includeAnswer = localStorage.getItem('export_include_answer') === 'true'
+  const showAnswer = includeAnswer ?? localStorage.getItem('export_include_answer') === 'true'
 
-  try {
-    const cards = questions.map((q, i) => buildCardHtml(q, i, includeAnswer)).join('\n')
-    const date = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+  const cards = questions.map((q, i) => buildCardHtml(q, i, showAnswer)).join('\n')
+  const date = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
 
-    const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -48,7 +47,6 @@ export async function exportQuestionsToHTML(
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
         crossorigin="anonymous">
   <style>
-    /* ===== 全局重置 ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "KaTeX_Main", serif;
@@ -59,8 +57,6 @@ export async function exportQuestionsToHTML(
       max-width: 800px;
       margin: 0 auto;
     }
-
-    /* ===== 页头 ===== */
     .header {
       text-align: center;
       padding: 20px 0;
@@ -69,8 +65,6 @@ export async function exportQuestionsToHTML(
     }
     .header h1 { font-size: 24px; color: #1976d2; margin: 0 0 8px; }
     .header .meta { font-size: 14px; color: #666; }
-
-    /* ===== 题目卡片 ===== */
     .card {
       padding: 16px 20px;
       margin-bottom: 16px;
@@ -97,8 +91,6 @@ export async function exportQuestionsToHTML(
     }
     .section-label.answer { color: #2e7d32; }
     .section-label.analysis { color: #c62828; }
-
-    /* ===== Markdown 内容渲染样式（与 App 内一致）===== */
     .content {
       color: #333;
       white-space: pre-wrap;
@@ -144,10 +136,7 @@ export async function exportQuestionsToHTML(
       border-left: 3px solid #e0e0e0;
       color: #666;
     }
-    .content a {
-      color: #1976d2;
-      text-decoration: underline;
-    }
+    .content a { color: #1976d2; text-decoration: underline; }
     .content table {
       border-collapse: collapse;
       width: 100%;
@@ -167,15 +156,12 @@ export async function exportQuestionsToHTML(
       overflow-y: hidden;
     }
     .content .katex-display > .katex { font-size: 1.15em; }
-
-    /* ===== 页脚 ===== */
     .footer {
       text-align: center;
       font-size: 12px;
       color: #999;
       padding: 20px 0 10px;
     }
-
     @media print {
       body { padding: 0; }
       .card { break-inside: avoid; }
@@ -191,7 +177,24 @@ export async function exportQuestionsToHTML(
   <div class="footer">由 SmartErrorNotebook 生成</div>
 </body>
 </html>`
+}
 
+/**
+ * 将错题导出为独立 HTML 文件
+ *
+ * 根据 localStorage 中 export_include_answer 的值决定是否包含答案和解析。
+ * 默认只导出题目（prompt），可在设置页修改。
+ */
+export async function exportQuestionsToHTML(
+  questions: ErrorQuestion[]
+): Promise<boolean> {
+  if (questions.length === 0) {
+    showError('导出失败', '当前筛选条件下没有可导出的错题')
+    return false
+  }
+
+  try {
+    const html = buildQuestionsHTML(questions)
     const filename = `错题集_${new Date().toISOString().slice(0, 10)}.html`
     return await exportFile(filename, html, 'text/html;charset=utf-8')
   } catch (e) {

@@ -15,34 +15,43 @@
         </div>
 
         <div class="export-formats">
-          <!-- JSON 导出 -->
-          <div class="format-card" @click="handleExportJSON">
+          <!-- JSON 导出 / 分享 -->
+          <div class="format-card">
             <div class="format-icon json-icon">
               <Icon name="file-text" :size="28" />
             </div>
             <div class="format-info">
-              <div class="format-name">导出为 JSON</div>
+              <div class="format-name">JSON</div>
               <div class="format-desc">纯净数据格式，仅包含题目、答案和解析，适合备份与迁移</div>
             </div>
             <div class="format-action">
-              <span class="action-btn">导出</span>
+              <span class="action-btn" @click="handleExportJSON" title="导出 JSON">
+                <Icon name="download" :size="16" />
+              </span>
+              <span v-if="isMobile" class="action-btn share-btn" @click="handleShareJSON" title="分享 JSON">
+                <Icon name="share-2" :size="16" />
+              </span>
             </div>
           </div>
 
-          <!-- HTML 导出（替代 PDF） -->
-          <div class="format-card" @click="handleExportHTML">
+          <!-- HTML 导出 / 分享 -->
+          <div class="format-card">
             <div class="format-icon html-icon">
               <Icon name="file-text" :size="28" />
             </div>
             <div class="format-info">
-              <div class="format-name">导出为 HTML</div>
+              <div class="format-name">HTML</div>
               <div class="format-desc">
-                仅含题目，方便打印练习，完整排版，公式精确。<br>
-                用浏览器打开后按 Ctrl+P 即可保存为 PDF
+                仅含题目，方便打印练习，完整排版，公式精确
               </div>
             </div>
             <div class="format-action">
-              <span class="action-btn html-btn">导出</span>
+              <span class="action-btn html-btn" @click="handleExportHTML" title="导出 HTML">
+                <Icon name="download" :size="16" />
+              </span>
+              <span v-if="isMobile" class="action-btn html-share-btn" @click="handleShareHTML" title="分享 HTML">
+                <Icon name="share-2" :size="16" />
+              </span>
             </div>
           </div>
         </div>
@@ -69,6 +78,7 @@ import Icon from './Icon.vue'
 import type { ErrorQuestion } from '../types'
 import { exportQuestionsToJSON } from '../utils/exportJson'
 import { exportQuestionsToHTML } from '../utils/exportHtml'
+import { shareQuestionsToJSON, shareQuestionsToHTML } from '../utils/shareContent'
 import { showError } from '../utils/notification'
 
 const props = defineProps<{
@@ -80,6 +90,16 @@ const emit = defineEmits<{
 }>()
 
 const isExporting = ref(false)
+
+/** 移动端才显示分享按钮 */
+const isMobile = (() => {
+  try {
+    const ua = navigator.userAgent.toLowerCase()
+    return /iphone|ipad|ipod|android/.test(ua)
+  } catch {
+    return false
+  }
+})()
 
 const handleClose = () => {
   if (!isExporting.value) emit('close')
@@ -98,6 +118,22 @@ const handleExportHTML = async () => {
   if (!props.questions.length) { showError('导出失败','没有可导出的错题'); return }
   isExporting.value = true
   try { await exportQuestionsToHTML(props.questions) }
+  finally { isExporting.value = false; emit('close') }
+}
+
+const handleShareJSON = async () => {
+  if (isExporting.value) return
+  if (!props.questions.length) { showError('分享失败','没有可分享的错题'); return }
+  isExporting.value = true
+  try { await shareQuestionsToJSON(props.questions) }
+  finally { isExporting.value = false; emit('close') }
+}
+
+const handleShareHTML = async () => {
+  if (isExporting.value) return
+  if (!props.questions.length) { showError('分享失败','没有可分享的错题'); return }
+  isExporting.value = true
+  try { await shareQuestionsToHTML(props.questions) }
   finally { isExporting.value = false; emit('close') }
 }
 </script>
@@ -234,20 +270,40 @@ const handleExportHTML = async () => {
   line-height: 1.5;
 }
 
-.format-action { flex-shrink: 0; }
+.format-action {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .action-btn {
-  display: inline-block;
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   background: var(--primary-color);
   color: white;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.action-btn:hover {
+  opacity: 0.85;
 }
 
 .html-btn {
   background: var(--success-color);
+}
+
+.share-btn {
+  background: var(--secondary-color);
+}
+
+.html-share-btn {
+  background: var(--secondary-color);
 }
 
 .export-note {
@@ -297,5 +353,20 @@ const handleExportHTML = async () => {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+</style>
+
+<!-- 深色模式覆盖（非 scoped，避免 scoped 选择器穿透限制） -->
+<style>
+body.dark-theme .export-info {
+  background: rgba(25, 118, 210, 0.15);
+  color: #90caf9;
+}
+body.dark-theme .export-note {
+  background: rgba(230, 81, 0, 0.12);
+  color: #ffab91;
+}
+body.dark-theme .export-note strong {
+  color: #ffab91;
 }
 </style>

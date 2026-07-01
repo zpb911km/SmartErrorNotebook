@@ -40,8 +40,9 @@ import {
   ArrowLeft,
   RefreshCw,
   Download,
-  Upload
-} from 'lucide-vue-next'
+  Upload,
+  Share2
+} from '@lucide/vue'
 
 const iconMap: Record<string, any> = {
   house: House,
@@ -78,7 +79,8 @@ const iconMap: Record<string, any> = {
   'arrow-left': ArrowLeft,
   'refresh-cw': RefreshCw,
   download: Download,
-  upload: Upload
+  upload: Upload,
+  'share-2': Share2
 }
 
 const props = withDefaults(

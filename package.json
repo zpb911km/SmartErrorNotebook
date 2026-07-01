@@ -12,6 +12,7 @@
     "format": "prettier --write 'src/**/*.{vue,ts,js,css}'"
   },
   "dependencies": {
+    "@lucide/vue": "^1.0.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "~2.5.1",
@@ -23,10 +24,10 @@
     "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.1",
     "katex": "^0.16.45",
-    "lucide-vue-next": "^1.0.0",
     "marked": "^18.0.2",
     "marked-highlight": "^2.2.4",
     "marked-katex-extension": "^5.1.8",
+    "tauri-plugin-share": "^2.0.4",
     "uuid": "^13.0.0",
     "vue": "^3.5.13",
     "vue-router": "^4.6.4"

@@ -21,6 +21,12 @@
     "fs:allow-write",
     "dialog:default",
     "dialog:allow-save",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "fs:allow-appcache-write",
+    "fs:allow-appcache-write-recursive",
+    "fs:scope-appcache",
+    "fs:allow-write-text-file",
+    "share:allow-share-file",
+    "share:default"
   ]
 }

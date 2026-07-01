@@ -42,3 +42,4 @@ openspec/*
 .cursor/*
 pyrightconfig.json
 */__pycache__/*
+.fp/*
