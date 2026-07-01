@@ -15,7 +15,7 @@ export default {
     // 避免闪动：初始透明 + 下移
     el.style.opacity = '0'
     el.style.transform = `translateY(${offset}px)`
-    el.style.transition = `all ${duration}ms cubic-bezier(0.16, 1, 0.3, 1)`
+    el.style.transition = `opacity ${duration}ms ease-out, transform ${duration}ms ease-out`
 
     const observer = new IntersectionObserver(
       ([entry]) => {

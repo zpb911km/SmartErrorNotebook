@@ -1,9 +1,8 @@
-import { save } from '@tauri-apps/plugin-dialog'
-import { writeTextFile } from '@tauri-apps/plugin-fs'
 import type { ErrorQuestion } from '../types'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
-import { showError, showSuccess } from './notification'
+import { showError } from './notification'
+import { exportFile } from './exportFile'
 
 const _marked = new Marked(
   markedKatex({ throwOnError: false, output: 'html', nonStandard: true, strict: 'ignore' }),
@@ -115,7 +114,7 @@ export async function exportQuestionsToHTML(
       font-size: 1em;
     }
     .content pre {
-      background: #0f172a;
+      background: #f5f5f5;
       padding: 10px;
       border-radius: 6px;
       overflow-x: auto;
@@ -124,7 +123,7 @@ export async function exportQuestionsToHTML(
     .content pre code {
       background: transparent;
       padding: 0;
-      color: #e2e8f0;
+      color: #333;
       font-size: 13px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
@@ -193,15 +192,8 @@ export async function exportQuestionsToHTML(
 </body>
 </html>`
 
-    const filePath = await save({
-      defaultPath: `错题集_${new Date().toISOString().slice(0, 10)}.html`,
-      filters: [{ name: 'HTML 文件', extensions: ['html'] }]
-    })
-
-    if (!filePath) return false
-    await writeTextFile(filePath, html)
-    showSuccess('导出成功', `已导出到 ${filePath}`)
-    return true
+    const filename = `错题集_${new Date().toISOString().slice(0, 10)}.html`
+    return await exportFile(filename, html, 'text/html;charset=utf-8')
   } catch (e) {
     console.error('导出 HTML 失败:', e)
     showError('导出失败', `HTML 导出过程中出现错误: ${String(e)}`)

@@ -1660,16 +1660,22 @@ onUnmounted(() => {
 }
 
 .markdown-preview :deep(pre) {
-  background: #0f172a;
+  background: var(--code-bg, #0f172a);
   padding: 10px;
   border-radius: 6px;
   overflow-x: auto;
+  margin: 0.5em 0;
 }
 
 .markdown-preview :deep(pre code) {
   background: transparent;
   padding: 0;
-  color: #e2e8f0;
+  color: var(--code-text, #e2e8f0);
+}
+
+.markdown-preview :deep(pre code.hljs) {
+  background: transparent;
+  color: var(--code-text, #e2e8f0);
 }
 
 .markdown-preview :deep(ul),
@@ -2243,5 +2249,16 @@ body.dark-theme .save-bar {
   .modal-content {
     max-width: 900px;
   }
+}
+</style>
+
+<!-- 全局覆盖 highlight.js 颜色（模板中无 .markdown-preview 类，所以 scoped 样式无效，必须用非 scoped） -->
+<style>
+.detail-content pre code.hljs {
+  background: transparent !important;
+  color: var(--code-text, #e2e8f0) !important;
+}
+.detail-content pre {
+  background: var(--code-bg, #0f172a) !important;
 }
 </style>

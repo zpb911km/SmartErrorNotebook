@@ -181,7 +181,7 @@
       <div
         v-for="(error, index) in filteredErrors"
         :key="error.id"
-        v-scroll-reveal="{ delay: index * 80 }"
+        v-scroll-reveal="{ delay: getRevealDelay(index), duration: 350 }"
         class="error-card"
         @click="viewError(error)"
       >
@@ -1248,6 +1248,15 @@ const filteredErrors = computed(() => {
   return filtered
 })
 
+/**
+ * 获取滚动淡入延迟：前 10 张逐张 20ms，之后统一 200ms
+ * 避免大量卡片时排队动画造成的卡顿感
+ */
+const getRevealDelay = (index: number) => {
+  if (index < 10) return index * 20
+  return 200
+}
+
 // 查看错题详情
 const viewError = (error: any) => {
   router.push({
@@ -1900,7 +1909,7 @@ const viewError = (error: any) => {
 }
 
 .error-content.markdown-body :deep(pre) {
-  background: #0f172a;
+  background: var(--code-bg, #0f172a);
   padding: 10px;
   border-radius: 6px;
   overflow-x: auto;
@@ -1910,7 +1919,12 @@ const viewError = (error: any) => {
 .error-content.markdown-body :deep(pre code) {
   background: transparent;
   padding: 0;
-  color: #e2e8f0;
+  color: var(--code-text, #e2e8f0);
+}
+
+.error-content.markdown-body :deep(pre code.hljs) {
+  background: transparent;
+  color: var(--code-text, #e2e8f0);
 }
 
 .error-content.markdown-body :deep(ul),
@@ -1986,5 +2000,16 @@ const viewError = (error: any) => {
 .empty-state p {
   font-size: 16px;
   margin: 0;
+}
+</style>
+
+<!-- 全局覆盖 highlight.js 在浅色模式下的颜色 -->
+<style>
+.error-list pre code.hljs {
+  background: transparent !important;
+  color: var(--code-text, #e2e8f0) !important;
+}
+.error-list pre {
+  background: var(--code-bg, #0f172a) !important;
 }
 </style>

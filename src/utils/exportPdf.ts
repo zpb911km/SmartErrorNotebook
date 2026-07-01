@@ -1,8 +1,7 @@
 import { showError } from './notification'
 import type { ErrorQuestion } from '../types'
 import { jsPDF } from 'jspdf'
-import { save } from '@tauri-apps/plugin-dialog'
-import { writeFile } from '@tauri-apps/plugin-fs'
+import { exportFile } from './exportFile'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import html2canvas from 'html2canvas'
@@ -70,19 +69,11 @@ export async function exportQuestionsToPDF(questions: ErrorQuestion[]): Promise<
       pdf.text(`- ${p+1} / ${total} -`, 105, 291, { align:'center' })
     }
 
-    // 弹出保存对话框 → 通过 Tauri fs 写入（移动端兼容）
-    const filePath = await save({
-      defaultPath: `错题集_${new Date().toISOString().slice(0,10)}.pdf`,
-      filters: [{ name:'PDF 文件', extensions:['pdf'] }]
-    })
-    if (!filePath) return false
-
-    // jsPDF blob → Uint8Array → writeFile
+    // 移动端：通过 Web Share API 分享到微信/QQ
+    // 桌面端：弹出保存对话框
     const blob = pdf.output('blob')
-    const arrayBuffer = await blob.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
-    await writeFile(filePath, uint8Array)
-    return true
+    const filename = `错题集_${new Date().toISOString().slice(0,10)}.pdf`
+    return await exportFile(filename, blob, 'application/pdf')
   } catch(e) {
     console.error('导出 PDF 失败:', e)
     showError('导出失败', `PDF 导出过程中出现错误: ${String(e)}`)

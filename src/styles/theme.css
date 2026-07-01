@@ -149,9 +149,12 @@ body.dark-theme {
   --gray-400: #757575;
   --gray-500: #9e9e9e;
   --gray-600: #bdbdbd;
+
+  --code-bg: #1a1a2e;
+  --code-text: #e2e8f0;
 }
 
-/* 手动设置浅色主题 */
+/* 手动设置默认浅色主题（与 body 默认一致） */
 body.light-theme {
   --text-primary: #212121;
   --text-secondary: #757575;
@@ -168,4 +171,38 @@ body.light-theme {
 
   --border-color: #e0e0e0;
   --divider-color: #eeeeee;
+
+  --code-bg: #f5f5f5;
+  --code-text: #333;
 }
+
+/* 浅色模式下覆盖 highlight.js 的深色语法色 */
+body:not(.dark-theme) .hljs {
+  color: #24292e;
+  background: var(--code-bg, #f5f5f5) !important;
+}
+body:not(.dark-theme) .hljs-keyword,
+body:not(.dark-theme) .hljs-selector-tag,
+body:not(.dark-theme) .hljs-type,
+body:not(.dark-theme) .hljs-literal { color: #d73a49; }
+body:not(.dark-theme) .hljs-string,
+body:not(.dark-theme) .hljs-meta .hljs-string,
+body:not(.dark-theme) .hljs-regexp { color: #032f62; }
+body:not(.dark-theme) .hljs-number,
+body:not(.dark-theme) .hljs-built_in,
+body:not(.dark-theme) .hljs-attribute { color: #005cc5; }
+body:not(.dark-theme) .hljs-comment,
+body:not(.dark-theme) .hljs-quote { color: #6a737d; font-style: italic; }
+body:not(.dark-theme) .hljs-title,
+body:not(.dark-theme) .hljs-title.class_,
+body:not(.dark-theme) .hljs-title.function_ { color: #6f42c1; }
+body:not(.dark-theme) .hljs-variable,
+body:not(.dark-theme) .hljs-template-variable { color: #e36209; }
+body:not(.dark-theme) .hljs-section { color: #005cc5; font-weight: 600; }
+body:not(.dark-theme) .hljs-bullet { color: #735c0f; }
+body:not(.dark-theme) .hljs-attr { color: #005cc5; }
+body:not(.dark-theme) .hljs-symbol { color: #005cc5; }
+body:not(.dark-theme) .hljs-addition { background-color: #e6ffed; color: #22863a; }
+body:not(.dark-theme) .hljs-deletion { background-color: #ffeef0; color: #b31d28; }
+body:not(.dark-theme) .hljs-emphasis { font-style: italic; }
+body:not(.dark-theme) .hljs-strong { font-weight: 600; }
