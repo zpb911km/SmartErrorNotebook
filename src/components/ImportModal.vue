@@ -132,7 +132,7 @@
             {{ resultIcon }}
           </div>
           <div class="result-title">{{ resultTitle }}</div>
-          <div class="result-detail">{{ resultDetail }}</div>
+          <div class="result-detail">{{ resultTitle }}</div>
           <div v-if="resultErrors.length" class="result-errors">
             <div v-for="(e, i) in resultErrors" :key="i" class="result-error-item">{{ e }}</div>
           </div>
@@ -498,7 +498,12 @@ const handleClose = () => {
   color: var(--primary-color);
   background: var(--primary-light);
 }
-.file-select-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.file-select-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  text-align: center;
+}
 .file-select-desc { font-size: 13px; color: var(--text-hint); }
 
 .error-msg {
@@ -574,7 +579,19 @@ const handleClose = () => {
 .review-content {
   font-size: 14px;
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.7;
+}
+
+.review-content :deep(p) { margin: 0.5em 0; }
+.review-content :deep(h1),
+.review-content :deep(h2),
+.review-content :deep(h3),
+.review-content :deep(h4),
+.review-content :deep(h5),
+.review-content :deep(h6) {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+  font-size: 1em;
 }
 .review-content :deep(pre) {
   background: var(--code-bg, #0f172a);
@@ -587,14 +604,51 @@ const handleClose = () => {
   background: transparent;
   padding: 0;
   color: var(--code-text, #e2e8f0);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
 }
 .review-content :deep(code) {
   background: rgba(25,118,210,0.12);
   padding: 2px 6px;
   border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.9em;
 }
-.review-content :deep(p) { margin: 0.4em 0; }
+.review-content :deep(ul),
+.review-content :deep(ol) {
+  padding-left: 20px;
+  margin: 0.5em 0;
+}
+.review-content :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+.review-content :deep(a) {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+.review-content :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+.review-content :deep(th),
+.review-content :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 6px 8px;
+}
+.review-content :deep(img) { max-width: 100%; }
+.review-content :deep(.katex) { font-size: 1.1em; }
+.review-content :deep(.katex-display) {
+  display: block;
+  text-align: center;
+  margin: 0.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.review-content :deep(.katex-display > .katex) { font-size: 1.15em; }
 
 /* ===== 配置 ===== */
 .review-config {
