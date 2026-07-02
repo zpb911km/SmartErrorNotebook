@@ -30,10 +30,7 @@
             {{ viewMode === 'edit' ? '专注预览' : '编辑' }}
           </button>
         </div>
-        <div
-          class="markdown-textarea__preview-segment"
-          :class="previewClass"
-        >
+        <div class="markdown-textarea__preview-segment" :class="previewClass">
           <div
             v-if="previewSegments.length === 0"
             class="markdown-textarea__preview-empty"
@@ -65,10 +62,7 @@
           编辑
         </button>
       </div>
-      <div
-        class="markdown-textarea__preview-segment"
-        :class="previewClass"
-      >
+      <div class="markdown-textarea__preview-segment" :class="previewClass">
         <div
           v-if="previewSegments.length === 0"
           class="markdown-textarea__preview-empty"
@@ -145,9 +139,10 @@ const _marked: Marked = new Marked(
           }
         }
         const language = lang ?? ''
-        const highlighted = language && hljs.getLanguage(language)
-          ? hljs.highlight(text, { language }).value
-          : text  // 无语言标签时不染色，直接展示原文，避免 highlightAuto 猜错
+        const highlighted =
+          language && hljs.getLanguage(language)
+            ? hljs.highlight(text, { language }).value
+            : text // 无语言标签时不染色，直接展示原文，避免 highlightAuto 猜错
         const langClass = language ? `language-${language}` : ''
         return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
       }
@@ -206,21 +201,24 @@ const renderMarkdown = (value: string) => {
   // 解决方案：只去掉前面是空行时的 4 空格缩进（此时 marked 才会解析为代码块），
   // 而跟在列表项后面的缩进（列表嵌套）则保留不动。
   let inFence = false
-  let prevLineBlank = true  // 文档开头视作"前面是空行"
-  const deindented = normalized.split('\n').map(line => {
-    const trimmed = line.trim()
-    if (/^```/.test(trimmed)) {
-      inFence = !inFence
-      prevLineBlank = false
+  let prevLineBlank = true // 文档开头视作"前面是空行"
+  const deindented = normalized
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim()
+      if (/^```/.test(trimmed)) {
+        inFence = !inFence
+        prevLineBlank = false
+        return line
+      }
+      if (!inFence && prevLineBlank && /^[ ]{4,}(.+)$/.test(line)) {
+        prevLineBlank = false
+        return line.replace(/^[ ]{4,}/, '')
+      }
+      prevLineBlank = trimmed === ''
       return line
-    }
-    if (!inFence && prevLineBlank && /^[ ]{4,}(.+)$/.test(line)) {
-      prevLineBlank = false
-      return line.replace(/^[ ]{4,}/, '')
-    }
-    prevLineBlank = trimmed === ''
-    return line
-  }).join('\n')
+    })
+    .join('\n')
   return _marked.parse(deindented, { breaks: true, gfm: true }) as string
 }
 
@@ -517,5 +515,4 @@ defineExpose({ focus, blur, select, el: textareaRef })
   overflow-y: auto;
   color: var(--text-primary);
 }
-
 </style>

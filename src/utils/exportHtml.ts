@@ -5,17 +5,36 @@ import { showError } from './notification'
 import { exportFile } from './exportFile'
 
 const _marked = new Marked(
-  markedKatex({ throwOnError: false, output: 'html', nonStandard: true, strict: 'ignore' }),
-  { renderer: { code({ text, lang }) {
-    const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    return `<pre><code class="hljs ${lang?`language-${lang}`:''}">${e}</code></pre>`
-  }}}
+  markedKatex({
+    throwOnError: false,
+    output: 'html',
+    nonStandard: true,
+    strict: 'ignore'
+  }),
+  {
+    renderer: {
+      code({ text, lang }) {
+        const e = text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+        return `<pre><code class="hljs ${lang ? `language-${lang}` : ''}">${e}</code></pre>`
+      }
+    }
+  }
 )
 
-function renderHtml(t: string|undefined|null): string {
+function renderHtml(t: string | undefined | null): string {
   if (!t) return ''
-  const c = (t||'').replace(/[①-⑳]/g,m=>`(${m.charCodeAt(0)-0x245f})`)
-  return _marked.parse(c.replace(/\\\[/g,'$$$$').replace(/\\\]/g,'$$$$').replace(/\\\(/g,'$').replace(/\\\)/g,'$'), {breaks:true,gfm:true}) as string
+  const c = (t || '').replace(/[①-⑳]/g, (m) => `(${m.charCodeAt(0) - 0x245f})`)
+  return _marked.parse(
+    c
+      .replace(/\\\[/g, '$$$$')
+      .replace(/\\\]/g, '$$$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$'),
+    { breaks: true, gfm: true }
+  ) as string
 }
 
 /**
@@ -33,10 +52,17 @@ export function buildQuestionsHTML(
   includeAnswer?: boolean
 ): string {
   // 读取是否包含答案和解析的设置（默认 false）
-  const showAnswer = includeAnswer ?? localStorage.getItem('export_include_answer') === 'true'
+  const showAnswer =
+    includeAnswer ?? localStorage.getItem('export_include_answer') === 'true'
 
-  const cards = questions.map((q, i) => buildCardHtml(q, i, showAnswer)).join('\n')
-  const date = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+  const cards = questions
+    .map((q, i) => buildCardHtml(q, i, showAnswer))
+    .join('\n')
+  const date = new Date().toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -204,7 +230,11 @@ export async function exportQuestionsToHTML(
   }
 }
 
-function buildCardHtml(q: ErrorQuestion, i: number, includeAnswer: boolean): string {
+function buildCardHtml(
+  q: ErrorQuestion,
+  i: number,
+  includeAnswer: boolean
+): string {
   let sections = `
     <div class="section-label">题目</div>
     <div class="content">${renderHtml(q.prompt)}</div>

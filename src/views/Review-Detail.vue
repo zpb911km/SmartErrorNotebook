@@ -71,7 +71,9 @@
 
         <!-- 链接 -->
         <div class="action-row">
-          <button class="btn-link" @click="goToDetail"><Icon name="link" :size="16" /> 查看/编辑详细</button>
+          <button class="btn-link" @click="goToDetail">
+            <Icon name="link" :size="16" /> 查看/编辑详细
+          </button>
         </div>
 
         <!-- 滑动条评分 -->
@@ -87,10 +89,22 @@
             <div
               class="slider-wrapper"
               @mouseenter="sScale = 1.08"
-              @mouseleave="sScale = 1; sOverflow = 0; sRegion = 'middle'"
+              @mouseleave="
+                sScale = 1
+                sOverflow = 0
+                sRegion = 'middle'
+              "
               @touchstart.passive="sScale = 1.08"
-              @touchend="sScale = 1; sOverflow = 0; sRegion = 'middle'; submitReview()"
-              :style="{ transform: `scale(${sScale})`, opacity: 0.7 + 0.3 * (sScale - 1) / 0.2 }"
+              @touchend="
+                sScale = 1
+                sOverflow = 0
+                sRegion = 'middle'
+                submitReview()
+              "
+              :style="{
+                transform: `scale(${sScale})`,
+                opacity: 0.7 + (0.3 * (sScale - 1)) / 0.2
+              }"
             >
               <!-- 滑块轨道 -->
               <div
@@ -112,16 +126,25 @@
                   }"
                 >
                   <div class="slider-track-bg">
-                    <div class="slider-range" :style="{ width: sRangePercent + '%', background: sRangeColor }" />
+                    <div
+                      class="slider-range"
+                      :style="{
+                        width: sRangePercent + '%',
+                        background: sRangeColor
+                      }"
+                    />
                   </div>
                 </div>
               </div>
-
-              </div>
+            </div>
 
             <div class="slider-value-row">
-              <span class="feedback-tag" :style="{ color: feedbackColor }">{{ feedbackLabel }}</span>
-              <span class="value-indicator">{{ Math.round(feedbackValue * 100) }}</span>
+              <span class="feedback-tag" :style="{ color: feedbackColor }">{{
+                feedbackLabel
+              }}</span>
+              <span class="value-indicator">{{
+                Math.round(feedbackValue * 100)
+              }}</span>
             </div>
           </div>
         </div>
@@ -177,7 +200,9 @@
       <div class="empty-icon"></div>
       <div class="empty-title">没有待复习的题目</div>
       <div class="empty-desc">所有错题都已复习完毕，做得很棒！</div>
-      <button class="btn-back" @click="exitReview" style="margin-top: 16px;">返回</button>
+      <button class="btn-back" @click="exitReview" style="margin-top: 16px">
+        返回
+      </button>
     </div>
 
     <!-- 提交中遮罩 -->
@@ -267,7 +292,7 @@ const sTrackOrigin = computed(() => {
 const sTrackHeight = computed(() => {
   const base = 14
   const max = 20
-  const h = base + (max - base) * (sScale.value - 1) / 0.2
+  const h = base + ((max - base) * (sScale.value - 1)) / 0.2
   return h + 'px'
 })
 
@@ -566,8 +591,11 @@ onMounted(() => {
   user-select: none;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}.slider-root {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+.slider-root {
   position: relative;
   display: flex;
   flex: 1;

@@ -19,7 +19,11 @@
         <span>返回</span>
       </button>
       <h2>错题详情管理</h2>
-      <div class="header-actions" ref="headerActionsRef" :class="{ collapsed: actionsCollapsed }">
+      <div
+        class="header-actions"
+        ref="headerActionsRef"
+        :class="{ collapsed: actionsCollapsed }"
+      >
         <button
           v-if="shareCheckDone && isShared && !isEditing"
           v-ripple
@@ -27,10 +31,20 @@
           :disabled="shareLoading"
           @click="handleRevokeShare"
         >
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-            <polyline points="16 6 12 2 8 6"/>
-            <line x1="12" y1="2" x2="12" y2="15"/>
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
           <span class="btn-label">{{ shareLoading ? '...' : '撤回分享' }}</span>
         </button>
@@ -41,24 +55,68 @@
           :disabled="shareLoading"
           @click="handleShare"
         >
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-            <polyline points="16 6 12 2 8 6"/>
-            <line x1="12" y1="2" x2="12" y2="15"/>
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
-          <span class="btn-label">{{ shareLoading ? '...' : '分享到社区' }}</span>
+          <span class="btn-label">{{
+            shareLoading ? '...' : '分享到社区'
+          }}</span>
         </button>
-        <button v-ripple class="action-btn edit-btn glare-btn" @click="toggleEditMode">
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        <button
+          v-ripple
+          class="action-btn edit-btn glare-btn"
+          @click="toggleEditMode"
+        >
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+            />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
           <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
         </button>
-        <button v-ripple class="action-btn delete-btn glare-btn" @click="confirmDelete">
-          <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        <button
+          v-ripple
+          class="action-btn delete-btn glare-btn"
+          @click="confirmDelete"
+        >
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            />
           </svg>
           <span class="btn-label">删除</span>
         </button>
@@ -369,17 +427,28 @@
           <p>确定要删除这道错题吗？此操作不可恢复。</p>
         </div>
         <div class="modal-footer">
-          <button v-ripple class="btn-cancel" @click="showDeleteConfirm = false">
+          <button
+            v-ripple
+            class="btn-cancel"
+            @click="showDeleteConfirm = false"
+          >
             取消
           </button>
-          <button v-ripple class="btn-confirm" @click="deleteError">确认删除</button>
+          <button v-ripple class="btn-confirm" @click="deleteError">
+            确认删除
+          </button>
         </div>
       </div>
     </div>
 
     <!-- 保存按钮 -->
     <div v-if="isEditing" class="save-bar">
-      <button v-ripple class="save-btn glare-btn" @click="saveChanges" :disabled="saving">
+      <button
+        v-ripple
+        class="save-btn glare-btn"
+        @click="saveChanges"
+        :disabled="saving"
+      >
         {{ saving ? '保存中...' : '保存修改' }}
       </button>
     </div>
@@ -494,9 +563,9 @@ const sourceSelectorDisabled = ref(false) // 控制SourceSelector的启用状态
 const headerActionsRef = ref<HTMLElement | null>(null)
 const detailHeaderRef = ref<HTMLElement | null>(null)
 const actionsCollapsed = ref(false)
-const fullButtonsWidth = ref(0)    // 挂载时测量的按钮全宽（含文字）
-const backBtnWidth = ref(0)        // 挂载时测量的返回按钮宽度
-const titleMinWidth = ref(0)       // 挂载时测量的标题最小宽度
+const fullButtonsWidth = ref(0) // 挂载时测量的按钮全宽（含文字）
+const backBtnWidth = ref(0) // 挂载时测量的返回按钮宽度
+const titleMinWidth = ref(0) // 挂载时测量的标题最小宽度
 let actionsObserver: ResizeObserver | null = null
 const editForm = ref({
   subject_id: '',
@@ -560,7 +629,7 @@ async function handleShare() {
       type_: detail.type_ || detail.type || '',
       answer: detail.answer || '',
       analysis: detail.analysis || '',
-      error_note: detail.error_note || '',
+      error_note: detail.error_note || ''
     })
     isShared.value = true
   } catch (e: any) {
@@ -1090,7 +1159,6 @@ const handleSourceSelect = (sourceId: string) => {
   }, 100)
 }
 
-
 // 构建图片src
 const buildImageSrc = (attachment: any) => {
   console.log('构建图片URL:', attachment)
@@ -1331,7 +1399,8 @@ onMounted(() => {
 
       actionsObserver = new ResizeObserver(([entry]) => {
         const totalWidth = entry.target.clientWidth
-        const totalNeeded = backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+        const totalNeeded =
+          backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
 
         if (actionsCollapsed.value) {
           if (totalWidth >= totalNeeded + 30) {
@@ -1347,7 +1416,8 @@ onMounted(() => {
         actionsObserver.observe(detailHeaderRef.value)
         // 初始检测：页面加载完立即判断，不等 resize
         const initWidth = detailHeaderRef.value.clientWidth
-        const initNeeded = backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+        const initNeeded =
+          backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
         if (initWidth < initNeeded - 2) {
           actionsCollapsed.value = true
         }
@@ -1562,7 +1632,9 @@ onUnmounted(() => {
   background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1574,7 +1646,9 @@ onUnmounted(() => {
 .note-section:hover,
 .srs-section:hover,
 .time-section:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .section-title {

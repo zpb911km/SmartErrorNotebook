@@ -3,7 +3,14 @@
     <div class="image-preview-container" @click.stop>
       <!-- 关闭按钮 -->
       <button class="close-btn" @click="handleClose" title="关闭">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>
@@ -26,21 +33,44 @@
       <!-- 缩放控制 -->
       <div class="zoom-controls">
         <button class="zoom-btn" @click="zoomIn" title="放大">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            width="18"
+            height="18"
+          >
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
         <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
         <button class="zoom-btn" @click="zoomOut" title="缩小">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            width="18"
+            height="18"
+          >
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
         <span class="divider"></span>
         <button class="zoom-btn rotate-btn" @click="rotateImage" title="旋转">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-            <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            width="18"
+            height="18"
+          >
+            <path
+              d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"
+            />
           </svg>
         </button>
         <button class="zoom-btn reset-btn" @click="resetAll" title="重置">
@@ -235,8 +265,12 @@ const handleMouseDown = (e: MouseEvent) => {
 }
 
 @keyframes overlayIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ===== 容器 ===== */
@@ -438,7 +472,13 @@ const handleMouseDown = (e: MouseEvent) => {
 }
 
 @keyframes hintFade {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 </style>

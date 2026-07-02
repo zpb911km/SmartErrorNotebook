@@ -60,10 +60,13 @@ export async function exportFile(
       defaultPath: filename,
       filters: [
         {
-          name: mimeType.includes('json') ? 'JSON 文件'
-            : mimeType.includes('html') ? 'HTML 文件'
-            : mimeType.includes('pdf') ? 'PDF 文件'
-            : '文件',
+          name: mimeType.includes('json')
+            ? 'JSON 文件'
+            : mimeType.includes('html')
+              ? 'HTML 文件'
+              : mimeType.includes('pdf')
+                ? 'PDF 文件'
+                : '文件',
           extensions: [filename.split('.').pop() || '']
         }
       ]

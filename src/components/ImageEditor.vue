@@ -1,7 +1,9 @@
 <template>
   <div class="edit-modal" v-if="visible">
     <div class="edit-header">
-      <button class="header-btn close-btn" @click="handleCancel"><Icon name="x" :size="18" /></button>
+      <button class="header-btn close-btn" @click="handleCancel">
+        <Icon name="x" :size="18" />
+      </button>
       <span class="edit-title">图片编辑</span>
       <button class="header-btn confirm-btn" @click="handleConfirm">✓</button>
     </div>
@@ -40,7 +42,9 @@
 
       <div class="toolbar-divider"></div>
 
-      <button class="tool-btn" @click="resetAll" title="重置"><Icon name="refresh-cw" :size="16" /></button>
+      <button class="tool-btn" @click="resetAll" title="重置">
+        <Icon name="refresh-cw" :size="16" />
+      </button>
     </div>
 
     <!-- 调整面板 -->
@@ -76,7 +80,8 @@
               v-model.number="rotationAngle"
               min="-180"
               max="180"
-              @input="previewRotation" @change="applyRotation"
+              @input="previewRotation"
+              @change="applyRotation"
             />
           </div>
         </div>
@@ -1693,7 +1698,10 @@ const handleCancel = () => {
 <style scoped>
 .edit-modal {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: #000;
   z-index: 9999;
   display: flex;
@@ -1702,16 +1710,22 @@ const handleCancel = () => {
 }
 
 @keyframes editIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .edit-header {
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   padding: 16px 20px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1719,10 +1733,11 @@ const handleCancel = () => {
 }
 
 .header-btn {
-  width: 40px; height: 40px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -1733,7 +1748,7 @@ const handleCancel = () => {
 }
 
 .header-btn:hover {
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   transform: scale(1.05);
 }
 
@@ -1762,9 +1777,10 @@ const handleCancel = () => {
 .toolbar {
   position: absolute;
   top: calc(56px + env(safe-area-inset-top));
-  left: 0; right: 0;
+  left: 0;
+  right: 0;
   padding: 12px 16px;
-  background: rgba(0,0,0,0.75);
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(12px);
   display: flex;
   gap: 8px;
@@ -1781,17 +1797,18 @@ const handleCancel = () => {
 .toolbar-divider {
   width: 1px;
   height: 24px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   margin: 0 4px;
   flex-shrink: 0;
 }
 
 .tool-btn {
-  width: 40px; height: 40px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -1802,7 +1819,7 @@ const handleCancel = () => {
 }
 
 .tool-btn:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
   transform: translateY(-1px);
 }
@@ -1811,7 +1828,7 @@ const handleCancel = () => {
   background: var(--primary-color, #1976d2);
   color: #fff;
   border-color: var(--primary-color, #1976d2);
-  box-shadow: 0 0 16px rgba(25,118,210,0.4);
+  box-shadow: 0 0 16px rgba(25, 118, 210, 0.4);
 }
 
 .tool-btn:disabled {
@@ -1823,22 +1840,29 @@ const handleCancel = () => {
 .adjustment-panel {
   position: absolute;
   top: calc(120px + env(safe-area-inset-top));
-  left: 16px; right: 16px;
-  background: rgba(20,20,30,0.95);
+  left: 16px;
+  right: 16px;
+  background: rgba(20, 20, 30, 0.95);
   border-radius: 14px;
   padding: 18px;
   z-index: 8;
   max-height: 55vh;
   overflow-y: auto;
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
   animation: panelSlide 0.2s ease;
 }
 
 @keyframes panelSlide {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .panel-header {
@@ -1847,7 +1871,7 @@ const handleCancel = () => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .panel-header span {
@@ -1857,11 +1881,12 @@ const handleCancel = () => {
 }
 
 .panel-close {
-  width: 32px; height: 32px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   border: none;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1870,7 +1895,7 @@ const handleCancel = () => {
 }
 
 .panel-close:hover {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
 }
 
@@ -1881,7 +1906,7 @@ const handleCancel = () => {
 }
 
 .hint {
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 13px;
   text-align: center;
   margin: 0;
@@ -1899,10 +1924,10 @@ const handleCancel = () => {
 
 .control-btn {
   padding: 10px 16px;
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 10px;
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.85);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1910,7 +1935,7 @@ const handleCancel = () => {
 }
 
 .control-btn:hover {
-  background: rgba(255,255,255,0.14);
+  background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
 
@@ -1931,7 +1956,7 @@ const handleCancel = () => {
 }
 
 .slider-control label {
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
 }
 
@@ -1939,7 +1964,7 @@ const handleCancel = () => {
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -1947,12 +1972,13 @@ const handleCancel = () => {
 
 .slider-control input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px; height: 18px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--primary-color, #1976d2);
   border: 2px solid #fff;
   cursor: pointer;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
 }
 
 .checkbox-control {
@@ -1962,13 +1988,14 @@ const handleCancel = () => {
 }
 
 .checkbox-control input[type='checkbox'] {
-  width: 18px; height: 18px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--primary-color, #1976d2);
   cursor: pointer;
 }
 
 .checkbox-control label {
-  color: rgba(255,255,255,0.8);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
   cursor: pointer;
 }

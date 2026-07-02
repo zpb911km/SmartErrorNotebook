@@ -38,7 +38,7 @@
           v-for="(item, idx) in items"
           :key="item.label"
           class="filter-card"
-          :ref="el => setCardRef(el, idx)"
+          :ref="(el) => setCardRef(el, idx)"
           :style="{ backgroundColor: item.bgColor, color: item.textColor }"
         >
           <div class="filter-card-label">{{ item.label }}</div>
@@ -78,17 +78,20 @@ export interface FilterNavState {
   [key: string]: string | string[]
 }
 
-const props = withDefaults(defineProps<{
-  items: FilterNavItem[]
-  modelValue?: FilterNavState
-  totalCount?: number
-  baseColor?: string
-  menuColor?: string
-  ease?: string
-}>(), {
-  baseColor: 'var(--card-bg)',
-  ease: 'power3.out'
-})
+const props = withDefaults(
+  defineProps<{
+    items: FilterNavItem[]
+    modelValue?: FilterNavState
+    totalCount?: number
+    baseColor?: string
+    menuColor?: string
+    ease?: string
+  }>(),
+  {
+    baseColor: 'var(--card-bg)',
+    ease: 'power3.out'
+  }
+)
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: FilterNavState): void
@@ -103,9 +106,13 @@ const tlRef = ref<gsap.core.Timeline | null>(null)
 
 const localState = ref<FilterNavState>(props.modelValue || {})
 
-watch(() => props.modelValue, (val) => {
-  if (val) localState.value = val
-}, { deep: true })
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) localState.value = val
+  },
+  { deep: true }
+)
 
 function isActive(key: string, value: string): boolean {
   const v = localState.value[key]
@@ -139,7 +146,9 @@ function calculateHeight(): number {
 
   const isMobile = window.innerWidth <= 768
   if (isMobile) {
-    const contentEl = navEl.querySelector('.filter-nav-content') as HTMLElement | null
+    const contentEl = navEl.querySelector(
+      '.filter-nav-content'
+    ) as HTMLElement | null
     if (contentEl) {
       const wasVisible = contentEl.style.visibility
       const wasPointerEvents = contentEl.style.pointerEvents
@@ -182,13 +191,17 @@ function createTimeline(): gsap.core.Timeline | null {
     ease: props.ease
   })
 
-  tl.to(cardsRef.value, {
-    y: 0,
-    opacity: 1,
-    duration: 0.4,
-    ease: props.ease,
-    stagger: 0.08
-  }, '-=0.1')
+  tl.to(
+    cardsRef.value,
+    {
+      y: 0,
+      opacity: 1,
+      duration: 0.4,
+      ease: props.ease,
+      stagger: 0.08
+    },
+    '-=0.1'
+  )
 
   return tl
 }

@@ -144,11 +144,21 @@
           <Icon name="plus" :size="24" class="btn-icon" />
           <span>添加错题</span>
         </button>
-        <button v-if="hasDue" v-ripple class="action-btn has-review" @click="$router.push('/review')">
+        <button
+          v-if="hasDue"
+          v-ripple
+          class="action-btn has-review"
+          @click="$router.push('/review')"
+        >
           <Icon name="book-open" :size="24" class="btn-icon" />
           <span>开始复习</span>
         </button>
-        <button v-else v-ripple class="action-btn" @click="$router.push('/review')">
+        <button
+          v-else
+          v-ripple
+          class="action-btn"
+          @click="$router.push('/review')"
+        >
           <Icon name="book-open" :size="24" class="btn-icon" />
           <span>开始复习</span>
         </button>
@@ -167,7 +177,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getDueCount } from '../apis';
+import { getDueCount } from '../apis'
 
 // 轮播组件逻辑
 const currentSlide = ref(0)
@@ -224,9 +234,9 @@ onMounted(() => {
   if (leftArrow) leftArrow.addEventListener('click', prevSlide)
   if (rightArrow) rightArrow.addEventListener('click', nextSlide)
 
-  getDueCount().then(count => {
+  getDueCount().then((count) => {
     console.log('due count:', count)
-    hasDue.value = count > 0;
+    hasDue.value = count > 0
     // hasDue.value = true
   })
 })
@@ -342,12 +352,16 @@ onUnmounted(() => {
   gap: 8px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .action-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .action-btn.primary {
@@ -373,7 +387,8 @@ onUnmounted(() => {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
     transform: scale(1);
   }
@@ -452,8 +467,16 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 30% 0%, rgba(255,255,255,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 70% 100%, rgba(255,255,255,0.08) 0%, transparent 50%);
+    radial-gradient(
+      ellipse 80% 60% at 30% 0%,
+      rgba(255, 255, 255, 0.18) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 70% 100%,
+      rgba(255, 255, 255, 0.08) 0%,
+      transparent 50%
+    );
   animation: lightOrbit 5s ease-in-out infinite alternate;
   pointer-events: none;
   z-index: 1;
@@ -463,18 +486,42 @@ onUnmounted(() => {
 @keyframes lightOrbit {
   0% {
     background:
-      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255,255,255,0.2) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(255,255,255,0.06) 0%, transparent 50%);
+      radial-gradient(
+        ellipse 80% 60% at 20% 10%,
+        rgba(255, 255, 255, 0.2) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 80% 90%,
+        rgba(255, 255, 255, 0.06) 0%,
+        transparent 50%
+      );
   }
   50% {
     background:
-      radial-gradient(ellipse 80% 60% at 70% 5%, rgba(255,255,255,0.14) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 30% 95%, rgba(255,255,255,0.12) 0%, transparent 50%);
+      radial-gradient(
+        ellipse 80% 60% at 70% 5%,
+        rgba(255, 255, 255, 0.14) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 30% 95%,
+        rgba(255, 255, 255, 0.12) 0%,
+        transparent 50%
+      );
   }
   100% {
     background:
-      radial-gradient(ellipse 80% 60% at 50% 15%, rgba(255,255,255,0.18) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 60% 85%, rgba(255,255,255,0.08) 0%, transparent 50%);
+      radial-gradient(
+        ellipse 80% 60% at 50% 15%,
+        rgba(255, 255, 255, 0.18) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 60% 85%,
+        rgba(255, 255, 255, 0.08) 0%,
+        transparent 50%
+      );
   }
 }
 
@@ -484,15 +531,19 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   border-radius: 12px;
-  box-shadow: inset 0 0 30px rgba(255,255,255,0.04);
+  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.04);
   animation: edgeGlow 3s ease-in-out infinite alternate;
   pointer-events: none;
   z-index: 1;
 }
 
 @keyframes edgeGlow {
-  0%   { box-shadow: inset 0 0 20px rgba(255,255,255,0.02); }
-  100% { box-shadow: inset 0 0 50px rgba(255,255,255,0.08); }
+  0% {
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
+  }
+  100% {
+    box-shadow: inset 0 0 50px rgba(255, 255, 255, 0.08);
+  }
 }
 
 /* Swiper Pagination */
@@ -536,11 +587,12 @@ onUnmounted(() => {
 }
 
 @keyframes indicatorPulse {
-  0%, 100% {
-    filter: grayscale(0) drop-shadow(0 0 4px rgba(255,255,255,0.3));
+  0%,
+  100% {
+    filter: grayscale(0) drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
   }
   50% {
-    filter: grayscale(0) drop-shadow(0 0 10px rgba(255,255,255,0.6));
+    filter: grayscale(0) drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
   }
 }
 

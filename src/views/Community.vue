@@ -49,7 +49,10 @@
         class="share-card"
       >
         <!-- 题目预览 -->
-        <div class="card-prompt markdown-body" v-html="renderMarkdown(item.prompt)"></div>
+        <div
+          class="card-prompt markdown-body"
+          v-html="renderMarkdown(item.prompt)"
+        ></div>
 
         <!-- 元信息 + 操作 -->
         <div class="card-footer">
@@ -116,7 +119,7 @@ function formatTime(ts: number): string {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit',
+    minute: '2-digit'
   })
 }
 
@@ -148,7 +151,11 @@ async function loadData() {
   hasMore.value = true
 
   try {
-    const data = await fetchShareList({ auth_key: authKey, page: 1, page_size: PAGE_SIZE })
+    const data = await fetchShareList({
+      auth_key: authKey,
+      page: 1,
+      page_size: PAGE_SIZE
+    })
     items.value = data.items
     page.value = 1
     hasMore.value = data.has_more
@@ -166,7 +173,7 @@ async function loadMore() {
     const data = await fetchShareList({
       auth_key: getAuthKey(),
       page: page.value + 1,
-      page_size: PAGE_SIZE,
+      page_size: PAGE_SIZE
     })
     items.value.push(...data.items)
     page.value++
@@ -184,7 +191,7 @@ function handleFetch(item: SharedQuestionItem) {
     type_: item.type_,
     answer: item.answer,
     analysis: item.analysis,
-    error_note: item.error_note,
+    error_note: item.error_note
   })
   router.push({ name: 'Add' })
 }
@@ -205,7 +212,9 @@ function onScroll() {
 }
 
 onMounted(() => {
-  scrollContainer = document.querySelector('.community-page') as HTMLElement | null
+  scrollContainer = document.querySelector(
+    '.community-page'
+  ) as HTMLElement | null
   scrollContainer?.addEventListener('scroll', onScroll)
   loadData()
 })
@@ -376,7 +385,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 按钮 */
@@ -420,9 +431,15 @@ onUnmounted(() => {
   line-height: 1.3;
 }
 
-.card-prompt.markdown-body :deep(h1) { font-size: 1.3em; }
-.card-prompt.markdown-body :deep(h2) { font-size: 1.15em; }
-.card-prompt.markdown-body :deep(h3) { font-size: 1.05em; }
+.card-prompt.markdown-body :deep(h1) {
+  font-size: 1.3em;
+}
+.card-prompt.markdown-body :deep(h2) {
+  font-size: 1.15em;
+}
+.card-prompt.markdown-body :deep(h3) {
+  font-size: 1.05em;
+}
 
 .card-prompt.markdown-body :deep(p) {
   margin: 0.4em 0;

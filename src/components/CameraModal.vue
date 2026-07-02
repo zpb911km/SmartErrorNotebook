@@ -40,11 +40,7 @@
 
       <!-- 底部拍摄按钮 -->
       <div class="camera-controls">
-        <button
-          class="capture-btn"
-          @click="handleCapture"
-          :disabled="!!error"
-        >
+        <button class="capture-btn" @click="handleCapture" :disabled="!!error">
           <div class="capture-inner"></div>
         </button>
       </div>
@@ -75,10 +71,13 @@ const mediaStream = ref<MediaStream | null>(null)
 const currentCamera = ref<'user' | 'environment'>('environment')
 const hasMultipleCameras = ref(false)
 
-watch(() => props.visible, async (newVal) => {
-  if (newVal) await startCamera()
-  else stopCamera()
-})
+watch(
+  () => props.visible,
+  async (newVal) => {
+    if (newVal) await startCamera()
+    else stopCamera()
+  }
+)
 
 const startCamera = async () => {
   error.value = ''
@@ -87,19 +86,25 @@ const startCamera = async () => {
       mediaStream.value.getTracks().forEach((track) => track.stop())
     }
     const constraints: MediaStreamConstraints = {
-      video: { facingMode: currentCamera.value, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      video: {
+        facingMode: currentCamera.value,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
       audio: false
     }
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
     mediaStream.value = stream
     if (videoRef.value) videoRef.value.srcObject = stream
     const devices = await navigator.mediaDevices.enumerateDevices()
-    hasMultipleCameras.value = devices.filter((d) => d.kind === 'videoinput').length > 1
+    hasMultipleCameras.value =
+      devices.filter((d) => d.kind === 'videoinput').length > 1
   } catch (err: any) {
     console.error('相机启动失败:', err)
     if (err.name === 'NotAllowedError') error.value = '请允许访问摄像头权限'
     else if (err.name === 'NotFoundError') error.value = '未找到摄像头设备'
-    else if (err.name === 'NotReadableError') error.value = '摄像头被其他应用占用'
+    else if (err.name === 'NotReadableError')
+      error.value = '摄像头被其他应用占用'
     else error.value = '相机启动失败，请检查设备'
     emit('error')
   }
@@ -115,7 +120,8 @@ const stopCamera = () => {
 }
 
 const handleSwitchCamera = () => {
-  currentCamera.value = currentCamera.value === 'environment' ? 'user' : 'environment'
+  currentCamera.value =
+    currentCamera.value === 'environment' ? 'user' : 'environment'
   startCamera()
 }
 
@@ -139,7 +145,10 @@ onBeforeUnmount(() => stopCamera())
 <style scoped>
 .camera-modal {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: #000;
   z-index: 9999;
   display: flex;
@@ -148,8 +157,12 @@ onBeforeUnmount(() => stopCamera())
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .camera-container {
@@ -163,10 +176,16 @@ onBeforeUnmount(() => stopCamera())
 /* ===== 顶部栏 ===== */
 .camera-header {
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   padding: 16px 20px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.6) 0%,
+    transparent 100%
+  );
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -177,8 +196,8 @@ onBeforeUnmount(() => stopCamera())
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -189,7 +208,7 @@ onBeforeUnmount(() => stopCamera())
 }
 
 .header-btn:hover {
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   transform: scale(1.05);
 }
 
@@ -241,13 +260,29 @@ onBeforeUnmount(() => stopCamera())
   position: absolute;
   width: 24px;
   height: 24px;
-  border-color: rgba(255,255,255,0.5);
+  border-color: rgba(255, 255, 255, 0.5);
   border-style: solid;
 }
-.vf-corner.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
-.vf-corner.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
-.vf-corner.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
-.vf-corner.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+.vf-corner.tl {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+.vf-corner.tr {
+  top: 0;
+  right: 0;
+  border-width: 2px 2px 0 0;
+}
+.vf-corner.bl {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 2px 2px;
+}
+.vf-corner.br {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2px 2px 0;
+}
 
 /* ===== 错误提示 ===== */
 .camera-error {
@@ -258,7 +293,7 @@ onBeforeUnmount(() => stopCamera())
   text-align: center;
   color: #fff;
   padding: 24px 32px;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.7);
   border-radius: 16px;
   backdrop-filter: blur(12px);
 }
@@ -294,10 +329,12 @@ onBeforeUnmount(() => stopCamera())
 /* ===== 底部拍摄按钮 ===== */
 .camera-controls {
   position: absolute;
-  bottom: 0; left: 0; right: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   padding: 24px;
   padding-bottom: calc(24px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -308,7 +345,7 @@ onBeforeUnmount(() => stopCamera())
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  border: 4px solid rgba(255,255,255,0.9);
+  border: 4px solid rgba(255, 255, 255, 0.9);
   background: transparent;
   cursor: pointer;
   display: flex;
@@ -340,6 +377,6 @@ onBeforeUnmount(() => stopCamera())
 }
 
 .capture-btn:active .capture-inner {
-  background: rgba(255,255,255,0.8);
+  background: rgba(255, 255, 255, 0.8);
 }
 </style>

@@ -124,7 +124,9 @@
         <div class="modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 配置</h3>
-            <button class="close-btn" @click="closeLLMConfig"><Icon name="x" :size="18" /></button>
+            <button class="close-btn" @click="closeLLMConfig">
+              <Icon name="x" :size="18" />
+            </button>
           </div>
           <div class="modal-body">
             <div class="form-group">
@@ -180,7 +182,9 @@
         <div class="modal test-modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 测试</h3>
-            <button class="close-btn" @click="closeLLMTest"><Icon name="x" :size="18" /></button>
+            <button class="close-btn" @click="closeLLMTest">
+              <Icon name="x" :size="18" />
+            </button>
           </div>
           <div class="modal-body test-body">
             <div class="test-status">
@@ -235,7 +239,9 @@
         <div class="modal large-modal" @click.stop>
           <div class="modal-header">
             <h3>AI 提示词设置</h3>
-            <button class="close-btn" @click="closePromptEditor"><Icon name="x" :size="18" /></button>
+            <button class="close-btn" @click="closePromptEditor">
+              <Icon name="x" :size="18" />
+            </button>
           </div>
           <div class="modal-body">
             <p class="prompt-description">
@@ -268,9 +274,14 @@ const aiEnabled = ref(false)
 const showLLMConfig = ref(false)
 
 // 导出设置
-const exportIncludeAnswer = ref(localStorage.getItem('export_include_answer') === 'true')
+const exportIncludeAnswer = ref(
+  localStorage.getItem('export_include_answer') === 'true'
+)
 const handleExportAnswerToggle = () => {
-  localStorage.setItem('export_include_answer', String(exportIncludeAnswer.value))
+  localStorage.setItem(
+    'export_include_answer',
+    String(exportIncludeAnswer.value)
+  )
 }
 const llmConfig = ref({
   baseUrl: '',
@@ -483,14 +494,18 @@ const confirmPurge = async () => {
       }
     }
     if (total > 0) {
-      showSuccess(`清理完成！`, `共删除 ${total} 条记录\n${parts.join('\n')}`, 5000)
+      showSuccess(
+        `清理完成！`,
+        `共删除 ${total} 条记录\n${parts.join('\n')}`,
+        5000
+      )
     } else {
       showInfo('没有需要清理的记录', '')
     }
     checkAndDeleteOrphans().then((orphans) => {
       console.log('checkAndDeleteOrphans result:', orphans)
       showSuccess(
-        "自动检查完成",
+        '自动检查完成',
         `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`,
         5000
       )
@@ -681,7 +696,9 @@ onUnmounted(() => {
 
 input:checked + .toggle-label {
   background-color: var(--primary-color);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--primary-dark);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--primary-dark);
 }
 
 input:checked + .toggle-label:before {

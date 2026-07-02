@@ -127,7 +127,9 @@
       <span class="active-filters-label">已选：</span>
       <span v-for="f in activeFilters" :key="f.key" class="filter-tag">
         {{ f.label }}
-        <button @click="removeFilter(f.key)" class="filter-tag-close"><Icon name="x" :size="14" /></button>
+        <button @click="removeFilter(f.key)" class="filter-tag-close">
+          <Icon name="x" :size="14" />
+        </button>
       </span>
       <button @click="clearAllFilters" class="clear-all-btn">清除</button>
     </div>
@@ -160,7 +162,10 @@
         ></div>
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
-          <span class="meta-item"><Icon name="target" :size="16" /> 掌握率 {{ item.recallPercent }}%</span>
+          <span class="meta-item"
+            ><Icon name="target" :size="16" /> 掌握率
+            {{ item.recallPercent }}%</span
+          >
         </div>
       </div>
     </div>
@@ -193,7 +198,10 @@
         ></div>
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
-          <span class="meta-item"><Icon name="chart-column" :size="16" /> 稳定性 {{ item.stabilityText }}</span>
+          <span class="meta-item"
+            ><Icon name="chart-column" :size="16" /> 稳定性
+            {{ item.stabilityText }}</span
+          >
         </div>
       </div>
     </div>
@@ -456,7 +464,10 @@ const normalizeMarkdown = (value: string) => {
 const renderMarkdown = (content: string) => {
   if (!content) return ''
   const normalized = normalizeMarkdown(content)
-  return marked.parse(normalized, { breaks: true, gfm: true }) as unknown as string
+  return marked.parse(normalized, {
+    breaks: true,
+    gfm: true
+  }) as unknown as string
 }
 
 // Cascade filter handlers

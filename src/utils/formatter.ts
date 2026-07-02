@@ -13,7 +13,6 @@ export function format(input: string): string {
   return text
 }
 
-
 /**
  * 去除外层```markdown...所有的内容...```标签
  * @param input
@@ -27,7 +26,6 @@ function removeMarkdownOuterTags(input: string): string {
     .replace(/^```markdown\s*([\s\S]*?)\s*```\s*$/im, '$1')
     .trim()
 }
-
 
 /**
  * 格式化 llm 返回的文本，主要是数学公式
@@ -80,7 +78,10 @@ function mathFormat(input: string): string {
       if (text[i] === '$') {
         i++ // 跳过结束的 $
         // 去除换行和多余空格
-        const cleaned = content.trim().replace(/[\r\n]+/g, ' ').replace(/  +/g, ' ')
+        const cleaned = content
+          .trim()
+          .replace(/[\r\n]+/g, ' ')
+          .replace(/  +/g, ' ')
         result.push(` $${cleaned}$ `)
       } else {
         // 未闭合，原样输出

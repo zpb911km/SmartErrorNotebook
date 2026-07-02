@@ -415,7 +415,7 @@ export async function getAllLocalRecords(): Promise<SyncRecordHeader[]> {
  * 检查并删除孤儿记录
  */
 export async function checkAndDeleteOrphans(): Promise<{
-  orphan_records_soft_deleted: string[],
+  orphan_records_soft_deleted: string[]
   total_checked: number
 }> {
   return invoke('check_orphan_records')

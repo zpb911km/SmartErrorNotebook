@@ -15,13 +15,25 @@
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <!-- 科目级联菜单 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': cascadeVisible }">
+      <div
+        class="filter-select-wrapper"
+        :class="{ 'dropdown-open': cascadeVisible }"
+      >
         <div class="custom-select" @click="toggleSubjectDropdown">
-          <span class="custom-select-value">{{ selectedSubjectName || '选择科目' }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: cascadeVisible }">▼</span>
+          <span class="custom-select-value">{{
+            selectedSubjectName || '选择科目'
+          }}</span>
+          <span class="custom-select-arrow" :class="{ rotated: cascadeVisible }"
+            >▼</span
+          >
         </div>
         <!-- 级联弹窗 -->
-        <div v-if="cascadeVisible" class="cascade-popup" @mouseenter="clearHideTimer" @mouseleave="hideAllMenus">
+        <div
+          v-if="cascadeVisible"
+          class="cascade-popup"
+          @mouseenter="clearHideTimer"
+          @mouseleave="hideAllMenus"
+        >
           <div class="cascade-column">
             <div class="column-title">科目</div>
             <div class="cascade-items">
@@ -33,7 +45,9 @@
                 @click="handleSubjectClick(subj.id)"
               >
                 {{ subj.name }}
-                <span v-if="booksOf(subj.id).length" class="arrow-indicator">›</span>
+                <span v-if="booksOf(subj.id).length" class="arrow-indicator"
+                  >›</span
+                >
               </div>
             </div>
           </div>
@@ -48,7 +62,9 @@
                 @click="handleBookClick(book)"
               >
                 {{ book || '未分类' }}
-                <span v-if="chaptersOf(book).length" class="arrow-indicator">›</span>
+                <span v-if="chaptersOf(book).length" class="arrow-indicator"
+                  >›</span
+                >
               </div>
             </div>
           </div>
@@ -67,7 +83,10 @@
               </div>
             </div>
           </div>
-          <div v-if="currentChapter && knowledges.length" class="cascade-column">
+          <div
+            v-if="currentChapter && knowledges.length"
+            class="cascade-column"
+          >
             <div class="column-title">知识点</div>
             <div class="cascade-items">
               <div
@@ -81,15 +100,26 @@
               </div>
             </div>
           </div>
-          <button class="cascade-close-btn" @click="closeCascadeWindow">×</button>
+          <button class="cascade-close-btn" @click="closeCascadeWindow">
+            ×
+          </button>
         </div>
       </div>
 
       <!-- 标签下拉 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': tagDropdownVisible }">
+      <div
+        class="filter-select-wrapper"
+        :class="{ 'dropdown-open': tagDropdownVisible }"
+      >
         <div class="custom-select" @click="toggleTagDropdown">
-          <span class="custom-select-value">{{ selectedTagsText || '选择标签' }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: tagDropdownVisible }">▼</span>
+          <span class="custom-select-value">{{
+            selectedTagsText || '选择标签'
+          }}</span>
+          <span
+            class="custom-select-arrow"
+            :class="{ rotated: tagDropdownVisible }"
+            >▼</span
+          >
         </div>
         <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
           <div
@@ -99,52 +129,158 @@
             :class="{ active: filters.tags.includes(tag) }"
             @click="toggleTag(tag)"
           >
-            <span class="checkbox">{{ filters.tags.includes(tag) ? '✓' : '' }}</span>
+            <span class="checkbox">{{
+              filters.tags.includes(tag) ? '✓' : ''
+            }}</span>
             {{ tag }}
           </div>
-          <div v-if="filters.tags.length > 0" class="dropdown-item" style="border-top:1px solid var(--border-color);color:var(--primary-color);font-weight:500;" @click="clearTags">
+          <div
+            v-if="filters.tags.length > 0"
+            class="dropdown-item"
+            style="
+              border-top: 1px solid var(--border-color);
+              color: var(--primary-color);
+              font-weight: 500;
+            "
+            @click="clearTags"
+          >
             清除选择
           </div>
         </div>
       </div>
 
       <!-- 难度排序 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': difficultyDropdownVisible }">
+      <div
+        class="filter-select-wrapper"
+        :class="{ 'dropdown-open': difficultyDropdownVisible }"
+      >
         <div class="custom-select" @click="toggleDifficultyDropdown">
-          <span class="custom-select-value">{{ difficultySort === 'none' ? '难度排序' : difficultySort === 'asc' ? '难度 ↑' : '难度 ↓' }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: difficultyDropdownVisible }">▼</span>
+          <span class="custom-select-value">{{
+            difficultySort === 'none'
+              ? '难度排序'
+              : difficultySort === 'asc'
+                ? '难度 ↑'
+                : '难度 ↓'
+          }}</span>
+          <span
+            class="custom-select-arrow"
+            :class="{ rotated: difficultyDropdownVisible }"
+            >▼</span
+          >
         </div>
         <div v-if="difficultyDropdownVisible" class="dropdown-popup">
-          <div class="dropdown-item" :class="{ active: difficultySort === 'none' }" @click="setDifficultySort('none')">无排序</div>
-          <div class="dropdown-item" :class="{ active: difficultySort === 'asc' }" @click="setDifficultySort('asc')">↑ 正序</div>
-          <div class="dropdown-item" :class="{ active: difficultySort === 'desc' }" @click="setDifficultySort('desc')">↓ 倒序</div>
+          <div
+            class="dropdown-item"
+            :class="{ active: difficultySort === 'none' }"
+            @click="setDifficultySort('none')"
+          >
+            无排序
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: difficultySort === 'asc' }"
+            @click="setDifficultySort('asc')"
+          >
+            ↑ 正序
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: difficultySort === 'desc' }"
+            @click="setDifficultySort('desc')"
+          >
+            ↓ 倒序
+          </div>
         </div>
       </div>
 
       <!-- 掌握程度排序 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': masteryDropdownVisible }">
+      <div
+        class="filter-select-wrapper"
+        :class="{ 'dropdown-open': masteryDropdownVisible }"
+      >
         <div class="custom-select" @click="toggleMasteryDropdown">
-          <span class="custom-select-value">{{ masterySort === 'none' ? '掌握程度' : masterySort === 'asc' ? '掌握 ↑' : '掌握 ↓' }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: masteryDropdownVisible }">▼</span>
+          <span class="custom-select-value">{{
+            masterySort === 'none'
+              ? '掌握程度'
+              : masterySort === 'asc'
+                ? '掌握 ↑'
+                : '掌握 ↓'
+          }}</span>
+          <span
+            class="custom-select-arrow"
+            :class="{ rotated: masteryDropdownVisible }"
+            >▼</span
+          >
         </div>
         <div v-if="masteryDropdownVisible" class="dropdown-popup">
-          <div class="dropdown-item" :class="{ active: masterySort === 'none' }" @click="setMasterySort('none')">无排序</div>
-          <div class="dropdown-item" :class="{ active: masterySort === 'asc' }" @click="setMasterySort('asc')">↑ 正序</div>
-          <div class="dropdown-item" :class="{ active: masterySort === 'desc' }" @click="setMasterySort('desc')">↓ 倒序</div>
+          <div
+            class="dropdown-item"
+            :class="{ active: masterySort === 'none' }"
+            @click="setMasterySort('none')"
+          >
+            无排序
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: masterySort === 'asc' }"
+            @click="setMasterySort('asc')"
+          >
+            ↑ 正序
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: masterySort === 'desc' }"
+            @click="setMasterySort('desc')"
+          >
+            ↓ 倒序
+          </div>
         </div>
       </div>
 
       <!-- 时间范围筛选 -->
-      <div class="filter-select-wrapper" :class="{ 'dropdown-open': dateRangeDropdownVisible }">
+      <div
+        class="filter-select-wrapper"
+        :class="{ 'dropdown-open': dateRangeDropdownVisible }"
+      >
         <div class="custom-select" @click="toggleDateRangeDropdown">
-          <span class="custom-select-value">{{ dateRangeText || '时间范围' }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: dateRangeDropdownVisible }">▼</span>
+          <span class="custom-select-value">{{
+            dateRangeText || '时间范围'
+          }}</span>
+          <span
+            class="custom-select-arrow"
+            :class="{ rotated: dateRangeDropdownVisible }"
+            >▼</span
+          >
         </div>
         <div v-if="dateRangeDropdownVisible" class="dropdown-popup">
-          <div class="dropdown-item" :class="{ active: filters.date_range === 'all' }" @click="selectDateRange('all')">全部时间</div>
-          <div class="dropdown-item" :class="{ active: filters.date_range === '7days' }" @click="selectDateRange('7days')">最近7天</div>
-          <div class="dropdown-item" :class="{ active: filters.date_range === '30days' }" @click="selectDateRange('30days')">最近30天</div>
-          <div class="dropdown-item" :class="{ active: filters.date_range === '90days' }" @click="selectDateRange('90days')">最近90天</div>
+          <div
+            class="dropdown-item"
+            :class="{ active: filters.date_range === 'all' }"
+            @click="selectDateRange('all')"
+          >
+            全部时间
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: filters.date_range === '7days' }"
+            @click="selectDateRange('7days')"
+          >
+            最近7天
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: filters.date_range === '30days' }"
+            @click="selectDateRange('30days')"
+          >
+            最近30天
+          </div>
+          <div
+            class="dropdown-item"
+            :class="{ active: filters.date_range === '90days' }"
+            @click="selectDateRange('90days')"
+          >
+            最近90天
+          </div>
         </div>
       </div>
     </div>
@@ -1742,7 +1878,9 @@ const viewError = (error: any) => {
   background: var(--card-bg);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 200px;
@@ -1753,7 +1891,9 @@ const viewError = (error: any) => {
 
 .error-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .error-card:active {

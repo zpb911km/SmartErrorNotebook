@@ -50,7 +50,11 @@ export function parseImportFile(content: string): {
   })
 
   if (errs.length > 0) {
-    return { questions: [], version: '', error: `数据校验失败:\n${errs.join('\n')}` }
+    return {
+      questions: [],
+      version: '',
+      error: `数据校验失败:\n${errs.join('\n')}`
+    }
   }
 
   return { questions: data.questions, version: data.version }

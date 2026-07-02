@@ -38,7 +38,7 @@ export async function publishShare(params: {
   const res = await fetch(`${getBaseUrl()}/api/share/publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify(params)
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -57,7 +57,7 @@ export async function fetchShareList(params: {
   const query = new URLSearchParams({
     auth_key: params.auth_key,
     page: String(params.page ?? 1),
-    page_size: String(params.page_size ?? 20),
+    page_size: String(params.page_size ?? 20)
   })
   const res = await fetch(`${getBaseUrl()}/api/share/list?${query}`)
   if (!res.ok) {
@@ -77,7 +77,7 @@ export async function revokeShare(params: {
   const res = await fetch(`${getBaseUrl()}/api/share/revoke`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify(params)
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
@@ -94,7 +94,7 @@ export async function checkShare(params: {
 }): Promise<boolean> {
   const query = new URLSearchParams({
     auth_key: params.auth_key,
-    id: params.id,
+    id: params.id
   })
   const res = await fetch(`${getBaseUrl()}/api/share/check?${query}`)
   if (!res.ok) {

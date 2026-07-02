@@ -11,7 +11,10 @@
       <div class="modal-body">
         <div class="export-info">
           <Icon name="info" :size="16" />
-          <span>当前筛选条件下共 <strong>{{ questions.length }}</strong> 道错题</span>
+          <span
+            >当前筛选条件下共
+            <strong>{{ questions.length }}</strong> 道错题</span
+          >
         </div>
 
         <div class="export-formats">
@@ -22,13 +25,24 @@
             </div>
             <div class="format-info">
               <div class="format-name">JSON</div>
-              <div class="format-desc">纯净数据格式，仅包含题目、答案和解析，适合备份与迁移</div>
+              <div class="format-desc">
+                纯净数据格式，仅包含题目、答案和解析，适合备份与迁移
+              </div>
             </div>
             <div class="format-action">
-              <span class="action-btn" @click="handleExportJSON" title="导出 JSON">
+              <span
+                class="action-btn"
+                @click="handleExportJSON"
+                title="导出 JSON"
+              >
                 <Icon name="download" :size="16" />
               </span>
-              <span v-if="isMobile" class="action-btn share-btn" @click="handleShareJSON" title="分享 JSON">
+              <span
+                v-if="isMobile"
+                class="action-btn share-btn"
+                @click="handleShareJSON"
+                title="分享 JSON"
+              >
                 <Icon name="share-2" :size="16" />
               </span>
             </div>
@@ -46,10 +60,19 @@
               </div>
             </div>
             <div class="format-action">
-              <span class="action-btn html-btn" @click="handleExportHTML" title="导出 HTML">
+              <span
+                class="action-btn html-btn"
+                @click="handleExportHTML"
+                title="导出 HTML"
+              >
                 <Icon name="download" :size="16" />
               </span>
-              <span v-if="isMobile" class="action-btn html-share-btn" @click="handleShareHTML" title="分享 HTML">
+              <span
+                v-if="isMobile"
+                class="action-btn html-share-btn"
+                @click="handleShareHTML"
+                title="分享 HTML"
+              >
                 <Icon name="share-2" :size="16" />
               </span>
             </div>
@@ -59,8 +82,9 @@
         <div class="export-note">
           <Icon name="info" :size="14" />
           <span>
-            <strong>HTML 推荐方案</strong> — 浏览器原生渲染，数学公式排版与 App 内完全一致。
-            导出后用 Chrome/Edge 打开，按 Ctrl+P 可选择「另存为 PDF」，效果远胜截图方案。
+            <strong>HTML 推荐方案</strong> — 浏览器原生渲染，数学公式排版与 App
+            内完全一致。 导出后用 Chrome/Edge 打开，按 Ctrl+P 可选择「另存为
+            PDF」，效果远胜截图方案。
           </span>
         </div>
       </div>
@@ -78,7 +102,10 @@ import Icon from './Icon.vue'
 import type { ErrorQuestion } from '../types'
 import { exportQuestionsToJSON } from '../utils/exportJson'
 import { exportQuestionsToHTML } from '../utils/exportHtml'
-import { shareQuestionsToJSON, shareQuestionsToHTML } from '../utils/shareContent'
+import {
+  shareQuestionsToJSON,
+  shareQuestionsToHTML
+} from '../utils/shareContent'
 import { showError } from '../utils/notification'
 
 const props = defineProps<{
@@ -107,34 +134,62 @@ const handleClose = () => {
 
 const handleExportJSON = async () => {
   if (isExporting.value) return
-  if (!props.questions.length) { showError('导出失败','没有可导出的错题'); return }
+  if (!props.questions.length) {
+    showError('导出失败', '没有可导出的错题')
+    return
+  }
   isExporting.value = true
-  try { await exportQuestionsToJSON(props.questions) }
-  finally { isExporting.value = false; emit('close') }
+  try {
+    await exportQuestionsToJSON(props.questions)
+  } finally {
+    isExporting.value = false
+    emit('close')
+  }
 }
 
 const handleExportHTML = async () => {
   if (isExporting.value) return
-  if (!props.questions.length) { showError('导出失败','没有可导出的错题'); return }
+  if (!props.questions.length) {
+    showError('导出失败', '没有可导出的错题')
+    return
+  }
   isExporting.value = true
-  try { await exportQuestionsToHTML(props.questions) }
-  finally { isExporting.value = false; emit('close') }
+  try {
+    await exportQuestionsToHTML(props.questions)
+  } finally {
+    isExporting.value = false
+    emit('close')
+  }
 }
 
 const handleShareJSON = async () => {
   if (isExporting.value) return
-  if (!props.questions.length) { showError('分享失败','没有可分享的错题'); return }
+  if (!props.questions.length) {
+    showError('分享失败', '没有可分享的错题')
+    return
+  }
   isExporting.value = true
-  try { shareQuestionsToJSON(props.questions) }
-  finally { isExporting.value = false; emit('close') }
+  try {
+    shareQuestionsToJSON(props.questions)
+  } finally {
+    isExporting.value = false
+    emit('close')
+  }
 }
 
 const handleShareHTML = async () => {
   if (isExporting.value) return
-  if (!props.questions.length) { showError('分享失败','没有可分享的错题'); return }
+  if (!props.questions.length) {
+    showError('分享失败', '没有可分享的错题')
+    return
+  }
   isExporting.value = true
-  try { shareQuestionsToHTML(props.questions) }
-  finally { isExporting.value = false; emit('close') }
+  try {
+    shareQuestionsToHTML(props.questions)
+  } finally {
+    isExporting.value = false
+    emit('close')
+  }
 }
 </script>
 
@@ -216,7 +271,9 @@ const handleShareHTML = async () => {
   margin-bottom: 20px;
 }
 
-.export-info strong { font-weight: 700; }
+.export-info strong {
+  font-weight: 700;
+}
 
 .export-formats {
   display: flex;
@@ -252,10 +309,16 @@ const handleShareHTML = async () => {
   border-radius: var(--radius-md);
 }
 
-.json-icon { color: var(--primary-color); }
-.html-icon { color: var(--success-color); }
+.json-icon {
+  color: var(--primary-color);
+}
+.html-icon {
+  color: var(--success-color);
+}
 
-.format-info { flex: 1; }
+.format-info {
+  flex: 1;
+}
 
 .format-name {
   font-size: 15px;
@@ -346,13 +409,23 @@ const handleShareHTML = async () => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
 

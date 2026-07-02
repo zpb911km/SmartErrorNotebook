@@ -4,12 +4,27 @@
     <section class="sync-section">
       <div class="section-header">
         <h2 class="section-title">同步服务器</h2>
-        <button class="btn-icon-refresh" @click="checkConnection" :disabled="checking" title="刷新连接">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :class="{ spinning: checking }">
-            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-            <path d="M3 3v5h5"/>
-            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-            <path d="M16 16h5v5"/>
+        <button
+          class="btn-icon-refresh"
+          @click="checkConnection"
+          :disabled="checking"
+          title="刷新连接"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            width="16"
+            height="16"
+            :class="{ spinning: checking }"
+          >
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+            <path d="M16 16h5v5" />
           </svg>
         </button>
       </div>
@@ -64,7 +79,6 @@
             取消
           </button>
         </div>
-
       </div>
     </section>
 
@@ -72,12 +86,27 @@
     <section class="sync-section">
       <div class="section-header">
         <h2 class="section-title">数据同步</h2>
-        <button class="btn-icon-refresh" @click="refreshSyncStats" :disabled="refreshingStats" title="刷新统计">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :class="{ spinning: refreshingStats }">
-            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-            <path d="M3 3v5h5"/>
-            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-            <path d="M16 16h5v5"/>
+        <button
+          class="btn-icon-refresh"
+          @click="refreshSyncStats"
+          :disabled="refreshingStats"
+          title="刷新统计"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            width="16"
+            height="16"
+            :class="{ spinning: refreshingStats }"
+          >
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+            <path d="M16 16h5v5" />
           </svg>
         </button>
       </div>
@@ -133,22 +162,44 @@
     <!-- 错题社区（仅在有服务器配置时显示） -->
     <section v-if="hasServerConfig" class="sync-section">
       <h2 class="section-title">错题社区</h2>
-      <div class="community-card" role="button" tabindex="0" @click="goCommunity" @keydown.enter="goCommunity">
+      <div
+        class="community-card"
+        role="button"
+        tabindex="0"
+        @click="goCommunity"
+        @keydown.enter="goCommunity"
+      >
         <div class="community-card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         </div>
         <div class="community-card-body">
           <div class="community-card-title">发现错题</div>
-          <div class="community-card-desc">浏览其他用户分享的错题，一键获取到自己的错题本</div>
+          <div class="community-card-desc">
+            浏览其他用户分享的错题，一键获取到自己的错题本
+          </div>
         </div>
         <div class="community-card-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18l6-6-6-6"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 18l6-6-6-6" />
           </svg>
         </div>
       </div>
@@ -383,7 +434,7 @@ onMounted(() => {
   checkAndDeleteOrphans().then((orphans) => {
     console.log('checkAndDeleteOrphans result:', orphans)
     showSuccess(
-      "自动检查完成",
+      '自动检查完成',
       `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`
     )
     refreshSyncStats()
@@ -747,7 +798,9 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, background 0.2s;
+  transition:
+    color 0.2s,
+    background 0.2s;
 }
 
 .btn-icon-refresh:hover {
@@ -761,8 +814,12 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(-360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
 }
 
 .spinning {
@@ -830,7 +887,10 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 
 .community-card:hover {
   border-color: var(--hover-card-border, #c7d2fe);
-  background: var(--hover-card-bg, linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%));
+  background: var(
+    --hover-card-bg,
+    linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%)
+  );
   box-shadow: var(--hover-card-shadow, 0 2px 8px rgba(99, 102, 241, 0.08));
 }
 
@@ -890,7 +950,9 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
   justify-content: center;
   flex-shrink: 0;
   color: #9ca3af;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
 }
 
 .community-card-arrow svg {

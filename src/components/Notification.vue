@@ -12,9 +12,21 @@
       >
         <div class="notification__icon">
           <Icon v-if="notification.type === 'info'" name="info" :size="20" />
-          <Icon v-if="notification.type === 'success'" name="circle-check" :size="20" />
-          <Icon v-if="notification.type === 'warning'" name="triangle-alert" :size="20" />
-          <Icon v-if="notification.type === 'error'" name="circle-x" :size="20" />
+          <Icon
+            v-if="notification.type === 'success'"
+            name="circle-check"
+            :size="20"
+          />
+          <Icon
+            v-if="notification.type === 'warning'"
+            name="triangle-alert"
+            :size="20"
+          />
+          <Icon
+            v-if="notification.type === 'error'"
+            name="circle-x"
+            :size="20"
+          />
           <Icon v-if="notification.type === 'debug'" name="wrench" :size="20" />
         </div>
         <div class="notification__content">

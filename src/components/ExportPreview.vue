@@ -42,9 +42,7 @@
     </div>
 
     <!-- 页脚 -->
-    <div class="preview-footer">
-      由 SmartErrorNotebook 生成
-    </div>
+    <div class="preview-footer">由 SmartErrorNotebook 生成</div>
 
     <!-- 页码占位 -->
     <div class="preview-page-number"></div>
@@ -84,13 +82,16 @@ function renderContent(text: string | undefined | null): string {
     .replace(/"/g, '&quot;')
 
   // 代码块
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_match: string, _lang: string, code: string) => {
-    const escaped = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-    return `<pre><code>${escaped}</code></pre>`
-  })
+  html = html.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    (_match: string, _lang: string, code: string) => {
+      const escaped = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+      return `<pre><code>${escaped}</code></pre>`
+    }
+  )
 
   // 行内代码
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -110,7 +111,7 @@ function renderContent(text: string | undefined | null): string {
 
 <style scoped>
 .export-preview {
-  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
   color: #333;
   line-height: 1.6;
   padding: 20px;
@@ -182,7 +183,7 @@ function renderContent(text: string | undefined | null): string {
   border-radius: 4px;
   overflow-x: auto;
   font-size: 13px;
-  font-family: "Consolas", "Courier New", monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
 }
 
 .preview-content :deep(code) {
@@ -190,7 +191,7 @@ function renderContent(text: string | undefined | null): string {
   padding: 2px 4px;
   border-radius: 3px;
   font-size: 13px;
-  font-family: "Consolas", "Courier New", monospace;
+  font-family: 'Consolas', 'Courier New', monospace;
 }
 
 .preview-content :deep(strong) {

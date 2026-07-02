@@ -4,7 +4,13 @@
       <!-- 标题 -->
       <div class="modal-header">
         <h2 class="modal-title">
-          {{ step === 'select' ? '导入错题' : step === 'review' ? `导入题目 (${currentIndex + 1}/${totalCount})` : '导入结果' }}
+          {{
+            step === 'select'
+              ? '导入错题'
+              : step === 'review'
+                ? `导入题目 (${currentIndex + 1}/${totalCount})`
+                : '导入结果'
+          }}
         </h2>
         <button class="modal-close-btn" @click="handleClose">
           <Icon name="x" :size="18" />
@@ -32,7 +38,10 @@
         <div v-else-if="step === 'review'" class="step-container">
           <!-- 进度条 -->
           <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+            <div
+              class="progress-fill"
+              :style="{ width: progressPercent + '%' }"
+            ></div>
           </div>
 
           <!-- 版本警告 -->
@@ -46,23 +55,38 @@
             <!-- 题干 -->
             <div class="review-section">
               <div class="review-label">题目</div>
-              <div class="review-content markdown-body" v-html="currentQuestion.promptHtml"></div>
+              <div
+                class="review-content markdown-body"
+                v-html="currentQuestion.promptHtml"
+              ></div>
             </div>
 
             <!-- 答案（可折叠） -->
             <div class="review-section" v-if="currentQuestion.answer">
               <div class="review-label collapsible" @click="toggleAnswer">
-                参考答案 <span class="collapse-icon">{{ showAnswer ? '▲' : '▼' }}</span>
+                参考答案
+                <span class="collapse-icon">{{ showAnswer ? '▲' : '▼' }}</span>
               </div>
-              <div v-show="showAnswer" class="review-content markdown-body" v-html="currentQuestion.answerHtml"></div>
+              <div
+                v-show="showAnswer"
+                class="review-content markdown-body"
+                v-html="currentQuestion.answerHtml"
+              ></div>
             </div>
 
             <!-- 解析（可折叠） -->
             <div class="review-section" v-if="currentQuestion.analysis">
               <div class="review-label collapsible" @click="toggleAnalysis">
-                解析 <span class="collapse-icon">{{ showAnalysis ? '▲' : '▼' }}</span>
+                解析
+                <span class="collapse-icon">{{
+                  showAnalysis ? '▲' : '▼'
+                }}</span>
               </div>
-              <div v-show="showAnalysis" class="review-content markdown-body" v-html="currentQuestion.analysisHtml"></div>
+              <div
+                v-show="showAnalysis"
+                class="review-content markdown-body"
+                v-html="currentQuestion.analysisHtml"
+              ></div>
             </div>
 
             <!-- 配置区 -->
@@ -78,14 +102,18 @@
                 <div class="config-field">
                   <label>题型</label>
                   <select v-model="reviewType" class="type-select">
-                    <option v-for="t in questionTypes" :key="t.value" :value="t.value">
+                    <option
+                      v-for="t in questionTypes"
+                      :key="t.value"
+                      :value="t.value"
+                    >
                       {{ t.label }}
                     </option>
                   </select>
                 </div>
               </div>
               <!-- 错因标签 -->
-              <div class="config-field" style="margin-top: 8px;">
+              <div class="config-field" style="margin-top: 8px">
                 <label>错因标签</label>
                 <ErrorTagSelector
                   :current-tags="reviewTags"
@@ -108,18 +136,38 @@
 
           <!-- 操作按钮 -->
           <div class="review-actions">
-            <span class="counter">第 {{ currentIndex + 1 }} / {{ totalCount }} 题</span>
+            <span class="counter"
+              >第 {{ currentIndex + 1 }} / {{ totalCount }} 题</span
+            >
             <div class="action-group">
-              <button class="act-btn skip-btn" @click="skipQuestion" :disabled="saving">
+              <button
+                class="act-btn skip-btn"
+                @click="skipQuestion"
+                :disabled="saving"
+              >
                 跳过
               </button>
-              <button v-if="isDuplicate" class="act-btn skip-btn" @click="skipQuestion" :disabled="saving">
+              <button
+                v-if="isDuplicate"
+                class="act-btn skip-btn"
+                @click="skipQuestion"
+                :disabled="saving"
+              >
                 跳过重复
               </button>
-              <button v-else class="act-btn import-btn" @click="importCurrent" :disabled="!reviewSubjectId || saving">
+              <button
+                v-else
+                class="act-btn import-btn"
+                @click="importCurrent"
+                :disabled="!reviewSubjectId || saving"
+              >
                 {{ saving ? '导入中...' : '导入此题目' }}
               </button>
-              <button class="act-btn import-all-btn" @click="importAllRemaining" :disabled="!reviewSubjectId || saving">
+              <button
+                class="act-btn import-all-btn"
+                @click="importAllRemaining"
+                :disabled="!reviewSubjectId || saving"
+              >
                 导入剩余全部
               </button>
             </div>
@@ -127,14 +175,23 @@
         </div>
 
         <!-- ===== 步骤 3：结果 ===== -->
-        <div v-else-if="step === 'result'" class="step-container result-container">
+        <div
+          v-else-if="step === 'result'"
+          class="step-container result-container"
+        >
           <div class="result-icon" :class="resultClass">
             {{ resultIcon }}
           </div>
           <div class="result-title">{{ resultTitle }}</div>
           <div class="result-detail">{{ resultTitle }}</div>
           <div v-if="resultErrors.length" class="result-errors">
-            <div v-for="(e, i) in resultErrors" :key="i" class="result-error-item">{{ e }}</div>
+            <div
+              v-for="(e, i) in resultErrors"
+              :key="i"
+              class="result-error-item"
+            >
+              {{ e }}
+            </div>
           </div>
         </div>
       </div>
@@ -155,23 +212,46 @@ import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
 import ErrorTagSelector from './ErrorTagSelector.vue'
 import { QuestionType } from '../types'
-import { parseImportFile, importSingleQuestion, getExistingPromptSet } from '../utils/importJson'
+import {
+  parseImportFile,
+  importSingleQuestion,
+  getExistingPromptSet
+} from '../utils/importJson'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 
 // ===== marked 渲染 =====
 const _marked = new Marked(
-  markedKatex({ throwOnError: false, output: 'html', nonStandard: true, strict: 'ignore' }),
-  { renderer: { code({ text, lang }) {
-    const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    return `<pre><code class="hljs ${lang?`language-${lang}`:''}">${e}</code></pre>`
-  }}}
+  markedKatex({
+    throwOnError: false,
+    output: 'html',
+    nonStandard: true,
+    strict: 'ignore'
+  }),
+  {
+    renderer: {
+      code({ text, lang }) {
+        const e = text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+        return `<pre><code class="hljs ${lang ? `language-${lang}` : ''}">${e}</code></pre>`
+      }
+    }
+  }
 )
 
-function renderMd(t: string|undefined|null): string {
+function renderMd(t: string | undefined | null): string {
   if (!t) return ''
-  const c = (t||'').replace(/[①-⑳]/g,m=>`(${m.charCodeAt(0)-0x245f})`)
-  return _marked.parse(c.replace(/\\\[/g,'$$$$').replace(/\\\]/g,'$$$$').replace(/\\\(/g,'$').replace(/\\\)/g,'$'), {breaks:true,gfm:true}) as string
+  const c = (t || '').replace(/[①-⑳]/g, (m) => `(${m.charCodeAt(0) - 0x245f})`)
+  return _marked.parse(
+    c
+      .replace(/\\\[/g, '$$$$')
+      .replace(/\\\]/g, '$$$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$'),
+    { breaks: true, gfm: true }
+  ) as string
 }
 
 const emit = defineEmits<{
@@ -183,7 +263,16 @@ const emit = defineEmits<{
 const step = ref<'select' | 'review' | 'result'>('select')
 const errorMsg = ref('')
 const versionWarning = ref('')
-const questions = ref<{ prompt: string; answer: string; analysis: string; promptHtml: string; answerHtml: string; analysisHtml: string }[]>([])
+const questions = ref<
+  {
+    prompt: string
+    answer: string
+    analysis: string
+    promptHtml: string
+    answerHtml: string
+    analysisHtml: string
+  }[]
+>([])
 const currentIndex = ref(0)
 const saving = ref(false)
 const existingPrompts = ref<Set<string>>(new Set())
@@ -196,23 +285,42 @@ const accumErrors = ref<string[]>([])
 // 显示折叠
 const showAnswer = ref(false)
 const showAnalysis = ref(false)
-const toggleAnswer = () => { showAnswer.value = !showAnswer.value }
-const toggleAnalysis = () => { showAnalysis.value = !showAnalysis.value }
+const toggleAnswer = () => {
+  showAnswer.value = !showAnswer.value
+}
+const toggleAnalysis = () => {
+  showAnalysis.value = !showAnalysis.value
+}
 
 // 配置
 const reviewSubjectId = ref('')
 const reviewType = ref(QuestionType.ShortAnswer)
 const reviewTags = ref<Array<{ name: string; color: string }>>([])
 const applyToAll = ref(false)
-const questionTypes = Object.entries(QuestionType).map(([v, l]) => ({ value: v, label: l }))
+const questionTypes = Object.entries(QuestionType).map(([v, l]) => ({
+  value: v,
+  label: l
+}))
 
 const totalCount = computed(() => questions.value.length)
-const progressPercent = computed(() => totalCount.value ? (currentIndex.value / totalCount.value) * 100 : 0)
-const currentQuestion = computed(() => questions.value[currentIndex.value] || null)
-const isDuplicate = computed(() => currentQuestion.value ? existingPrompts.value.has(currentQuestion.value.prompt.trim()) : false)
+const progressPercent = computed(() =>
+  totalCount.value ? (currentIndex.value / totalCount.value) * 100 : 0
+)
+const currentQuestion = computed(
+  () => questions.value[currentIndex.value] || null
+)
+const isDuplicate = computed(() =>
+  currentQuestion.value
+    ? existingPrompts.value.has(currentQuestion.value.prompt.trim())
+    : false
+)
 
-function setReviewSubject(id: string) { reviewSubjectId.value = id }
-function setReviewTags(tags: Array<{ name: string; color: string }>) { reviewTags.value = tags }
+function setReviewSubject(id: string) {
+  reviewSubjectId.value = id
+}
+function setReviewTags(tags: Array<{ name: string; color: string }>) {
+  reviewTags.value = tags
+}
 
 /** 当前配置对象，传给 importSingleQuestion */
 function currentImportOpts() {
@@ -249,7 +357,7 @@ const handleSelectFile = async () => {
     }
 
     // 构建带 HTML 渲染的题目列表
-    questions.value = result.questions.map(q => ({
+    questions.value = result.questions.map((q) => ({
       prompt: q.prompt,
       answer: q.answer || '',
       analysis: q.analysis || '',
@@ -301,7 +409,9 @@ const importCurrent = async () => {
       existingPrompts.value.add(currentQuestion.value.prompt.trim())
     } else {
       accumFailed.value++
-      accumErrors.value.push(`第 ${currentIndex.value + 1} 题: ${result.error || ''}`)
+      accumErrors.value.push(
+        `第 ${currentIndex.value + 1} 题: ${result.error || ''}`
+      )
     }
   } catch (e) {
     accumFailed.value++
@@ -324,7 +434,13 @@ const importAllRemaining = async () => {
       continue
     }
     try {
-      await importSingleQuestion(q, reviewSubjectId.value, reviewType.value, 'default-user', reviewTags.value.length > 0 ? reviewTags.value : undefined)
+      await importSingleQuestion(
+        q,
+        reviewSubjectId.value,
+        reviewType.value,
+        'default-user',
+        reviewTags.value.length > 0 ? reviewTags.value : undefined
+      )
       existingPrompts.value.add(q.prompt.trim())
       accumSuccess.value++
     } catch (e) {
@@ -352,7 +468,12 @@ const advanceToNext = () => {
 }
 
 // ===== 显示最终结果 =====
-const resultStats = ref({ success: 0, skipped: 0, failed: 0, errors: [] as string[] })
+const resultStats = ref({
+  success: 0,
+  skipped: 0,
+  failed: 0,
+  errors: [] as string[]
+})
 
 const resultClass = computed(() => {
   const s = resultStats.value
@@ -399,8 +520,11 @@ const handleClose = () => {
 <style scoped>
 .import-modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,10 +599,14 @@ const handleClose = () => {
   cursor: pointer;
   transition: all 0.2s;
 }
-.cancel-btn:hover { background: var(--bg-tertiary); }
+.cancel-btn:hover {
+  background: var(--bg-tertiary);
+}
 
 /* ===== 步骤容器 ===== */
-.step-container { animation: fadeIn 0.2s ease-out; }
+.step-container {
+  animation: fadeIn 0.2s ease-out;
+}
 
 /* ===== 文件选择 ===== */
 .file-select-area {
@@ -504,7 +632,10 @@ const handleClose = () => {
   margin-bottom: 4px;
   text-align: center;
 }
-.file-select-desc { font-size: 13px; color: var(--text-hint); }
+.file-select-desc {
+  font-size: 13px;
+  color: var(--text-hint);
+}
 
 .error-msg {
   margin-top: 12px;
@@ -555,7 +686,9 @@ const handleClose = () => {
 .review-section {
   margin-bottom: 12px;
 }
-.review-section:last-child { margin-bottom: 0; }
+.review-section:last-child {
+  margin-bottom: 0;
+}
 
 .review-label {
   font-size: 12px;
@@ -569,7 +702,9 @@ const handleClose = () => {
   cursor: pointer;
   user-select: none;
 }
-.review-label.collapsible:hover { opacity: 0.7; }
+.review-label.collapsible:hover {
+  opacity: 0.7;
+}
 
 .collapse-icon {
   font-size: 10px;
@@ -582,7 +717,9 @@ const handleClose = () => {
   line-height: 1.7;
 }
 
-.review-content :deep(p) { margin: 0.5em 0; }
+.review-content :deep(p) {
+  margin: 0.5em 0;
+}
 .review-content :deep(h1),
 .review-content :deep(h2),
 .review-content :deep(h3),
@@ -608,7 +745,7 @@ const handleClose = () => {
   font-size: 13px;
 }
 .review-content :deep(code) {
-  background: rgba(25,118,210,0.12);
+  background: rgba(25, 118, 210, 0.12);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -639,8 +776,12 @@ const handleClose = () => {
   border: 1px solid var(--border-color);
   padding: 6px 8px;
 }
-.review-content :deep(img) { max-width: 100%; }
-.review-content :deep(.katex) { font-size: 1.1em; }
+.review-content :deep(img) {
+  max-width: 100%;
+}
+.review-content :deep(.katex) {
+  font-size: 1.1em;
+}
 .review-content :deep(.katex-display) {
   display: block;
   text-align: center;
@@ -648,7 +789,9 @@ const handleClose = () => {
   overflow-x: auto;
   overflow-y: hidden;
 }
-.review-content :deep(.katex-display > .katex) { font-size: 1.15em; }
+.review-content :deep(.katex-display > .katex) {
+  font-size: 1.15em;
+}
 
 /* ===== 配置 ===== */
 .review-config {
@@ -672,7 +815,9 @@ const handleClose = () => {
   color: var(--text-secondary);
   margin-bottom: 4px;
 }
-.required { color: var(--danger-color); }
+.required {
+  color: var(--danger-color);
+}
 
 .type-select {
   width: 100%;
@@ -745,21 +890,27 @@ const handleClose = () => {
   background: var(--bg-secondary);
   color: var(--text-secondary);
 }
-.skip-btn:hover { background: var(--bg-tertiary); }
+.skip-btn:hover {
+  background: var(--bg-tertiary);
+}
 
 .import-btn {
   background: var(--primary-color);
   color: #fff;
   border-color: var(--primary-color);
 }
-.import-btn:hover { opacity: 0.85; }
+.import-btn:hover {
+  opacity: 0.85;
+}
 
 .import-all-btn {
   background: var(--success-color);
   color: #fff;
   border-color: var(--success-color);
 }
-.import-all-btn:hover { opacity: 0.85; }
+.import-all-btn:hover {
+  opacity: 0.85;
+}
 
 /* ===== 结果 ===== */
 .result-container {
@@ -769,9 +920,19 @@ const handleClose = () => {
   gap: 12px;
   padding: 30px 20px;
 }
-.result-icon { font-size: 48px; }
-.result-title { font-size: 18px; font-weight: 600; color: var(--text-primary); }
-.result-detail { font-size: 14px; color: var(--text-secondary); text-align: center; }
+.result-icon {
+  font-size: 48px;
+}
+.result-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.result-detail {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+}
 
 .result-errors {
   width: 100%;
@@ -787,16 +948,32 @@ const handleClose = () => {
   margin-bottom: 4px;
 }
 
-.result-icon.success { color: var(--success-color); }
-.result-icon.warning { color: var(--warning-color); }
-.result-icon.info { color: var(--info-color); }
+.result-icon.success {
+  color: var(--success-color);
+}
+.result-icon.warning {
+  color: var(--warning-color);
+}
+.result-icon.info {
+  color: var(--info-color);
+}
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
