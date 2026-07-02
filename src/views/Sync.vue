@@ -2,7 +2,17 @@
   <div class="sync-page">
     <!-- 配置区 -->
     <section class="sync-section">
-      <h2 class="section-title">同步服务器</h2>
+      <div class="section-header">
+        <h2 class="section-title">同步服务器</h2>
+        <button class="btn-icon-refresh" @click="checkConnection" :disabled="checking" title="刷新连接">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :class="{ spinning: checking }">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+        </button>
+      </div>
       <div class="info-card">
         <div class="info-row">
           <span class="info-label">服务器地址</span>
@@ -54,24 +64,23 @@
             取消
           </button>
         </div>
-        <div class="info-row info-row--action">
-          <button
-            class="btn btn-secondary btn--sm"
-            @click="() => { checkConnection(); refreshSyncStats();}"
-            :disabled="checking"
-          >
-            {{ checking ? '......' : '刷新连接' }}
-          </button>
-          <span v-if="checkMessage" class="check-msg" :class="checkMsgClass">{{
-            checkMessage
-          }}</span>
-        </div>
+
       </div>
     </section>
 
     <!-- 同步状态区 -->
     <section class="sync-section">
-      <h2 class="section-title">数据同步</h2>
+      <div class="section-header">
+        <h2 class="section-title">数据同步</h2>
+        <button class="btn-icon-refresh" @click="refreshSyncStats" :disabled="refreshingStats" title="刷新统计">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" :class="{ spinning: refreshingStats }">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+        </button>
+      </div>
       <div class="info-card">
         <div class="info-row">
           <span class="info-label">待上传</span>
@@ -247,9 +256,6 @@ const saveAuthKey = () => {
 const serverOnline = ref<boolean | null>(null)
 const authValid = ref<boolean | null>(null)
 const checking = ref(false)
-const checkMessage = ref('')
-const checkOk = ref(true)
-
 const serverStatusClass = computed(() => {
   if (serverOnline.value === null) return ''
   return serverOnline.value ? 'dot-online' : 'dot-offline'
@@ -259,8 +265,6 @@ const authStatusClass = computed(() => {
   if (authValid.value === null) return ''
   return authValid.value ? 'dot-online' : 'dot-offline'
 })
-
-const checkMsgClass = computed(() => (checkOk.value ? 'msg-ok' : 'msg-err'))
 
 // 社区入口
 const goCommunity = () => {
@@ -273,7 +277,6 @@ const hasServerConfig = computed(() => {
 
 const checkConnection = async () => {
   checking.value = true
-  checkMessage.value = ''
 
   const { checkServerHealth, validateAuthKey } = await import('../apis/sync')
 
@@ -282,8 +285,6 @@ const checkConnection = async () => {
   serverOnline.value = online
 
   if (!online) {
-    checkOk.value = false
-    checkMessage.value = '无法连接到服务器'
     checking.value = false
     return
   }
@@ -292,17 +293,8 @@ const checkConnection = async () => {
   if (authKey.value) {
     const valid = await validateAuthKey(authKey.value)
     authValid.value = valid
-    if (valid) {
-      checkOk.value = true
-      checkMessage.value = '服务器在线，授权码有效'
-    } else {
-      checkOk.value = false
-      checkMessage.value = '服务器在线，但授权码无效'
-    }
   } else {
     authValid.value = null
-    checkOk.value = true
-    checkMessage.value = '服务器在线（未配置授权码）'
   }
 
   checking.value = false
@@ -310,6 +302,7 @@ const checkConnection = async () => {
 
 // ---------- 同步状态 ----------
 const syncing = ref(false)
+const refreshingStats = ref(false)
 const showProgress = ref(false)
 const showConflictResolver = ref(false)
 const conflictsToResolve = ref<ConflictInfo[]>([])
@@ -347,6 +340,8 @@ const statsConflictClass = computed(() => {
 
 /** 尝试握手并刷新三栏统计 */
 const refreshSyncStats = async () => {
+  if (refreshingStats.value) return
+  refreshingStats.value = true
   try {
     const localPending = await invoke<ServerRecord[]>('get_all_pending_records')
     syncStats.value = {
@@ -378,6 +373,8 @@ const refreshSyncStats = async () => {
     }
   } catch (e) {
     console.warn('Failed to refresh sync stats:', e)
+  } finally {
+    refreshingStats.value = false
   }
 }
 
@@ -631,30 +628,6 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
   box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
 }
 
-/* 检测连接行 */
-.info-row--action {
-  justify-content: flex-start;
-  gap: 12px;
-  background: var(--input-bg, #f9fafb);
-}
-
-.btn--sm {
-  padding: 6px 14px;
-  font-size: 13px;
-}
-
-.check-msg {
-  font-size: 13px;
-}
-
-.check-msg.msg-ok {
-  color: #10b981;
-}
-
-.check-msg.msg-err {
-  color: #ef4444;
-}
-
 .text-warning {
   color: #f59e0b;
 }
@@ -757,6 +730,45 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
   color: #dc2626;
 }
 
+/* 分区头部（标题 + 操作图标） */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-icon-refresh {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--text-secondary, #6b7280);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+
+.btn-icon-refresh:hover {
+  color: var(--text-primary, #111827);
+  background: var(--hover-bg, rgba(0, 0, 0, 0.05));
+}
+
+.btn-icon-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 /* 同步按钮 */
 .sync-btn {
   display: flex;
@@ -817,9 +829,9 @@ const handleConflictResolution = async (resolutions: ResolvedConflict[]) => {
 }
 
 .community-card:hover {
-  border-color: #c7d2fe;
-  background: linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+  border-color: var(--hover-card-border, #c7d2fe);
+  background: var(--hover-card-bg, linear-gradient(135deg, #f8faff 0%, #f5f3ff 100%));
+  box-shadow: var(--hover-card-shadow, 0 2px 8px rgba(99, 102, 241, 0.08));
 }
 
 .community-card:focus-visible {

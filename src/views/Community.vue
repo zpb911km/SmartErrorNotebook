@@ -79,9 +79,20 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
 import { fetchShareList } from '../apis/share'
 import type { SharedQuestionItem } from '../apis/share'
 import { setSharedData } from '../services/shareStore'
+
+marked.use(
+  markedKatex({
+    throwOnError: false,
+    output: 'html'
+  })
+)
+
+const renderer = new marked.Renderer()
+marked.use({ renderer })
 
 const router = useRouter()
 
@@ -109,11 +120,17 @@ function formatTime(ts: number): string {
   })
 }
 
-function renderMarkdown(text: string): string {
+function renderMarkdown(content: string): string {
+  if (!content) return ''
+  const normalized = content
+    .replace(/\\\[/g, '$$$$')
+    .replace(/\\\]/g, '$$$$')
+    .replace(/\\\(/g, '$$')
+    .replace(/\\\)/g, '$$')
   try {
-    return marked.parse(text || '') as string
+    return marked.parse(normalized, { breaks: true, gfm: true }) as string
   } catch {
-    return text || ''
+    return `${content}`
   }
 }
 
@@ -383,5 +400,95 @@ onUnmounted(() => {
 .btn--sm {
   padding: 6px 12px;
   font-size: var(--font-size-sm);
+}
+
+/* markdown 渲染样式 */
+.card-prompt.markdown-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.card-prompt.markdown-body :deep(h1),
+.card-prompt.markdown-body :deep(h2),
+.card-prompt.markdown-body :deep(h3),
+.card-prompt.markdown-body :deep(h4),
+.card-prompt.markdown-body :deep(h5),
+.card-prompt.markdown-body :deep(h6) {
+  margin: 0.6em 0 0.4em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.card-prompt.markdown-body :deep(h1) { font-size: 1.3em; }
+.card-prompt.markdown-body :deep(h2) { font-size: 1.15em; }
+.card-prompt.markdown-body :deep(h3) { font-size: 1.05em; }
+
+.card-prompt.markdown-body :deep(p) {
+  margin: 0.4em 0;
+}
+
+.card-prompt.markdown-body :deep(code) {
+  padding: 0.15em 0.35em;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.card-prompt.markdown-body :deep(pre) {
+  padding: 0.8em;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.card-prompt.markdown-body :deep(pre code) {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+}
+
+.card-prompt.markdown-body :deep(ul),
+.card-prompt.markdown-body :deep(ol) {
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+
+.card-prompt.markdown-body :deep(blockquote) {
+  margin: 0.4em 0;
+  padding: 0.2em 0.8em;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.card-prompt.markdown-body :deep(a) {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.card-prompt.markdown-body :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.card-prompt.markdown-body :deep(table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.4em 0;
+  font-size: 0.9em;
+}
+
+.card-prompt.markdown-body :deep(th),
+.card-prompt.markdown-body :deep(td) {
+  border: 1px solid var(--border-color);
+  padding: 0.3em 0.6em;
+  text-align: left;
+}
+
+.card-prompt.markdown-body :deep(th) {
+  background: var(--bg-tertiary);
+  font-weight: 600;
 }
 </style>
