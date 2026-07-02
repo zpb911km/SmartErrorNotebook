@@ -1,188 +1,119 @@
 import { readTextFile } from '@tauri-apps/plugin-fs'
-import {
-  createErrorQuestion
-} from '../apis/errorQuestions'
+import { createErrorQuestion } from '../apis/errorQuestions'
+import { createErrorTagsForQuestion } from '../apis/errorTags'
+import { createSRSData } from '../apis/srsData'
 import { getQuestions } from '../apis/errorQuestions'
-import type {
-  ExportJSONSchema,
-  ErrorQuestion,
-  ImportResult
-} from '../types'
+import type { ExportJSONSchema, ErrorQuestion, ImportResult } from '../types'
 import { showSuccess, showWarning } from './notification'
 
-/**
- * 从 JSON 文件读取并校验导入数据
- * @returns 解析后的 ExportJSONSchema，校验失败则抛出错误
- */
-export async function readImportFile(filePath: string): Promise<ExportJSONSchema> {
-  // 1. 检查文件扩展名
-  if (!filePath.toLowerCase().endsWith('.json')) {
-    throw new Error('请选择 .json 格式的文件')
-  }
-
-  // 2. 读取文件内容
-  let content: string
-  try {
-    content = await readTextFile(filePath)
-  } catch (error) {
-    throw new Error(`无法读取文件: ${String(error)}`)
-  }
-
-  // 3. 解析 JSON
+/** 解析并校验 JSON 文件，返回题目列表和错误信息 */
+export function parseImportFile(content: string): {
+  questions: ExportJSONSchema['questions']
+  version: string
+  error?: string
+} {
   let data: any
   try {
     data = JSON.parse(content)
-  } catch (error) {
-    throw new Error('文件不是有效的 JSON 格式')
+  } catch {
+    return { questions: [], version: '', error: '文件不是有效的 JSON 格式' }
   }
 
-  // 4. 校验结构
   if (!data || typeof data !== 'object') {
-    throw new Error('JSON 数据必须是对象')
+    return { questions: [], version: '', error: 'JSON 数据必须是对象' }
   }
-
-  // 4.1 校验 version
   if (!data.version) {
-    throw new Error('缺少必要的 "version" 字段')
+    return { questions: [], version: '', error: '缺少必要的 "version" 字段' }
   }
-
-  // 版本不匹配时警告但允许继续
-  if (data.version !== '1.0') {
-    showWarning(
-      '版本不匹配',
-      `导入文件版本为 "${data.version}"，当前支持版本为 "1.0"，可能会存在兼容性问题`
-    )
-  }
-
-  // 4.2 校验 questions
   if (!Array.isArray(data.questions)) {
-    throw new Error('"questions" 必须是数组')
+    return { questions: [], version: '', error: '"questions" 必须是数组' }
   }
-
   if (data.questions.length === 0) {
-    throw new Error('"questions" 数组不能为空')
+    return { questions: [], version: '', error: '"questions" 数组不能为空' }
   }
 
-  // 4.3 校验每条记录
-  const errors: string[] = []
-  data.questions.forEach((q: any, index: number) => {
+  const errs: string[] = []
+  data.questions.forEach((q: any, i: number) => {
     if (!q || typeof q !== 'object') {
-      errors.push(`第 ${index + 1} 条记录不是有效对象`)
+      errs.push(`第 ${i + 1} 条记录不是有效对象`)
       return
     }
     if (!q.prompt || typeof q.prompt !== 'string') {
-      errors.push(`第 ${index + 1} 条记录缺少 "prompt" 字段`)
+      errs.push(`第 ${i + 1} 条记录缺少 "prompt" 字段`)
     }
-    // answer 和 analysis 可以为空字符串
     if (q.answer !== undefined && typeof q.answer !== 'string') {
-      errors.push(`第 ${index + 1} 条记录的 "answer" 必须是字符串`)
+      errs.push(`第 ${i + 1} 条记录的 "answer" 必须是字符串`)
     }
     if (q.analysis !== undefined && typeof q.analysis !== 'string') {
-      errors.push(`第 ${index + 1} 条记录的 "analysis" 必须是字符串`)
+      errs.push(`第 ${i + 1} 条记录的 "analysis" 必须是字符串`)
     }
   })
 
-  if (errors.length > 0) {
-    throw new Error(`数据校验失败:\n${errors.join('\n')}`)
+  if (errs.length > 0) {
+    return { questions: [], version: '', error: `数据校验失败:\n${errs.join('\n')}` }
   }
 
-  return data as ExportJSONSchema
+  return { questions: data.questions, version: data.version }
 }
 
 /**
- * 执行导入操作
- * @param data 解析后的导入数据
- * @param subjectId 用户选择的目标科目 ID
- * @param defaultType 默认题型
- * @param userId 当前用户 ID
- * @returns 导入结果统计
+ * 导入单道题，包含 SRS 数据和错因标签的创建
+ * @returns 是否成功
  */
-export async function importQuestions(
-  data: ExportJSONSchema,
+export async function importSingleQuestion(
+  question: ExportJSONSchema['questions'][0],
   subjectId: string,
-  defaultType: string,
-  userId: string
-): Promise<ImportResult> {
-  const result: ImportResult = {
-    success: 0,
-    skipped: 0,
-    failed: 0,
-    errors: []
-  }
-
-  // 获取本地已有题目的 prompt 集合，用于去重
-  const existingPrompts = new Set<string>()
+  typeName: string,
+  userId: string,
+  tags?: Array<{ name: string; color: string }>
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const existingQuestions: ErrorQuestion[] = await getQuestions()
-    existingQuestions.forEach((q) => {
-      if (q.prompt) {
-        existingPrompts.add(q.prompt.trim())
-      }
+    // 1. 创建错题
+    const created = await createErrorQuestion({
+      user_id: userId,
+      subject_id: subjectId,
+      source_id: undefined,
+      prompt: question.prompt,
+      type: typeName as any,
+      answer: question.answer || '',
+      analysis: question.analysis || '',
+      error_note: ''
     })
-  } catch (error) {
-    console.warn('获取本地题目列表失败，将跳过去重检查:', error)
-  }
 
-  for (let i = 0; i < data.questions.length; i++) {
-    const q = data.questions[i]
-
+    // 2. 自动创建 SRS 数据（默认中等难度 5.0）
     try {
-      // 去重：以 prompt 文本精确匹配
-      if (existingPrompts.has(q.prompt.trim())) {
-        result.skipped++
-        continue
-      }
-
-      // 创建错题（API 会自动生成新 UUID）
-      await createErrorQuestion({
-        user_id: userId,
-        subject_id: subjectId,
-        source_id: undefined,
-        prompt: q.prompt,
-        type: defaultType as any,
-        answer: q.answer || '',
-        analysis: q.analysis || '',
-        error_note: ''
-      })
-
-      // 加入已导入集合，防止后续重复
-      existingPrompts.add(q.prompt.trim())
-      result.success++
-    } catch (error) {
-      result.failed++
-      result.errors.push(`第 ${i + 1} 题导入失败: ${String(error)}`)
+      await createSRSData(created.id, 5.0)
+    } catch (srsError) {
+      console.warn('创建 SRS 数据失败（不影响导入）:', srsError)
     }
+
+    // 3. 创建错因标签（如果有选）
+    if (tags && tags.length > 0) {
+      try {
+        await createErrorTagsForQuestion(created.id, tags)
+      } catch (tagError) {
+        console.warn('创建错因标签失败（不影响导入）:', tagError)
+      }
+    }
+
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: String(error) }
   }
-
-  // 显示结果通知
-  const parts: string[] = []
-  if (result.success > 0) parts.push(`成功 ${result.success} 题`)
-  if (result.skipped > 0) parts.push(`跳过 ${result.skipped} 题（重复）`)
-  if (result.failed > 0) parts.push(`失败 ${result.failed} 题`)
-
-  if (result.failed === 0) {
-    showSuccess('导入完成', parts.join('，'))
-  } else {
-    showWarning('导入完成', `${parts.join('，')}\n${result.errors.join('\n')}`)
-  }
-
-  return result
 }
 
 /**
- * 获取当前用户 ID（从本地存储或配置中读取）
- * 由于没有专门的 user API，从 created_by 或固定值获取
- * 这里从 localStorage 读取，若无则使用默认值
+ * 获取已有题目的 prompt 集合，用于去重判断
  */
-export function getCurrentUserId(): string {
+export async function getExistingPromptSet(): Promise<Set<string>> {
+  const set = new Set<string>()
   try {
-    // 尝试从 localStorage 读取用户 ID
-    const stored = localStorage.getItem('user_id')
-    if (stored) return stored
+    const existing: ErrorQuestion[] = await getQuestions()
+    existing.forEach((q) => {
+      if (q.prompt) set.add(q.prompt.trim())
+    })
   } catch {
-    // ignore
+    console.warn('获取本地题目列表失败，跳过去重检查')
   }
-
-  // 从 URL 参数或固定默认值
-  return 'default-user'
+  return set
 }
