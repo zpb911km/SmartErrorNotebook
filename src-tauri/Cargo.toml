@@ -1,6 +1,6 @@
 [package]
 name = "smarterrornotebook"
-version = "0.1.1"
+version = "0.1.2"
 description = "smarterrornotebook"
 authors = ["zpb911km", "fly-960452909", "dimixun", "BakeReisen"]
 edition = "2021"
