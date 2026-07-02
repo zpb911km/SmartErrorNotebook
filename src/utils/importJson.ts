@@ -1,10 +1,8 @@
-import { readTextFile } from '@tauri-apps/plugin-fs'
 import { createErrorQuestion } from '../apis/errorQuestions'
 import { createErrorTagsForQuestion } from '../apis/errorTags'
 import { createSRSData } from '../apis/srsData'
 import { getQuestions } from '../apis/errorQuestions'
-import type { ExportJSONSchema, ErrorQuestion, ImportResult } from '../types'
-import { showSuccess, showWarning } from './notification'
+import type { ExportJSONSchema, ErrorQuestion } from '../types'
 
 /** 解析并校验 JSON 文件，返回题目列表和错误信息 */
 export function parseImportFile(content: string): {

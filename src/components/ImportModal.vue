@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
 import ErrorTagSelector from './ErrorTagSelector.vue'
@@ -320,15 +320,6 @@ function setReviewSubject(id: string) {
 }
 function setReviewTags(tags: Array<{ name: string; color: string }>) {
   reviewTags.value = tags
-}
-
-/** 当前配置对象，传给 importSingleQuestion */
-function currentImportOpts() {
-  return {
-    subjectId: reviewSubjectId.value,
-    type: reviewType.value,
-    tags: reviewTags.value.length > 0 ? reviewTags.value : undefined
-  }
 }
 
 // ===== 选择文件 =====
