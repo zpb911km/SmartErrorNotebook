@@ -36,7 +36,10 @@ CLAUDE.md
 .lingma/rules/Understanding.md
 .lingma/skills/code-review/SKILL.md
 src-tauri/Cargo.lock
-server/instance/sync_data.db
+server/instance/*
 src-tauri/Cargo.toml
 openspec/*
 .cursor/*
+pyrightconfig.json
+*/__pycache__/*
+.fp/*

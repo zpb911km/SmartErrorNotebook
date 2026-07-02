@@ -1,8 +1,8 @@
 <template>
   <div class="manage-detail-page">
     <!-- 顶部导航栏 -->
-    <div class="detail-header">
-      <button class="back-btn" @click="goBack">
+    <div class="detail-header" ref="detailHeaderRef">
+      <button class="back-btn" v-ripple @click="goBack">
         <svg
           class="back-icon"
           width="16"
@@ -19,12 +19,106 @@
         <span>返回</span>
       </button>
       <h2>错题详情管理</h2>
-      <div class="header-actions">
-        <button class="action-btn edit-btn" @click="toggleEditMode">
-          {{ isEditing ? '取消编辑' : '编辑' }}
+      <div
+        class="header-actions"
+        ref="headerActionsRef"
+        :class="{ collapsed: actionsCollapsed }"
+      >
+        <button
+          v-if="shareCheckDone && isShared && !isEditing"
+          v-ripple
+          class="action-btn share-btn shared glare-btn"
+          :disabled="shareLoading"
+          @click="handleRevokeShare"
+        >
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
+          <span class="btn-label">{{ shareLoading ? '...' : '撤回分享' }}</span>
         </button>
-        <button class="action-btn delete-btn" @click="confirmDelete">
-          删除
+        <button
+          v-if="shareCheckDone && !isShared && serverConfigured && !isEditing"
+          v-ripple
+          class="action-btn share-btn glare-btn"
+          :disabled="shareLoading"
+          @click="handleShare"
+        >
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
+          <span class="btn-label">{{
+            shareLoading ? '...' : '分享到社区'
+          }}</span>
+        </button>
+        <button
+          v-ripple
+          class="action-btn edit-btn glare-btn"
+          @click="toggleEditMode"
+        >
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+            />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
+        </button>
+        <button
+          v-ripple
+          class="action-btn delete-btn glare-btn"
+          @click="confirmDelete"
+        >
+          <svg
+            class="btn-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            />
+          </svg>
+          <span class="btn-label">删除</span>
         </button>
       </div>
     </div>
@@ -107,7 +201,7 @@
                 @click.stop="deleteTempImage(image)"
                 title="删除图片"
               >
-                ×
+                <Icon name="x" :size="16" />
               </button>
             </div>
           </div>
@@ -116,7 +210,7 @@
         <!-- 添加图片按钮（仅编辑模式） -->
         <div v-if="isEditing" class="upload-section">
           <button class="btn-add-images" @click="triggerImageUpload">
-            📷 添加图片
+            <Icon name="camera" :size="16" /> 添加图片
           </button>
           <input
             ref="imageInput"
@@ -333,17 +427,28 @@
           <p>确定要删除这道错题吗？此操作不可恢复。</p>
         </div>
         <div class="modal-footer">
-          <button class="btn-cancel" @click="showDeleteConfirm = false">
+          <button
+            v-ripple
+            class="btn-cancel"
+            @click="showDeleteConfirm = false"
+          >
             取消
           </button>
-          <button class="btn-confirm" @click="deleteError">确认删除</button>
+          <button v-ripple class="btn-confirm" @click="deleteError">
+            确认删除
+          </button>
         </div>
       </div>
     </div>
 
     <!-- 保存按钮 -->
     <div v-if="isEditing" class="save-bar">
-      <button class="save-btn" @click="saveChanges" :disabled="saving">
+      <button
+        v-ripple
+        class="save-btn glare-btn"
+        @click="saveChanges"
+        :disabled="saving"
+      >
         {{ saving ? '保存中...' : '保存修改' }}
       </button>
     </div>
@@ -369,7 +474,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -379,7 +484,8 @@ import 'katex/dist/katex.min.css'
 marked.use(
   markedKatex({
     throwOnError: false,
-    output: 'html'
+    output: 'html',
+    nonStandard: true
   })
 )
 
@@ -402,6 +508,7 @@ import {
   deleteAttachment
 } from '../apis/attachments'
 import { getQuestionSRSStatus } from '../apis/srsData'
+import { publishShare, revokeShare, checkShare } from '../apis/share'
 import type {
   ErrorQuestion,
   Subject,
@@ -450,7 +557,16 @@ const filteredErrorTags = computed(() => {
 // 编辑状态
 const isEditing = ref(false)
 const saving = ref(false)
-const sourceSelectorDisabled = ref(false) // 控制SourceSelector的disabled状态
+const sourceSelectorDisabled = ref(false) // 控制SourceSelector的启用状态
+
+// 按钮自适应：空间不足时折叠文字只留图标
+const headerActionsRef = ref<HTMLElement | null>(null)
+const detailHeaderRef = ref<HTMLElement | null>(null)
+const actionsCollapsed = ref(false)
+const fullButtonsWidth = ref(0) // 挂载时测量的按钮全宽（含文字）
+const backBtnWidth = ref(0) // 挂载时测量的返回按钮宽度
+const titleMinWidth = ref(0) // 挂载时测量的标题最小宽度
+let actionsObserver: ResizeObserver | null = null
 const editForm = ref({
   subject_id: '',
   source_id: '',
@@ -463,6 +579,84 @@ const editForm = ref({
 
 // 弹窗状态
 const showDeleteConfirm = ref(false)
+
+// 分享状态
+const shareLoading = ref(false)
+const shareCheckDone = ref(false)
+const isShared = ref(false)
+const serverConfigured = ref(false)
+
+/**
+ * 检查服务器是否已配置
+ */
+function checkServerConfig(): boolean {
+  const url = localStorage.getItem('sync_server_url')
+  const auth = localStorage.getItem('auth_key')
+  return !!(url && auth)
+}
+
+/**
+ * 检查当前题目是否已分享
+ */
+async function checkShareStatus() {
+  if (!serverConfigured.value) return
+
+  const authKey = localStorage.getItem('auth_key') || ''
+  try {
+    isShared.value = await checkShare({ auth_key: authKey, id: errorId.value })
+  } catch {
+    isShared.value = false
+  } finally {
+    shareCheckDone.value = true
+  }
+}
+
+/**
+ * 分享当前错题到社区
+ */
+async function handleShare() {
+  if (!errorDetail.value || shareLoading.value) return
+
+  shareLoading.value = true
+  const authKey = localStorage.getItem('auth_key') || ''
+  const detail = errorDetail.value as any
+
+  try {
+    await publishShare({
+      auth_key: authKey,
+      id: errorId.value,
+      prompt: detail.prompt,
+      type_: detail.type_ || detail.type || '',
+      answer: detail.answer || '',
+      analysis: detail.analysis || '',
+      error_note: detail.error_note || ''
+    })
+    isShared.value = true
+  } catch (e: any) {
+    alert('分享失败: ' + (e.message || '未知错误'))
+  } finally {
+    shareLoading.value = false
+  }
+}
+
+/**
+ * 撤回分享
+ */
+async function handleRevokeShare() {
+  if (shareLoading.value) return
+
+  shareLoading.value = true
+  const authKey = localStorage.getItem('auth_key') || ''
+
+  try {
+    await revokeShare({ auth_key: authKey, id: errorId.value })
+    isShared.value = false
+  } catch (e: any) {
+    alert('撤回失败: ' + (e.message || '未知错误'))
+  } finally {
+    shareLoading.value = false
+  }
+}
 
 // 获取错题详情
 const fetchErrorDetail = async () => {
@@ -914,6 +1108,13 @@ const calculateMastery = (srs: any): number => {
 // 删除错题
 const deleteError = async () => {
   try {
+    // 如果已分享，异步撤回（不阻塞主操作）
+    if (isShared.value && serverConfigured.value) {
+      const authKey = localStorage.getItem('auth_key') || ''
+      revokeShare({ auth_key: authKey, id: errorId.value }).catch(() => {
+        // 忽略撤回失败，删除是主要操作
+      })
+    }
     await deleteQuestion(errorId.value)
     showDeleteConfirm.value = false
     // 返回管理页面
@@ -957,7 +1158,6 @@ const handleSourceSelect = (sourceId: string) => {
     console.log('100ms 后 editForm.source_id:', editForm.value.source_id)
   }, 100)
 }
-
 
 // 构建图片src
 const buildImageSrc = (attachment: any) => {
@@ -1181,8 +1381,64 @@ const deleteTempImage = (image: any) => {
 }
 
 onMounted(() => {
-  fetchErrorDetail()
+  serverConfigured.value = checkServerConfig()
   fetchSubjects()
+
+  // 按钮自适应：等数据加载完成（分享按钮 v-if 依赖 shareCheckDone），再测量+启动观察
+  const setupAdaptive = () => {
+    nextTick(() => {
+      if (headerActionsRef.value) {
+        fullButtonsWidth.value = headerActionsRef.value.scrollWidth
+      }
+      if (detailHeaderRef.value) {
+        const back = detailHeaderRef.value.querySelector('.back-btn')
+        if (back) backBtnWidth.value = (back as HTMLElement).offsetWidth
+        const title = detailHeaderRef.value.querySelector('h2')
+        if (title) titleMinWidth.value = (title as HTMLElement).scrollWidth
+      }
+
+      actionsObserver = new ResizeObserver(([entry]) => {
+        const totalWidth = entry.target.clientWidth
+        const totalNeeded =
+          backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+
+        if (actionsCollapsed.value) {
+          if (totalWidth >= totalNeeded + 30) {
+            actionsCollapsed.value = false
+          }
+        } else {
+          if (totalWidth < totalNeeded - 2) {
+            actionsCollapsed.value = true
+          }
+        }
+      })
+      if (detailHeaderRef.value) {
+        actionsObserver.observe(detailHeaderRef.value)
+        // 初始检测：页面加载完立即判断，不等 resize
+        const initWidth = detailHeaderRef.value.clientWidth
+        const initNeeded =
+          backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
+        if (initWidth < initNeeded - 2) {
+          actionsCollapsed.value = true
+        }
+      }
+    })
+  }
+
+  // 等异步数据全部到位后再测量
+  fetchErrorDetail().then(() => {
+    if (serverConfigured.value) {
+      checkShareStatus().finally(() => {
+        setupAdaptive()
+      })
+    } else {
+      setupAdaptive()
+    }
+  })
+})
+
+onUnmounted(() => {
+  actionsObserver?.disconnect()
 })
 </script>
 
@@ -1207,15 +1463,29 @@ onMounted(() => {
 
 /* 顶部导航 */
 .detail-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   margin-bottom: 24px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
+  gap: 8px;
+}
+
+.detail-header h2 {
+  grid-column: 2;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  font-size: 20px;
+  color: var(--text-primary);
 }
 
 .back-btn {
+  grid-column: 1;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1254,24 +1524,52 @@ onMounted(() => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.detail-header h2 {
-  font-size: 20px;
-  margin: 0;
-  color: var(--text-primary);
-}
-
 .header-actions {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
 }
 
 .action-btn {
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
+  gap: 4px;
+}
+
+.btn-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.btn-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: 6px;
+}
+
+/* 空间不足时隐藏文字，只留图标 */
+.header-actions.collapsed .action-btn {
+  padding: 8px 6px;
+}
+
+.header-actions.collapsed .btn-label {
+  display: none;
 }
 
 .edit-btn {
@@ -1292,6 +1590,30 @@ onMounted(() => {
   background: #d32f2f;
 }
 
+.share-btn {
+  background: var(--success-color);
+  color: white;
+}
+
+.share-btn:hover {
+  background: var(--success-color);
+  filter: brightness(0.85);
+}
+
+.share-btn.shared {
+  background: var(--warning-color);
+}
+
+.share-btn.shared:hover {
+  background: var(--warning-color);
+  filter: brightness(0.85);
+}
+
+.share-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* 内容区域 */
 .detail-content {
   display: flex;
@@ -1310,7 +1632,23 @@ onMounted(() => {
   background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.info-section:hover,
+.content-section:hover,
+.answer-section:hover,
+.analysis-section:hover,
+.tags-section:hover,
+.note-section:hover,
+.srs-section:hover,
+.time-section:hover {
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .section-title {
@@ -1396,16 +1734,22 @@ onMounted(() => {
 }
 
 .markdown-preview :deep(pre) {
-  background: #0f172a;
+  background: var(--code-bg, #0f172a);
   padding: 10px;
   border-radius: 6px;
   overflow-x: auto;
+  margin: 0.5em 0;
 }
 
 .markdown-preview :deep(pre code) {
   background: transparent;
   padding: 0;
-  color: #e2e8f0;
+  color: var(--code-text, #e2e8f0);
+}
+
+.markdown-preview :deep(pre code.hljs) {
+  background: transparent;
+  color: var(--code-text, #e2e8f0);
 }
 
 .markdown-preview :deep(ul),
@@ -1604,8 +1948,11 @@ onMounted(() => {
 }
 
 .no-tags {
-  color: var(--text-secondary);
-  font-size: 14px;
+  color: var(--text-disabled);
+  font-size: 13px;
+  font-style: italic;
+  padding: 8px 0;
+  display: block;
 }
 
 .tags-edit {
@@ -1615,13 +1962,14 @@ onMounted(() => {
 /* SRS 统计 */
 .no-srs-data {
   text-align: center;
-  padding: 20px;
-  color: var(--text-secondary);
+  padding: 24px;
 }
 
 .no-srs-data p {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
+  color: var(--text-disabled);
+  font-style: italic;
 }
 
 .srs-stats {
@@ -1767,7 +2115,7 @@ onMounted(() => {
 .modal-body {
   padding: 20px;
 }
-/* 
+/*
 .source-modal-body {
   min-height: 40px;
   padding: 24px;
@@ -1822,12 +2170,21 @@ onMounted(() => {
   bottom: 60px;
   left: 0;
   right: 0;
-  background: var(--card-bg);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   padding: 16px 20px;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: center;
   z-index: 1001;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 暗色主题适配 */
+body.dark-theme .save-bar {
+  background: rgba(47, 47, 47, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .save-btn {
@@ -1858,22 +2215,11 @@ onMounted(() => {
     padding-bottom: 100px;
   }
 
-  .detail-header {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 8px;
-  }
-
   .detail-header h2 {
     font-size: 18px;
-    text-align: center;
-    grid-column: 2;
   }
 
   .back-btn {
-    grid-column: 1;
-    justify-self: start;
     padding: 6px 10px;
     font-size: 13px;
   }
@@ -1884,14 +2230,11 @@ onMounted(() => {
   }
 
   .header-actions {
-    grid-column: 3;
-    justify-self: end;
-    display: flex;
     gap: 8px;
   }
 
   .action-btn {
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 13px;
   }
 
@@ -1980,5 +2323,16 @@ onMounted(() => {
   .modal-content {
     max-width: 900px;
   }
+}
+</style>
+
+<!-- 全局覆盖 highlight.js 颜色（模板中无 .markdown-preview 类，所以 scoped 样式无效，必须用非 scoped） -->
+<style>
+.detail-content pre code.hljs {
+  background: transparent !important;
+  color: var(--code-text, #e2e8f0) !important;
+}
+.detail-content pre {
+  background: var(--code-bg, #0f172a) !important;
 }
 </style>

@@ -3,7 +3,16 @@
     <div class="image-preview-container" @click.stop>
       <!-- 关闭按钮 -->
       <button class="close-btn" @click="handleClose" title="关闭">
-        <span class="close-icon">x</span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
       </button>
 
       <!-- 图片 -->
@@ -23,16 +32,54 @@
 
       <!-- 缩放控制 -->
       <div class="zoom-controls">
-        <button class="zoom-btn" @click="zoomIn" title="放大">+</button>
+        <button class="zoom-btn" @click="zoomIn" title="放大">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            width="18"
+            height="18"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
         <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
-        <button class="zoom-btn" @click="zoomOut" title="缩小">−</button>
+        <button class="zoom-btn" @click="zoomOut" title="缩小">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            width="18"
+            height="18"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <span class="divider"></span>
         <button class="zoom-btn rotate-btn" @click="rotateImage" title="旋转">
-          ↻
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            width="18"
+            height="18"
+          >
+            <path
+              d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"
+            />
+          </svg>
         </button>
         <button class="zoom-btn reset-btn" @click="resetAll" title="重置">
           重置
         </button>
       </div>
+
+      <!-- 提示 -->
+      <div class="zoom-hint">滚轮缩放 · 拖拽平移 · 双击重置</div>
     </div>
   </div>
 </template>
@@ -201,21 +248,23 @@ const handleMouseDown = (e: MouseEvent) => {
 </script>
 
 <style scoped>
+/* ===== 背景遮罩 ===== */
 .image-preview-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  animation: fadeIn 0.2s ease;
+  animation: overlayIn 0.25s ease;
+  backdrop-filter: blur(4px);
 }
 
-@keyframes fadeIn {
+@keyframes overlayIn {
   from {
     opacity: 0;
   }
@@ -224,6 +273,7 @@ const handleMouseDown = (e: MouseEvent) => {
   }
 }
 
+/* ===== 容器 ===== */
 .image-preview-container {
   position: relative;
   width: 100%;
@@ -231,54 +281,73 @@ const handleMouseDown = (e: MouseEvent) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: containerIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes containerIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ===== 关闭按钮 ===== */
 .close-btn {
   position: absolute;
   top: 20px;
   right: 20px;
-  width: 48px;
-  height: 48px;
-  background: rgba(224, 224, 224, 0.4);
-  border: none;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   cursor: pointer;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.close-btn:focus {
-  outline: none;
-  box-shadow: none;
+.close-btn svg {
+  width: 20px;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.25s ease;
 }
 
 .close-btn:hover {
-  background: rgba(208, 208, 208, 0.7);
-  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.08);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.08);
 }
 
-.close-btn:hover .close-icon {
-  color: red;
-  transform: scale(1.5);
+.close-btn:hover svg {
+  color: #fff;
+  transform: rotate(90deg);
 }
 
-.close-icon {
-  font-size: 32px;
-  color: black;
-  transition: all 0.3s ease;
-  position: relative;
-  top: -5px;
+.close-btn:active {
+  transform: scale(0.95);
 }
 
+/* ===== 图片 ===== */
 .preview-image {
-  width: 100vw;
-  height: 100vh;
+  max-width: 95vw;
+  max-height: 95vh;
   object-fit: contain;
   user-select: none;
   cursor: grab;
   pointer-events: auto;
+  border-radius: 8px;
+  box-shadow: 0 8px 60px rgba(0, 0, 0, 0.5);
+  will-change: transform;
 }
 
 .preview-image.is-dragging {
@@ -286,65 +355,130 @@ const handleMouseDown = (e: MouseEvent) => {
   transition: none !important;
 }
 
-#imagePreviewImg:active {
-  cursor: grabbing !important;
-}
-
+/* ===== 缩放控制栏 ===== */
 .zoom-controls {
   position: absolute;
-  bottom: 30px;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 8px 16px;
-  border-radius: 24px;
-  backdrop-filter: blur(10px);
+  gap: 4px;
+  background: rgba(30, 30, 30, 0.75);
+  padding: 6px;
+  border-radius: 28px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  animation: controlsIn 0.4s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes controlsIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .zoom-btn {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.2);
+  width: 38px;
+  height: 38px;
+  background: transparent;
   border: none;
   border-radius: 50%;
-  color: black;
-  font-size: 20px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 18px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--font-family-base, sans-serif);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.zoom-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .zoom-btn.rotate-btn {
-  border-radius: 50%;
+  font-size: 20px;
 }
 
 .reset-btn {
   width: auto;
   min-width: 56px;
-  height: 36px;
-  padding: 0 12px;
-  font-size: 14px;
-  font-weight: bold;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  gap: 4px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.3px;
+  margin-left: 4px;
 }
 
-.zoom-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
+.reset-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+/* 控制栏分隔线 */
+.zoom-controls .divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .zoom-level {
-  color: white;
-  font-size: 14px;
-  min-width: 60px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  min-width: 52px;
   text-align: center;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+
+/* ===== 底部提示文字 ===== */
+.zoom-hint {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  pointer-events: none;
+  animation: hintFade 0.6s 0.6s ease both;
+  white-space: nowrap;
+}
+
+@keyframes hintFade {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 </style>

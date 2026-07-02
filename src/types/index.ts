@@ -48,6 +48,41 @@ interface QuestionFilter {
 }
 
 /**
+ * JSON 导出 Schema
+ */
+interface ExportJSONSchema {
+  /** Schema 版本号 */
+  version: string
+  /** 导出时间（ISO 8601） */
+  exportedAt: string
+  /** 题目数量 */
+  count: number
+  /** 题目列表 */
+  questions: Array<{
+    /** 题干 */
+    prompt: string
+    /** 标准答案 */
+    answer: string
+    /** 解析 */
+    analysis: string
+  }>
+}
+
+/**
+ * 导入结果
+ */
+interface ImportResult {
+  /** 成功导入数量 */
+  success: number
+  /** 跳过数量（重复） */
+  skipped: number
+  /** 失败数量 */
+  failed: number
+  /** 错误详情列表 */
+  errors: string[]
+}
+
+/**
  * 更新错题的输入参数
  */
 interface UpdateQuestionInput {
@@ -305,5 +340,7 @@ export type {
   CreateSourceInput,
   UpdateSourceInput,
   SourceFilter,
-  CreateAttachmentInput
+  CreateAttachmentInput,
+  ExportJSONSchema,
+  ImportResult
 }

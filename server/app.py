@@ -128,6 +128,33 @@ class Record(db.Model):
         )
 
 
+class SharedQuestion(db.Model):
+    """分享错题表 - 用户分享到社区的错题"""
+    __tablename__ = 'shared_questions'
+
+    id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
+    source_question_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    prompt = db.Column(db.Text, nullable=False)
+    type_ = db.Column(db.String(64), nullable=False)
+    answer = db.Column(db.Text, nullable=True, default='')
+    analysis = db.Column(db.Text, nullable=True, default='')
+    error_note = db.Column(db.Text, nullable=True, default='')
+    sender_auth_key = db.Column(db.String(64), nullable=False, index=True)
+    created_at = db.Column(db.BigInteger, nullable=False, default=lambda: int(datetime.now().timestamp() * 1000))
+
+    def to_public_dict(self):
+        """转换为公开格式（不含 sender_auth_key）"""
+        return {
+            'id': self.id,
+            'prompt': self.prompt,
+            'type_': self.type_,
+            'answer': self.answer or '',
+            'analysis': self.analysis or '',
+            'error_note': self.error_note or '',
+            'created_at': self.created_at,
+        }
+
+
 # ==================== CORS ====================
 
 @app.after_request
@@ -309,6 +336,170 @@ def download_record(record_id):
 def health_check():
     """健康检查端点"""
     return jsonify({'status': 'ok'})
+
+
+# ==================== 社区分享 ====================
+
+@app.route('/api/share/publish', methods=['POST'])
+def share_publish():
+    """
+    分享错题到社区
+
+    Request Body:
+        auth_key: 用户认证 key
+        id: 题目原始 UUID（用于排重和撤回匹配）
+        prompt: 题目文本
+        type_: 题型
+        answer: 标准答案 (可选)
+        analysis: 解析 (可选)
+        error_note: 错题笔记 (可选)
+
+    Returns:
+        {success: true} 或 {error: ...}
+    """
+    data = request.get_json() or {}
+    auth_key = data.get('auth_key')
+    question_id = data.get('id')
+
+    if not auth_key:
+        return jsonify({'error': 'Missing auth_key'}), 400
+    if not question_id:
+        return jsonify({'error': 'Missing id'}), 400
+
+    # 验证 auth_key
+    user = UserAuth.query.filter_by(auth_key=auth_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid auth_key'}), 401
+
+    # 检查是否已分享，已存在则幂等返回
+    existing = SharedQuestion.query.filter_by(source_question_id=question_id).first()
+    if existing:
+        return jsonify({'success': True})
+
+    # 创建分享记录
+    shared = SharedQuestion(
+        source_question_id=question_id,
+        prompt=data.get('prompt', ''),
+        type_=data.get('type_', ''),
+        answer=data.get('answer', ''),
+        analysis=data.get('analysis', ''),
+        error_note=data.get('error_note', ''),
+        sender_auth_key=auth_key,
+    )
+    try:
+        db.session.add(shared)
+        db.session.commit()
+        return jsonify({'success': True}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/share/list', methods=['GET'])
+def share_list():
+    """
+    获取社区分享列表（分页，需鉴权）
+
+    Query Params:
+        auth_key: 用户认证 key
+        page: 页码 (默认 1)
+        page_size: 每页条数 (默认 20)
+
+    Returns:
+        {items: [...], has_more: bool}
+    """
+    auth_key = request.args.get('auth_key')
+    if not auth_key:
+        return jsonify({'error': 'Missing auth_key'}), 400
+
+    # 验证 auth_key - 仅注册用户可浏览
+    user = UserAuth.query.filter_by(auth_key=auth_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid auth_key'}), 401
+
+    page = request.args.get('page', 1, type=int)
+    page_size = request.args.get('page_size', 20, type=int)
+    page_size = min(page_size, 50)  # 上限保护
+
+    query = SharedQuestion.query.order_by(SharedQuestion.created_at.desc())
+    pagination = query.paginate(page=page, per_page=page_size, error_out=False)
+
+    items = [item.to_public_dict() for item in pagination.items]
+    return jsonify({
+        'items': items,
+        'has_more': pagination.has_next,
+    })
+
+
+@app.route('/api/share/revoke', methods=['POST'])
+def share_revoke():
+    """
+    撤回分享的错题
+
+    Request Body:
+        auth_key: 用户认证 key
+        id: 题目的原始 UUID（source_question_id）
+
+    Returns:
+        {success: true} 或 {error: ...}
+    """
+    data = request.get_json() or {}
+    auth_key = data.get('auth_key')
+    question_id = data.get('id')
+
+    if not auth_key:
+        return jsonify({'error': 'Missing auth_key'}), 400
+    if not question_id:
+        return jsonify({'error': 'Missing id'}), 400
+
+    # 验证 auth_key
+    user = UserAuth.query.filter_by(auth_key=auth_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid auth_key'}), 401
+
+    # 删除分享记录（需匹配 sender_auth_key，防止 A 撤回 B 的分享）
+    try:
+        deleted = SharedQuestion.query.filter_by(
+            source_question_id=question_id,
+            sender_auth_key=auth_key,
+        ).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'deleted': deleted > 0})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/share/check', methods=['GET'])
+def share_check():
+    """
+    检查指定题目是否已分享（用于 Detail 页初始化状态）
+
+    Query Params:
+        auth_key: 用户认证 key
+        id: 题目的原始 UUID（source_question_id）
+
+    Returns:
+        {shared: bool}
+    """
+    auth_key = request.args.get('auth_key')
+    question_id = request.args.get('id')
+
+    if not auth_key:
+        return jsonify({'error': 'Missing auth_key'}), 400
+    if not question_id:
+        return jsonify({'error': 'Missing id'}), 400
+
+    # 验证 auth_key
+    user = UserAuth.query.filter_by(auth_key=auth_key).first()
+    if not user:
+        return jsonify({'error': 'Invalid auth_key'}), 401
+
+    existing = SharedQuestion.query.filter_by(
+        source_question_id=question_id,
+        sender_auth_key=auth_key,
+    ).first()
+    return jsonify({'shared': existing is not None})
 
 
 # ==================== 管理后台 ====================

@@ -30,10 +30,7 @@
             {{ viewMode === 'edit' ? '专注预览' : '编辑' }}
           </button>
         </div>
-        <div
-          class="markdown-textarea__preview-segment"
-          :class="previewClass"
-        >
+        <div class="markdown-textarea__preview-segment" :class="previewClass">
           <div
             v-if="previewSegments.length === 0"
             class="markdown-textarea__preview-empty"
@@ -65,10 +62,7 @@
           编辑
         </button>
       </div>
-      <div
-        class="markdown-textarea__preview-segment"
-        :class="previewClass"
-      >
+      <div class="markdown-textarea__preview-segment" :class="previewClass">
         <div
           v-if="previewSegments.length === 0"
           class="markdown-textarea__preview-empty"
@@ -88,7 +82,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { marked } from 'marked'
+import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import hljs from 'highlight.js/lib/core'
 import javascript from 'highlight.js/lib/languages/javascript'
@@ -122,24 +116,39 @@ hljs.registerLanguage('markdown', markdown)
 import 'highlight.js/styles/github-dark.css'
 import 'katex/dist/katex.min.css'
 
-marked.use(
+// 防止 ```markdown 嵌套递归渲染的深度计数器
+let _renderDepth = 0
+
+// 创建独立的 marked 实例，避免污染全局 marked
+const _marked: Marked = new Marked(
   markedKatex({
     throwOnError: false,
-    output: 'html'
-  })
+    output: 'html',
+    nonStandard: true
+  }),
+  {
+    renderer: {
+      code({ text, lang }): string {
+        // AI 经常用 ```markdown ... ``` 包裹返回内容，此时应渲染为 markdown 而非代码高亮
+        if (lang?.toLowerCase() === 'markdown' && _renderDepth < 3) {
+          _renderDepth++
+          try {
+            return _marked.parse(text, { breaks: true, gfm: true }) as string
+          } finally {
+            _renderDepth--
+          }
+        }
+        const language = lang ?? ''
+        const highlighted =
+          language && hljs.getLanguage(language)
+            ? hljs.highlight(text, { language }).value
+            : text // 无语言标签时不染色，直接展示原文，避免 highlightAuto 猜错
+        const langClass = language ? `language-${language}` : ''
+        return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
+      }
+    }
+  }
 )
-
-const renderer = new marked.Renderer()
-renderer.code = ({ text, lang }) => {
-  const language = lang ?? ''
-  const highlighted =
-    language && hljs.getLanguage(language)
-      ? hljs.highlight(text, { language }).value
-      : hljs.highlightAuto(text).value
-  const langClass = language ? `language-${language}` : ''
-  return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
-}
-marked.use({ renderer })
 
 defineOptions({ inheritAttrs: false })
 
@@ -187,7 +196,30 @@ const normalizeMarkdown = (value: string) => {
 
 const renderMarkdown = (value: string) => {
   const normalized = normalizeMarkdown(value)
-  return marked.parse(normalized, { breaks: true, gfm: true }) as string
+  // AI 生成的 markdown 常用缩进做视觉对齐，但 marked GFM 会把
+  // ≥4空格的缩进行整行误判为 <pre><code> 代码块，导致 KaTeX 无法处理其中的公式。
+  // 解决方案：只去掉前面是空行时的 4 空格缩进（此时 marked 才会解析为代码块），
+  // 而跟在列表项后面的缩进（列表嵌套）则保留不动。
+  let inFence = false
+  let prevLineBlank = true // 文档开头视作"前面是空行"
+  const deindented = normalized
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim()
+      if (/^```/.test(trimmed)) {
+        inFence = !inFence
+        prevLineBlank = false
+        return line
+      }
+      if (!inFence && prevLineBlank && /^[ ]{4,}(.+)$/.test(line)) {
+        prevLineBlank = false
+        return line.replace(/^[ ]{4,}/, '')
+      }
+      prevLineBlank = trimmed === ''
+      return line
+    })
+    .join('\n')
+  return _marked.parse(deindented, { breaks: true, gfm: true }) as string
 }
 
 const autoResize = () => {
@@ -483,13 +515,4 @@ defineExpose({ focus, blur, select, el: textareaRef })
   overflow-y: auto;
   color: var(--text-primary);
 }
-
-/* readonly模式下的预览区域样式 */
-.markdown-textarea__input:read-only {
-  background: var(--bg-secondary);
-  cursor: not-allowed;
-  color: var(--text-primary);
-  resize: none;
-}
-
 </style>

@@ -6,7 +6,7 @@
       <!-- 主题设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🎨</div>
+          <Icon name="palette" :size="22" class="setting-icon" />
           <div class="setting-name">主题设置</div>
         </div>
         <div class="setting-action">
@@ -25,7 +25,7 @@
       <!-- AI 选项 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🤖</div>
+          <Icon name="bot" :size="22" class="setting-icon" />
           <div class="setting-name">AI 辅助</div>
         </div>
         <div class="setting-action">
@@ -44,7 +44,7 @@
       <!-- LLM 配置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">⚙️</div>
+          <Icon name="settings" :size="22" class="setting-icon" />
           <div class="setting-name">LLM 配置</div>
         </div>
         <div class="setting-action">
@@ -52,10 +52,29 @@
         </div>
       </div>
 
+      <!-- 导出设置 -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <Icon name="file-text" :size="22" class="setting-icon" />
+          <div class="setting-name">HTML 导出包含答案和解析</div>
+        </div>
+        <div class="setting-action">
+          <div class="toggle-switch">
+            <input
+              type="checkbox"
+              v-model="exportIncludeAnswer"
+              id="exportAnswerToggle"
+              @change="handleExportAnswerToggle"
+            />
+            <label for="exportAnswerToggle" class="toggle-label"></label>
+          </div>
+        </div>
+      </div>
+
       <!-- LLM 测试 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🧪</div>
+          <Icon name="flask-conical" :size="22" class="setting-icon" />
           <div class="setting-name">LLM 测试</div>
         </div>
         <div class="setting-action">
@@ -66,7 +85,7 @@
       <!-- AI 提示词设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">✏️</div>
+          <Icon name="pencil" :size="22" class="setting-icon" />
           <div class="setting-name">AI 提示词设置</div>
         </div>
         <div class="setting-action">
@@ -79,7 +98,7 @@
       <!--- Markdown 渲染测试-->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">📄</div>
+          <Icon name="file-text" :size="22" class="setting-icon" />
           <div class="setting-name">Markdown 渲染测试</div>
         </div>
         <div class="setting-action">
@@ -92,7 +111,7 @@
       <!-- 数据清理 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-icon">🗑️</div>
+          <Icon name="trash-2" :size="22" class="setting-icon" />
           <div class="setting-name">清理已同步的软删除数据</div>
         </div>
         <div class="setting-action">
@@ -105,7 +124,9 @@
         <div class="modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 配置</h3>
-            <button class="close-btn" @click="closeLLMConfig">×</button>
+            <button class="close-btn" @click="closeLLMConfig">
+              <Icon name="x" :size="18" />
+            </button>
           </div>
           <div class="modal-body">
             <div class="form-group">
@@ -161,7 +182,9 @@
         <div class="modal test-modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 测试</h3>
-            <button class="close-btn" @click="closeLLMTest">×</button>
+            <button class="close-btn" @click="closeLLMTest">
+              <Icon name="x" :size="18" />
+            </button>
           </div>
           <div class="modal-body test-body">
             <div class="test-status">
@@ -216,7 +239,9 @@
         <div class="modal large-modal" @click.stop>
           <div class="modal-header">
             <h3>AI 提示词设置</h3>
-            <button class="close-btn" @click="closePromptEditor">×</button>
+            <button class="close-btn" @click="closePromptEditor">
+              <Icon name="x" :size="18" />
+            </button>
           </div>
           <div class="modal-body">
             <p class="prompt-description">
@@ -247,6 +272,17 @@ const aiEnabled = ref(false)
 
 // LLM 配置对话框
 const showLLMConfig = ref(false)
+
+// 导出设置
+const exportIncludeAnswer = ref(
+  localStorage.getItem('export_include_answer') === 'true'
+)
+const handleExportAnswerToggle = () => {
+  localStorage.setItem(
+    'export_include_answer',
+    String(exportIncludeAnswer.value)
+  )
+}
 const llmConfig = ref({
   baseUrl: '',
   apiKey: '',
@@ -458,14 +494,18 @@ const confirmPurge = async () => {
       }
     }
     if (total > 0) {
-      showSuccess(`清理完成！`, `共删除 ${total} 条记录\n${parts.join('\n')}`, 5000)
+      showSuccess(
+        `清理完成！`,
+        `共删除 ${total} 条记录\n${parts.join('\n')}`,
+        5000
+      )
     } else {
       showInfo('没有需要清理的记录', '')
     }
     checkAndDeleteOrphans().then((orphans) => {
       console.log('checkAndDeleteOrphans result:', orphans)
       showSuccess(
-        "自动检查完成",
+        '自动检查完成',
         `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`,
         5000
       )
@@ -611,14 +651,16 @@ onUnmounted(() => {
 /* 开关按钮 */
 .toggle-switch {
   position: relative;
-  width: 50px;
-  height: 24px;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
 }
 
 .toggle-switch input {
   opacity: 0;
   width: 0;
   height: 0;
+  position: absolute;
 }
 
 .toggle-label {
@@ -628,29 +670,50 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--border-color);
-  transition: 0.4s;
-  border-radius: 24px;
+  background-color: var(--gray-400);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 26px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .toggle-label:before {
   position: absolute;
   content: '';
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   background-color: white;
-  transition: 0.4s;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-label:hover:before {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
 }
 
 input:checked + .toggle-label {
   background-color: var(--primary-color);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--primary-dark);
 }
 
 input:checked + .toggle-label:before {
-  transform: translateX(26px);
+  left: calc(100% - 24px);
+  transform: translateY(-50%);
+  box-shadow: 0 1px 4px rgba(25, 118, 210, 0.3);
+}
+
+input:focus-visible + .toggle-label {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+input:active + .toggle-label:before {
+  width: 22px;
 }
 
 /* AI 嵌套选项 */

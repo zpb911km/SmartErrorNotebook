@@ -7,7 +7,7 @@
       class="nav-item"
       :class="{ active: isActive(item.path) }"
     >
-      <span class="nav-icon">{{ item.icon }}</span>
+      <Icon :name="item.icon" :size="22" class="nav-icon" />
       <span class="nav-label">{{ item.label }}</span>
     </router-link>
   </nav>
@@ -19,11 +19,11 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 
 const navItems = [
-  { path: '/home', label: '首页', icon: '🏠' },
-  { path: '/add', label: '添加', icon: '➕' },
-  { path: '/manage', label: '管理', icon: '📋' },
-  { path: '/review', label: '复习', icon: '📖' },
-  { path: '/stats', label: '我的', icon: '👤' }
+  { path: '/home', label: '首页', icon: 'house' },
+  { path: '/add', label: '添加', icon: 'plus' },
+  { path: '/manage', label: '管理', icon: 'clipboard-list' },
+  { path: '/review', label: '复习', icon: 'book-open' },
+  { path: '/stats', label: '我的', icon: 'user' }
 ]
 
 const isActive = (path: string) => {

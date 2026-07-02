@@ -372,3 +372,149 @@ img {
   transform: translateY(-100%);
   opacity: 0;
 }
+
+/* ===== 页面转场动画 ===== */
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* ===== 按钮聚光效果 (GlareHover) ===== */
+.glare-btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.glare-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.25) 30%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.25) 70%,
+    transparent 100%
+  );
+  transform: translateX(-120%) skewX(-15deg);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glare-btn:hover::before {
+  transform: translateX(200%) skewX(-15deg);
+}
+
+.glare-btn:disabled::before,
+.glare-btn[disabled]::before {
+  display: none;
+}
+
+/* ===== 空状态插画 ===== */
+.empty-illustration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  user-select: none;
+}
+
+/* CSS 绘制的简约图标：一页纸 + 折叠角 */
+.empty-illustration .empty-icon {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+/* 折叠角 */
+.empty-illustration .empty-icon::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 20px;
+  height: 20px;
+  background: var(--bg-secondary);
+  border-radius: 0 12px 0 8px;
+  border-right: 2px dashed var(--border-color);
+  border-top: 2px dashed var(--border-color);
+}
+
+/* 内部问号/图标 */
+.empty-illustration .empty-icon::after {
+  content: '?';
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-disabled);
+  font-family: var(--font-family-base);
+  line-height: 1;
+}
+
+/* 不同语义图标变体 */
+.empty-illustration .empty-icon.is-tags::after {
+  content: '#';
+  font-size: 26px;
+}
+
+.empty-illustration .empty-icon.is-data::after {
+  content: '{}';
+  font-size: 20px;
+  letter-spacing: -4px;
+}
+
+.empty-illustration .empty-icon.is-share::after {
+  content: '⇄';
+  font-size: 24px;
+}
+
+.empty-illustration .empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.empty-illustration .empty-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* ===== 点击水波纹 keyframe ===== */
+@keyframes ripple-anim {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}

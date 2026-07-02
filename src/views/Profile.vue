@@ -26,35 +26,36 @@
     <template v-else>
       <!-- 概览卡片 -->
       <div class="overview-cards">
-        <div class="overview-card">
-          <div class="card-icon">📊</div>
+        <div v-scroll-reveal="{ delay: 0 }" class="overview-card">
+          <Icon name="chart-column" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value">{{ overview.total }}</div>
+            <div class="card-value">{{ animatedTotal }}</div>
             <div class="card-label">总题目数</div>
           </div>
         </div>
         <div
+          v-scroll-reveal="{ delay: 80 }"
           class="overview-card"
           @click="$router.push('/review')"
           style="cursor: pointer"
         >
-          <div class="card-icon">⏰</div>
+          <Icon name="alarm-clock" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value due">{{ overview.dueCount }}</div>
+            <div class="card-value due">{{ animatedDue }}</div>
             <div class="card-label">待复习</div>
           </div>
         </div>
-        <div class="overview-card">
-          <div class="card-icon">🧠</div>
+        <div v-scroll-reveal="{ delay: 160 }" class="overview-card">
+          <Icon name="brain" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value memory">{{ overview.currentMemory }}</div>
+            <div class="card-value memory">{{ animatedMemory }}</div>
             <div class="card-label">目前记忆</div>
           </div>
         </div>
-        <div class="overview-card">
-          <div class="card-icon">🆕</div>
+        <div v-scroll-reveal="{ delay: 240 }" class="overview-card">
+          <Icon name="sparkles" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value new">{{ overview.newCards }}</div>
+            <div class="card-value new">{{ animatedNewCards }}</div>
             <div class="card-label">新卡片数</div>
           </div>
         </div>
@@ -62,21 +63,21 @@
 
       <!-- SRS 详细指标 -->
       <div class="stats-row">
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 100 }" class="stat-item">
           <div class="stat-label">平均稳定性</div>
           <div class="stat-value">
             {{ srsStats.avg_stability.toFixed(1) }} 天
           </div>
         </div>
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 180 }" class="stat-item">
           <div class="stat-label">平均难度</div>
           <div class="stat-value">{{ srsStats.avg_difficulty.toFixed(2) }}</div>
         </div>
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 260 }" class="stat-item">
           <div class="stat-label">累计复习</div>
           <div class="stat-value">{{ srsStats.total_reviews }} 次</div>
         </div>
-        <div class="stat-item">
+        <div v-scroll-reveal="{ delay: 340 }" class="stat-item">
           <div class="stat-label">SRS 卡片</div>
           <div class="stat-value">{{ srsStats.total }}</div>
         </div>
@@ -87,7 +88,7 @@
         <div class="section-header">
           <h3>科目分布</h3>
           <button class="manage-btn" @click="openManageCascade">
-            <span class="manage-icon">⚙️</span>
+            <Icon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
           </button>
         </div>
@@ -140,337 +141,355 @@
         >
           <div class="cascade-header">
             <span class="cascade-title">科目详情</span>
-            <button class="close-btn" @click="closeCascade">×</button>
+            <button class="close-btn" @click="closeCascade">
+              <Icon name="x" :size="16" />
+            </button>
           </div>
           <div class="cascade-scroll-wrapper">
             <div class="cascade-column-wrapper">
-            <!-- 科目列 -->
-            <div
-              class="cascade-column cascade-col-1"
-              :class="{ 'active-column': activeColumn === 0 }"
-            >
-              <div class="column-title">科目</div>
+              <!-- 科目列 -->
               <div
-                v-for="(subject, index) in subjects"
-                :key="subject.id"
-                class="column-item"
-                :class="{
-                  'item-selected': selectedSubject?.id === subject.id,
-                  'item-active':
-                    activeItemType === 'subject' && activeItemIndex === index
-                }"
-                @click="handleItemClick('subject', index)"
-                @mousedown="startLongPress('subject', index)"
-                @mouseup="cancelLongPress"
-                @mouseleave="cancelLongPress"
-                @touchstart="startLongPress('subject', index)"
-                @touchend="cancelLongPress"
+                class="cascade-column cascade-col-1"
+                :class="{ 'active-column': activeColumn === 0 }"
               >
+                <div class="column-title">科目</div>
                 <div
-                  v-if="
-                    isEditing &&
-                    activeItemType === 'subject' &&
-                    activeItemIndex === index
-                  "
-                  class="edit-form"
-                >
-                  <input
-                    v-model="editingItemName"
-                    @keyup.enter="saveEditSubject(subject, index)"
-                  />
-                  <input type="color" v-model="editingItemColor" />
-                  <div class="edit-buttons">
-                    <button
-                      class="btn-save"
-                      @click="saveEditSubject(subject, index)"
-                    >
-                      ✓
-                    </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
-                  </div>
-                </div>
-                <template v-else>
-                  <span
-                    class="item-dot"
-                    :style="{ background: subject.color || '#1976d2' }"
-                  ></span>
-                  <span class="item-text">{{ subject.name }}</span>
-                  <div
-                    v-if="
+                  v-for="(subject, index) in subjects"
+                  :key="subject.id"
+                  class="column-item"
+                  :class="{
+                    'item-selected': selectedSubject?.id === subject.id,
+                    'item-active':
                       activeItemType === 'subject' && activeItemIndex === index
-                    "
-                    class="item-actions"
-                  >
-                    <button
-                      class="action-btn edit-btn"
-                      @click.stop="startEditSubject(subject, index)"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      class="action-btn delete-btn"
-                      @click.stop="confirmDeleteSubject(subject)"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </template>
-              </div>
-              <div v-if="subjects.length === 0" class="empty-column-item">
-                暂无科目
-              </div>
-            </div>
-
-            <!-- 书籍列 -->
-            <div
-              class="cascade-column cascade-col-2"
-              :class="{
-                'active-column': activeColumn === 1,
-                'show-column': selectedSubject
-              }"
-              v-show="selectedSubject"
-            >
-              <div class="column-title">书籍</div>
-              <div
-                v-for="(book, index) in books"
-                :key="book"
-                class="column-item"
-                :class="{
-                  'item-selected': selectedBook === book,
-                  'item-active':
-                    activeItemType === 'book' && activeItemIndex === index
-                }"
-                @click="handleItemClick('book', index)"
-                @mousedown="startLongPress('book', index)"
-                @mouseup="cancelLongPress"
-                @mouseleave="cancelLongPress"
-                @touchstart="startLongPress('book', index)"
-                @touchend="cancelLongPress"
-              >
-                <div
-                  v-if="
-                    isEditing &&
-                    activeItemType === 'book' &&
-                    activeItemIndex === index
-                  "
-                  class="edit-form"
+                  }"
+                  @click="handleItemClick('subject', index)"
+                  @mousedown="startLongPress('subject', index)"
+                  @mouseup="cancelLongPress"
+                  @mouseleave="cancelLongPress"
+                  @touchstart="startLongPress('subject', index)"
+                  @touchend="cancelLongPress"
                 >
-                  <input
-                    v-model="editingItemName"
-                    @keyup.enter="saveEditBook(book, index)"
-                  />
-                  <div class="edit-buttons">
-                    <button class="btn-save" @click="saveEditBook(book, index)">
-                      ✓
-                    </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
-                  </div>
-                </div>
-                <template v-else>
-                  <span class="item-text">{{ book }}</span>
                   <div
                     v-if="
+                      isEditing &&
+                      activeItemType === 'subject' &&
+                      activeItemIndex === index
+                    "
+                    class="edit-form"
+                  >
+                    <input
+                      v-model="editingItemName"
+                      @keyup.enter="saveEditSubject(subject, index)"
+                    />
+                    <input type="color" v-model="editingItemColor" />
+                    <div class="edit-buttons">
+                      <button
+                        class="btn-save"
+                        @click="saveEditSubject(subject, index)"
+                      >
+                        ✓
+                      </button>
+                      <button class="btn-cancel" @click="cancelEdit">
+                        <Icon name="x" :size="16" />
+                      </button>
+                    </div>
+                  </div>
+                  <template v-else>
+                    <span
+                      class="item-dot"
+                      :style="{ background: subject.color || '#1976d2' }"
+                    ></span>
+                    <span class="item-text">{{ subject.name }}</span>
+                    <div
+                      v-if="
+                        activeItemType === 'subject' &&
+                        activeItemIndex === index
+                      "
+                      class="item-actions"
+                    >
+                      <button
+                        class="action-btn edit-btn"
+                        @click.stop="startEditSubject(subject, index)"
+                      >
+                        <Icon name="pencil" :size="16" />
+                      </button>
+                      <button
+                        class="action-btn delete-btn"
+                        @click.stop="confirmDeleteSubject(subject)"
+                      >
+                        <Icon name="trash-2" :size="16" />
+                      </button>
+                    </div>
+                  </template>
+                </div>
+                <div v-if="subjects.length === 0" class="empty-column-item">
+                  暂无科目
+                </div>
+              </div>
+
+              <!-- 书籍列 -->
+              <div
+                class="cascade-column cascade-col-2"
+                :class="{
+                  'active-column': activeColumn === 1,
+                  'show-column': selectedSubject
+                }"
+                v-show="selectedSubject"
+              >
+                <div class="column-title">书籍</div>
+                <div
+                  v-for="(book, index) in books"
+                  :key="book"
+                  class="column-item"
+                  :class="{
+                    'item-selected': selectedBook === book,
+                    'item-active':
                       activeItemType === 'book' && activeItemIndex === index
-                    "
-                    class="item-actions"
-                  >
-                    <button
-                      class="action-btn edit-btn"
-                      @click.stop="startEditBook(book, index)"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      class="action-btn delete-btn"
-                      @click.stop="confirmDeleteBook(book)"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </template>
-              </div>
-              <div v-if="books.length === 0" class="empty-column-item">
-                暂无书籍
-              </div>
-            </div>
-
-            <!-- 章节列 -->
-            <div
-              class="cascade-column cascade-col-3"
-              :class="{
-                'active-column': activeColumn === 2,
-                'show-column': selectedBook
-              }"
-              v-show="selectedBook"
-            >
-              <div class="column-title">章节</div>
-              <div
-                v-for="(chapter, index) in chapters"
-                :key="chapter"
-                class="column-item"
-                :class="{
-                  'item-selected': selectedChapter === chapter,
-                  'item-active':
-                    activeItemType === 'chapter' && activeItemIndex === index
-                }"
-                @click="handleItemClick('chapter', index)"
-                @mousedown="startLongPress('chapter', index)"
-                @mouseup="cancelLongPress"
-                @mouseleave="cancelLongPress"
-                @touchstart="startLongPress('chapter', index)"
-                @touchend="cancelLongPress"
-              >
-                <div
-                  v-if="
-                    isEditing &&
-                    activeItemType === 'chapter' &&
-                    activeItemIndex === index
-                  "
-                  class="edit-form"
+                  }"
+                  @click="handleItemClick('book', index)"
+                  @mousedown="startLongPress('book', index)"
+                  @mouseup="cancelLongPress"
+                  @mouseleave="cancelLongPress"
+                  @touchstart="startLongPress('book', index)"
+                  @touchend="cancelLongPress"
                 >
-                  <input
-                    v-model="editingItemName"
-                    @keyup.enter="saveEditChapter(chapter, index)"
-                  />
-                  <div class="edit-buttons">
-                    <button
-                      class="btn-save"
-                      @click="saveEditChapter(chapter, index)"
-                    >
-                      ✓
-                    </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
-                  </div>
-                </div>
-                <template v-else>
-                  <span class="item-text">{{ chapter }}</span>
                   <div
                     v-if="
+                      isEditing &&
+                      activeItemType === 'book' &&
+                      activeItemIndex === index
+                    "
+                    class="edit-form"
+                  >
+                    <input
+                      v-model="editingItemName"
+                      @keyup.enter="saveEditBook(book, index)"
+                    />
+                    <div class="edit-buttons">
+                      <button
+                        class="btn-save"
+                        @click="saveEditBook(book, index)"
+                      >
+                        ✓
+                      </button>
+                      <button class="btn-cancel" @click="cancelEdit">
+                        <Icon name="x" :size="16" />
+                      </button>
+                    </div>
+                  </div>
+                  <template v-else>
+                    <span class="item-text">{{ book }}</span>
+                    <div
+                      v-if="
+                        activeItemType === 'book' && activeItemIndex === index
+                      "
+                      class="item-actions"
+                    >
+                      <button
+                        class="action-btn edit-btn"
+                        @click.stop="startEditBook(book, index)"
+                      >
+                        <Icon name="pencil" :size="16" />
+                      </button>
+                      <button
+                        class="action-btn delete-btn"
+                        @click.stop="confirmDeleteBook(book)"
+                      >
+                        <Icon name="trash-2" :size="16" />
+                      </button>
+                    </div>
+                  </template>
+                </div>
+                <div v-if="books.length === 0" class="empty-column-item">
+                  暂无书籍
+                </div>
+              </div>
+
+              <!-- 章节列 -->
+              <div
+                class="cascade-column cascade-col-3"
+                :class="{
+                  'active-column': activeColumn === 2,
+                  'show-column': selectedBook
+                }"
+                v-show="selectedBook"
+              >
+                <div class="column-title">章节</div>
+                <div
+                  v-for="(chapter, index) in chapters"
+                  :key="chapter"
+                  class="column-item"
+                  :class="{
+                    'item-selected': selectedChapter === chapter,
+                    'item-active':
                       activeItemType === 'chapter' && activeItemIndex === index
-                    "
-                    class="item-actions"
-                  >
-                    <button
-                      class="action-btn edit-btn"
-                      @click.stop="startEditChapter(chapter, index)"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      class="action-btn delete-btn"
-                      @click.stop="confirmDeleteChapter(chapter)"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </template>
-              </div>
-              <div v-if="chapters.length === 0" class="empty-column-item">
-                暂无章节
-              </div>
-            </div>
-
-            <!-- 知识点列 -->
-            <div
-              class="cascade-column cascade-col-4"
-              :class="{
-                'active-column': activeColumn === 3,
-                'show-column': selectedChapter
-              }"
-              v-show="selectedChapter"
-            >
-              <div class="column-title">知识点</div>
-              <div
-                v-for="(knowledge, index) in knowledges"
-                :key="knowledge"
-                class="column-item"
-                :class="{
-                  'item-selected': selectedKnowledge === knowledge,
-                  'item-active':
-                    activeItemType === 'knowledge' && activeItemIndex === index
-                }"
-                @click="handleItemClick('knowledge', index)"
-                @mousedown="startLongPress('knowledge', index)"
-                @mouseup="cancelLongPress"
-                @mouseleave="cancelLongPress"
-                @touchstart="startLongPress('knowledge', index)"
-                @touchend="cancelLongPress"
-              >
-                <div
-                  v-if="
-                    isEditing &&
-                    activeItemType === 'knowledge' &&
-                    activeItemIndex === index
-                  "
-                  class="edit-form"
+                  }"
+                  @click="handleItemClick('chapter', index)"
+                  @mousedown="startLongPress('chapter', index)"
+                  @mouseup="cancelLongPress"
+                  @mouseleave="cancelLongPress"
+                  @touchstart="startLongPress('chapter', index)"
+                  @touchend="cancelLongPress"
                 >
-                  <input
-                    v-model="editingItemName"
-                    @keyup.enter="saveEditKnowledge(knowledge, index)"
-                  />
-                  <div class="edit-buttons">
-                    <button
-                      class="btn-save"
-                      @click="saveEditKnowledge(knowledge, index)"
-                    >
-                      ✓
-                    </button>
-                    <button class="btn-cancel" @click="cancelEdit">✕</button>
-                  </div>
-                </div>
-                <template v-else>
-                  <span class="item-text">{{ knowledge }}</span>
                   <div
                     v-if="
+                      isEditing &&
+                      activeItemType === 'chapter' &&
+                      activeItemIndex === index
+                    "
+                    class="edit-form"
+                  >
+                    <input
+                      v-model="editingItemName"
+                      @keyup.enter="saveEditChapter(chapter, index)"
+                    />
+                    <div class="edit-buttons">
+                      <button
+                        class="btn-save"
+                        @click="saveEditChapter(chapter, index)"
+                      >
+                        ✓
+                      </button>
+                      <button class="btn-cancel" @click="cancelEdit">
+                        <Icon name="x" :size="16" />
+                      </button>
+                    </div>
+                  </div>
+                  <template v-else>
+                    <span class="item-text">{{ chapter }}</span>
+                    <div
+                      v-if="
+                        activeItemType === 'chapter' &&
+                        activeItemIndex === index
+                      "
+                      class="item-actions"
+                    >
+                      <button
+                        class="action-btn edit-btn"
+                        @click.stop="startEditChapter(chapter, index)"
+                      >
+                        <Icon name="pencil" :size="16" />
+                      </button>
+                      <button
+                        class="action-btn delete-btn"
+                        @click.stop="confirmDeleteChapter(chapter)"
+                      >
+                        <Icon name="trash-2" :size="16" />
+                      </button>
+                    </div>
+                  </template>
+                </div>
+                <div v-if="chapters.length === 0" class="empty-column-item">
+                  暂无章节
+                </div>
+              </div>
+
+              <!-- 知识点列 -->
+              <div
+                class="cascade-column cascade-col-4"
+                :class="{
+                  'active-column': activeColumn === 3,
+                  'show-column': selectedChapter
+                }"
+                v-show="selectedChapter"
+              >
+                <div class="column-title">知识点</div>
+                <div
+                  v-for="(knowledge, index) in knowledges"
+                  :key="knowledge"
+                  class="column-item"
+                  :class="{
+                    'item-selected': selectedKnowledge === knowledge,
+                    'item-active':
+                      activeItemType === 'knowledge' &&
+                      activeItemIndex === index
+                  }"
+                  @click="handleItemClick('knowledge', index)"
+                  @mousedown="startLongPress('knowledge', index)"
+                  @mouseup="cancelLongPress"
+                  @mouseleave="cancelLongPress"
+                  @touchstart="startLongPress('knowledge', index)"
+                  @touchend="cancelLongPress"
+                >
+                  <div
+                    v-if="
+                      isEditing &&
                       activeItemType === 'knowledge' &&
                       activeItemIndex === index
                     "
-                    class="item-actions"
+                    class="edit-form"
                   >
-                    <button
-                      class="action-btn edit-btn"
-                      @click.stop="startEditKnowledge(knowledge, index)"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      class="action-btn delete-btn"
-                      @click.stop="confirmDeleteKnowledge(knowledge)"
-                    >
-                      🗑️
-                    </button>
+                    <input
+                      v-model="editingItemName"
+                      @keyup.enter="saveEditKnowledge(knowledge, index)"
+                    />
+                    <div class="edit-buttons">
+                      <button
+                        class="btn-save"
+                        @click="saveEditKnowledge(knowledge, index)"
+                      >
+                        ✓
+                      </button>
+                      <button class="btn-cancel" @click="cancelEdit">
+                        <Icon name="x" :size="16" />
+                      </button>
+                    </div>
                   </div>
-                </template>
-              </div>
-              <div v-if="knowledges.length === 0" class="empty-column-item">
-                暂无知识点
+                  <template v-else>
+                    <span class="item-text">{{ knowledge }}</span>
+                    <div
+                      v-if="
+                        activeItemType === 'knowledge' &&
+                        activeItemIndex === index
+                      "
+                      class="item-actions"
+                    >
+                      <button
+                        class="action-btn edit-btn"
+                        @click.stop="startEditKnowledge(knowledge, index)"
+                      >
+                        <Icon name="pencil" :size="16" />
+                      </button>
+                      <button
+                        class="action-btn delete-btn"
+                        @click.stop="confirmDeleteKnowledge(knowledge)"
+                      >
+                        <Icon name="trash-2" :size="16" />
+                      </button>
+                    </div>
+                  </template>
+                </div>
+                <div v-if="knowledges.length === 0" class="empty-column-item">
+                  暂无知识点
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- 删除确认弹窗 -->
-          <div
-            v-if="showDeleteConfirm"
-            class="delete-confirm-overlay"
-            @click.self="cancelDelete"
-          >
-            <div class="delete-confirm-modal">
-              <h3>确认删除</h3>
-              <p>确定要删除 {{ deleteItemInfo?.name }} 吗？</p>
-              <p
-                v-if="deleteItemInfo?.type !== 'knowledge'"
-                class="warning-text"
-              >
-                这将同时删除所有下级内容！
-              </p>
-              <div class="modal-buttons">
-                <button class="btn-danger" @click="executeDelete">删除</button>
-                <button class="btn-secondary" @click="cancelDelete">
-                  取消
-                </button>
+            <!-- 删除确认弹窗 -->
+            <div
+              v-if="showDeleteConfirm"
+              class="delete-confirm-overlay"
+              @click.self="cancelDelete"
+            >
+              <div class="delete-confirm-modal">
+                <h3>确认删除</h3>
+                <p>确定要删除 {{ deleteItemInfo?.name }} 吗？</p>
+                <p
+                  v-if="deleteItemInfo?.type !== 'knowledge'"
+                  class="warning-text"
+                >
+                  这将同时删除所有下级内容！
+                </p>
+                <div class="modal-buttons">
+                  <button class="btn-danger" @click="executeDelete">
+                    删除
+                  </button>
+                  <button class="btn-secondary" @click="cancelDelete">
+                    取消
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
           </div>
         </div>
       </div>
@@ -480,7 +499,7 @@
         <div class="section-header">
           <h3>错因分布</h3>
           <button class="manage-btn" @click="openManageModal">
-            <span class="manage-icon">⚙️</span>
+            <Icon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
           </button>
         </div>
@@ -510,8 +529,8 @@
                 :r="hoveredIndex === index ? 42 : 40"
                 fill="none"
                 :stroke="segment.color"
-                :stroke-width="hoveredIndex === index ? 22 : 20"
-                :stroke-dasharray="`${segment.percent} ${251.2}`"
+                :stroke-width="hoveredIndex === index ? 24 : 20"
+                :stroke-dasharray="`${segment.percent} ${251.33}`"
                 :stroke-dashoffset="`${segment.offset}`"
                 :stroke-linecap="
                   (segment.linecap as
@@ -611,13 +630,13 @@
                       class="action-btn edit-btn"
                       @click="startEditTag(index)"
                     >
-                      <span>✏️</span>
+                      <Icon name="pencil" :size="16" />
                     </button>
                     <button
                       class="action-btn delete-btn"
                       @click="confirmDeleteTag(tag)"
                     >
-                      <span>🗑️</span>
+                      <Icon name="trash-2" :size="16" />
                     </button>
                   </div>
                   <div v-else class="actions-group">
@@ -631,7 +650,7 @@
                       class="action-btn cancel-btn"
                       @click="cancelTagEdit"
                     >
-                      <span>✕</span>
+                      <Icon name="x" :size="16" />
                     </button>
                   </div>
                 </div>
@@ -796,6 +815,7 @@ import {
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
 import type { Subject, Source, ErrorTags } from '../types'
+import { useCountUp } from '../composables/useCountUp'
 
 // ==================== 状态 ====================
 const loading = ref(true)
@@ -925,6 +945,17 @@ const overview = computed(() => ({
   currentMemory: Math.max(0, questionTotal.value - dueCount.value),
   newCards: srsStats.value.new_cards
 }))
+
+// 数字滚动计数
+const totalRef = computed(() => overview.value.total)
+const dueRef = computed(() => overview.value.dueCount)
+const memoryRef = computed(() => overview.value.currentMemory)
+const newCardsRef = computed(() => overview.value.newCards)
+
+const { displayValue: animatedTotal } = useCountUp(totalRef)
+const { displayValue: animatedDue } = useCountUp(dueRef)
+const { displayValue: animatedMemory } = useCountUp(memoryRef)
+const { displayValue: animatedNewCards } = useCountUp(newCardsRef)
 
 // ==================== 科目 × 难度热力图 ====================
 
@@ -1245,11 +1276,15 @@ function updateCascadeGap() {
   wrapper.style.setProperty('--col-gap', `${idealGap}px`)
 }
 
-watch([showCascade, selectedSubject, selectedBook, selectedChapter], () => {
-  if (showCascade.value) {
-    updateCascadeGap()
-  }
-}, { flush: 'post' })
+watch(
+  [showCascade, selectedSubject, selectedBook, selectedChapter],
+  () => {
+    if (showCascade.value) {
+      updateCascadeGap()
+    }
+  },
+  { flush: 'post' }
+)
 
 function onWindowResize() {
   if (showCascade.value) {
@@ -1883,18 +1918,20 @@ const donutSegments = computed(() => {
     linecap?: string
   }[] = []
   let currentOffset = 0
-  const circumference = 251.2 // 2 * Math.PI * 40 ≈ 251.2
+  const circumference = 251.33 // 2 * Math.PI * 40
+  const gap = 0 // 扇区间隙
 
   errorTagDistribution.value.forEach((tag, _index) => {
     const percent = tag.count / totalTags.value
-    const strokeLength = percent * circumference
+    const rawLength = percent * circumference
+    const drawnLength = Math.max(0.5, rawLength - gap)
     segments.push({
-      percent: strokeLength,
+      percent: drawnLength,
       offset: currentOffset,
       color: tag.color,
       linecap: 'butt'
     })
-    currentOffset -= strokeLength
+    currentOffset -= rawLength
   })
 
   return segments
@@ -2393,6 +2430,7 @@ async function executeDeleteTag() {
   height: 100%;
   transform: rotate(-90deg);
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+  overflow: visible;
 }
 
 .donut-segment {
@@ -2581,12 +2619,22 @@ async function executeDeleteTag() {
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .overview-card:active {
   transform: scale(0.97);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .card-icon {
@@ -2627,7 +2675,13 @@ async function executeDeleteTag() {
   border-radius: 8px;
   padding: 12px 8px;
   text-align: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .stat-label {

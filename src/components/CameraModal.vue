@@ -1,36 +1,46 @@
 <template>
   <div class="camera-modal" v-if="visible">
     <div class="camera-container">
+      <!-- 顶部操作栏 -->
       <div class="camera-header">
-        <button class="header-btn close-btn" @click="handleClose">✕</button>
+        <button class="header-btn" @click="handleClose">
+          <Icon name="x" :size="18" />
+        </button>
         <span class="camera-title">拍照</span>
         <button
-          class="header-btn switch-btn"
+          class="header-btn"
           @click="handleSwitchCamera"
           v-if="hasMultipleCameras"
         >
-          🔄
+          <Icon name="refresh-cw" :size="18" />
         </button>
+        <div class="header-placeholder" v-else></div>
       </div>
 
+      <!-- 预览区 -->
       <div class="camera-preview">
         <video ref="videoRef" autoplay playsinline></video>
         <canvas ref="canvasRef" style="display: none"></canvas>
 
+        <!-- 取景框装饰 -->
+        <div class="viewfinder">
+          <div class="vf-corner tl"></div>
+          <div class="vf-corner tr"></div>
+          <div class="vf-corner bl"></div>
+          <div class="vf-corner br"></div>
+        </div>
+
         <!-- 错误提示 -->
         <div class="camera-error" v-if="error">
-          <div class="error-icon">⚠️</div>
+          <Icon name="triangle-alert" :size="32" class="error-icon" />
           <p>{{ error }}</p>
           <button class="retry-btn" @click="startCamera">重试</button>
         </div>
       </div>
 
+      <!-- 底部拍摄按钮 -->
       <div class="camera-controls">
-        <button
-          class="capture-btn"
-          @click="handleCapture"
-          :disabled="error.length > 0"
-        >
+        <button class="capture-btn" @click="handleCapture" :disabled="!!error">
           <div class="capture-inner"></div>
         </button>
       </div>
@@ -61,29 +71,20 @@ const mediaStream = ref<MediaStream | null>(null)
 const currentCamera = ref<'user' | 'environment'>('environment')
 const hasMultipleCameras = ref(false)
 
-// 监听 visible 变化
 watch(
   () => props.visible,
   async (newVal) => {
-    if (newVal) {
-      await startCamera()
-    } else {
-      stopCamera()
-    }
+    if (newVal) await startCamera()
+    else stopCamera()
   }
 )
 
-// 启动相机
 const startCamera = async () => {
   error.value = ''
-
   try {
-    // 停止之前的流
     if (mediaStream.value) {
       mediaStream.value.getTracks().forEach((track) => track.stop())
     }
-
-    // 请求摄像头权限
     const constraints: MediaStreamConstraints = {
       video: {
         facingMode: currentCamera.value,
@@ -92,90 +93,53 @@ const startCamera = async () => {
       },
       audio: false
     }
-
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
     mediaStream.value = stream
-
-    // 设置视频源
-    if (videoRef.value) {
-      videoRef.value.srcObject = stream
-    }
-
-    // 检查是否有多个摄像头
+    if (videoRef.value) videoRef.value.srcObject = stream
     const devices = await navigator.mediaDevices.enumerateDevices()
-    const cameras = devices.filter((device) => device.kind === 'videoinput')
-    hasMultipleCameras.value = cameras.length > 1
+    hasMultipleCameras.value =
+      devices.filter((d) => d.kind === 'videoinput').length > 1
   } catch (err: any) {
     console.error('相机启动失败:', err)
-    if (err.name === 'NotAllowedError') {
-      error.value = '请允许访问摄像头权限'
-    } else if (err.name === 'NotFoundError') {
-      error.value = '未找到摄像头设备'
-    } else if (err.name === 'NotReadableError') {
+    if (err.name === 'NotAllowedError') error.value = '请允许访问摄像头权限'
+    else if (err.name === 'NotFoundError') error.value = '未找到摄像头设备'
+    else if (err.name === 'NotReadableError')
       error.value = '摄像头被其他应用占用'
-    } else {
-      error.value = '相机启动失败，请检查设备'
-    }
+    else error.value = '相机启动失败，请检查设备'
     emit('error')
   }
 }
 
-// 停止相机
 const stopCamera = () => {
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach((track) => track.stop())
     mediaStream.value = null
   }
-
-  if (videoRef.value) {
-    videoRef.value.srcObject = null
-  }
-
+  if (videoRef.value) videoRef.value.srcObject = null
   error.value = ''
 }
 
-// 切换摄像头
 const handleSwitchCamera = () => {
   currentCamera.value =
     currentCamera.value === 'environment' ? 'user' : 'environment'
   startCamera()
 }
 
-// 拍照
 const handleCapture = () => {
-  if (!videoRef.value || !canvasRef.value || error.value) {
-    return
-  }
-
+  if (!videoRef.value || !canvasRef.value || error.value) return
   const video = videoRef.value
   const canvas = canvasRef.value
   const ctx = canvas.getContext('2d')
-
-  if (!ctx) {
-    return
-  }
-
-  // 设置 canvas 尺寸与视频一致
+  if (!ctx) return
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight
-
-  // 绘制视频帧到 canvas
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-  // 转换为图片
-  const imageData = canvas.toDataURL('image/jpeg', 0.9)
-  emit('capture', imageData)
+  emit('capture', canvas.toDataURL('image/jpeg', 0.9))
 }
 
-// 关闭相机
-const handleClose = () => {
-  emit('close')
-}
+const handleClose = () => emit('close')
 
-// 组件卸载时清理
-onBeforeUnmount(() => {
-  stopCamera()
-})
+onBeforeUnmount(() => stopCamera())
 </script>
 
 <style scoped>
@@ -189,6 +153,16 @@ onBeforeUnmount(() => {
   z-index: 9999;
   display: flex;
   flex-direction: column;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .camera-container {
@@ -196,8 +170,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  position: relative;
 }
 
+/* ===== 顶部栏 ===== */
 .camera-header {
   position: absolute;
   top: 0;
@@ -205,7 +181,11 @@ onBeforeUnmount(() => {
   right: 0;
   padding: 16px 20px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.6) 0%,
+    transparent 100%
+  );
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -213,30 +193,41 @@ onBeforeUnmount(() => {
 }
 
 .header-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  font-size: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.3s;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(8px);
+}
+
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
 }
 
 .header-btn:active {
-  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0.92);
+}
+
+.header-placeholder {
+  width: 40px;
 }
 
 .camera-title {
-  color: white;
-  font-size: 16px;
-  font-weight: 500;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
+/* ===== 预览区 ===== */
 .camera-preview {
   flex: 1;
   position: relative;
@@ -244,6 +235,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   background: #000;
+  overflow: hidden;
 }
 
 .camera-preview video {
@@ -252,45 +244,97 @@ onBeforeUnmount(() => {
   object-fit: cover;
 }
 
+/* ===== 取景框 ===== */
+.viewfinder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  max-width: 360px;
+  aspect-ratio: 3/4;
+  pointer-events: none;
+}
+
+.vf-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: rgba(255, 255, 255, 0.5);
+  border-style: solid;
+}
+.vf-corner.tl {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+}
+.vf-corner.tr {
+  top: 0;
+  right: 0;
+  border-width: 2px 2px 0 0;
+}
+.vf-corner.bl {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 2px 2px;
+}
+.vf-corner.br {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2px 2px 0;
+}
+
+/* ===== 错误提示 ===== */
 .camera-error {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: white;
-  padding: 20px;
+  color: #fff;
+  padding: 24px 32px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
 }
 
 .error-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  opacity: 0.8;
 }
 
 .camera-error p {
   font-size: 14px;
-  margin: 0 0 16px 0;
+  margin: 0 0 16px;
   opacity: 0.9;
+  line-height: 1.5;
 }
 
 .retry-btn {
-  background: var(--primary-color);
-  color: white;
+  padding: 10px 28px;
+  background: var(--primary-color, #1976d2);
+  color: #fff;
   border: none;
-  padding: 10px 24px;
   border-radius: 20px;
   font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
+.retry-btn:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+}
+
+/* ===== 底部拍摄按钮 ===== */
 .camera-controls {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.5), transparent);
+  padding: 24px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -298,30 +342,41 @@ onBeforeUnmount(() => {
 }
 
 .capture-btn {
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  border: 4px solid white;
+  border: 4px solid rgba(255, 255, 255, 0.9);
   background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
+}
+
+.capture-btn:hover {
+  transform: scale(1.05);
 }
 
 .capture-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
 }
 
 .capture-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .capture-inner {
-  width: 56px;
-  height: 56px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
-  background: white;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.capture-btn:active .capture-inner {
+  background: rgba(255, 255, 255, 0.8);
 }
 </style>

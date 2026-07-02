@@ -19,7 +19,7 @@
           class="cascade-popup"
         >
           <button class="cascade-close-btn" @click="closeCascadeWindow">
-            ×
+            <Icon name="x" :size="16" />
           </button>
 
           <div class="cascade-column">
@@ -127,7 +127,9 @@
       <span class="active-filters-label">已选：</span>
       <span v-for="f in activeFilters" :key="f.key" class="filter-tag">
         {{ f.label }}
-        <button @click="removeFilter(f.key)" class="filter-tag-close">×</button>
+        <button @click="removeFilter(f.key)" class="filter-tag-close">
+          <Icon name="x" :size="14" />
+        </button>
       </span>
       <button @click="clearAllFilters" class="clear-all-btn">清除</button>
     </div>
@@ -160,7 +162,10 @@
         ></div>
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
-          <span class="meta-item">🎯 掌握率 {{ item.recallPercent }}%</span>
+          <span class="meta-item"
+            ><Icon name="target" :size="16" /> 掌握率
+            {{ item.recallPercent }}%</span
+          >
         </div>
       </div>
     </div>
@@ -193,15 +198,19 @@
         ></div>
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
-          <span class="meta-item">📊 稳定性 {{ item.stabilityText }}</span>
+          <span class="meta-item"
+            ><Icon name="chart-column" :size="16" /> 稳定性
+            {{ item.stabilityText }}</span
+          >
         </div>
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-if="allFiltered.length === 0" class="empty-state">
-      <div class="empty-icon">📭</div>
-      <p>没有符合条件的错题</p>
+    <div v-if="allFiltered.length === 0" class="empty-illustration">
+      <div class="empty-icon"></div>
+      <div class="empty-title">没有符合条件的错题</div>
+      <div class="empty-desc">调整筛选条件，或添加更多错题吧</div>
     </div>
 
     <!-- FAB -->
@@ -234,7 +243,8 @@ import markedKatex from 'marked-katex-extension'
 marked.use(
   markedKatex({
     throwOnError: false,
-    output: 'html'
+    output: 'html',
+    nonStandard: true
   })
 )
 
@@ -443,9 +453,21 @@ function getSubjectStyle(subjectId: string) {
   return { backgroundColor: '#e3f2fd', color: '#1976d2' }
 }
 
+const normalizeMarkdown = (value: string) => {
+  return (value || '')
+    .replace(/\\\[/g, '$$$$')
+    .replace(/\\\]/g, '$$$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+}
+
 const renderMarkdown = (content: string) => {
   if (!content) return ''
-  return marked.parse(content, { breaks: true, gfm: true }) as unknown as string
+  const normalized = normalizeMarkdown(content)
+  return marked.parse(normalized, {
+    breaks: true,
+    gfm: true
+  }) as unknown as string
 }
 
 // Cascade filter handlers

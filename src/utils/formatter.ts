@@ -13,16 +13,19 @@ export function format(input: string): string {
   return text
 }
 
-
 /**
  * 去除外层```markdown...所有的内容...```标签
  * @param input
  * @returns
  */
 function removeMarkdownOuterTags(input: string): string {
-  return input.replace(/```[markdown|Markdown]*?```/g, '').trim()
+  // 去除 AI 返回内容中包裹的 ```markdown / ``` 代码块标记
+  // 例如：```markdown\n内容...\n```  →  内容...
+  return input
+    .replace(/^```markdown\s*[\r\n]+([\s\S]*?)[\r\n]+\s*```\s*$/im, '$1')
+    .replace(/^```markdown\s*([\s\S]*?)\s*```\s*$/im, '$1')
+    .trim()
 }
-
 
 /**
  * 格式化 llm 返回的文本，主要是数学公式
@@ -39,7 +42,7 @@ function mathFormat(input: string): string {
   let text = input
 
   // ── 1. 转换 LaTeX 风格为 KaTeX 风格 ──
-  text = text.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')
+  text = text.replace(/\\\[/g, '$$$$').replace(/\\\]/g, '$$$$')
   text = text.replace(/\\\(/g, '$').replace(/\\\)/g, '$')
 
   const result: string[] = []
@@ -75,7 +78,10 @@ function mathFormat(input: string): string {
       if (text[i] === '$') {
         i++ // 跳过结束的 $
         // 去除换行和多余空格
-        const cleaned = content.trim().replace(/[\r\n]+/g, ' ').replace(/  +/g, ' ')
+        const cleaned = content
+          .trim()
+          .replace(/[\r\n]+/g, ' ')
+          .replace(/  +/g, ' ')
         result.push(` $${cleaned}$ `)
       } else {
         // 未闭合，原样输出
