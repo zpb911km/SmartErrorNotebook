@@ -387,14 +387,15 @@
     <!-- 导入弹窗 -->
     <ImportModal
       v-if="showImportModal"
-      @close="showImportModal = false"
+      :initial-data="pendingImportData"
+      @close="handleImportModalClose"
       @import-complete="handleImportComplete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
@@ -408,6 +409,7 @@ import { getFullErrorTags } from '../apis/errorTags'
 import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
+import { importStore, clearPendingImport } from '../stores/importStore'
 import type { Subject } from '../types'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -486,9 +488,26 @@ const masterySort = ref<'asc' | 'desc' | 'none'>('none')
 const showExportModal = ref(false)
 const showImportModal = ref(false)
 
+/** 待导入数据直接从全局 importStore 读取 */
+const pendingImportData = computed(() => importStore.pendingData)
+
 // 导入完成后刷新数据
 const handleImportComplete = () => {
+  clearPendingImport()
   fetchData()
+}
+
+// 导入弹窗关闭时，清除待处理数据
+const handleImportModalClose = () => {
+  clearPendingImport()
+  showImportModal.value = false
+}
+
+/** 当全局 store 有数据时，自动弹出导入弹窗 */
+const checkPendingImport = () => {
+  if (importStore.pendingData && !showImportModal.value) {
+    showImportModal.value = true
+  }
 }
 
 // 计算选中的科目名称
@@ -1150,7 +1169,22 @@ onMounted(() => {
   window.addEventListener('trigger-search-blink', handleTriggerBlink)
   // 加载数据
   fetchData()
+
+  // 检查全局 store 中是否有待导入数据
+  checkPendingImport()
 })
+
+// 监听路由 query 变化：App.vue 跳转过来时设置 import=1
+watch(
+  () => route.query.import,
+  (val) => {
+    if (val === '1') {
+      checkPendingImport()
+      // 清除 query 参数，刷新可重复触发
+      router.replace({ query: { ...route.query, import: undefined } })
+    }
+  }
+)
 
 onUnmounted(() => {
   if (blinkTimer) {

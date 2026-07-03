@@ -207,7 +207,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
 import ErrorTagSelector from './ErrorTagSelector.vue'
@@ -257,6 +257,14 @@ function renderMd(t: string | undefined | null): string {
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'import-complete'): void
+}>()
+
+const props = defineProps<{
+  /** 从外部传入的已解析数据，跳过「选择文件」步骤直接进入审查 */
+  initialData?: {
+    questions: Array<{ prompt: string; answer?: string; analysis?: string }>
+    version?: string
+  } | null
 }>()
 
 // ===== 状态 =====
@@ -322,6 +330,45 @@ function setReviewTags(tags: Array<{ name: string; color: string }>) {
   reviewTags.value = tags
 }
 
+// ===== 从解析后的数据进入审查模式（抽取为公共方法） =====
+const enterReviewMode = async (
+  result: ReturnType<typeof parseImportFile>,
+  existingPromptsInput?: Set<string>
+) => {
+  if (result.error) {
+    errorMsg.value = result.error
+    return
+  }
+
+  // 版本警告
+  if (result.version && result.version !== '1.0') {
+    versionWarning.value = result.version
+  }
+
+  // 构建带 HTML 渲染的题目列表
+  questions.value = result.questions.map((q) => ({
+    prompt: q.prompt,
+    answer: q.answer || '',
+    analysis: q.analysis || '',
+    promptHtml: renderMd(q.prompt),
+    answerHtml: renderMd(q.answer),
+    analysisHtml: renderMd(q.analysis)
+  }))
+
+  // 获取已有题目用于去重
+  existingPrompts.value =
+    existingPromptsInput || (await getExistingPromptSet())
+
+  // 进入审查
+  currentIndex.value = 0
+  reviewSubjectId.value = ''
+  reviewType.value = QuestionType.ShortAnswer
+  applyToAll.value = false
+  showAnswer.value = false
+  showAnalysis.value = false
+  step.value = 'review'
+}
+
 // ===== 选择文件 =====
 const handleSelectFile = async () => {
   try {
@@ -337,41 +384,28 @@ const handleSelectFile = async () => {
     const content = await readTextFile(filePath as string)
     const result = parseImportFile(content)
 
-    if (result.error) {
-      errorMsg.value = result.error
-      return
-    }
-
-    // 版本警告
-    if (result.version !== '1.0') {
-      versionWarning.value = result.version
-    }
-
-    // 构建带 HTML 渲染的题目列表
-    questions.value = result.questions.map((q) => ({
-      prompt: q.prompt,
-      answer: q.answer || '',
-      analysis: q.analysis || '',
-      promptHtml: renderMd(q.prompt),
-      answerHtml: renderMd(q.answer),
-      analysisHtml: renderMd(q.analysis)
-    }))
-
-    // 获取已有题目用于去重
-    existingPrompts.value = await getExistingPromptSet()
-
-    // 进入审查
-    currentIndex.value = 0
-    reviewSubjectId.value = ''
-    reviewType.value = QuestionType.ShortAnswer
-    applyToAll.value = false
-    showAnswer.value = false
-    showAnalysis.value = false
-    step.value = 'review'
+    await enterReviewMode(result)
   } catch (e) {
     errorMsg.value = String(e)
   }
 }
+
+// ===== 如果外部传入 initialData，直接跳过文件选择进入审查 =====
+onMounted(() => {
+  if (props.initialData?.questions && props.initialData.questions.length > 0) {
+    const data = props.initialData
+    const result = {
+      questions: data.questions.map((q) => ({
+        prompt: q.prompt,
+        answer: q.answer || '',
+        analysis: q.analysis || ''
+      })),
+      version: data.version || '',
+      error: undefined as string | undefined
+    }
+    enterReviewMode(result)
+  }
+})
 
 // ===== 跳过 =====
 const skipQuestion = () => {
