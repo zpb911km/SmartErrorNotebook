@@ -192,6 +192,14 @@ const normalizeMarkdown = (value: string) => {
     .replace(/\\\]/g, '$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
+    // 修正加粗/斜体标记与内容之间的空格：
+    // ** text ** → **text**，* text * → *text*
+    // 防止 $$...$$ / $...$ 与 ** 之间的空格导致渲染失败
+    .replace(/\*\*\s+/g, '**')
+    .replace(/\s+\*\*/g, '**')
+    // 处理斜体（避免影响 **）
+    .replace(/(?<!\*)\*\s+/g, '*')
+    .replace(/\s+\*(?!\*)/g, '*')
 }
 
 const renderMarkdown = (value: string) => {
