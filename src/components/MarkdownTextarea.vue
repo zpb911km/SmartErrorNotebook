@@ -192,14 +192,13 @@ const normalizeMarkdown = (value: string) => {
     .replace(/\\\]/g, '$$')
     .replace(/\\\(/g, '$')
     .replace(/\\\)/g, '$')
-    // 修正加粗/斜体标记与内容之间的空格：
-    // ** text ** → **text**，* text * → *text*
-    // 防止 $$...$$ / $...$ 与 ** 之间的空格导致渲染失败
-    .replace(/\*\*\s+/g, '**')
-    .replace(/\s+\*\*/g, '**')
-    // 处理斜体（避免影响 **）
-    .replace(/(?<!\*)\*\s+/g, '*')
-    .replace(/\s+\*(?!\*)/g, '*')
+    // 修正公式定界符与标记之间的空格：** $ → **$，$ ** → $**
+    // 防止 ** $expr$ ** 只渲染公式而加粗失效
+    // 使用 [ \t] 而非 \s，避免跨行吞掉换行符
+    .replace(/\*\*[ \t]+(?=\$)/g, '**')
+    .replace(/(?<=\$)[ \t]+\*\*/g, '**')
+    .replace(/\*[ \t]+(?=\$)/g, '*')
+    .replace(/(?<=\$)[ \t]+\*/g, '*')
 }
 
 const renderMarkdown = (value: string) => {
