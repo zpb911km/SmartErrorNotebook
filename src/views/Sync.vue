@@ -10,11 +10,7 @@
           :disabled="checking"
           title="刷新连接"
         >
-          <Icon
-            name="refresh-cw"
-            :size="16"
-            :class="{ spinning: checking }"
-          />
+          <Icon name="refresh-cw" :size="16" :class="{ spinning: checking }" />
         </button>
       </div>
       <div class="info-card">

@@ -356,8 +356,7 @@ const enterReviewMode = async (
   }))
 
   // 获取已有题目用于去重
-  existingPrompts.value =
-    existingPromptsInput || (await getExistingPromptSet())
+  existingPrompts.value = existingPromptsInput || (await getExistingPromptSet())
 
   // 进入审查
   currentIndex.value = 0

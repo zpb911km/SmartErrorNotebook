@@ -187,18 +187,20 @@ watch(
 )
 
 const normalizeMarkdown = (value: string) => {
-  return (value || '')
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-    // 修正公式定界符与标记之间的空格：** $ → **$，$ ** → $**
-    // 防止 ** $expr$ ** 只渲染公式而加粗失效
-    // 使用 [ \t] 而非 \s，避免跨行吞掉换行符
-    .replace(/\*\*[ \t]+(?=\$)/g, '**')
-    .replace(/(?<=\$)[ \t]+\*\*/g, '**')
-    .replace(/\*[ \t]+(?=\$)/g, '*')
-    .replace(/(?<=\$)[ \t]+\*/g, '*')
+  return (
+    (value || '')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$')
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$')
+      // 修正公式定界符与标记之间的空格：** $ → **$，$ ** → $**
+      // 防止 ** $expr$ ** 只渲染公式而加粗失效
+      // 使用 [ \t] 而非 \s，避免跨行吞掉换行符
+      .replace(/\*\*[ \t]+(?=\$)/g, '**')
+      .replace(/(?<=\$)[ \t]+\*\*/g, '**')
+      .replace(/\*[ \t]+(?=\$)/g, '*')
+      .replace(/(?<=\$)[ \t]+\*/g, '*')
+  )
 }
 
 const renderMarkdown = (value: string) => {

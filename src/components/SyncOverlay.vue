@@ -12,36 +12,37 @@
           <p class="sync-card__status">{{ statusText }}</p>
         </div>
 
-        <!-- 动画图标 -->
-        <div
-          class="sync-card__icon"
-          :class="{ 'sync-card__icon--animating': isSyncing }"
-        >
-          <Icon name="refresh-cw" :size="24" />
-        </div>
-
-        <!-- 环形进度条 -->
-        <div class="sync-card__progress">
-          <svg class="progress-circle" :viewBox="circleViewBox">
-            <!-- 背景圆环 -->
-            <circle class="progress-circle__bg" cx="50" cy="50" r="40" />
-            <!-- 进度圆环 -->
-            <circle
-              class="progress-circle__bar"
-              cx="50"
-              cy="50"
-              r="40"
-              :stroke-dasharray="circleDashArray"
-              :stroke-dashoffset="circleDashOffset"
-              :style="{
-                transition: 'stroke-dashoffset 0.3s ease',
-                '--progress-color': progressColor
-              }"
-            />
-          </svg>
-          <div class="progress-circle__text">
-            {{ Math.round(progressPercent) }}%
+        <!-- Canvas 动画区域 -->
+        <div class="sync-card__canvas-wrap">
+          <canvas
+            ref="canvasRef"
+            class="sync-card__canvas"
+            :width="canvasSize"
+            :height="canvasSize"
+          />
+          <!-- 进度覆盖层 -->
+          <div class="sync-card__progress-overlay">
+            <svg class="progress-ring" viewBox="0 0 100 100">
+              <circle class="progress-ring__bg" cx="50" cy="50" r="40" />
+              <circle
+                class="progress-ring__bar"
+                cx="50"
+                cy="50"
+                r="40"
+                :stroke-dasharray="circleDashArray"
+                :stroke-dashoffset="circleDashOffset"
+                :style="{
+                  transition: 'stroke-dashoffset 0.3s ease',
+                  '--progress-color': progressColor
+                }"
+              />
+            </svg>
+            <div class="progress-ring__text">
+              {{ Math.round(progressPercent) }}%
+            </div>
           </div>
+          <!-- 模式名称标签 -->
+          <div class="sync-card__mode-label">{{ modeLabel }}</div>
         </div>
 
         <!-- 详细统计 -->
@@ -78,7 +79,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { createAnimation, MODE_NAMES } from '../utils/sync-animations'
+import type { AnimationMode } from '../utils/sync-animations'
+import { isDarkTheme } from '../utils/sync-animations/utils'
 
 interface Props {
   /** 是否显示 */
@@ -110,17 +114,16 @@ const emit = defineEmits<{
   (e: 'cancel'): void
 }>()
 
+/* ── 基础计算属性 ── */
+
 const isSyncing = computed(() => props.modelValue)
 const progressPercent = computed(() => {
   if (props.total === 0) return 0
   return (props.current / props.total) * 100
 })
+const progressNormalized = computed(() => progressPercent.value / 100)
 
-const circleViewBox = computed(() => `0 0 100 100`)
-const circleDashArray = computed(() => {
-  // 圆周长 = 2 * PI * r = 2 * PI * 40 ≈ 251.3
-  return 251.3
-})
+const circleDashArray = computed(() => 251.3)
 const circleDashOffset = computed(() => {
   const circumference = 251.3
   return circumference - (progressPercent.value / 100) * circumference
@@ -175,6 +178,105 @@ const details = computed(() => ({
   current: props.current
 }))
 
+/* ── Canvas 动画系统 ── */
+
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+const canvasSize = 180
+const modeLabel = ref('')
+
+let animation: AnimationMode | null = null
+let animFrameId: number | null = null
+let darkThemePrev = false
+
+/** 初始化新动画（每次同步开始/种子变化时调用） */
+function initAnimation() {
+  destroyAnimation()
+
+  const canvas = canvasRef.value
+  if (!canvas) return
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  // 基于时间戳生成种子，确保每次不同
+  const seed = Date.now() ^ Math.floor(Math.random() * 1000000)
+  animation = createAnimation(seed)
+  modeLabel.value = MODE_NAMES[animation.name] || animation.name
+
+  darkThemePrev = isDarkTheme()
+  animation.init(ctx, canvasSize, canvasSize, seed)
+
+  // 启动帧循环
+  const loop = () => {
+    if (!animation || !canvasRef.value) return
+
+    const ctx2 = canvasRef.value.getContext('2d')
+    if (!ctx2) return
+
+    // 检查主题变化
+    const currentDark = isDarkTheme()
+    if (currentDark !== darkThemePrev) {
+      darkThemePrev = currentDark
+      // 主题变化时重绘背景
+    }
+
+    // 更新（传入进度）
+    animation.update(progressNormalized.value, currentDark)
+
+    // 绘制
+    animation.draw(ctx2)
+
+    animFrameId = requestAnimationFrame(loop)
+  }
+
+  animFrameId = requestAnimationFrame(loop)
+}
+
+/** 销毁当前动画 */
+function destroyAnimation() {
+  if (animFrameId !== null) {
+    cancelAnimationFrame(animFrameId)
+    animFrameId = null
+  }
+  if (animation) {
+    animation.destroy()
+    animation = null
+  }
+  modeLabel.value = ''
+}
+
+/* ── 生命周期 ── */
+
+// 监听显示状态
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal) {
+      nextTick(() => initAnimation())
+    } else {
+      destroyAnimation()
+    }
+  }
+)
+
+// 监听进度变化（用于恢复 canvas 等）
+watch(
+  () => props.current,
+  () => {
+    // 动画循环已经在运行，progress 通过 update 传入
+  }
+)
+
+onMounted(() => {
+  if (props.modelValue) {
+    nextTick(() => initAnimation())
+  }
+})
+
+onBeforeUnmount(() => {
+  destroyAnimation()
+})
+
 const handleCancel = () => {
   emit('update:modelValue', false)
   emit('cancel')
@@ -204,8 +306,8 @@ const handleCancel = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
-  padding: 2rem;
+  gap: 1.25rem;
+  padding: 1.5rem 2rem 2rem;
   min-width: 320px;
   max-width: 400px;
   border-radius: 16px;
@@ -234,71 +336,86 @@ body.dark-theme .sync-card {
   margin: 0.5rem 0 0;
 }
 
-/* 动画图标 */
-.sync-card__icon {
-  width: 64px;
-  height: 64px;
-  color: #10b981;
+/* ── Canvas 动画区域 ── */
+
+.sync-card__canvas-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
 }
 
-.sync-card__icon svg {
+.sync-card__canvas {
+  display: block;
   width: 100%;
   height: 100%;
 }
 
-.sync-card__icon--animating {
-  animation: pulse 2s ease-in-out infinite;
+/* 进度环覆盖层 */
+.sync-card__progress-overlay {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-}
-
-/* 环形进度条 */
-.sync-card__progress {
-  position: relative;
-  width: 120px;
-  height: 120px;
-}
-
-.progress-circle {
+.progress-ring {
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }
 
-.progress-circle__bg {
-  stroke: var(--border-color);
+.progress-ring__bg {
+  stroke: rgba(255, 255, 255, 0.25);
   fill: none;
-  stroke-width: 8;
+  stroke-width: 6;
 }
 
-.progress-circle__bar {
-  stroke: var(--progress-color);
+.progress-ring__bar {
+  stroke: var(--progress-color, #10b981);
   fill: none;
-  stroke-width: 8;
+  stroke-width: 6;
   stroke-linecap: round;
 }
 
-.progress-circle__text {
+.progress-ring__text {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  line-height: 1;
 }
 
-/* 统计信息 */
+/* 暗色主题修正 */
+body.dark-theme .progress-ring__bg {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+/* 模式名称标签 */
+.sync-card__mode-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  font-size: 0.625rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ── 统计信息 ── */
+
 .sync-card__stats {
   display: flex;
   flex-wrap: wrap;
@@ -335,7 +452,8 @@ body.dark-theme .sync-card {
   color: #ef4444;
 }
 
-/* 按钮样式 */
+/* ── 按钮样式 ── */
+
 .btn {
   border: none;
   border-radius: 8px;
@@ -359,5 +477,28 @@ body.dark-theme .sync-card {
 .btn--outline:hover {
   background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+/* ── 响应式 ── */
+
+@media (max-width: 768px) {
+  .sync-card {
+    min-width: 280px;
+    max-width: 340px;
+    padding: 1.25rem 1.5rem 1.5rem;
+    gap: 1rem;
+  }
+
+  .sync-card__canvas-wrap {
+    width: 150px;
+    height: 150px;
+  }
+
+  .sync-card__progress-overlay {
+    width: 48px;
+    height: 48px;
+    bottom: 6px;
+    right: 6px;
+  }
 }
 </style>

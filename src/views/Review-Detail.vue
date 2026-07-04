@@ -90,15 +90,15 @@
               class="slider-wrapper"
               @mouseenter="sScale = 1.08"
               @mouseleave="
-                sScale = 1;
-                sOverflow = 0;
+                sScale = 1,
+                sOverflow = 0,
                 sRegion = 'middle'
               "
               @touchstart.passive="sScale = 1.08"
               @touchend="
-                sScale = 1;
-                sOverflow = 0;
-                sRegion = 'middle';
+                sScale = 1,
+                sOverflow = 0,
+                sRegion = 'middle',
                 submitReview()
               "
               :style="{
