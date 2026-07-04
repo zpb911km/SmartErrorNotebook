@@ -3,19 +3,7 @@
     <!-- 顶部导航栏 -->
     <div class="detail-header" ref="detailHeaderRef">
       <button class="back-btn" v-ripple @click="goBack">
-        <svg
-          class="back-icon"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
+        <Icon name="arrow-left" :size="16" class="back-icon" />
         <span>返回</span>
       </button>
       <h2>错题详情管理</h2>
@@ -31,21 +19,7 @@
           :disabled="shareLoading"
           @click="handleRevokeShare"
         >
-          <svg
-            class="btn-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-            <polyline points="16 6 12 2 8 6" />
-            <line x1="12" y1="2" x2="12" y2="15" />
-          </svg>
+          <Icon name="undo" :size="16" class="btn-icon" />
           <span class="btn-label">{{ shareLoading ? '...' : '撤回分享' }}</span>
         </button>
         <button
@@ -55,21 +29,7 @@
           :disabled="shareLoading"
           @click="handleShare"
         >
-          <svg
-            class="btn-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-            <polyline points="16 6 12 2 8 6" />
-            <line x1="12" y1="2" x2="12" y2="15" />
-          </svg>
+          <Icon name="upload" :size="16" class="btn-icon" />
           <span class="btn-label">{{
             shareLoading ? '...' : '分享到社区'
           }}</span>
@@ -79,22 +39,7 @@
           class="action-btn edit-btn glare-btn"
           @click="toggleEditMode"
         >
-          <svg
-            class="btn-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-            />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
+          <Icon name="square-pen" :size="16" class="btn-icon" />
           <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
         </button>
         <button
@@ -102,22 +47,7 @@
           class="action-btn delete-btn glare-btn"
           @click="confirmDelete"
         >
-          <svg
-            class="btn-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="3 6 5 6 21 6" />
-            <path
-              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-            />
-          </svg>
+          <Icon name="trash-2" :size="16" class="btn-icon" />
           <span class="btn-label">删除</span>
         </button>
       </div>

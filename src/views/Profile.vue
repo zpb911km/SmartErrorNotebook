@@ -8,16 +8,7 @@
 
     <!-- 错误状态 -->
     <div v-else-if="loadError" class="error-state">
-      <svg
-        viewBox="0 0 48 48"
-        fill="none"
-        class="error-icon"
-        stroke="currentColor"
-        stroke-width="4"
-      >
-        <circle cx="24" cy="24" r="20" />
-        <path d="M24 14v12m0 8v0" />
-      </svg>
+      <Icon name="circle-alert" :size="48" class="error-icon" />
       <div class="error-description">{{ loadError }}</div>
       <button class="retry-btn" @click="loadData">重试</button>
     </div>

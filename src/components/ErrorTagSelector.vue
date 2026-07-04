@@ -175,21 +175,12 @@ onMounted(() => {
       <span class="selected-text">
         {{ displayText }}
       </span>
-      <svg
+      <Icon
+        name="chevron-down"
+        :size="16"
         class="arrow-icon"
         :class="{ rotated: isExpanded }"
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
+      />
     </div>
 
     <!-- 下拉选项 -->
@@ -219,38 +210,12 @@ onMounted(() => {
           v-if="!showAddErrorTag"
           @click="showAddErrorTag = true"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 8v8M8 12h8" />
-          </svg>
+          <Icon name="circle-plus" :size="16" :stroke-width="2.5" />
           <span>添加新错因</span>
         </div>
         <div class="add-form-container" v-if="showAddErrorTag">
           <div class="add-form-header">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 8v8M8 12h8" />
-            </svg>
+            <Icon name="circle-plus" :size="16" />
             <span>添加新错因</span>
           </div>
           <input

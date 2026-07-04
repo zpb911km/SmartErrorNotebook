@@ -17,17 +17,7 @@
           class="sync-card__icon"
           :class="{ 'sync-card__icon--animating': isSyncing }"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-            <path d="M16 16h5v5" />
-          </svg>
+          <Icon name="refresh-cw" :size="24" />
         </div>
 
         <!-- 环形进度条 -->
@@ -219,8 +209,12 @@ const handleCancel = () => {
   min-width: 320px;
   max-width: 400px;
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--card-bg);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-theme .sync-card {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
 .sync-card__header {
@@ -230,13 +224,13 @@ const handleCancel = () => {
 .sync-card__title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .sync-card__status {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0.5rem 0 0;
 }
 
@@ -282,7 +276,7 @@ const handleCancel = () => {
 }
 
 .progress-circle__bg {
-  stroke: #e5e7eb;
+  stroke: var(--border-color);
   fill: none;
   stroke-width: 8;
 }
@@ -301,7 +295,7 @@ const handleCancel = () => {
   transform: translate(-50%, -50%);
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 /* 统计信息 */
@@ -317,20 +311,20 @@ const handleCancel = () => {
   flex-direction: column;
   align-items: center;
   padding: 0.5rem 1rem;
-  background: #f9fafb;
+  background: var(--bg-secondary);
   border-radius: 8px;
 }
 
 .stat-label {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
 
 .stat-value {
   font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .stat-value.highlight {
@@ -358,12 +352,12 @@ const handleCancel = () => {
 
 .btn--outline {
   background: transparent;
-  border: 1px solid #d1d5db;
-  color: #6b7280;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
 .btn--outline:hover {
-  background: #f9fafb;
-  color: #1f2937;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 </style>

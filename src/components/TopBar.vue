@@ -11,19 +11,7 @@
         <Icon name="search" :size="20" />
       </button>
       <button class="icon-btn" @click="handleSync" v-if="showSync">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          width="18"
-          height="18"
-        >
-          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-          <path d="M3 3v5h5" />
-          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-          <path d="M16 16h5v5" />
-        </svg>
+        <Icon name="refresh-cw" :size="18" />
       </button>
       <button class="icon-btn" @click="handleSettings" v-if="showSettings">
         <Icon name="settings" :size="20" />

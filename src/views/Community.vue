@@ -3,19 +3,7 @@
     <!-- 顶部导航栏 -->
     <div class="community-header">
       <button class="back-btn" @click="goBack">
-        <svg
-          class="back-icon"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
+        <Icon name="arrow-left" :size="16" class="back-icon" />
         <span>返回</span>
       </button>
       <h2>🌐 错题社区</h2>

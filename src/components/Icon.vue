@@ -41,7 +41,17 @@ import {
   RefreshCw,
   Download,
   Upload,
-  Share2
+  Share2,
+  Undo,
+  ChevronDown,
+  CirclePlus,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Users
 } from '@lucide/vue'
 
 const iconMap: Record<string, any> = {
@@ -80,7 +90,17 @@ const iconMap: Record<string, any> = {
   'refresh-cw': RefreshCw,
   download: Download,
   upload: Upload,
-  'share-2': Share2
+  'share-2': Share2,
+  undo: Undo,
+  'chevron-down': ChevronDown,
+  'circle-plus': CirclePlus,
+  'zoom-in': ZoomIn,
+  'zoom-out': ZoomOut,
+  'rotate-cw': RotateCw,
+  'chevron-left': ChevronLeft,
+  'chevron-right': ChevronRight,
+  'circle-alert': CircleAlert,
+  users: Users
 }
 
 const props = withDefaults(
