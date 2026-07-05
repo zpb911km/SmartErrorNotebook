@@ -282,7 +282,10 @@ const inquiryAI = async () => {
 
   // 检查 AI 是否已配置
   if (!llm.isConfigured()) {
-    showError('AI 未配置', '请先在「设置」中配置 AI 服务（API 地址、密钥和模型）')
+    showError(
+      'AI 未配置',
+      '请先在「设置」中配置 AI 服务（API 地址、密钥和模型）'
+    )
     subjectLoading.value = false
     promptLoading.value = false
     typeLoading.value = false

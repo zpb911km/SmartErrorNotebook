@@ -406,7 +406,7 @@ import {
   getSources
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
-import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
+import { createSRSData } from '../apis/srsData'
 import { getAllSRSStatus } from '../apis/srs'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
@@ -870,12 +870,13 @@ const fetchData = async () => {
     const allSRS = await getAllSRSStatus()
     for (const srs of allSRS) {
       srsMap.set(srs.question_id, srs)
-      srs.question_id && console.log(`题目 ${srs.question_id} 的 SRS 数据:`, {
-        difficulty: srs.difficulty,
-        stability: srs.stability,
-        recall_rate: srs.recall_rate,
-        review_count: srs.review_count
-      })
+      srs.question_id &&
+        console.log(`题目 ${srs.question_id} 的 SRS 数据:`, {
+          difficulty: srs.difficulty,
+          stability: srs.stability,
+          recall_rate: srs.recall_rate,
+          review_count: srs.review_count
+        })
     }
 
     // 找出缺少 SRS 数据的题目

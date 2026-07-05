@@ -21,7 +21,8 @@
           :class="['preview-image', { 'is-dragging': isDragging }]"
           :style="{
             transform: `scale(${scale}) rotate(${rotation}deg) translate(${translateX}px, ${translateY}px)`,
-            transition: isDragging || isPinching ? 'none' : 'transform 0.1s ease-out'
+            transition:
+              isDragging || isPinching ? 'none' : 'transform 0.1s ease-out'
           }"
           @mousedown="handleMouseDown"
           @dblclick="resetAll"
@@ -48,7 +49,11 @@
 
       <!-- 提示（根据平台动态显示） -->
       <div class="zoom-hint">
-        {{ isTouchDevice ? '双指缩放 · 拖拽平移 · 双击重置' : '滚轮缩放 · 拖拽平移 · 双击重置' }}
+        {{
+          isTouchDevice
+            ? '双指缩放 · 拖拽平移 · 双击重置'
+            : '滚轮缩放 · 拖拽平移 · 双击重置'
+        }}
       </div>
     </div>
   </div>
