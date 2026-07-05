@@ -109,9 +109,11 @@ defineExpose({
 .notification-container {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9999;
-  max-width: 400px;
+  max-width: 420px;
+  width: 90vw;
 }
 
 .notification-wrapper {
@@ -129,7 +131,7 @@ defineExpose({
   background: var(--card-bg);
   min-width: 300px;
   max-width: 100%;
-  animation: slideInRight 0.3s ease-out;
+  animation: slideIn 0.3s ease-out;
   border-left: 4px solid var(--primary-color);
 }
 
@@ -195,33 +197,34 @@ defineExpose({
 }
 
 /* 过渡动画 */
-.notification-enter-active,
+.notification-enter-active {
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
 .notification-leave-active {
   transition: all 0.3s ease;
-  transform: translateX(0);
   opacity: 1;
 }
 
 .notification-enter-from {
-  transform: translateX(100%);
   opacity: 0;
+  transform: translateY(-20px);
 }
 
 .notification-leave-to {
-  transform: translateX(100%);
   opacity: 0;
-  position: absolute;
-  width: 100%;
+  transform: translateY(-20px);
 }
 
-@keyframes slideInRight {
+@keyframes slideIn {
   from {
-    transform: translateX(100%);
     opacity: 0;
+    transform: translateY(-20px);
   }
   to {
-    transform: translateX(0);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

@@ -144,7 +144,7 @@ const handleClose = () => {
 }
 
 const zoomIn = () => {
-  scale.value = Math.min(scale.value * 1.2, 5)
+  scale.value = Math.min(scale.value * 1.2, 10)
 }
 
 const zoomOut = () => {
@@ -167,7 +167,7 @@ const handleWheel = (e: WheelEvent) => {
   e.preventDefault()
   e.stopPropagation()
   const delta = e.deltaY > 0 ? 0.9 : 1.1
-  scale.value = Math.max(0.1, Math.min(5, scale.value * delta))
+  scale.value = Math.max(0.1, Math.min(10, scale.value * delta))
 }
 
 // ─── 桌面端鼠标拖拽 ──────────────────────────────────────────
@@ -275,7 +275,7 @@ const handleTouchMove = (e: TouchEvent) => {
     // ── 双指缩放（增量式） ──
     const currentDist = getPinchDistance(e)
     const ratio = currentDist / pinchStartDistance
-    scale.value = Math.max(0.1, Math.min(5, scale.value * ratio))
+    scale.value = Math.max(0.1, Math.min(10, scale.value * ratio))
     // 更新参考距离，下一次增量变化
     pinchStartDistance = currentDist
   } else if (touchCount === 1 && isDragging.value && !isPinching.value) {

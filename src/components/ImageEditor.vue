@@ -72,7 +72,15 @@
         <div v-if="currentTool === 'rotate'" class="rotate-controls">
           <button class="control-btn" @click="rotate(-90)">↺ 左转90°</button>
           <button class="control-btn" @click="rotate(90)">↻ 右转90°</button>
-          <button class="control-btn" @click="rotate(180)">↔ 180°</button>
+          <button class="control-btn" @click="rotate(180)">↻ 180°</button>
+          <div class="flip-row">
+            <button class="control-btn flip-btn" @click="flipHorizontally">
+              ↔ 水平翻转
+            </button>
+            <button class="control-btn flip-btn" @click="flipVertically">
+              ↕ 垂直翻转
+            </button>
+          </div>
           <div class="slider-control">
             <label>自由旋转: {{ rotationAngle }}°</label>
             <input
@@ -739,6 +747,11 @@ const handleTouchStart = (e: TouchEvent) => {
       updateLoupePosition(touch.clientX, touch.clientY)
       requestAnimationFrame(() => updateLoupeContent())
     }
+  } else {
+    // 非裁剪工具下：单指平移（缩放后查看放大区域）
+    const touch = e.touches[0]
+    isPanning.value = true
+    lastPanPos.value = { x: touch.clientX, y: touch.clientY }
   }
 }
 
@@ -751,7 +764,7 @@ const handleTouchMove = (e: TouchEvent) => {
     const dy = e.touches[0].clientY - e.touches[1].clientY
     const distance = Math.sqrt(dx * dx + dy * dy)
     const ratio = distance / initialPinchDistance.value
-    scale.value = Math.max(0.1, Math.min(5, initialPinchScale.value * ratio))
+    scale.value = Math.max(0.1, Math.min(10, initialPinchScale.value * ratio))
     updateCanvasTransform()
     return
   }
@@ -814,6 +827,15 @@ const handleTouchMove = (e: TouchEvent) => {
       lastEdgePos.value = { x, y }
       drawCanvas()
     }
+  } else if (isPanning.value) {
+    // 非裁剪工具：单指平移（缩放后拖拽查看）
+    const touch = e.touches[0]
+    const dx = touch.clientX - lastPanPos.value.x
+    const dy = touch.clientY - lastPanPos.value.y
+    panX.value += dx
+    panY.value += dy
+    lastPanPos.value = { x: touch.clientX, y: touch.clientY }
+    updateCanvasTransform()
   }
 }
 
@@ -838,6 +860,7 @@ const handleTouchEnd = (e: TouchEvent) => {
   draggingCorner.value = null
   draggingEdge.value = null
   showLoupe.value = false
+  isPanning.value = false
 }
 
 // 更新放大镜位置（自动避开屏幕边缘）
@@ -958,7 +981,7 @@ const updateLoupeContent = () => {
 const handleWheel = (e: WheelEvent) => {
   e.preventDefault()
   const delta = e.deltaY > 0 ? 0.9 : 1.1
-  scale.value = Math.max(0.1, Math.min(5, scale.value * delta))
+  scale.value = Math.max(0.1, Math.min(10, scale.value * delta))
   updateCanvasTransform()
 }
 
@@ -983,6 +1006,8 @@ const selectTool = (toolId: string) => {
   } else if (toolId === 'threshold') {
     threshold.value = 128
     invertThreshold.value = false
+    // 立即应用默认阈值预览，无需等待用户拖动滑块
+    nextTick(() => previewThreshold())
   }
 
   drawCanvas()
@@ -1379,6 +1404,53 @@ const applyRotation = () => {
   const newImageData = resultCanvas.toDataURL('image/jpeg', 0.9)
   addToHistory(newImageData)
   rotationAngle.value = 0
+}
+
+// 水平翻转
+const flipHorizontally = () => {
+  if (!canvasRef.value || !currentImage.value) return
+
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  // 创建新 Canvas（尺寸不变）
+  const resultCanvas = document.createElement('canvas')
+  resultCanvas.width = canvas.width
+  resultCanvas.height = canvas.height
+  const resultCtx = resultCanvas.getContext('2d')
+  if (!resultCtx) return
+
+  // 水平翻转：先平移再缩放
+  resultCtx.translate(resultCanvas.width, 0)
+  resultCtx.scale(-1, 1)
+  resultCtx.drawImage(currentImage.value, 0, 0)
+
+  const newImageData = resultCanvas.toDataURL('image/jpeg', 0.9)
+  addToHistory(newImageData)
+}
+
+// 垂直翻转
+const flipVertically = () => {
+  if (!canvasRef.value || !currentImage.value) return
+
+  const canvas = canvasRef.value
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  const resultCanvas = document.createElement('canvas')
+  resultCanvas.width = canvas.width
+  resultCanvas.height = canvas.height
+  const resultCtx = resultCanvas.getContext('2d')
+  if (!resultCtx) return
+
+  // 垂直翻转
+  resultCtx.translate(0, resultCanvas.height)
+  resultCtx.scale(1, -1)
+  resultCtx.drawImage(currentImage.value, 0, 0)
+
+  const newImageData = resultCanvas.toDataURL('image/jpeg', 0.9)
+  addToHistory(newImageData)
 }
 
 // 预览对比度
@@ -1922,6 +1994,16 @@ const handleCancel = () => {
   gap: 12px;
 }
 
+.flip-row {
+  display: flex;
+  gap: 8px;
+}
+
+.flip-row .flip-btn {
+  flex: 1;
+  text-align: center;
+}
+
 .control-btn {
   padding: 10px 16px;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -2006,7 +2088,7 @@ const handleCancel = () => {
   align-items: center;
   justify-content: center;
   background: #000;
-  overflow: hidden;
+  overflow: auto;
   padding: 20px;
   padding-top: 120px;
   padding-bottom: 60px;
@@ -2017,6 +2099,11 @@ const handleCancel = () => {
   max-height: 100%;
   touch-action: none;
   transition: transform 0.1s;
+  cursor: grab;
+}
+
+.edit-canvas-container canvas:active {
+  cursor: grabbing;
 }
 
 .status-bar {
