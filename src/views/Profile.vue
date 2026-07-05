@@ -55,7 +55,7 @@
       <!-- SRS 详细指标 -->
       <div class="stats-row">
         <div v-scroll-reveal="{ delay: 100 }" class="stat-item">
-          <div class="stat-label">平均稳定性</div>
+          <div class="stat-label">平均记忆强度</div>
           <div class="stat-value">
             {{ srsStats.avg_stability.toFixed(1) }} 天
           </div>
@@ -63,6 +63,7 @@
         <div v-scroll-reveal="{ delay: 180 }" class="stat-item">
           <div class="stat-label">平均难度</div>
           <div class="stat-value">{{ srsStats.avg_difficulty.toFixed(2) }}</div>
+          <div class="stat-sub">范围 [1, 10]，越高越难</div>
         </div>
         <div v-scroll-reveal="{ delay: 260 }" class="stat-item">
           <div class="stat-label">累计复习</div>
@@ -1022,7 +1023,7 @@ const heatmapData = computed<HeatmapRow[]>(() => {
     const name = subjectNameMap.get(subjId) || '未分类'
     rows.push({
       subject: name,
-      subjectShort: name.length > 4 ? name.slice(0, 4) + '…' : name,
+      subjectShort: name,
       buckets,
       total: diffs.length
     })
@@ -1116,27 +1117,27 @@ const intervalBuckets = computed<IntervalBucket[]>(() => {
   const now = Math.floor(Date.now() / 1000)
 
   const buckets: IntervalBucket[] = [
+    { label: '新卡片', count: 0, color: '#bdbdbd' },
     { label: '已到期', count: 0, color: '#ef5350' },
     { label: '1-3天', count: 0, color: '#ff9800' },
     { label: '4-7天', count: 0, color: '#ffc107' },
     { label: '8-14天', count: 0, color: '#66bb6a' },
     { label: '15-30天', count: 0, color: '#42a5f5' },
-    { label: '30天+', count: 0, color: '#7e57c2' },
-    { label: '新卡片', count: 0, color: '#bdbdbd' }
+    { label: '30天+', count: 0, color: '#7e57c2' }
   ]
 
   for (const card of allCards.value) {
-    if (card.review_count === 0 || card.next_review_at === null) {
-      buckets[6].count++ // 新卡片
+    if (card.review_count <= 1 || card.next_review_at === null) {
+      buckets[0].count++ // 新卡片（FSRS-5 初始 review_count=1）
       continue
     }
     const daysUntil = (card.next_review_at - now) / 86400
-    if (daysUntil <= 0) buckets[0].count++
-    else if (daysUntil <= 3) buckets[1].count++
-    else if (daysUntil <= 7) buckets[2].count++
-    else if (daysUntil <= 14) buckets[3].count++
-    else if (daysUntil <= 30) buckets[4].count++
-    else buckets[5].count++
+    if (daysUntil <= 0) buckets[1].count++
+    else if (daysUntil <= 3) buckets[2].count++
+    else if (daysUntil <= 7) buckets[3].count++
+    else if (daysUntil <= 14) buckets[4].count++
+    else if (daysUntil <= 30) buckets[5].count++
+    else buckets[6].count++
   }
 
   return buckets
@@ -2685,6 +2686,13 @@ async function executeDeleteTag() {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.stat-sub {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  opacity: 0.7;
 }
 
 /* ========== 图表公用 ========== */

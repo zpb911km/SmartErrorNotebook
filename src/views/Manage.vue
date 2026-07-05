@@ -406,7 +406,8 @@ import {
   getSources
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
-import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
+import { createSRSData } from '../apis/srsData'
+import { getAllSRSStatus } from '../apis/srs'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
 import { importStore, clearPendingImport } from '../stores/importStore'
@@ -861,41 +862,38 @@ const fetchData = async () => {
     // 后端返回的数据包含 created_at 和 updated_at 等额外字段
     errors.value = questionsData as any[]
 
-    // 批量获取 SRS 数据
+    // 批量获取 SRS 数据（一次查询取代 N+1）
     console.log('开始获取 SRS 数据...')
     const srsMap = new Map<string, any>()
     const questionsWithoutSRS: any[] = []
 
-    const srsPromises = questionsData.map(async (question: any) => {
-      try {
-        const srsData = await getQuestionSRSStatus(question.id)
-        if (srsData) {
-          srsMap.set(question.id, srsData)
-          console.log(`题目 ${question.id} 的 SRS 数据:`, {
-            difficulty: srsData.difficulty,
-            stability: srsData.stability,
-            recall_rate: srsData.recall_rate,
-            review_count: srsData.review_count
-          })
-        } else {
-          console.warn(`题目 ${question.id} 没有 SRS 数据，将自动创建`)
-          questionsWithoutSRS.push(question)
-        }
-      } catch (error) {
-        console.warn(`获取题目 ${question.id} 的 SRS 数据失败:`, error)
+    const allSRS = await getAllSRSStatus()
+    for (const srs of allSRS) {
+      srsMap.set(srs.question_id, srs)
+      srs.question_id &&
+        console.log(`题目 ${srs.question_id} 的 SRS 数据:`, {
+          difficulty: srs.difficulty,
+          stability: srs.stability,
+          recall_rate: srs.recall_rate,
+          review_count: srs.review_count
+        })
+    }
+
+    // 找出缺少 SRS 数据的题目
+    for (const question of questionsData) {
+      if (!srsMap.has(question.id)) {
+        console.warn(`题目 ${question.id} 没有 SRS 数据，将自动创建`)
         questionsWithoutSRS.push(question)
       }
-    })
-
-    await Promise.all(srsPromises)
+    }
 
     // 为没有 SRS 数据的题目创建 SRS 数据
     if (questionsWithoutSRS.length > 0) {
       console.log(`开始为 ${questionsWithoutSRS.length} 个题目创建 SRS 数据...`)
       const createPromises = questionsWithoutSRS.map(async (question: any) => {
         try {
-          // 使用默认难度 5.0（中等）
-          const srsData = await createSRSData(question.id, 5.0)
+          // 使用 FSRS-5 默认初始难度
+          const srsData = await createSRSData(question.id)
           srsMap.set(question.id, srsData)
           console.log(`为题目 ${question.id} 创建 SRS 数据成功:`, srsData)
         } catch (error) {
@@ -1020,15 +1018,6 @@ const getDifficultyClass = (level: number) => {
 }
 
 // 获取复习状态（基于 SRS 数据）
-const getReviewStatus = (_questionId: string) => {
-  // TODO: 从 SRS 数据中获取实际状态
-  // 目前返回默认值
-  return {
-    status: 'pending',
-    statusText: '待复习'
-  }
-}
-
 // 获取科目样式
 const getSubjectStyle = (subjectId: string) => {
   const subject = subjects.value.find((s) => s.id === subjectId)
@@ -1204,7 +1193,6 @@ const filteredErrors = computed(() => {
     .map((question: any) => {
       const subject = subjects.value.find((s) => s.id === question.subjectid)
       const difficulty = getDifficultyLevel(question.id)
-      const { status, statusText } = getReviewStatus(question.id)
 
       // 通过错题的 source_id 获取来源信息
       // question.sourceid 是来源表的主键 ID
@@ -1230,8 +1218,6 @@ const filteredErrors = computed(() => {
         // 后端返回的是秒级时间戳
         date: formatDate(question.updated_at || question.created_at || 0),
         timestamp: question.updated_at || question.created_at || 0,
-        status,
-        statusText,
         // 来源信息
         book: sourceInfo.book,
         chapter: sourceInfo.chapter,
