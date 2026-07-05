@@ -346,6 +346,8 @@ onUnmounted(() => {
   backdrop-filter: blur(4px);
   /* 防止移动端橡皮筋滚动 */
   overscroll-behavior: none;
+  /* 阻止浏览器默认的双指缩放页面行为 */
+  touch-action: none;
 }
 
 @keyframes overlayIn {

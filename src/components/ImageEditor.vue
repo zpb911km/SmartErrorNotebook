@@ -1779,6 +1779,8 @@ const handleCancel = () => {
   display: flex;
   flex-direction: column;
   animation: editIn 0.2s ease;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 @keyframes editIn {
@@ -2092,6 +2094,8 @@ const handleCancel = () => {
   padding: 20px;
   padding-top: 120px;
   padding-bottom: 60px;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .edit-canvas-container canvas {
