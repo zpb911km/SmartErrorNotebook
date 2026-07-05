@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能错题本 - 功能介绍</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 50px 20px;
+            text-align: center;
+        }
+        header h1 { font-size: 2.2rem; margin-bottom: 10px; }
+        header p { font-size: 1.1rem; opacity: 0.95; }
+        nav {
+            background: white;
+            padding: 15px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-width: 1200px;
+            margin: 0 auto;
+            justify-content: center;
+        }
+        nav a {
+            color: #555;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        nav a:hover { background: #667eea; color: white; }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        h2 {
+            font-size: 1.4rem;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #667eea;
+        }
+        h3 { font-size: 1.1rem; color: #4a5568; margin: 24px 0 12px; }
+        p { color: #555; margin: 10px 0; }
+        .screenshot {
+            background: #e8edf4;
+            border: 2px dashed #c1cad6;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            color: #6b7a8f;
+        }
+        .screenshot img { max-width: 100%; border-radius: 8px; }
+        .feature-list { list-style: none; padding: 0; }
+        .feature-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .feature-list li:last-child { border-bottom: none; }
+        .feature-icon {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+        .feature-content h4 { color: #2d3748; font-size: 1rem; margin-bottom: 4px; }
+        .feature-content p { color: #666; font-size: 0.9rem; margin: 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8fafc; color: #4a5568; font-weight: 600; }
+        .note {
+            background: #f0f7ff;
+            border-left: 4px solid #667eea;
+            padding: 14px 18px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .note p { margin: 0; color: #3d5a80; font-size: 0.9rem; }
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .tip-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .tip-card h4 { color: #2d3748; margin-bottom: 8px; }
+        .tip-card p { color: #666; font-size: 0.9rem; margin: 0; }
+        .highlight-box {
+            background: #fffbeb;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .highlight-box p { margin: 0; color: #92400e; }
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.6rem; }
+            .section { padding: 20px; }
+            h2 { font-size: 1.2rem; }
+            nav a { padding: 4px 10px; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>智能错题本</h1>
+        <p>让每一次错误，都成为进步的阶梯</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#home">首页</a></li>
+            <li><a href="#add">添加错题</a></li>
+            <li><a href="#manage">管理错题</a></li>
+            <li><a href="#review">智能复习</a></li>
+            <li><a href="#profile">个人中心</a></li>
+            <li><a href="#community">错题社区</a></li>
+            <li><a href="#export">导出功能</a></li>
+            <li><a href="#import">导入功能</a></li>
+            <li><a href="#sync">多设备同步</a></li>
+            <li><a href="#settings">设置</a></li>
+            <li><a href="#faq">常见问题</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <!-- 首页 -->
+        <section id="home" class="section">
+            <h2>首页</h2>
+            <div class="screenshot">
+                <img src="./docs/screenshots/home.png" alt="首页截图" />
+            </div>
+            <h3>功能概述</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">🎠</div>
+                    <div class="feature-content">
+                        <h4>轮播展示</h4>
+                        <p>欢迎语、励志标语自动轮播展示</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">🚀</div>
+                    <div class="feature-content">
+                        <h4>快捷入口</h4>
+                        <p>添加错题、开始复习、错题管理等快捷操作按钮</p>
+                    </div>
+                </li>
+            </ul>
+            <h3>快速上手工作流</h3>
+            <ol>
+                <li>拍照/选图录入题目</li>
+                <li>AI 自动识别或手动编辑题目信息</li>
+                <li>补充科目、来源、错因标签</li>
+                <li>日常复习，滑动评分反馈</li>
+                <li>算法自动调整复习间隔</li>
+            </ol>
+        </section>
+
+        <!-- 添加错题 -->
+        <section id="add" class="section">
+            <h2>添加错题</h2>
+            <div class="screenshot">
+                <img src="./docs/screenshots/add.png" alt="添加页面截图" />
+            </div>
+            <h3>图片录入方式</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">📁</div>
+                    <div class="feature-content">
+                        <h4>选择文件</h4>
+                        <p>从文件管理器中选择题目截图/照片</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📷</div>
+                    <div class="feature-content">
+                        <h4>拍照</h4>
+                        <p>调用系统摄像头拍摄题目，需授予相机权限</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">✂️</div>
+                    <div class="feature-content">
+                        <h4>图片编辑</h4>
+                        <p>裁剪、旋转、缩放调整图片</p>
+                    </div>
+                </li>
+            </ul>
+            <h3>AI 自动识别</h3>
+            <p>前置条件：已在设置中配置 LLM 接口</p>
+            <ol>
+                <li>图片上传后，点击「AI 查询」按钮</li>
+                <li>系统将图片发送给 LLM，自动提取题干、标准答案、解析、题型</li>
+                <li>识别结果自动填入表单，可手动修改</li>
+            </ol>
+            <h3>手动编辑</h3>
+            <table>
+                <thead><tr><th>字段</th><th>说明</th><th>必填</th></tr></thead>
+                <tbody>
+                    <tr><td>题干</td><td>题目内容，支持 Markdown + LaTeX 公式</td><td>✅</td></tr>
+                    <tr><td>题型</td><td>单选题/多选题/判断题/简答题/填空题/论述题/计算题</td><td>✅</td></tr>
+                    <tr><td>科目</td><td>从已有科目中选择或新建</td><td>✅</td></tr>
+                    <tr><td>标准答案</td><td>参考答案，支持 Markdown</td><td>可选</td></tr>
+                    <tr><td>解析</td><td>题目解析，支持 Markdown</td><td>可选</td></tr>
+                    <tr><td>错题笔记</td><td>自己的反思记录</td><td>可选</td></tr>
+                    <tr><td>来源</td><td>书 → 章节 → 知识点 三级分类</td><td>可选</td></tr>
+                    <tr><td>错因标签</td><td>自定义标签，如"粗心""概念不清"等</td><td>可选</td></tr>
+                    <tr><td>附件图片</td><td>原始题目图片/答案图片</td><td>可选</td></tr>
+                </tbody>
+            </table>
+            <h3>错因标签</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">🏷️</div>
+                    <div class="feature-content">
+                        <h4>自定义标签</h4>
+                        <p>标签可自定义名称和颜色</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">✅</div>
+                    <div class="feature-content">
+                        <h4>多选支持</h4>
+                        <p>支持同时选择多个标签</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-content">
+                        <h4>统一管理</h4>
+                        <p>标签可在管理页面统一管理</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="note">
+                <p><strong>Markdown + LaTeX 支持</strong>：题干、答案、解析等字段均支持 Markdown 语法和 $...$ / $$...$$ LaTeX 数学公式。</p>
+            </div>
+        </section>
+
+        <!-- 错题管理 -->
+        <section id="manage" class="section">
+            <h2>错题管理</h2>
+            <div class="screenshot">
+                <img src="./docs/screenshots/manage.png" alt="管理页面截图" />
+            </div>
+            <h3>搜索与筛选</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-content">
+                        <h4>关键词搜索</h4>
+                        <p>模糊匹配题干、科目、书名、知识点</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📚</div>
+                    <div class="feature-content">
+                        <h4>科目级联筛选</h4>
+                        <p>支持科目 → 书名 → 章节 → 知识点四级级联筛选</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📅</div>
+                    <div class="feature-content">
+                        <h4>时间筛选</h4>
+                        <p>全部时间、最近7天、最近30天、最近90天</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-content">
+                        <h4>排序</h4>
+                        <p>支持按难度、掌握程度进行正序或倒序排序</p>
+                    </div>
+                </li>
+            </ul>
+            <h3>错题列表</h3>
+            <p>每张卡片显示：题干摘要、题型标签、科目 + 来源信息、错因标签（彩色小方块）、SRS 复习状态</p>
+            <h3>编辑错题</h3>
+            <p>点击任意错题进入详情页，可修改：题干、答案、解析、错题笔记、科目、来源、错因标签、附件图片（新增/删除）</p>
+        </section>
+
+        <!-- 智能复习 -->
+        <section id="review" class="section">
+            <h2>智能复习</h2>
+            <div class="screenshot">
+                <img src="./docs/screenshots/review1.png" alt="复习页面截图1" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;" />
+                <img src="./docs/screenshots/review2.png" alt="复习页面截图2" style="max-width: 100%; border-radius: 8px;" />
+            </div>
+            <h3>SDR 记忆模型</h3>
+            <p>本系统采用 SDR（Stability, Difficulty, Retrievability）记忆模型，基于连续反馈自适应调整复习计划。</p>
+            <div class="highlight-box">
+                <p><strong>核心公式</strong>：R = e^(-t/S)</p>
+                <p style="margin-top:8px;">- R：预测召回率（0~1），1 表示完全记得</p>
+                <p>- t：距离上次复习的时间（天）</p>
+                <p>- S：稳定性（天），表征记忆强度</p>
+            </div>
+            <p>复习反馈越积极，稳定性增长越快，下次复习间隔越长。</p>
+            <h3>开始复习</h3>
+            <ol>
+                <li>进入「复习」页面</li>
+                <li>可先筛选科目/来源（可选）</li>
+                <li>点击「开始复习」，系统按优先级展示待复习题目</li>
+                <li>每道题：先看题目在脑海中回忆答案，点击「显示答案」核对，滑动评分器给出反馈</li>
+            </ol>
+            <h3>评分标准</h3>
+            <table>
+                <thead><tr><th>评分</th><th>感觉</th><th>间隔变化</th></tr></thead>
+                <tbody>
+                    <tr><td>0.0</td><td>完全忘了</td><td>重置为短间隔，视为全新</td></tr>
+                    <tr><td>0.2</td><td>几乎想不起</td><td>略微缩短</td></tr>
+                    <tr><td>0.4</td><td>有点印象</td><td>保持</td></tr>
+                    <tr><td>0.6</td><td>想起来了</td><td>略微延长</td></tr>
+                    <tr><td>0.8</td><td>基本记得</td><td>明显延长</td></tr>
+                    <tr><td>1.0</td><td>滚瓜烂熟</td><td>超长间隔（上限1000天）</td></tr>
+                </tbody>
+            </table>
+            <h3>复习统计</h3>
+            <p>在「个人中心」页面可查看：错题总数、待复习数量、复习趋势图表</p>
+        </section>
+
+        <!-- 个人中心 -->
+        <section id="profile" class="section">
+            <h2>个人中心</h2>
+            <div class="screenshot">
+                <div style="color:#6b7a8f;">[ 个人中心截图 ]</div>
+            </div>
+            <h3>概览统计</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-content">
+                        <h4>总题目数</h4>
+                        <p>统计所有错题总数</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">⏰</div>
+                    <div class="feature-content">
+                        <h4>待复习</h4>
+                        <p>当前需要复习的题目数量</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">🧠</div>
+                    <div class="feature-content">
+                        <h4>目前记忆</h4>
+                        <p>处于记忆状态的题目数量</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">✨</div>
+                    <div class="feature-content">
+                        <h4>新卡片数</h4>
+                        <p>尚未开始复习的新题目</p>
+                    </div>
+                </li>
+            </ul>
+            <h3>SRS 详细指标</h3>
+            <table>
+                <thead><tr><th>指标</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>平均稳定性</td><td>所有卡片的平均复习间隔天数</td></tr>
+                    <tr><td>平均难度</td><td>所有卡片的平均难度系数</td></tr>
+                    <tr><td>累计复习</td><td>总复习次数</td></tr>
+                    <tr><td>SRS 卡片</td><td>参与间隔重复的卡片总数</td></tr>
+                </tbody>
+            </table>
+            <h3>科目分布</h3>
+            <p>可视化展示各科目错题数量分布，支持点击管理科目</p>
+        </section>
+
+        <!-- 错题社区 -->
+        <section id="community" class="section">
+            <h2>错题社区</h2>
+            <div class="screenshot">
+                <div style="color:#6b7a8f;">[ 错题社区截图 ]</div>
+            </div>
+            <h3>分享错题</h3>
+            <ol>
+                <li>在错题详情页点击「分享」按钮</li>
+                <li>系统将题目分享到社区（不含个人信息）</li>
+                <li>其他用户可浏览你分享的题目</li>
+            </ol>
+            <h3>浏览社区</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">🌐</div>
+                    <div class="feature-content">
+                        <h4>分享列表</h4>
+                        <p>查看他人分享的错题，可按时间排序浏览</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📥</div>
+                    <div class="feature-content">
+                        <h4>获取错题</h4>
+                        <p>点击「获取」按钮将分享的错题添加到本地</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📝</div>
+                    <div class="feature-content">
+                        <h4>题目预览</h4>
+                        <p>支持 Markdown 和 LaTeX 公式渲染</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <!-- 导出功能 -->
+        <section id="export" class="section">
+            <h2>导出功能</h2>
+            <div class="screenshot">
+                <div style="color:#6b7a8f;">[ 导出弹窗截图 ]</div>
+            </div>
+            <h3>导出格式</h3>
+            <table>
+                <thead><tr><th>格式</th><th>特点</th><th>用途</th></tr></thead>
+                <tbody>
+                    <tr><td>HTML</td><td>美观排版，含公式渲染</td><td>打印、分享</td></tr>
+                    <tr><td>JSON</td><td>结构化数据</td><td>备份、迁移</td></tr>
+                </tbody>
+            </table>
+            <h3>导出选项</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">✅</div>
+                    <div class="feature-content">
+                        <h4>包含答案和解析</h4>
+                        <p>可选择是否包含答案和解析，在设置中控制</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">📚</div>
+                    <div class="feature-content">
+                        <h4>筛选导出</h4>
+                        <p>可筛选特定科目导出</p>
+                    </div>
+                </li>
+            </ul>
+            <h3>移动端分享（Android）</h3>
+            <p>在 Android 设备上，不仅可导出到本地，还可以通过「分享按钮」调用系统分享：</p>
+            <ul>
+                <li>JSON / HTML 文件可一键分享到微信、QQ、邮件等</li>
+                <li>底层使用 Android 的 Intent 系统 + Tauri Share Plugin 实现</li>
+                <li>桌面端自动隐藏分享按钮（无系统分享上下文）</li>
+            </ul>
+            <h3>HTML 导出特点</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">🌐</div>
+                    <div class="feature-content">
+                        <h4>浏览器原生渲染</h4>
+                        <p>数学公式排版与 App 内完全一致</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">🖨️</div>
+                    <div class="feature-content">
+                        <h4>打印友好</h4>
+                        <p>导出后用 Chrome/Edge 打开，按 Ctrl+P 可选择「另存为 PDF」</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="note">
+                <p><strong>HTML 推荐方案</strong> — 浏览器原生渲染，数学公式排版与 App 内完全一致。导出后用 Chrome/Edge 打开，按 Ctrl+P 可选择「另存为 PDF」，效果远胜截图方案。</p>
+            </div>
+        </section>
+
+        <!-- 导入功能 -->
+        <section id="import" class="section">
+            <h2>导入功能</h2>
+            <div class="screenshot">
+                <div style="color:#6b7a8f;">[ 导入弹窗截图 ]</div>
+            </div>
+            <h3>支持格式</h3>
+            <p>仅支持 SmartErrorNotebook 导出的 .json 格式文件</p>
+            <h3>导入流程</h3>
+            <ol>
+                <li>点击「导入错题」按钮，选择 JSON 文件</li>
+                <li>系统自动解析文件并校验数据格式</li>
+                <li>逐题审查，可查看题目、答案、解析</li>
+                <li>为每题设置科目、题型、来源等信息</li>
+                <li>确认后导入到本地数据库</li>
+            </ol>
+            <h3>审查功能</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">👁️</div>
+                    <div class="feature-content">
+                        <h4>题目预览</h4>
+                        <p>支持 Markdown 和 LaTeX 公式渲染预览</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-content">
+                        <h4>答案/解析折叠</h4>
+                        <p>答案和解析可折叠显示，方便自我测试</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">✅</div>
+                    <div class="feature-content">
+                        <h4>信息补全</h4>
+                        <p>可为每题选择科目、题型、来源等元数据</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">🔄</div>
+                    <div class="feature-content">
+                        <h4>自动去重</h4>
+                        <p>系统会自动去重（同内容跳过）</p>
+                    </div>
+                </li>
+            </ul>
+            <h3>数据校验</h3>
+            <table>
+                <thead><tr><th>校验项</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>JSON 格式</td><td>验证文件是否为有效的 JSON 格式</td></tr>
+                    <tr><td>版本字段</td><td>检查是否包含必要的 version 字段</td></tr>
+                    <tr><td>题目数组</td><td>验证 questions 是否为非空数组</td></tr>
+                    <tr><td>必填字段</td><td>检查每题是否包含 prompt 字段</td></tr>
+                </tbody>
+            </table>
+            <div class="note">
+                <p>导入过程中若文件版本与当前版本不匹配，会显示版本警告提示</p>
+            </div>
+        </section>
+
+        <!-- 多设备同步 -->
+        <section id="sync" class="section">
+            <h2>多设备同步</h2>
+            <div class="screenshot">
+                <img src="./docs/screenshots/sync.png" alt="同步页面截图" />
+            </div>
+            <div class="note">
+                <p><strong>注意</strong>：同步功能需要自行部署同步服务器，或连接到已部署的服务器。</p>
+            </div>
+            <h3>服务器部署</h3>
+            <pre style="background:#f8fafc; padding:16px; border-radius:8px; font-size:0.9rem; overflow-x:auto;">cd server
+pip install -r requirements.txt
+
+# 启动（默认 SQLite）
+python app.py</pre>
+            <p>服务器默认运行在 http://localhost:5000</p>
+            <h3>获取授权码</h3>
+            <ol>
+                <li>访问 http://your-server:5000/admin</li>
+                <li>在管理页面生成一个新的 auth_key</li>
+                <li>复制授权码</li>
+            </ol>
+            <h3>配置同步</h3>
+            <ol>
+                <li>在应用内进入「同步」页面</li>
+                <li>填写服务器地址（如 http://192.168.1.100:5000）</li>
+                <li>填写授权码</li>
+                <li>点击「测试连接」验证</li>
+                <li>开启自动同步（可选）</li>
+            </ol>
+            <h3>同步机制</h3>
+            <ul class="feature-list">
+                <li>
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-content">
+                        <h4>离线优先</h4>
+                        <p>所有数据先保存在本地，有网络时同步</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">🤝</div>
+                    <div class="feature-content">
+                        <h4>握手协议</h4>
+                        <p>客户端与服务端通过握手比对版本号，确定双向传输内容</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon">⚔️</div>
+                    <div class="feature-content">
+                        <h4>冲突解决</h4>
+                        <p>当多设备同时修改同一记录时，会提示用户手动解决冲突</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <!-- 设置 -->
+        <section id="settings" class="section">
+            <h2>设置</h2>
+            <div class="screenshot">
+                <img src="./docs/screenshots/settings.png" alt="设置页面截图" />
+            </div>
+            <h3>外观</h3>
+            <table>
+                <thead><tr><th>设置</th><th>选项</th></tr></thead>
+                <tbody>
+                    <tr><td>主题</td><td>浅色 / 深色 / 跟随系统</td></tr>
+                </tbody>
+            </table>
+            <h3>AI 配置</h3>
+            <p>本应用兼容任何兼容 OpenAI API 格式的 LLM 服务</p>
+            <table>
+                <thead><tr><th>参数</th><th>说明</th><th>示例</th></tr></thead>
+                <tbody>
+                    <tr><td>接口地址</td><td>API 基础 URL</td><td>https://api.openai.com</td></tr>
+                    <tr><td>API Key</td><td>密钥</td><td>sk-...</td></tr>
+                    <tr><td>模型名</td><td>模型标识</td><td>gpt-4o, deepseek-chat</td></tr>
+                    <tr><td>系统提示词</td><td>自定义 AI 行为（可选）</td><td>—</td></tr>
+                </tbody>
+            </table>
+            <h3>支持的模型推荐</h3>
+            <div class="tips-grid">
+                <div class="tip-card">
+                    <h4>OpenAI</h4>
+                    <p>gpt-4o, gpt-4o-mini</p>
+                </div>
+                <div class="tip-card">
+                    <h4>阿里通义 (DashScope)</h4>
+                    <p>qwen3.5-plus</p>
+                </div>
+                <div class="tip-card">
+                    <h4>智谱 AI</h4>
+                    <p>glm-4-flash, glm-4</p>
+                </div>
+                <div class="tip-card">
+                    <h4>DeepSeek</h4>
+                    <p>deepseek-chat</p>
+                </div>
+            </div>
+            <h3>LLM 测试</h3>
+            <p>配置完成后，可在设置页点击「测试」按钮验证 LLM 是否正常工作</p>
+            <h3>AI 提示词设置</h3>
+            <p>自定义 AI 识别题目信息时的提示词模板</p>
+            <h3>导出设置</h3>
+            <table>
+                <thead><tr><th>设置</th><th>说明</th></tr></thead>
+                <tbody>
+                    <tr><td>HTML 导出包含答案和解析</td><td>开关控制导出时是否包含参考答案和解析内容</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 常见问题 -->
+        <section id="faq" class="section">
+            <h2>常见问题</h2>
+            <div class="qa-item">
+                <h3>Q: 数据存在哪里？会不会丢失？</h3>
+                <p>A: 所有数据存储在本地 SQLite 数据库中，位置：</p>
+                <ul>
+                    <li>Windows: %APPDATA%/com.zlzo.smarterrornotebook/</li>
+                    <li>Linux: ~/.local/share/com.zlzo.smarterrornotebook/</li>
+                </ul>
+                <p>建议定期通过「导出 → JSON」备份数据。如果开启了同步，数据还会备份到服务器。</p>
+            </div>
+            <div class="qa-item">
+                <h3>Q: 如何迁移数据到新设备？</h3>
+                <p>A: 1. 旧设备：导出 JSON；2. 新设备：安装应用 → 导入 JSON；3. 如果使用同步功能，直接在新设备配置相同 auth_key 即可同步</p>
+            </div>
+            <div class="qa-item">
+                <h3>Q: AI 识别不准怎么办？</h3>
+                <p>A: 确保图片清晰、文字可辨；可在设置中调整 LLM 的系统提示词；识别结果可手动修改</p>
+            </div>
+            <div class="qa-item">
+                <h3>Q: 复习卡片太多，怎么办？</h3>
+                <p>A: 使用筛选功能只复习特定科目；坚持复习，算法会自动将熟练的卡片间隔拉长；对于彻底掌握的题目，可在详情页删除</p>
+            </div>
+            <div class="qa-item">
+                <h3>Q: Android 和桌面端可以同步吗？</h3>
+                <p>A: 可以。同步服务器是平台无关的，Android 设备和桌面端配置同一个服务器地址和 auth_key 即可双向同步。</p>
+            </div>
+        </section>
+
+        <div style="text-align:center; padding:40px 0; color:#888; font-size:0.9rem;">
+            <p>智能错题本 v0.1.1</p>
+        </div>
+    </div>
+</body>
+</html>
