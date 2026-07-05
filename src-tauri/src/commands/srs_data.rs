@@ -137,7 +137,15 @@ pub async fn create_srs_data(
         deleted_at: Set(None),
     };
 
-    let srs_model = new_srs_data.insert(db).await.map_err(|e| e.to_string())?;
+    // 先执行 INSERT（即使 insert() 内部的回查因 SQLite rowid 问题失败，
+    // 实际数据已经写入，用已知的 UUID 手动查询即可）
+    let _ = new_srs_data.insert(db).await;
+
+    let srs_model = SrsData::find_by_id(id)
+        .one(db)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("SRS 数据插入后查询失败".to_string())?;
 
     // 转为统一输出格式（SRSCardOutput 使用 last_review_at 字段名）
     Ok(SRSCardOutput {
