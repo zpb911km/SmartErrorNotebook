@@ -163,7 +163,7 @@
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
           <span class="meta-item"
-            ><Icon name="target" :size="16" /> 掌握率
+            ><Icon name="target" :size="16" /> 预期回忆
             {{ item.recallPercent }}%</span
           >
         </div>
@@ -199,7 +199,7 @@
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
           <span class="meta-item"
-            ><Icon name="chart-column" :size="16" /> 稳定性
+            ><Icon name="chart-column" :size="16" /> 记忆强度
             {{ item.stabilityText }}</span
           >
         </div>
@@ -236,6 +236,7 @@ import {
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
 import { setReviewQueue } from '../services/reviewStore'
+import type { ReviewCard } from '../services/reviewStore'
 import type { Subject } from '../types'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -347,7 +348,7 @@ const mergedItems = computed(() => {
     const recallRate = srs.recall_rate ?? 0
     const recallPercent = Math.round(recallRate * 100)
     const n = now()
-    const lastAt = srs.last_review_at ?? srs.lastreviewed_at
+    const lastAt = srs.last_review_at
     const daysSinceLast = lastAt
       ? Math.max(0, Math.floor((n - lastAt) / 86400))
       : -1
@@ -369,7 +370,7 @@ const mergedItems = computed(() => {
       else urgencyLabel = '🟢 复习'
       lastReviewLabel = daysSinceLast >= 0 ? `${daysSinceLast} 天前` : '未复习'
       nextReviewLabel = ''
-      stabilityText = `${stab.toFixed(1)}`
+      stabilityText = `${stab.toFixed(1)} 天`
     } else {
       if (daysUntilNext !== null) {
         if (daysUntilNext <= 0) urgencyLabel = '🔴 今天'
@@ -383,7 +384,7 @@ const mergedItems = computed(() => {
       nextReviewLabel =
         daysUntilNext !== null ? `${daysUntilNext} 天后` : '待安排'
       lastReviewLabel = daysSinceLast >= 0 ? `${daysSinceLast} 天前` : '未复习'
-      stabilityText = `${stab.toFixed(1)}`
+      stabilityText = `${stab.toFixed(1)} 天`
     }
 
     items.push({
@@ -592,7 +593,7 @@ function clearAllFilters() {
   filters.value.knowledge = ''
 }
 
-function buildReviewCard(item: MergedItem): any {
+function buildReviewCard(item: MergedItem): ReviewCard {
   return {
     questionId: item.questionId,
     srs: item.srs,

@@ -82,9 +82,9 @@ export async function importSingleQuestion(
       error_note: ''
     })
 
-    // 2. 自动创建 SRS 数据（默认中等难度 5.0）
+    // 2. 自动创建 SRS 数据（使用 FSRS-5 默认初始难度）
     try {
-      await createSRSData(created.id, 5.0)
+      await createSRSData(created.id)
     } catch (srsError) {
       console.warn('创建 SRS 数据失败（不影响导入）:', srsError)
     }

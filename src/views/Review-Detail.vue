@@ -24,7 +24,7 @@
           >{{ subjectName }}</span
         >
         <span class="difficulty-info"
-          >稳定性: {{ currentCard.srs.stability?.toFixed(1) }}天</span
+          >记忆强度: {{ currentCard.srs.stability?.toFixed(1) }}天</span
         >
       </div>
 
@@ -363,17 +363,17 @@ const progressPercent = computed(() => {
 const feedbackColor = computed(() => {
   const v = feedbackValue.value
   if (v < 0.2) return '#f44336'
-  if (v < 0.4) return '#ff9800'
-  if (v < 0.7) return '#ffc107'
+  if (v < 0.33) return '#ff9800'
+  if (v < 0.67) return '#ffc107'
   return '#4caf50'
 })
 
 const feedbackLabel = computed(() => {
   const v = feedbackValue.value
-  if (v < 0.15) return '完全忘了'
-  if (v < 0.35) return '模糊'
-  if (v < 0.65) return '基本对了'
-  if (v < 0.9) return '大部分对了'
+  if (v < 0.2) return '完全忘了'
+  if (v < 0.33) return '模糊'
+  if (v < 0.67) return '基本对了'
+  if (v < 1.0) return '基本对了'
   return '完美记住'
 })
 

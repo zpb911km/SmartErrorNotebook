@@ -1,10 +1,12 @@
 // 复习队列共享状态
 // Preview 设置队列 -> Review-Detail 消费
 
+import type { SRSData, ErrorQuestion } from '../types'
+
 export interface ReviewCard {
   questionId: string
-  srs: Record<string, any>
-  question: Record<string, any>
+  srs: SRSData
+  question: Partial<ErrorQuestion>
   subjectName: string
 }
 

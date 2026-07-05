@@ -186,12 +186,9 @@ interface ErrorQuestion {
 }
 
 /**
- * SRS（间隔重复学习）数据实体 - 基于连续反馈的 SDR 模型
+ * SRS（间隔重复学习）数据实体 - 基于 FSRS-5 连续反馈模型
  *
- * FIXME: last_review_at 字段名不匹配后端
- *   SRSCardOutput 返回 last_review_at
- *   srs_data::Model 返回 lastreviewed_at（create_srs_data 和 reset_srs_progress）
- *   视图用 srs.last_review_at ?? srs.lastreviewed_at 兼容
+ * 所有后端命令统一返回 SRSCardOutput，字段名 last_review_at 全链路一致。
  */
 interface SRSData {
   /** SRS 数据 ID（uuid）*/
@@ -202,7 +199,7 @@ interface SRSData {
   stability: number
   /** 难度（Difficulty）：[1.0, 10.0] */
   difficulty: number
-  /** 预测召回率 */
+  /** 预测可提取度 R (retrievability)，FSRS 遗忘曲线在当前时间的预测值 */
   recall_rate: number
   /** 下次复习时间戳（秒，可选）*/
   next_review_at: number | null

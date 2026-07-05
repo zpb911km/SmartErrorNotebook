@@ -43,10 +43,12 @@ pub struct UpsertSRSDataInput {
 pub struct SubmitReviewInput {
     /// 错题 ID
     pub question_id: String,
-    /// 用户反馈值 [0, 1]
-    /// 0: 清除所有 SRS 状态，当作新卡片从头来过
-    /// 1: 直接视为熟记，以后不用再复习
-    /// (0, 1): 连续反馈值
+    /// 用户连续反馈值 [0, 1]，映射到 FSRS-5 四级评分：
+    ///   [0.0, 0.2) → Again(1) — 遗忘路径 (post-lapse stability)
+    ///   [0.2, 0.6) → Hard(2) — 成功路径，惩罚性增长
+    ///   [0.6, 0.9) → Good(3) — 成功路径，标准增长
+    ///   [0.9, 1.0] → Easy(4) — 成功路径，奖励性增长
+    ///   边界值：0.0 = 重置为新卡片，1.0 = 永久记忆
     pub feedback: f32,
 }
 
@@ -102,7 +104,7 @@ pub struct SRSStatistics {
 pub async fn create_srs_data(
     state: State<'_, AppState>,
     input: CreateSRSDataInput,
-) -> Result<srs_data::Model, String> {
+) -> Result<SRSCardOutput, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
     let id = Uuid::new_v4().to_string();
@@ -135,16 +137,23 @@ pub async fn create_srs_data(
         deleted_at: Set(None),
     };
 
-    let _ = new_srs_data.insert(db).await;
+    let srs_model = new_srs_data.insert(db).await.map_err(|e| e.to_string())?;
 
-    // 获取创建的记录
-    let srs_model = SrsData::find_by_id(id)
-        .one(db)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("SRS data creation failed".to_string())?;
-
-    Ok(srs_model)
+    // 转为统一输出格式（SRSCardOutput 使用 last_review_at 字段名）
+    Ok(SRSCardOutput {
+        id: srs_model.id,
+        question_id: srs_model.question_id,
+        stability: srs_model.stability,
+        difficulty: srs_model.difficulty,
+        recall_rate: predict_retrievability(
+            srs_model.stability,
+            days_elapsed(srs_model.lastreviewed_at, now),
+        ),
+        next_review_at: srs_model.next_review_at,
+        last_review_at: srs_model.lastreviewed_at,
+        review_count: srs_model.review_count,
+        is_due: false,
+    })
 }
 
 /// 获取待复习的题目列表
@@ -264,7 +273,7 @@ pub async fn get_question_srs_status(
     Ok(srs_model.map(|srs| {
         let elapsed_days = days_elapsed(srs.lastreviewed_at, chrono::Utc::now().timestamp());
         let recall_rate = predict_retrievability(srs.stability, elapsed_days);
-        let is_due = srs.next_review_at.map(|next| srs.next_review_at.is_none() || next <= chrono::Utc::now().timestamp()).unwrap_or(true);
+        let is_due = srs.next_review_at.map(|next| next <= chrono::Utc::now().timestamp()).unwrap_or(true);
 
         SRSCardOutput {
             id: srs.id,
@@ -285,7 +294,7 @@ pub async fn get_question_srs_status(
 pub async fn reset_srs_progress(
     state: State<'_, AppState>,
     question_id: String,
-) -> Result<srs_data::Model, String> {
+) -> Result<SRSCardOutput, String> {
     let db = state.db.as_ref();
     let now = chrono::Utc::now().timestamp();
 
@@ -311,9 +320,23 @@ pub async fn reset_srs_progress(
             update_model.version = Set(model.version);
             update_model.sync_status = Set("pending".to_string());
 
-            update_model.update(db).await.map_err(|e| e.to_string())?;
+            let updated = update_model.update(db).await.map_err(|e| e.to_string())?;
 
-            Ok(model)
+            // 转为统一输出格式
+            Ok(SRSCardOutput {
+                id: updated.id,
+                question_id: updated.question_id,
+                stability: updated.stability,
+                difficulty: updated.difficulty,
+                recall_rate: predict_retrievability(
+                    updated.stability,
+                    days_elapsed(updated.lastreviewed_at, now),
+                ),
+                next_review_at: updated.next_review_at,
+                last_review_at: updated.lastreviewed_at,
+                review_count: updated.review_count,
+                is_due: true,
+            })
         }
         None => {
             // 如果不存在，创建新的
@@ -431,7 +454,7 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
             next_review_at: srs.next_review_at,
             last_review_at: srs.lastreviewed_at,
             review_count: srs.review_count,
-            is_due: srs.next_review_at.map(|next| srs.next_review_at.is_none() || next <= chrono::Utc::now().timestamp()).unwrap_or(true),
+            is_due: srs.next_review_at.map(|next| next <= chrono::Utc::now().timestamp()).unwrap_or(true),
         })
         .collect())
 }
