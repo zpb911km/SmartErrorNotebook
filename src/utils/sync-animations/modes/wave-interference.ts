@@ -101,20 +101,20 @@ export class WaveInterference implements AnimationMode {
     const data = this.imageData!.data
     const bgLight = dark ? 25 : 250
 
-    // 进度影响：波形从动态逐渐静止
-    const speedFactor = 1 - progress * 0.6
+    // 进度只影响视觉属性（对比度/饱和度），不影响波相位
     const contrastBoost = 1 + progress * 0.5
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         let value = 0
         for (const w of waves) {
+          // 相位只用纯时间累积，不受 progress 影响 — 避免跳帧
           const v =
             Math.sin(
-              x * w.frequencyX + time * w.speed * speedFactor + w.phaseX
+              x * w.frequencyX + time * w.speed + w.phaseX
             ) *
             Math.cos(
-              y * w.frequencyY + time * w.speed * speedFactor * 0.7 + w.phaseY
+              y * w.frequencyY + time * w.speed * 0.7 + w.phaseY
             )
           value += v * w.amplitude * w.weight
         }
@@ -160,19 +160,19 @@ export class WaveInterference implements AnimationMode {
     ctx.fillStyle = dark ? '#212121' : '#ffffff'
     ctx.fillRect(0, 0, width, height)
 
-    const speedFactor = 1 - progress * 0.5
     const step = 4 // 采样步长（性能优化）
 
     for (let y = 0; y < height; y += step) {
       for (let x = 0; x < width; x += step) {
         let value = 0
         for (const w of waves) {
+          // 相位只用纯时间累积，不受 progress 影响
           const v =
             Math.sin(
-              x * w.frequencyX + time * w.speed * speedFactor + w.phaseX
+              x * w.frequencyX + time * w.speed + w.phaseX
             ) *
             Math.cos(
-              y * w.frequencyY + time * w.speed * speedFactor * 0.7 + w.phaseY
+              y * w.frequencyY + time * w.speed * 0.7 + w.phaseY
             )
           value += v * w.amplitude * w.weight
         }

@@ -41,8 +41,6 @@
               {{ Math.round(progressPercent) }}%
             </div>
           </div>
-          <!-- 模式名称标签 -->
-          <div class="sync-card__mode-label">{{ modeLabel }}</div>
         </div>
 
         <!-- 详细统计 -->
@@ -80,7 +78,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { createAnimation, MODE_NAMES } from '../utils/sync-animations'
+import { createAnimation } from '../utils/sync-animations'
 import type { AnimationMode } from '../utils/sync-animations'
 import { isDarkTheme } from '../utils/sync-animations/utils'
 
@@ -182,7 +180,6 @@ const details = computed(() => ({
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const canvasSize = 180
-const modeLabel = ref('')
 
 let animation: AnimationMode | null = null
 let animFrameId: number | null = null
@@ -201,7 +198,6 @@ function initAnimation() {
   // 基于时间戳生成种子，确保每次不同
   const seed = Date.now() ^ Math.floor(Math.random() * 1000000)
   animation = createAnimation(seed)
-  modeLabel.value = MODE_NAMES[animation.name] || animation.name
 
   darkThemePrev = isDarkTheme()
   animation.init(ctx, canvasSize, canvasSize, seed)
@@ -242,7 +238,6 @@ function destroyAnimation() {
     animation.destroy()
     animation = null
   }
-  modeLabel.value = ''
 }
 
 /* ── 生命周期 ── */
@@ -399,19 +394,6 @@ body.dark-theme .sync-card {
 /* 暗色主题修正 */
 body.dark-theme .progress-ring__bg {
   stroke: rgba(255, 255, 255, 0.15);
-}
-
-/* 模式名称标签 */
-.sync-card__mode-label {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  font-size: 0.625rem;
-  color: rgba(255, 255, 255, 0.6);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  pointer-events: none;
-  font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 /* ── 统计信息 ── */

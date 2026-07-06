@@ -88,11 +88,10 @@ export class ParticleFlowField implements AnimationMode {
     this.time += 0.008
     this.dark = dark
 
-    // 进度影响：越接近完成，速度越慢，粒子越聚集
-    const progressFactor = 1 - progress * 0.5
-    const currentSpeed = this.speed * progressFactor
+    // 速度恒定 — 不受 progress 影响（避免跳帧）
+    const currentSpeed = this.speed
 
-    // 进度影响：颜色向主题色收敛
+    // 颜色收敛速率 — 用平滑后的 progress，不直接乘 time
     const convergeProgress = Math.min(progress * 2, 1)
 
     for (const p of this.particles) {

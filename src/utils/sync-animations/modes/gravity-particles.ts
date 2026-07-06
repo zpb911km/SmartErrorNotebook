@@ -110,9 +110,8 @@ export class GravityParticles implements AnimationMode {
     this.dark = dark
     this.time += 0.016
 
-    // 进度影响：越接近完成，引力减弱，粒子趋向静止
-    const gFactor = 1 - progress * 0.7
-    const currentG = this.gravityConstant * gFactor
+    // 引力常量恒定 — 不受 progress 影响（避免轨迹突变）
+    const currentG = this.gravityConstant
 
     const dt = 0.5
 

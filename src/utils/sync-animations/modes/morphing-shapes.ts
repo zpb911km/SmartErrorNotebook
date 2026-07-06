@@ -66,6 +66,7 @@ export class MorphingShapes implements AnimationMode {
   private radius = 0
   private rotationSpeed = 0.01
   private innerShapes = 3
+  private progress = 0
 
   init(
     _ctx: CanvasRenderingContext2D,
@@ -99,9 +100,11 @@ export class MorphingShapes implements AnimationMode {
     this.sidesSequence = shuffled
   }
 
-  update(_progress: number, isDarkTheme: boolean): void {
+  update(progress: number, isDarkTheme: boolean): void {
     this.time++
     this.dark = isDarkTheme
+    // progress 仅用于视觉属性（颜色/透明度），不影响时序状态
+    this.progress = progress
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
@@ -124,6 +127,8 @@ export class MorphingShapes implements AnimationMode {
     const rotation = this.time * this.rotationSpeed
     const l = this.dark ? 65 : 40
     const s = this.dark ? 50 : 60
+    // progress 仅增强视觉（透明度/辉光），不影响形状位置
+    const progAlphaBoost = this.progress * 0.15
 
     // 绘制多层嵌套形状
     for (let layer = 0; layer < this.innerShapes; layer++) {
@@ -148,7 +153,7 @@ export class MorphingShapes implements AnimationMode {
       }
       ctx.closePath()
 
-      ctx.fillStyle = hslToString(hue, s, l + layerT * 15, 0.25 + layerT * 0.15)
+      ctx.fillStyle = hslToString(hue, s, l + layerT * 15, 0.25 + layerT * 0.15 + progAlphaBoost)
       ctx.fill()
 
       // 绘制边缘
@@ -156,13 +161,14 @@ export class MorphingShapes implements AnimationMode {
         hue + 20,
         s + 10,
         l + 10,
-        0.6 + layerT * 0.2
+        0.6 + layerT * 0.2 + progAlphaBoost
       )
       ctx.lineWidth = 1 + (1 - layerT) * 2
       ctx.stroke()
     }
 
-    // 中心亮点
+    // 中心亮点（随进度更亮）
+    const glowAlpha = 0.8 + this.progress * 0.2
     const glowHue = (this.baseHue + this.time * 0.5) % 360
     ctx.beginPath()
     ctx.arc(
@@ -172,7 +178,7 @@ export class MorphingShapes implements AnimationMode {
       0,
       Math.PI * 2
     )
-    ctx.fillStyle = hslToString(glowHue, 80, 70, 0.8)
+    ctx.fillStyle = hslToString(glowHue, 80, 70, glowAlpha)
     ctx.fill()
   }
 

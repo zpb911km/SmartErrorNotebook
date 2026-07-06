@@ -28,6 +28,8 @@ export class FractalRotation implements AnimationMode {
   private progress = 0
   private cx = 0
   private cy = 0
+  /** 单调递增的旋转角，不再受 progress 影响 */
+  private rotation = 0
 
   // 预计算顶点（避免每帧重复创建）
   private shapeVertices: Record<
@@ -108,6 +110,10 @@ export class FractalRotation implements AnimationMode {
     this.time += 0.02
     this.dark = dark
     this.progress = progress
+
+    // 旋转角每帧增量累积 — 单调递增，不受 progress 影响
+    const speedFactor = 1 - progress * 0.4
+    this.rotation += 0.02 * this.rotationSpeed * speedFactor
   }
 
   draw(ctx: CanvasRenderingContext2D): void {
@@ -118,8 +124,7 @@ export class FractalRotation implements AnimationMode {
     ctx.fillRect(0, 0, width, height)
 
     // 进度影响：旋转速度减慢，形状趋向中心
-    const speedFactor = 1 - progress * 0.4
-    const rotation = this.time * this.rotationSpeed * speedFactor
+    // 改用 this.rotation — 单调递增，不受 progress 跳变影响
 
     // 从外到内绘制
     const maxRadius = Math.min(width, height) * 0.48 * (1 + progress * 0.1)
@@ -151,7 +156,7 @@ export class FractalRotation implements AnimationMode {
       }
 
       // 绘制形状
-      const rot = rotation * (i % 2 === 0 ? 1 : -1) * (i + 1) * 0.3
+      const rot = this.rotation * (i % 2 === 0 ? 1 : -1) * (i + 1) * 0.3
       const verts = this.shapeVertices[this.shapeType](cx, cy, radius, rot)
 
       ctx.beginPath()
