@@ -37,7 +37,19 @@
           class="notification__close"
           @click="removeNotification(notification.id)"
         >
-          <Icon name="x" :size="16" />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
         </button>
       </div>
     </transition-group>
@@ -181,19 +193,20 @@ defineExpose({
 
 .notification__close {
   cursor: pointer;
-  background: none;
+  background: var(--bg-tertiary);
   border: none;
   padding: 4px;
-  color: var(--text-disabled);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .notification__close:hover {
-  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* 过渡动画 */
