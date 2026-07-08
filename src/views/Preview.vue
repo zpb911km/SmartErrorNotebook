@@ -207,7 +207,12 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-if="allFiltered.length === 0" class="empty-illustration">
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>加载中...</div>
+    </div>
+
+    <div v-if="!isLoading && allFiltered.length === 0" class="empty-illustration">
       <div class="empty-icon"></div>
       <div class="empty-title">没有符合条件的错题</div>
       <div class="empty-desc">调整筛选条件，或添加更多错题吧</div>
@@ -260,6 +265,7 @@ const questions = ref<any[]>([])
 const srsCards = ref<any[]>([])
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
 const sourceInfoMap = ref<Map<string, any>>(new Map())
+const isLoading = ref(true)
 
 const filters = ref({
   subject_id: '',
@@ -616,6 +622,7 @@ function startReview() {
 
 // ============ Lifecycle ============
 onMounted(async () => {
+  isLoading.value = true
   try {
     const [subs, qs, srs, tags, srcs] = await Promise.all([
       getSubjects(),
@@ -648,6 +655,8 @@ onMounted(async () => {
     sourceInfoMap.value = sourceMap
   } catch (e) {
     console.error('Preview load failed:', e)
+  } finally {
+    isLoading.value = false
   }
 })
 </script>
@@ -1061,6 +1070,31 @@ onMounted(async () => {
 .empty-state p {
   font-size: 16px;
   margin: 0;
+}
+
+/* ===== Loading ===== */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===== FAB ===== */

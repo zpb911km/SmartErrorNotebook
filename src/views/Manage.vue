@@ -371,7 +371,12 @@
       </div>
     </div>
 
-    <div v-if="filteredErrors.length === 0" class="empty-illustration">
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>加载中...</div>
+    </div>
+
+    <div v-if="!isLoading && filteredErrors.length === 0" class="empty-illustration">
       <div class="empty-icon"></div>
       <div class="empty-title">暂无错题</div>
       <div class="empty-desc">添加你的第一道错题，开始高效复习吧</div>
@@ -448,6 +453,7 @@ let blinkTimer: number | null = null
 const errors = ref<any[]>([])
 const subjects = ref<Subject[]>([])
 const availableTags = ref<string[]>([])
+const isLoading = ref(true)
 
 // 错题和标签的映射关系（question_id -> 标签名称数组）
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
@@ -848,6 +854,7 @@ const handleTriggerBlink = () => {
 
 // 从数据库获取数据
 const fetchData = async () => {
+  isLoading.value = true
   try {
     // 并行获取科目、错题、标签和来源数据
     const [subjectsData, questionsData, tagsData, sourcesData] =
@@ -962,6 +969,8 @@ const fetchData = async () => {
     errors.value = []
     subjects.value = []
     availableTags.value = []
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -2160,6 +2169,33 @@ const viewError = (error: any) => {
 .empty-state p {
   font-size: 16px;
   margin: 0;
+}
+
+/* ========== 加载状态 ========== */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
 
