@@ -2107,10 +2107,15 @@ async function executeDeleteTag() {
   padding-bottom: 100px;
   background: var(--bg-primary);
   min-height: 100vh;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+@media (min-width: 769px) {
+  .profile-page {
+    gap: 40px;
+  }
 }
 
 /* 级联容器 */
@@ -2200,12 +2205,12 @@ async function executeDeleteTag() {
   display: flex;
   position: relative;
   overflow: visible;
-  /* 默认列宽 160px，间距 80px；JS 在列展开触边时动态缩小间距 */
+  /* 小屏层叠参数 */
   --col-width: 160px;
   --col-gap: 80px;
 }
 
-/* 级联列 */
+/* 级联列 - 小屏：层叠重叠 */
 .cascade-column {
   flex: 0 0 var(--col-width);
   width: var(--col-width);
@@ -2220,37 +2225,45 @@ async function executeDeleteTag() {
   overflow-y: auto;
 }
 
-/* 第一列 - 基准列 */
 .cascade-col-1 {
   border-left: none;
   z-index: 1;
 }
 
-/* 第二列及之后：用负 margin 自然层叠，随视口平滑变化 */
 .cascade-col-2,
 .cascade-col-3,
 .cascade-col-4 {
   margin-left: calc(-1 * (var(--col-width) - var(--col-gap)));
 }
 
-.cascade-col-2.show-column {
-  z-index: 10;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
-}
+.cascade-col-2.show-column { z-index: 10; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15); }
+.cascade-col-3.show-column { z-index: 20; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15); }
+.cascade-col-4.show-column { z-index: 30; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15); }
 
-.cascade-col-3.show-column {
-  z-index: 20;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
-}
+.cascade-column.active-column { z-index: 100 !important; }
 
-.cascade-col-4.show-column {
-  z-index: 30;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
-}
+/* 大屏（≥769px）：平铺展开，不再层叠 */
+@media (min-width: 769px) {
+  .cascade-column {
+    flex: 0 0 clamp(140px, 18vw, 260px);
+    width: clamp(140px, 18vw, 260px);
+    position: static;
+    z-index: auto;
+    margin-left: 0 !important;
+    box-shadow: none !important;
+  }
 
-/* 活动列确保在最上层 */
-.cascade-column.active-column {
-  z-index: 100 !important;
+  .cascade-column:first-child {
+    padding-left: 8px;
+  }
+
+  .cascade-column:last-child {
+    border-right: none;
+  }
+
+  .cascade-column.show-column {
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08) !important;
+  }
 }
 
 /* 列标题 */
@@ -2701,6 +2714,12 @@ async function executeDeleteTag() {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 769px) {
+  .chart-section {
+    padding: 32px;
+  }
 }
 
 .chart-section h3 {
