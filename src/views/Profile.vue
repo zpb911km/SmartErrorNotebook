@@ -3093,7 +3093,7 @@ async function executeDeleteTag() {
 .delete-confirm-modal h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #757575;
   margin-bottom: 12px;
 }
 
