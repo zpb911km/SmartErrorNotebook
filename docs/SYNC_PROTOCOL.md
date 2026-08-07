@@ -21,7 +21,7 @@
 
 ## 📖 概述
 
-支持多设备间错题数据的同步，通过 centralized server 作为数据枢纽，实现**离线优先**的同步模式。
+支持多设备间错题数据的同步，采用 **客户端主导 (Client-Driven)** 的同步模式：服务端仅作为无状态的数据中转站，所有握手决策、冲突检测、同步编排均由客户端独立完成。
 
 ```mermaid
 sequenceDiagram
@@ -29,27 +29,33 @@ sequenceDiagram
     participant S as 同步服务器 (Flask)
     participant B as 设备 B (SQLite)
 
-    Note over A: 本地修改 → pending
-    A->>S: 握手
-    S->>B: 握手
-    Note over S: 比对版本
-    B-->>S: 握手
-    A->>S: 推送
+    Note over A: 本地修改 → status=pending
+    A->>S: GET /api/sync/get_all_sync_data
+    S-->>A: 返回所有记录的轻量 header（不含 data）
+    Note over A: 本地执行 handshake()<br/>比对 local vs remote<br/>→ push_list / pull_list / conflicts
+    A->>S: POST /api/sync/upload/<id> (推送 push_list)
     S->>S: version++
-    S->>B: 拉取
-    B->>S: 推送
-    S->>A: 拉取（转发）
-    Note over A: 多轮握手直到空结果
-    Note over S: 多轮握手直到空结果
-    Note over B: 多轮握手直到空结果
+    S-->>A: 返回 new_version
+    A->>S: GET /api/sync/download/<id> (拉取 pull_list)
+    S-->>A: 返回完整记录
+    Note over A: 更新本地数据库<br/>status=synced
+    Note over A: 多轮握手直到<br/>push_list + pull_list 均为空
+
+    Note over B: 类似流程，独立于设备 A
+    B->>S: GET /api/sync/get_all_sync_data
+    S-->>B: headers（含 A 推送的新记录）
+    Note over B: 本地 handshake() → 拉取
+    B->>S: GET /api/sync/download/<id>
+    S-->>B: 完整记录
 ```
 
 ### 设计原则
 
 1. **离线优先**：用户在任何环境下都可正常使用，无需网络连接
 2. **版本驱动**：每条记录有独立递增版本号，用于冲突检测
-3. **最小传输**：握手阶段只传轻量 header，避免传输大量数据
-4. **最终一致**：多设备最终会达到一致状态
+3. **客户端主导**：所有握手决策在客户端本地执行，服务端不做编排，不维护同步状态机
+4. **最小传输**：握手阶段只传轻量 header（不含 data 负载），避免传输大量数据
+5. **最终一致**：多设备最终会达到一致状态
 
 ---
 
@@ -89,9 +95,13 @@ sequenceDiagram
 
 **目的**：确认双方需要传输哪些数据、向哪个方向传输，以及提前发现冲突。
 
-**执行位置**：主要算法在客户端执行。
+**执行位置**：**完全在客户端本地执行**。服务端不参与握手计算，仅提供一个全量 header 拉取接口供客户端获取远程状态。
 
-**输出**：两个列表 —— **拉取表**（服务端→客户端）、**推送表**（客户端→服务端）。
+**输入**：
+1. 本地数据库全部记录的轻量 header（`status`, `version`, `deleted_at` 等，不含 data）
+2. 服务端通过 `GET /api/sync/get_all_sync_data` 返回的远程全部记录 header
+
+**输出**：三个列表 —— **拉取表**（服务端→客户端）、**推送表**（客户端→服务端）、**冲突表**（需用户介入）
 
 ### 判断逻辑
 
@@ -174,11 +184,23 @@ def handshake(local_records, remote_records):
 
 ### 推送
 
-客户端将 push_list 中的记录完整发送到服务端，服务端按 `id` 覆盖存储，并递增 `version`。
+客户端将 push_list 中的记录通过 `POST /api/sync/upload/<record_id>` 逐条发送到服务端。服务端无论记录是否存在，均执行：
+
+- **version 单调递增**：`server.version = server.version + 1`
+- 用客户端数据覆盖记录内容
+- 返回 `new_version`
+
+客户端收到响应后，**用服务端返回的 `new_version` 覆盖本地 version**，并将 `status` 设为 `'synced'`。
+
+> ⚠️ 客户端不自增 version，而是信任服务端返回的值。服务端是 version 的唯一权威来源，通过单调递增保证其他设备在握手时能检测到变化并拉取。
 
 ### 拉取
 
-服务端将 pull_list 中的完整记录返回给客户端，客户端按 `id` 覆盖本地存储，并更新 `version` 和 `status`。
+客户端通过 `GET /api/sync/download/<record_id>` 逐条获取 pull_list 中的完整记录。客户端：
+
+1. 将服务端返回的完整记录写入本地数据库（按 `id` 覆盖）
+2. 将本地 `version` 更新为服务端的 version
+3. 将本地 `status` 设为 `'synced'`
 
 ---
 
@@ -188,9 +210,10 @@ def handshake(local_records, remote_records):
 
 | 操作 | 客户端更新 | 服务端更新 |
 |------|-----------|-----------|
-| 推送成功 | `status='synced'`, `version++` | `version++` |
+| 推送成功 | `status='synced'`, `version=server.new_version`（接受服务端返回值） | `version++`（始终递增，单调增长） |
 | 拉取成功 | `status='synced'`, `version=remote.version` | 无 |
-| 冲突解决后 | `status='synced'`, `version=max(local,remote)+1` | 同左 |
+| 冲突解决后（保留本地） | 推送本地版本 → `status='synced'`, `version=server.new_version` | `version++` |
+| 冲突解决后（采用远程） | `status='synced'`, `version=remote.version` | 无 |
 
 ---
 
@@ -243,8 +266,20 @@ sequenceDiagram
 
 ### 清理策略
 
-- 当记录的 `deleted_at IS NOT NULL` 且 `status == 'synced'` 时，可在本地安全删除
-- 服务端保留已删除记录（用于传播到其他设备），通过 `purge_synced_deletions` 命令清理
+- 当记录的 `deleted_at IS NOT NULL` 且 `status == 'synced'` 时，可在本地安全真删除
+- **服务端保留已删除记录**（用于传播到其他设备），待所有设备确认后再清理
+
+#### 本地真删除：`purgeSyncedDeletions()`
+
+客户端 RPC 调用 `purge_synced_deletions`（Rust command），删除本地数据库中所有 `deleted_at IS NOT NULL` 且 `status = 'synced'` 的记录。返回每张表删除的条数。
+
+#### 服务端真删除
+
+管理员可通过管理后台或直接操作数据库清理已确认删除的记录。
+
+#### 孤儿记录检查：`checkAndDeleteOrphans()`
+
+用于修复因同步异常产生的孤立记录（如引用了不存在的父记录）。返回已软删除的孤儿记录列表和总检查数。
 
 ---
 
@@ -271,7 +306,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-服务器默认运行在 `http://localhost:5000`。
+服务器默认运行在 `http://localhost:60032`。
 
 ### 环境变量配置
 
@@ -297,7 +332,7 @@ python app.py
 
 ```bash
 pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
+gunicorn -w 4 -b 0.0.0.0:60032 app:app
 ```
 
 **使用 Docker（参考）：**
@@ -307,8 +342,8 @@ FROM python:3.11-slim
 WORKDIR /app
 COPY server/ .
 RUN pip install -r requirements.txt
-EXPOSE 5000
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+EXPOSE 60032
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:60032", "app:app"]
 ```
 
 ### 安全建议
@@ -342,7 +377,7 @@ Android 端与桌面端同时编辑同一条记录时，冲突解决界面会弹
 
 ### 服务器可达性
 
-- Android 设备如果与服务器在同一局域网内，使用内网 IP（如 `http://192.168.1.100:5000`）
+- Android 设备如果与服务器在同一局域网内，使用内网 IP（如 `http://192.168.1.100:60032`）
 - 外网访问需要服务器具备公网 IP 或使用内网穿透工具（如 frp、ngrok）
 - 同步超时默认为 15 秒，弱网环境下可能需要调整
 
@@ -350,45 +385,120 @@ Android 端与桌面端同时编辑同一条记录时，冲突解决界面会弹
 
 ## 📡 API 端点参考
 
-| 方法 | 路径 | 说明 | 请求体 |
-|------|------|------|--------|
+> 所有端点均使用 **HTTP 明文传输**，生产环境建议通过反向代理配置 HTTPS。
+
+| 方法 | 路径 | 说明 | 请求体 / 参数 |
+|------|------|------|--------------|
+| GET | `/health` | 健康检查 | — |
 | POST | `/api/auth/validate` | 验证 auth_key 有效性 | `{ "auth_key": "xxx" }` |
-| POST | `/api/auth/generate` | 生成新 auth_key（管理员） | 空 |
-| POST | `/api/sync/handshake` | 握手协议 | `{ "auth_key": "xxx", "records": [...] }` |
-| POST | `/api/sync/push` | 推送记录到服务端 | `{ "auth_key": "xxx", "records": [...] }` |
-| POST | `/api/sync/pull` | 从服务端拉取记录 | `{ "auth_key": "xxx", "ids": [...] }` |
-| POST | `/api/sync/push_pull` | 合并推送+拉取 | `{ "auth_key": "xxx", "push": [...], "pull_ids": [...] }` |
+| POST | `/api/auth/generate` | 生成新 auth_key（管理员，需 token） | `{ "remark": "可选备注" }` |
+| **GET** | **`/api/sync/get_all_sync_data?auth_key=xxx`** | **拉取全量记录 header（握手输入）** | query param |
+| **POST** | **`/api/sync/upload/<record_id>`** | **推送单条记录到服务端** | `{ auth_key, table_name, version, status, deleted_at, data }` |
+| **GET** | **`/api/sync/download/<record_id>?auth_key=xxx`** | **从服务端拉取单条完整记录** | query param |
 | GET | `/admin` | 管理后台（浏览器访问） | — |
 
-### Handshake 请求格式
+### 握手阶段的数据流（客户端主导）
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  客户端                             服务端                    │
+│                                                             │
+│  1. GET /api/sync/get_all_sync_data ──────────→              │
+│      ?auth_key=xxx                                           │
+│                                     ←─── 返回记录 header[]   │
+│                                                             │
+│  2. 执行 handshake(local_headers, remote_headers)           │
+│     → push_list: string[]  (需要推送的记录 ID)               │
+│     → pull_list: string[]  (需要拉取的记录 ID)               │
+│     → conflicts: ConflictInfo[]  (需要用户处理的冲突)        │
+│                                                             │
+│  ┌─ 推送循环 ──────────────────────────────────────────┐    │
+│  │ for each id in push_list:                            │    │
+│  │   POST /api/sync/upload/<id> ──────────→             │    │
+│  │     body: { auth_key, table_name, version, data }    │    │
+│  │                       ←─── { success, new_version }  │    │
+│  │   更新本地: status='synced', version=new_version     │    │
+│  └──────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─ 拉取循环 ──────────────────────────────────────────┐    │
+│  │ for each id in pull_list:                            │    │
+│  │   GET /api/sync/download/<id> ──────────→            │    │
+│  │      ?auth_key=xxx                                   │    │
+│  │                       ←─── { record: ServerRecord }  │    │
+│  │   更新本地: status='synced', version=remote.version  │    │
+│  └──────────────────────────────────────────────────────┘    │
+│                                                             │
+│  3. 回到步骤 1 重新握手，直到 push_list + pull_list 均为空  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 关键接口详情
+
+#### `GET /api/sync/get_all_sync_data`
+
+拉取当前用户**所有记录的轻量 header**（不含 data 负载），作为客户端握手算法的远程侧输入。
+
+**响应格式：**
+
+```json
+{
+  "all_records": [
+    {
+      "id": "uuid-string",
+      "table_name": "error_questions",
+      "version": 5,
+      "status": "synced",
+      "deleted_at": null,
+      "updated_at": 1700000000000
+    }
+  ]
+}
+```
+
+> ⚠️ 注意：返回的是 `to_header()` 格式，**不含 `data` 字段**。前端 TypeScript 类型 `GetAllSyncDataResponse` 中的 `ServerRecord[]` 在运行时不含 data——拉取完整记录需要通过 `downloadRecord`。
+
+#### `POST /api/sync/upload/<record_id>`
+
+推送单条记录到服务端。服务端根据记录是否存在决定新建（version+1）或覆盖（保持当前 version）。
+
+**请求体：**
 
 ```json
 {
   "auth_key": "uuid-string",
-  "records": {
-    "error_questions": [
-      { "id": "...", "version": 5, "status": "synced", "deleted_at": null, "updated_at": 1700000000 }
-    ],
-    "subjects": [ ... ],
-    "srs_data": [ ... ],
-    "sources": [ ... ],
-    "error_tags": [ ... ],
-    "attachments": [ ... ],
-    "user_config": [ ... ]
-  }
+  "table_name": "error_questions",
+  "version": 5,
+  "status": "synced",
+  "deleted_at": null,
+  "data": { "prompt": "...", "answer": "...", ... }
 }
 ```
 
-### Handshake 响应格式
+**响应：**
 
 ```json
 {
-  "records": {
-    "error_questions": [
-      { "id": "...", "version": 6, "status": "synced", "deleted_at": null, "updated_at": 1700000100 }
-    ],
-    "subjects": [ ... ],
-    ...
+  "success": true,
+  "new_version": 6
+}
+```
+
+#### `GET /api/sync/download/<record_id>`
+
+拉取单条完整记录（含 data）。
+
+**响应：**
+
+```json
+{
+  "record": {
+    "id": "uuid-string",
+    "table_name": "error_questions",
+    "version": 6,
+    "status": "synced",
+    "deleted_at": null,
+    "updated_at": 1700000100000,
+    "data": { "prompt": "...", "answer": "...", ... }
   }
 }
 ```
