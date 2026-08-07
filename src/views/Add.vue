@@ -579,7 +579,10 @@ const saveError = async () => {
         imageUrls.value.map(async (url, index) => {
           try {
             const base64Data = await blobUrlToBase64(url)
-            console.log(`图片 ${index + 1} 转换成功, 长度:`, base64Data?.length || 0)
+            console.log(
+              `图片 ${index + 1} 转换成功, 长度:`,
+              base64Data?.length || 0
+            )
             return {
               question_id: errorQuestion.id,
               type_: 'original',

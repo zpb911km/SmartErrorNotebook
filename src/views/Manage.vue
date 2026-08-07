@@ -376,7 +376,10 @@
       <div>加载中...</div>
     </div>
 
-    <div v-if="!isLoading && filteredErrors.length === 0" class="empty-illustration">
+    <div
+      v-if="!isLoading && filteredErrors.length === 0"
+      class="empty-illustration"
+    >
       <div class="empty-icon"></div>
       <div class="empty-title">暂无错题</div>
       <div class="empty-desc">添加你的第一道错题，开始高效复习吧</div>

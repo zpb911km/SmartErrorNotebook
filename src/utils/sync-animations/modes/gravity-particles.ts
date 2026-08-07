@@ -31,8 +31,8 @@ export class GravityParticles implements AnimationMode {
   private gravityConstant = 0.3
   private damping = 0.98
   private minDist = 5
-  private softening = 20       // 软化参数，消除引力奇点
-  private repulsion = 3        // 短程排斥强度
+  private softening = 20 // 软化参数，消除引力奇点
+  private repulsion = 3 // 短程排斥强度
   private dark = false
 
   init(
@@ -50,9 +50,9 @@ export class GravityParticles implements AnimationMode {
     const count = rng.int(15, 40)
 
     this.gravityConstant = rng.range(0.1, 0.6)
-    this.damping = rng.range(0.99, 0.999)    // 弱阻尼，保留轨道动能
+    this.damping = rng.range(0.99, 0.999) // 弱阻尼，保留轨道动能
     this.minDist = rng.range(5, 15)
-    this.softening = rng.range(12, 30)       // 软化半径
+    this.softening = rng.range(12, 30) // 软化半径
 
     const baseHue = rng.int(0, 360)
     const hueRange = rng.int(40, 120)
@@ -94,12 +94,13 @@ export class GravityParticles implements AnimationMode {
       let vy = rng.range(-1, 1)
       if (distMode === 1 || distMode === 2) {
         // 环/双团模式：添加切向速度，产生轨道运动
-        const cx = distMode === 1 ? width / 2 : (width * 0.5)
+        const cx = distMode === 1 ? width / 2 : width * 0.5
         const cy = height / 2
         const dx = x - cx
         const dy = y - cy
         const d = Math.sqrt(dx * dx + dy * dy) || 1
-        const orbitSpeed = rng.range(0.3, 1.2) * Math.sqrt(this.gravityConstant * 1.5)
+        const orbitSpeed =
+          rng.range(0.3, 1.2) * Math.sqrt(this.gravityConstant * 1.5)
         // 切向 = (-dy, dx) 归一化 × 轨道速度
         vx += (-dy / d) * orbitSpeed
         vy += (dx / d) * orbitSpeed
@@ -150,7 +151,9 @@ export class GravityParticles implements AnimationMode {
         const dy = pj.y - pi.y
 
         // — 软化引力：F = G·m₁·m₂ / (d² + ε²)，消除奇点 —
-        const gravityForce = (currentG * pi.mass * pj.mass) / (d * d + this.softening * this.softening)
+        const gravityForce =
+          (currentG * pi.mass * pj.mass) /
+          (d * d + this.softening * this.softening)
         fx += (gravityForce * dx) / d
         fy += (gravityForce * dy) / d
 

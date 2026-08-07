@@ -153,7 +153,12 @@ export class MorphingShapes implements AnimationMode {
       }
       ctx.closePath()
 
-      ctx.fillStyle = hslToString(hue, s, l + layerT * 15, 0.25 + layerT * 0.15 + progAlphaBoost)
+      ctx.fillStyle = hslToString(
+        hue,
+        s,
+        l + layerT * 15,
+        0.25 + layerT * 0.15 + progAlphaBoost
+      )
       ctx.fill()
 
       // 绘制边缘

@@ -110,12 +110,8 @@ export class WaveInterference implements AnimationMode {
         for (const w of waves) {
           // 相位只用纯时间累积，不受 progress 影响 — 避免跳帧
           const v =
-            Math.sin(
-              x * w.frequencyX + time * w.speed + w.phaseX
-            ) *
-            Math.cos(
-              y * w.frequencyY + time * w.speed * 0.7 + w.phaseY
-            )
+            Math.sin(x * w.frequencyX + time * w.speed + w.phaseX) *
+            Math.cos(y * w.frequencyY + time * w.speed * 0.7 + w.phaseY)
           value += v * w.amplitude * w.weight
         }
 
@@ -168,12 +164,8 @@ export class WaveInterference implements AnimationMode {
         for (const w of waves) {
           // 相位只用纯时间累积，不受 progress 影响
           const v =
-            Math.sin(
-              x * w.frequencyX + time * w.speed + w.phaseX
-            ) *
-            Math.cos(
-              y * w.frequencyY + time * w.speed * 0.7 + w.phaseY
-            )
+            Math.sin(x * w.frequencyX + time * w.speed + w.phaseX) *
+            Math.cos(y * w.frequencyY + time * w.speed * 0.7 + w.phaseY)
           value += v * w.amplitude * w.weight
         }
 

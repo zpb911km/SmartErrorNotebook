@@ -2236,11 +2236,22 @@ async function executeDeleteTag() {
   margin-left: calc(-1 * (var(--col-width) - var(--col-gap)));
 }
 
-.cascade-col-2.show-column { z-index: 10; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15); }
-.cascade-col-3.show-column { z-index: 20; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15); }
-.cascade-col-4.show-column { z-index: 30; box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15); }
+.cascade-col-2.show-column {
+  z-index: 10;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
+.cascade-col-3.show-column {
+  z-index: 20;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
+.cascade-col-4.show-column {
+  z-index: 30;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+}
 
-.cascade-column.active-column { z-index: 100 !important; }
+.cascade-column.active-column {
+  z-index: 100 !important;
+}
 
 /* 大屏（≥769px）：平铺展开，不再层叠 */
 @media (min-width: 769px) {
