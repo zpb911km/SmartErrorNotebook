@@ -623,6 +623,7 @@ pub async fn check_orphan_records(
         total_checked += all_questions.len();
 
         for q in all_questions {
+            if q.subjectid == "".to_string() { continue; }
             let subject_exists = sub::Entity::find_by_id(q.subjectid.clone())
                 .filter(sub::Column::DeletedAt.is_null())
                 .one(db)
@@ -631,16 +632,14 @@ pub async fn check_orphan_records(
                 .is_some();
 
             if !subject_exists {
+                // 不删除找不到科目的题目,全部映射为未知科目(id="")
                 let mut active_model: eq::ActiveModel = q.clone().into();
-                active_model.deleted_at = ActiveValue::Set(Some(now));
+                active_model.subjectid = ActiveValue::Set("".to_string());
                 active_model.updated_at = ActiveValue::Set(now);
-                active_model.version = ActiveValue::Set(q.version);
-                active_model.sync_status = ActiveValue::Set("pending".to_string());
                 active_model
                     .update(db)
                     .await
                     .map_err(|e| format!("Failed to soft delete error_question: {}", e))?;
-                orphan_records_soft_deleted.push(format!("error_question:{}", q.id));
             }
         }
     }

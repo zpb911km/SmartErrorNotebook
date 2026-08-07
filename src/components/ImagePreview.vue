@@ -3,27 +3,26 @@
     <div class="image-preview-container" @click.stop>
       <!-- 关闭按钮 -->
       <button class="close-btn" @click="handleClose" title="关闭">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <Icon name="x" :size="18" />
       </button>
 
       <!-- 图片 -->
-      <div class="image-wrapper" @wheel.capture="handleWheel">
+      <div
+        ref="imageWrapperRef"
+        class="image-wrapper"
+        @wheel.capture="handleWheel"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+      >
         <img
           :src="imageUrl"
           alt="图片预览"
           :class="['preview-image', { 'is-dragging': isDragging }]"
           :style="{
             transform: `scale(${scale}) rotate(${rotation}deg) translate(${translateX}px, ${translateY}px)`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+            transition:
+              isDragging || isPinching ? 'none' : 'transform 0.1s ease-out'
           }"
           @mousedown="handleMouseDown"
           @dblclick="resetAll"
@@ -33,59 +32,35 @@
       <!-- 缩放控制 -->
       <div class="zoom-controls">
         <button class="zoom-btn" @click="zoomIn" title="放大">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            width="18"
-            height="18"
-          >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <Icon name="zoom-in" :size="18" :stroke-width="2.5" />
         </button>
         <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
         <button class="zoom-btn" @click="zoomOut" title="缩小">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            width="18"
-            height="18"
-          >
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
+          <Icon name="zoom-out" :size="18" :stroke-width="2.5" />
         </button>
         <span class="divider"></span>
         <button class="zoom-btn rotate-btn" @click="rotateImage" title="旋转">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            width="18"
-            height="18"
-          >
-            <path
-              d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"
-            />
-          </svg>
+          <Icon name="rotate-cw" :size="18" />
         </button>
         <button class="zoom-btn reset-btn" @click="resetAll" title="重置">
           重置
         </button>
       </div>
 
-      <!-- 提示 -->
-      <div class="zoom-hint">滚轮缩放 · 拖拽平移 · 双击重置</div>
+      <!-- 提示（根据平台动态显示） -->
+      <div class="zoom-hint">
+        {{
+          isTouchDevice
+            ? '双指缩放 · 拖拽平移 · 双击重置'
+            : '滚轮缩放 · 拖拽平移 · 双击重置'
+        }}
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 interface Props {
   visible: boolean
@@ -99,50 +74,49 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-// 缩放比例
+// ─── 缩放与变换状态 ──────────────────────────────────────────
 const scale = ref(1)
-
-// 平移偏移量
 const translateX = ref(0)
 const translateY = ref(0)
-
-// 旋转角度
 const rotation = ref(0)
 
-// 拖拽状态
+// ─── 拖拽状态（桌面鼠标） ─────────────────────────────────────
 const isDragging = ref(false)
 const dragStartX = ref(0)
 const dragStartY = ref(0)
 const initialTranslateX = ref(0)
 const initialTranslateY = ref(0)
 
-// 计算容器尺寸（用于限制拖拽范围）
-const containerSize = ref({ width: 0, height: 0 })
-const imageContainer = ref<HTMLDivElement | null>(null)
+// ─── 触摸状态 ────────────────────────────────────────────────
+const isPinching = ref(false)
+let pinchStartDistance = 0
 
-// 限制拖拽范围，防止图片完全移出可视区域
+// 触摸双击检测
+let lastTapTime = 0
+let lastTapX = 0
+let lastTapY = 0
+
+// 抑制触摸后合成的 mousedown（防止拖拽漂移）
+let suppressNextMouseDown = false
+
+// ─── 容器引用 ────────────────────────────────────────────────
+const imageWrapperRef = ref<HTMLDivElement | null>(null)
+
+// ─── 平台检测（初始化时直接判断，避免 mounted 后闪烁） ─────
+const isTouchDevice = ref(
+  typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+)
+
+// ─── 视图口限制（缩小防移出） ────────────────────────────────
 const clampToViewport = () => {
-  if (!imageContainer.value) return
+  if (!imageWrapperRef.value) return
+  const rect = imageWrapperRef.value.getBoundingClientRect()
 
-  // 获取容器尺寸
-  const rect = imageContainer.value.getBoundingClientRect()
-  containerSize.value = {
-    width: rect.width,
-    height: rect.height
-  }
-
-  // 图片渲染后的实际尺寸（需要根据 viewBox 和 object-fit 估算）
-  // 这里使用一个简化的方法：基于 max-width/max-height: 95%
-  const maxWidth = window.innerWidth * 0.95
-  const maxHeight =
-    window.innerHeight *
-    0.95 *
-    ((window.innerHeight * 0.95) / window.innerWidth || 1)
-
-  // 当缩小时，限制移动范围
+  // 当 scale < 1 时，限制平移范围防止图片完全移出
   if (scale.value < 1) {
-    const maxX = (maxWidth - maxWidth * scale.value) / 2
-    const maxY = (maxHeight - maxHeight * scale.value) / 2
+    const maxX = (rect.width - rect.width * scale.value) / 2
+    const maxY = (rect.height - rect.height * scale.value) / 2
     translateX.value = Math.max(
       -Math.abs(maxX),
       Math.min(Math.abs(maxX), translateX.value)
@@ -154,18 +128,7 @@ const clampToViewport = () => {
   }
 }
 
-// 在组件挂载后和 visible 变化时计算视图口限制
-watch(
-  () => props.visible,
-  () => {
-    if (props.visible) {
-      // 延迟一下确保 DOM 已渲染
-      setTimeout(clampToViewport, 100)
-    }
-  }
-)
-
-// 监听 visible 变化，重置缩放和平移
+// ─── 监听 visible ────────────────────────────────────────────
 watch(
   () => props.visible,
   (newVal) => {
@@ -174,26 +137,25 @@ watch(
       translateX.value = 0
       translateY.value = 0
       rotation.value = 0
+      // 等待 DOM 渲染完成后再计算视图口限制
+      setTimeout(clampToViewport, 100)
     }
   }
 )
 
-// 关闭预览
+// ─── 操作函数 ────────────────────────────────────────────────
 const handleClose = () => {
   emit('close')
 }
 
-// 放大
 const zoomIn = () => {
-  scale.value = Math.min(scale.value * 1.2, 5)
+  scale.value = Math.min(scale.value * 1.2, 10)
 }
 
-// 缩小
 const zoomOut = () => {
   scale.value = Math.max(scale.value / 1.2, 0.1)
 }
 
-// 重置所有状态
 const resetAll = () => {
   scale.value = 1
   translateX.value = 0
@@ -201,21 +163,29 @@ const resetAll = () => {
   rotation.value = 0
 }
 
-// 旋转图片（90 度）
 const rotateImage = () => {
   rotation.value = (rotation.value + 90) % 360
 }
 
-// 滚轮缩放（以屏幕中心为中心）
+// ─── 滚轮缩放 ────────────────────────────────────────────────
 const handleWheel = (e: WheelEvent) => {
   e.preventDefault()
   e.stopPropagation()
   const delta = e.deltaY > 0 ? 0.9 : 1.1
-  scale.value = Math.max(0.1, Math.min(5, scale.value * delta))
+  scale.value = Math.max(0.1, Math.min(10, scale.value * delta))
 }
 
-// 鼠标按下开始拖拽
+// ─── 桌面端鼠标拖拽 ──────────────────────────────────────────
 const handleMouseDown = (e: MouseEvent) => {
+  // 触摸设备上不处理鼠标事件（防止触摸后合成的 mousedown）
+  if (suppressNextMouseDown) {
+    suppressNextMouseDown = false
+    return
+  }
+
+  // 仅左键拖拽
+  if (e.button !== 0) return
+
   e.preventDefault()
   isDragging.value = true
   initialTranslateX.value = translateX.value
@@ -229,7 +199,6 @@ const handleMouseDown = (e: MouseEvent) => {
     translateX.value = initialTranslateX.value + ev.clientX - dragStartX.value
     translateY.value = initialTranslateY.value + ev.clientY - dragStartY.value
 
-    // 缩小时限制拖拽范围
     if (scale.value < 1) {
       clampToViewport()
     }
@@ -245,6 +214,124 @@ const handleMouseDown = (e: MouseEvent) => {
   document.addEventListener('mousemove', onMouseMove, { passive: false })
   document.addEventListener('mouseup', onMouseUp, { passive: true })
 }
+
+// ─── 移动端触摸交互 ──────────────────────────────────────────
+
+/** 提取触摸坐标 */
+const getTouchPos = (e: TouchEvent, index = 0) => {
+  const touch = e.touches[index]
+  return { x: touch.clientX, y: touch.clientY }
+}
+
+/** 计算两指距离 */
+const getPinchDistance = (e: TouchEvent): number => {
+  const t1 = e.touches[0]
+  const t2 = e.touches[1]
+  const dx = t1.clientX - t2.clientX
+  const dy = t1.clientY - t2.clientY
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+const handleTouchStart = (e: TouchEvent) => {
+  // 标记抑制后续合成的 mousedown
+  suppressNextMouseDown = true
+
+  const touchCount = e.touches.length
+
+  if (touchCount === 1) {
+    // ── 单指：检测双击 + 准备拖拽 ──
+    const pos = getTouchPos(e)
+    const now = Date.now()
+    const timeSinceLastTap = now - lastTapTime
+    const distSinceLastTap = Math.sqrt(
+      (pos.x - lastTapX) ** 2 + (pos.y - lastTapY) ** 2
+    )
+
+    if (timeSinceLastTap < 300 && distSinceLastTap < 30) {
+      // 触摸双击 → 重置
+      resetAll()
+      lastTapTime = 0
+      return
+    }
+
+    lastTapTime = now
+    lastTapX = pos.x
+    lastTapY = pos.y
+
+    // 准备拖拽
+    isDragging.value = true
+    isPinching.value = false
+    initialTranslateX.value = translateX.value
+    initialTranslateY.value = translateY.value
+    dragStartX.value = pos.x
+    dragStartY.value = pos.y
+  } else if (touchCount >= 2) {
+    // ── 双指：准备缩放 ──
+    isDragging.value = false
+    isPinching.value = true
+    pinchStartDistance = getPinchDistance(e)
+  }
+}
+
+const handleTouchMove = (e: TouchEvent) => {
+  const touchCount = e.touches.length
+
+  if (touchCount >= 2 && isPinching.value) {
+    // ── 双指缩放（增量式） ──
+    const currentDist = getPinchDistance(e)
+    const ratio = currentDist / pinchStartDistance
+    scale.value = Math.max(0.1, Math.min(10, scale.value * ratio))
+    // 更新参考距离，下一次增量变化
+    pinchStartDistance = currentDist
+  } else if (touchCount === 1 && isDragging.value && !isPinching.value) {
+    // ── 单指拖拽 ──
+    const pos = getTouchPos(e)
+    translateX.value = initialTranslateX.value + pos.x - dragStartX.value
+    translateY.value = initialTranslateY.value + pos.y - dragStartY.value
+
+    if (scale.value < 1) {
+      clampToViewport()
+    }
+  }
+}
+
+const handleTouchEnd = (e: TouchEvent) => {
+  const remainingTouches = e.touches.length
+
+  if (remainingTouches < 2) {
+    isPinching.value = false
+  }
+
+  if (remainingTouches === 0) {
+    // 所有手指离开 → 结束拖拽
+    isDragging.value = false
+  } else if (remainingTouches === 1) {
+    // 从多指恢复到单指 → 重新校准拖拽起点
+    if (isDragging.value) {
+      // 已在拖拽中，不需要重新校准（只有单指才能拖拽）
+    } else {
+      // 从 pinch 恢复为单指，准备继续拖拽
+      const pos = getTouchPos(e)
+      isDragging.value = true
+      isPinching.value = false
+      initialTranslateX.value = translateX.value
+      initialTranslateY.value = translateY.value
+      dragStartX.value = pos.x
+      dragStartY.value = pos.y
+    }
+  }
+
+  // 延迟清除抑制标记，保证合成的 mousedown 被消费
+  setTimeout(() => {
+    suppressNextMouseDown = false
+  }, 400)
+}
+
+// ─── 组件卸载清理 ────────────────────────────────────────────
+onUnmounted(() => {
+  // 防止拖拽过程中卸载导致监听器泄漏（虽然不是最优雅的，但安全）
+  // 实际移除由 mouseup 回调自行处理，此处仅做兜底
+})
 </script>
 
 <style scoped>
@@ -262,6 +349,10 @@ const handleMouseDown = (e: MouseEvent) => {
   z-index: 9999;
   animation: overlayIn 0.25s ease;
   backdrop-filter: blur(4px);
+  /* 防止移动端橡皮筋滚动 */
+  overscroll-behavior: none;
+  /* 阻止浏览器默认的双指缩放页面行为 */
+  touch-action: none;
 }
 
 @keyframes overlayIn {
@@ -312,6 +403,9 @@ const handleMouseDown = (e: MouseEvent) => {
   justify-content: center;
   backdrop-filter: blur(8px);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* 移动端安全区域 */
+  top: max(20px, env(safe-area-inset-top, 0px) + 8px);
+  right: max(20px, env(safe-area-inset-right, 0px) + 8px);
 }
 
 .close-btn svg {
@@ -337,12 +431,26 @@ const handleMouseDown = (e: MouseEvent) => {
   transform: scale(0.95);
 }
 
+/* ===== 图片容器 ===== */
+.image-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  /* 阻止浏览器默认触摸行为（滚动/缩放/长按选择） */
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
 /* ===== 图片 ===== */
 .preview-image {
   max-width: 95vw;
   max-height: 95vh;
   object-fit: contain;
   user-select: none;
+  /* 阻止 iOS 长按弹出菜单 */
+  -webkit-touch-callout: none;
   cursor: grab;
   pointer-events: auto;
   border-radius: 8px;
@@ -372,6 +480,8 @@ const handleMouseDown = (e: MouseEvent) => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   animation: controlsIn 0.4s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* 移动端安全区域 */
+  bottom: max(32px, env(safe-area-inset-bottom, 0px) + 16px);
 }
 
 @keyframes controlsIn {
@@ -469,6 +579,8 @@ const handleMouseDown = (e: MouseEvent) => {
   pointer-events: none;
   animation: hintFade 0.6s 0.6s ease both;
   white-space: nowrap;
+  /* 移动端安全区域 */
+  bottom: max(88px, env(safe-area-inset-bottom, 0px) + 72px);
 }
 
 @keyframes hintFade {
@@ -479,6 +591,25 @@ const handleMouseDown = (e: MouseEvent) => {
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ===== 移动端触控区优化 ===== */
+@media (hover: none) and (pointer: coarse) {
+  .close-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .zoom-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .reset-btn {
+    height: 38px;
+    min-width: 64px;
+    font-size: 13px;
   }
 }
 </style>

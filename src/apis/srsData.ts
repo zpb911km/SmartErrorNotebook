@@ -12,7 +12,7 @@ import { SRSData } from '../types'
  */
 export async function createSRSData(
   questionId: string,
-  difficulty: number
+  difficulty?: number
 ): Promise<SRSData> {
   return await invoke('create_srs_data', {
     input: {

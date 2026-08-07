@@ -371,7 +371,15 @@
       </div>
     </div>
 
-    <div v-if="filteredErrors.length === 0" class="empty-illustration">
+    <div v-if="isLoading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>加载中...</div>
+    </div>
+
+    <div
+      v-if="!isLoading && filteredErrors.length === 0"
+      class="empty-illustration"
+    >
       <div class="empty-icon"></div>
       <div class="empty-title">暂无错题</div>
       <div class="empty-desc">添加你的第一道错题，开始高效复习吧</div>
@@ -387,14 +395,15 @@
     <!-- 导入弹窗 -->
     <ImportModal
       v-if="showImportModal"
-      @close="showImportModal = false"
+      :initial-data="pendingImportData"
+      @close="handleImportModalClose"
       @import-complete="handleImportComplete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getQuestions } from '../apis/errorQuestions'
 import { getSubjects } from '../apis/subjects'
@@ -405,9 +414,11 @@ import {
   getSources
 } from '../apis/sources'
 import { getFullErrorTags } from '../apis/errorTags'
-import { getQuestionSRSStatus, createSRSData } from '../apis/srsData'
+import { createSRSData } from '../apis/srsData'
+import { getAllSRSStatus } from '../apis/srs'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
+import { importStore, clearPendingImport } from '../stores/importStore'
 import type { Subject } from '../types'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
@@ -445,6 +456,7 @@ let blinkTimer: number | null = null
 const errors = ref<any[]>([])
 const subjects = ref<Subject[]>([])
 const availableTags = ref<string[]>([])
+const isLoading = ref(true)
 
 // 错题和标签的映射关系（question_id -> 标签名称数组）
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
@@ -486,9 +498,26 @@ const masterySort = ref<'asc' | 'desc' | 'none'>('none')
 const showExportModal = ref(false)
 const showImportModal = ref(false)
 
+/** 待导入数据直接从全局 importStore 读取 */
+const pendingImportData = computed(() => importStore.pendingData)
+
 // 导入完成后刷新数据
 const handleImportComplete = () => {
+  clearPendingImport()
   fetchData()
+}
+
+// 导入弹窗关闭时，清除待处理数据
+const handleImportModalClose = () => {
+  clearPendingImport()
+  showImportModal.value = false
+}
+
+/** 当全局 store 有数据时，自动弹出导入弹窗 */
+const checkPendingImport = () => {
+  if (importStore.pendingData && !showImportModal.value) {
+    showImportModal.value = true
+  }
 }
 
 // 计算选中的科目名称
@@ -828,6 +857,7 @@ const handleTriggerBlink = () => {
 
 // 从数据库获取数据
 const fetchData = async () => {
+  isLoading.value = true
   try {
     // 并行获取科目、错题、标签和来源数据
     const [subjectsData, questionsData, tagsData, sourcesData] =
@@ -842,41 +872,38 @@ const fetchData = async () => {
     // 后端返回的数据包含 created_at 和 updated_at 等额外字段
     errors.value = questionsData as any[]
 
-    // 批量获取 SRS 数据
+    // 批量获取 SRS 数据（一次查询取代 N+1）
     console.log('开始获取 SRS 数据...')
     const srsMap = new Map<string, any>()
     const questionsWithoutSRS: any[] = []
 
-    const srsPromises = questionsData.map(async (question: any) => {
-      try {
-        const srsData = await getQuestionSRSStatus(question.id)
-        if (srsData) {
-          srsMap.set(question.id, srsData)
-          console.log(`题目 ${question.id} 的 SRS 数据:`, {
-            difficulty: srsData.difficulty,
-            stability: srsData.stability,
-            recall_rate: srsData.recall_rate,
-            review_count: srsData.review_count
-          })
-        } else {
-          console.warn(`题目 ${question.id} 没有 SRS 数据，将自动创建`)
-          questionsWithoutSRS.push(question)
-        }
-      } catch (error) {
-        console.warn(`获取题目 ${question.id} 的 SRS 数据失败:`, error)
+    const allSRS = await getAllSRSStatus()
+    for (const srs of allSRS) {
+      srsMap.set(srs.question_id, srs)
+      srs.question_id &&
+        console.log(`题目 ${srs.question_id} 的 SRS 数据:`, {
+          difficulty: srs.difficulty,
+          stability: srs.stability,
+          recall_rate: srs.recall_rate,
+          review_count: srs.review_count
+        })
+    }
+
+    // 找出缺少 SRS 数据的题目
+    for (const question of questionsData) {
+      if (!srsMap.has(question.id)) {
+        console.warn(`题目 ${question.id} 没有 SRS 数据，将自动创建`)
         questionsWithoutSRS.push(question)
       }
-    })
-
-    await Promise.all(srsPromises)
+    }
 
     // 为没有 SRS 数据的题目创建 SRS 数据
     if (questionsWithoutSRS.length > 0) {
       console.log(`开始为 ${questionsWithoutSRS.length} 个题目创建 SRS 数据...`)
       const createPromises = questionsWithoutSRS.map(async (question: any) => {
         try {
-          // 使用默认难度 5.0（中等）
-          const srsData = await createSRSData(question.id, 5.0)
+          // 使用 FSRS-5 默认初始难度
+          const srsData = await createSRSData(question.id)
           srsMap.set(question.id, srsData)
           console.log(`为题目 ${question.id} 创建 SRS 数据成功:`, srsData)
         } catch (error) {
@@ -945,6 +972,8 @@ const fetchData = async () => {
     errors.value = []
     subjects.value = []
     availableTags.value = []
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -1001,15 +1030,6 @@ const getDifficultyClass = (level: number) => {
 }
 
 // 获取复习状态（基于 SRS 数据）
-const getReviewStatus = (_questionId: string) => {
-  // TODO: 从 SRS 数据中获取实际状态
-  // 目前返回默认值
-  return {
-    status: 'pending',
-    statusText: '待复习'
-  }
-}
-
 // 获取科目样式
 const getSubjectStyle = (subjectId: string) => {
   const subject = subjects.value.find((s) => s.id === subjectId)
@@ -1150,7 +1170,22 @@ onMounted(() => {
   window.addEventListener('trigger-search-blink', handleTriggerBlink)
   // 加载数据
   fetchData()
+
+  // 检查全局 store 中是否有待导入数据
+  checkPendingImport()
 })
+
+// 监听路由 query 变化：App.vue 跳转过来时设置 import=1
+watch(
+  () => route.query.import,
+  (val) => {
+    if (val === '1') {
+      checkPendingImport()
+      // 清除 query 参数，刷新可重复触发
+      router.replace({ query: { ...route.query, import: undefined } })
+    }
+  }
+)
 
 onUnmounted(() => {
   if (blinkTimer) {
@@ -1170,7 +1205,6 @@ const filteredErrors = computed(() => {
     .map((question: any) => {
       const subject = subjects.value.find((s) => s.id === question.subjectid)
       const difficulty = getDifficultyLevel(question.id)
-      const { status, statusText } = getReviewStatus(question.id)
 
       // 通过错题的 source_id 获取来源信息
       // question.sourceid 是来源表的主键 ID
@@ -1196,8 +1230,6 @@ const filteredErrors = computed(() => {
         // 后端返回的是秒级时间戳
         date: formatDate(question.updated_at || question.created_at || 0),
         timestamp: question.updated_at || question.created_at || 0,
-        status,
-        statusText,
         // 来源信息
         book: sourceInfo.book,
         chapter: sourceInfo.chapter,
@@ -2140,6 +2172,33 @@ const viewError = (error: any) => {
 .empty-state p {
   font-size: 16px;
   margin: 0;
+}
+
+/* ========== 加载状态 ========== */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
 

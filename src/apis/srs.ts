@@ -21,10 +21,12 @@ export interface CreateSRSInput {
 export interface SubmitReviewInput {
   /** 错题 ID */
   question_id: string
-  /** 用户反馈值 [0, 1] */
-  /** 0: 清除所有 SRS 状态，当作新卡片从头来过 */
-  /** 1: 直接视为熟记，以后不用再复习 */
-  /** (0, 1): 连续反馈值 */
+  /** 用户连续反馈值 [0, 1]，映射到 FSRS-5 四级评分：
+   *  [0.0, 0.2) → Again(1) — 遗忘路径 (post-lapse stability)
+   *  [0.2, 0.6) → Hard(2) — 成功路径，惩罚性增长
+   *  [0.6, 0.9) → Good(3) — 成功路径，标准增长
+   *  [0.9, 1.0] → Easy(4) — 成功路径，奖励性增长
+   *  边界值：0.0 = 重置为新卡片，1.0 = 永久记忆 */
   feedback: number
 }
 

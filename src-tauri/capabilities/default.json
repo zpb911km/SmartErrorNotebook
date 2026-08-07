@@ -24,6 +24,8 @@
     "dialog:allow-open",
     "fs:allow-appcache-write",
     "fs:allow-appcache-write-recursive",
+    "fs:allow-appcache-read",
+    "fs:allow-appcache-read-recursive",
     "fs:scope-appcache",
     "fs:allow-write-text-file",
     "share:allow-share-file",

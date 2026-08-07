@@ -155,12 +155,16 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 /**
- * 将 blob URL 转换为 base64 字符串
- * @param blobUrl blob URL
+ * 将 blob URL 或 data URL 转换为 base64 字符串
+ * @param url blob URL 或 data URL
  * @returns base64 编码的字符串（不包含 data URL 前缀）
  */
-export async function blobUrlToBase64(blobUrl: string): Promise<string> {
-  const response = await fetch(blobUrl)
+export async function blobUrlToBase64(url: string): Promise<string> {
+  // 如果已经是 data URL，直接提取 base64 部分，避免 fetch 的额外开销和潜在兼容性问题
+  if (url.startsWith('data:')) {
+    return url.split(',')[1]
+  }
+  const response = await fetch(url)
   const blob = await response.blob()
   return new Promise((resolve, reject) => {
     const reader = new FileReader()

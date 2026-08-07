@@ -37,7 +37,19 @@
           class="notification__close"
           @click="removeNotification(notification.id)"
         >
-          <Icon name="x" :size="16" />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
         </button>
       </div>
     </transition-group>
@@ -109,9 +121,11 @@ defineExpose({
 .notification-container {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9999;
-  max-width: 400px;
+  max-width: 420px;
+  width: 90vw;
 }
 
 .notification-wrapper {
@@ -129,7 +143,7 @@ defineExpose({
   background: var(--card-bg);
   min-width: 300px;
   max-width: 100%;
-  animation: slideInRight 0.3s ease-out;
+  animation: slideIn 0.3s ease-out;
   border-left: 4px solid var(--primary-color);
 }
 
@@ -179,49 +193,51 @@ defineExpose({
 
 .notification__close {
   cursor: pointer;
-  background: none;
+  background: var(--bg-tertiary);
   border: none;
   padding: 4px;
-  color: var(--text-disabled);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .notification__close:hover {
-  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 /* 过渡动画 */
-.notification-enter-active,
+.notification-enter-active {
+  transition: all 0.3s ease;
+  opacity: 1;
+}
+
 .notification-leave-active {
   transition: all 0.3s ease;
-  transform: translateX(0);
   opacity: 1;
 }
 
 .notification-enter-from {
-  transform: translateX(100%);
   opacity: 0;
+  transform: translateY(-20px);
 }
 
 .notification-leave-to {
-  transform: translateX(100%);
   opacity: 0;
-  position: absolute;
-  width: 100%;
+  transform: translateY(-20px);
 }
 
-@keyframes slideInRight {
+@keyframes slideIn {
   from {
-    transform: translateX(100%);
     opacity: 0;
+    transform: translateY(-20px);
   }
   to {
-    transform: translateX(0);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

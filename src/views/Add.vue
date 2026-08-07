@@ -179,7 +179,7 @@
     <div class="action-buttons">
       <button class="btn cancel" @click="resetForm">取消</button>
       <button class="btn save" @click="saveError" :disabled="isSaving">
-        保存
+        {{ isSaving ? '保存中…' : '保存' }}
       </button>
     </div>
   </div>
@@ -202,6 +202,7 @@ import {
 } from '../apis/attachments'
 import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
+import { llm } from '../services/llm'
 import { getSubjects } from '../apis'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 import { getSharedData, clearSharedData } from '../services/shareStore'
@@ -279,9 +280,28 @@ const inquiryAI = async () => {
   analysisLoading.value = true
   aiButtonLoading.value = true
 
+  // 检查 AI 是否已配置
+  if (!llm.isConfigured()) {
+    showError(
+      'AI 未配置',
+      '请先在「设置」中配置 AI 服务（API 地址、密钥和模型）'
+    )
+    subjectLoading.value = false
+    promptLoading.value = false
+    typeLoading.value = false
+    answerLoading.value = false
+    analysisLoading.value = false
+    aiButtonLoading.value = false
+    return
+  }
+
+  // 记录是否有查询成功
+  let anySuccess = false
+
   // 创建所有查询的Promise
   const subjectPromise = inquiryAIAddInfo(imageUrls.value, ['subject'])
     .then((result) => {
+      if (result[0]?.success) anySuccess = true
       const subjectName = result[0]?.parsedContent?.subject || ''
       if (subjectName) {
         return getSubjects()
@@ -305,6 +325,7 @@ const inquiryAI = async () => {
 
   const promptPromise = inquiryAIAddInfo(imageUrls.value, ['question_text'])
     .then((result) => {
+      if (result[0]?.success) anySuccess = true
       form.value.prompt = result[0]?.parsedContent || ''
     })
     .finally(() => {
@@ -313,6 +334,7 @@ const inquiryAI = async () => {
 
   const typePromise = inquiryAIAddInfo(imageUrls.value, ['question_type'])
     .then((result) => {
+      if (result[0]?.success) anySuccess = true
       form.value.type = result[0]?.parsedContent?.questionType || ''
     })
     .finally(() => {
@@ -321,6 +343,7 @@ const inquiryAI = async () => {
 
   const answerPromise = inquiryAIAddInfo(imageUrls.value, ['answer'])
     .then((result) => {
+      if (result[0]?.success) anySuccess = true
       form.value.answer = result[0]?.parsedContent || ''
     })
     .finally(() => {
@@ -329,6 +352,7 @@ const inquiryAI = async () => {
 
   const analysisPromise = inquiryAIAddInfo(imageUrls.value, ['analysis'])
     .then((result) => {
+      if (result[0]?.success) anySuccess = true
       form.value.analysis = result[0]?.parsedContent || ''
     })
     .finally(() => {
@@ -344,14 +368,18 @@ const inquiryAI = async () => {
       answerPromise,
       analysisPromise
     ])
-    console.log('AI查询完成，表单已更新:', {
-      subject: form.value.subject,
-      prompt: form.value.prompt,
-      type: form.value.type,
-      answer: form.value.answer,
-      analysis: form.value.analysis
-    })
-    showSuccess('获取成功', '已自动填充题目信息')
+    if (anySuccess) {
+      console.log('AI查询完成，表单已更新:', {
+        subject: form.value.subject,
+        prompt: form.value.prompt,
+        type: form.value.type,
+        answer: form.value.answer,
+        analysis: form.value.analysis
+      })
+      showSuccess('获取成功', '已自动填充题目信息')
+    } else {
+      showError('AI 查询失败', '请检查 AI 配置是否正确，或网络连接是否正常')
+    }
   } catch (error) {
     console.error('AI查询失败:', error)
     showError('错误', 'AI查询失败: ' + error)
@@ -497,6 +525,9 @@ const resetForm = () => {
 
 // 保存错题
 const saveError = async () => {
+  // 防止重复提交
+  if (isSaving.value) return
+
   // 验证必填字段
   if (!form.value.subject) {
     // 弹窗询问是否继续
@@ -511,9 +542,11 @@ const saveError = async () => {
   }
 
   isSaving.value = true
+  console.log('开始保存错题，图片数量:', imageUrls.value.length)
 
   try {
     // 1. 创建错题
+    console.log('正在创建错题...')
     const errorQuestion = await createErrorQuestion({
       user_id: 'current_user', // TODO: 从用户状态获取
       subject_id: form.value.subject,
@@ -524,21 +557,32 @@ const saveError = async () => {
       analysis: form.value.analysis || undefined,
       error_note: form.value.error_note || undefined
     })
+    console.log('错题创建成功, id:', errorQuestion.id)
 
     // 2. 批量创建错因标签
     if (form.value.error_tags.length > 0) {
       await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags)
     }
 
-    // 3. 创建SRS数据
-    await createSRSData(errorQuestion.id, form.value.difficulty)
+    // 3. 创建SRS数据（失败不阻塞保存流程，可在复习时重新生成）
+    try {
+      await createSRSData(errorQuestion.id, form.value.difficulty)
+      console.log('SRS数据创建成功')
+    } catch (srsErr) {
+      console.warn('SRS数据创建失败（不影响错题保存）:', srsErr)
+    }
 
     // 4. 批量上传图片
     if (imageUrls.value.length > 0) {
+      console.log('正在处理图片上传...')
       const attachmentsData = await Promise.all(
         imageUrls.value.map(async (url, index) => {
           try {
             const base64Data = await blobUrlToBase64(url)
+            console.log(
+              `图片 ${index + 1} 转换成功, 长度:`,
+              base64Data?.length || 0
+            )
             return {
               question_id: errorQuestion.id,
               type_: 'original',
@@ -552,16 +596,23 @@ const saveError = async () => {
         })
       )
 
+      console.log('正在调用后端保存图片...')
       await createAttachmentsForQuestion(errorQuestion.id, attachmentsData)
+      console.log('图片保存完成')
+    } else {
+      console.log('没有图片需要保存')
     }
+    // 保存成功后重置表单
+    const savedImgCount = imageUrls.value.length
+    const savedTagCount = form.value.error_tags.length
+    resetForm()
     showInfo(
       '错题添加成功',
-      `已保存 ${imageUrls.value.length} 张错题图片${form.value.error_tags.length > 0 ? `，${form.value.error_tags.length} 个错因标签` : ''}`
+      `已保存 ${savedImgCount} 张错题图片${savedTagCount > 0 ? `，${savedTagCount} 个错因标签` : ''}`
     )
-    // 重置表单
-    resetForm()
   } catch (e) {
-    console.log(e)
+    console.error('保存错题失败:', e)
+    showError('保存失败', '请检查网络连接后重试')
   } finally {
     isSaving.value = false
   }

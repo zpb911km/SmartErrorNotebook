@@ -106,32 +106,10 @@
         </div>
         <div class="arco-carousel-arrow">
           <div class="arco-carousel-arrow-left">
-            <svg
-              viewBox="0 0 48 48"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              stroke="currentColor"
-              class="arco-icon arco-icon-left"
-              stroke-width="4"
-              stroke-linecap="butt"
-              stroke-linejoin="miter"
-            >
-              <path d="M32 8.4 16.444 23.956 32 39.513"></path>
-            </svg>
+            <Icon name="chevron-left" :size="24" />
           </div>
           <div class="arco-carousel-arrow-right">
-            <svg
-              viewBox="0 0 48 48"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              stroke="currentColor"
-              class="arco-icon arco-icon-right"
-              stroke-width="4"
-              stroke-linecap="butt"
-              stroke-linejoin="miter"
-            >
-              <path d="m16 39.513 15.556-15.557L16 8.4"></path>
-            </svg>
+            <Icon name="chevron-right" :size="24" />
           </div>
         </div>
       </div>

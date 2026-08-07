@@ -347,21 +347,12 @@ const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
       <span class="selected-text">
         {{ selectedText }}
       </span>
-      <svg
+      <Icon
+        name="chevron-down"
+        :size="16"
         class="arrow-icon"
         :class="{ rotated: isExpanded }"
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
+      />
     </div>
 
     <!-- 多列下拉面板 -->

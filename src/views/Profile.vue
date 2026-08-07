@@ -8,16 +8,7 @@
 
     <!-- 错误状态 -->
     <div v-else-if="loadError" class="error-state">
-      <svg
-        viewBox="0 0 48 48"
-        fill="none"
-        class="error-icon"
-        stroke="currentColor"
-        stroke-width="4"
-      >
-        <circle cx="24" cy="24" r="20" />
-        <path d="M24 14v12m0 8v0" />
-      </svg>
+      <Icon name="circle-alert" :size="48" class="error-icon" />
       <div class="error-description">{{ loadError }}</div>
       <button class="retry-btn" @click="loadData">重试</button>
     </div>
@@ -64,7 +55,7 @@
       <!-- SRS 详细指标 -->
       <div class="stats-row">
         <div v-scroll-reveal="{ delay: 100 }" class="stat-item">
-          <div class="stat-label">平均稳定性</div>
+          <div class="stat-label">平均记忆强度</div>
           <div class="stat-value">
             {{ srsStats.avg_stability.toFixed(1) }} 天
           </div>
@@ -72,6 +63,7 @@
         <div v-scroll-reveal="{ delay: 180 }" class="stat-item">
           <div class="stat-label">平均难度</div>
           <div class="stat-value">{{ srsStats.avg_difficulty.toFixed(2) }}</div>
+          <div class="stat-sub">范围 [1, 10]，越高越难</div>
         </div>
         <div v-scroll-reveal="{ delay: 260 }" class="stat-item">
           <div class="stat-label">累计复习</div>
@@ -1031,7 +1023,7 @@ const heatmapData = computed<HeatmapRow[]>(() => {
     const name = subjectNameMap.get(subjId) || '未分类'
     rows.push({
       subject: name,
-      subjectShort: name.length > 4 ? name.slice(0, 4) + '…' : name,
+      subjectShort: name,
       buckets,
       total: diffs.length
     })
@@ -1125,27 +1117,27 @@ const intervalBuckets = computed<IntervalBucket[]>(() => {
   const now = Math.floor(Date.now() / 1000)
 
   const buckets: IntervalBucket[] = [
+    { label: '新卡片', count: 0, color: '#bdbdbd' },
     { label: '已到期', count: 0, color: '#ef5350' },
     { label: '1-3天', count: 0, color: '#ff9800' },
     { label: '4-7天', count: 0, color: '#ffc107' },
     { label: '8-14天', count: 0, color: '#66bb6a' },
     { label: '15-30天', count: 0, color: '#42a5f5' },
-    { label: '30天+', count: 0, color: '#7e57c2' },
-    { label: '新卡片', count: 0, color: '#bdbdbd' }
+    { label: '30天+', count: 0, color: '#7e57c2' }
   ]
 
   for (const card of allCards.value) {
-    if (card.review_count === 0 || card.next_review_at === null) {
-      buckets[6].count++ // 新卡片
+    if (card.review_count <= 1 || card.next_review_at === null) {
+      buckets[0].count++ // 新卡片（FSRS-5 初始 review_count=1）
       continue
     }
     const daysUntil = (card.next_review_at - now) / 86400
-    if (daysUntil <= 0) buckets[0].count++
-    else if (daysUntil <= 3) buckets[1].count++
-    else if (daysUntil <= 7) buckets[2].count++
-    else if (daysUntil <= 14) buckets[3].count++
-    else if (daysUntil <= 30) buckets[4].count++
-    else buckets[5].count++
+    if (daysUntil <= 0) buckets[1].count++
+    else if (daysUntil <= 3) buckets[2].count++
+    else if (daysUntil <= 7) buckets[3].count++
+    else if (daysUntil <= 14) buckets[4].count++
+    else if (daysUntil <= 30) buckets[5].count++
+    else buckets[6].count++
   }
 
   return buckets
@@ -2115,10 +2107,15 @@ async function executeDeleteTag() {
   padding-bottom: 100px;
   background: var(--bg-primary);
   min-height: 100vh;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+@media (min-width: 769px) {
+  .profile-page {
+    gap: 40px;
+  }
 }
 
 /* 级联容器 */
@@ -2208,12 +2205,12 @@ async function executeDeleteTag() {
   display: flex;
   position: relative;
   overflow: visible;
-  /* 默认列宽 160px，间距 80px；JS 在列展开触边时动态缩小间距 */
+  /* 小屏层叠参数 */
   --col-width: 160px;
   --col-gap: 80px;
 }
 
-/* 级联列 */
+/* 级联列 - 小屏：层叠重叠 */
 .cascade-column {
   flex: 0 0 var(--col-width);
   width: var(--col-width);
@@ -2228,13 +2225,11 @@ async function executeDeleteTag() {
   overflow-y: auto;
 }
 
-/* 第一列 - 基准列 */
 .cascade-col-1 {
   border-left: none;
   z-index: 1;
 }
 
-/* 第二列及之后：用负 margin 自然层叠，随视口平滑变化 */
 .cascade-col-2,
 .cascade-col-3,
 .cascade-col-4 {
@@ -2245,20 +2240,41 @@ async function executeDeleteTag() {
   z-index: 10;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
-
 .cascade-col-3.show-column {
   z-index: 20;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
-
 .cascade-col-4.show-column {
   z-index: 30;
   box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 活动列确保在最上层 */
 .cascade-column.active-column {
   z-index: 100 !important;
+}
+
+/* 大屏（≥769px）：平铺展开，不再层叠 */
+@media (min-width: 769px) {
+  .cascade-column {
+    flex: 0 0 clamp(140px, 18vw, 260px);
+    width: clamp(140px, 18vw, 260px);
+    position: static;
+    z-index: auto;
+    margin-left: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .cascade-column:first-child {
+    padding-left: 8px;
+  }
+
+  .cascade-column:last-child {
+    border-right: none;
+  }
+
+  .cascade-column.show-column {
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08) !important;
+  }
 }
 
 /* 列标题 */
@@ -2696,12 +2712,25 @@ async function executeDeleteTag() {
   color: var(--text-primary);
 }
 
+.stat-sub {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  opacity: 0.7;
+}
+
 /* ========== 图表公用 ========== */
 .chart-section {
   background: var(--card-bg);
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 769px) {
+  .chart-section {
+    padding: 32px;
+  }
 }
 
 .chart-section h3 {
@@ -3094,7 +3123,7 @@ async function executeDeleteTag() {
 .delete-confirm-modal h3 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #757575;
   margin-bottom: 12px;
 }
 

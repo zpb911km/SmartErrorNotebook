@@ -72,7 +72,7 @@
       </div>
 
       <!-- LLM 测试 -->
-      <div class="setting-item">
+      <!-- <div class="setting-item">
         <div class="setting-info">
           <Icon name="flask-conical" :size="22" class="setting-icon" />
           <div class="setting-name">LLM 测试</div>
@@ -80,7 +80,7 @@
         <div class="setting-action">
           <button class="config-btn" @click="openLLMTest">测试</button>
         </div>
-      </div>
+      </div> -->
 
       <!-- AI 提示词设置 -->
       <div class="setting-item">
@@ -96,7 +96,7 @@
       </div>
 
       <!--- Markdown 渲染测试-->
-      <div class="setting-item">
+      <!-- <div class="setting-item">
         <div class="setting-info">
           <Icon name="file-text" :size="22" class="setting-icon" />
           <div class="setting-name">Markdown 渲染测试</div>
@@ -106,7 +106,18 @@
             测试
           </button>
         </div>
-      </div>
+      </div> -->
+
+      <!-- 同步动画测试 -->
+      <!-- <div class="setting-item">
+        <div class="setting-info">
+          <Icon name="sparkles" :size="22" class="setting-icon" />
+          <div class="setting-name">同步等待动画测试</div>
+        </div>
+        <div class="setting-action">
+          <button class="config-btn" @click="openSyncAnimTest">测试</button>
+        </div>
+      </div> -->
 
       <!-- 数据清理 -->
       <div class="setting-item">
@@ -256,12 +267,70 @@
           </div>
         </div>
       </div>
+
+      <!-- 同步动画测试对话框 -->
+      <div
+        v-if="showSyncAnimTest"
+        class="modal-overlay"
+        @click="closeSyncAnimTest"
+      >
+        <div class="modal sync-anim-modal" @click.stop>
+          <div class="modal-header">
+            <h3>同步等待动画测试</h3>
+            <button class="close-btn" @click="closeSyncAnimTest">
+              <Icon name="x" :size="18" />
+            </button>
+          </div>
+          <div class="modal-body">
+            <p class="anim-test-desc">
+              每次同步会随机选择一种动画，共 7 种模式：
+            </p>
+            <div class="anim-grid">
+              <div
+                v-for="(mode, idx) in animTestModes"
+                :key="mode.name"
+                class="anim-cell"
+              >
+                <div class="anim-cell__label">{{ mode.label }}</div>
+                <div class="anim-cell__canvas-wrap">
+                  <canvas
+                    :ref="
+                      (el) =>
+                        setAnimCanvasRef(idx, el as HTMLCanvasElement | null)
+                    "
+                    :width="animCanvasSize"
+                    :height="animCanvasSize"
+                    class="anim-cell__canvas"
+                  />
+                  <div class="anim-cell__progress-tag">{{ mode.status }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeSyncAnimTest">
+              关闭
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import {
+  ParticleFlowField,
+  WaveInterference,
+  GravityParticles,
+  FractalRotation,
+  OrbitRings,
+  MorphingShapes,
+  BubbleSwirl
+} from '../utils/sync-animations'
+import type { AnimationMode } from '../utils/sync-animations'
+import { isDarkTheme } from '../utils/sync-animations/utils'
 import { llm } from '../services'
 import PromptEditor from '../components/PromptEditor.vue'
 import { checkAndDeleteOrphans, purgeSyncedDeletions } from '../apis/sync'
@@ -478,6 +547,247 @@ const clearTestChat = () => {
   testStatus.value = 'idle'
 }
 
+/* ── 同步动画测试 ── */
+
+interface AnimTestItem {
+  name: string
+  label: string
+  status: string
+  instance: AnimationMode | null
+  canvas: HTMLCanvasElement | null
+  rafId: number | null
+  seed: number
+}
+
+const showSyncAnimTest = ref(false)
+const animCanvasSize = 160
+const animTestModes: AnimTestItem[] = [
+  {
+    name: 'particle-flow',
+    label: '粒子流场 🌊',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  },
+  {
+    name: 'wave-interference',
+    label: '波形干扰 🌈',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  },
+  {
+    name: 'gravity-particles',
+    label: '引力粒子 ✨',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  },
+  {
+    name: 'fractal-rotation',
+    label: '几何分形 🔷',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  },
+  {
+    name: 'orbit-rings',
+    label: '轨道环 🪐',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  },
+  {
+    name: 'morphing-shapes',
+    label: '形态变形 🎨',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  },
+  {
+    name: 'bubble-swirl',
+    label: '气泡漩涡 🫧',
+    status: '...',
+    instance: null,
+    canvas: null,
+    rafId: null,
+    seed: 0
+  }
+]
+
+const MODE_CLASSES: Record<string, new () => AnimationMode> = {
+  'particle-flow': ParticleFlowField,
+  'wave-interference': WaveInterference,
+  'gravity-particles': GravityParticles,
+  'fractal-rotation': FractalRotation,
+  'orbit-rings': OrbitRings,
+  'morphing-shapes': MorphingShapes,
+  'bubble-swirl': BubbleSwirl
+}
+
+function setAnimCanvasRef(idx: number, el: HTMLCanvasElement | null) {
+  if (!el) return
+  animTestModes[idx].canvas = el
+}
+
+function openSyncAnimTest() {
+  showSyncAnimTest.value = true
+  nextTick(() => {
+    startAllAnimations()
+  })
+}
+
+function closeSyncAnimTest() {
+  stopAllAnimations()
+  showSyncAnimTest.value = false
+}
+
+function startAllAnimations() {
+  for (let i = 0; i < animTestModes.length; i++) {
+    const item = animTestModes[i]
+    const canvas = item.canvas
+    if (!canvas) {
+      item.status = '❌ Canvas 未挂载'
+      continue
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      item.status = '❌ 无法获取 2D 上下文'
+      continue
+    }
+
+    // 停止之前的动画
+    stopOneAnimation(i)
+
+    const Constructor = MODE_CLASSES[item.name]
+    if (!Constructor) {
+      item.status = '❌ 未找到模式类'
+      continue
+    }
+
+    const instance = new Constructor()
+    const seed = Date.now() ^ (i * 999991) ^ Math.floor(Math.random() * 1000000)
+    item.seed = seed
+    item.instance = instance
+    item.status = '▶ 运行中'
+
+    try {
+      instance.init(ctx, animCanvasSize, animCanvasSize, seed)
+
+      let frameCount = 0
+      const loop = () => {
+        if (!item.instance || !item.canvas) return
+        const ctx2 = item.canvas.getContext('2d')
+        if (!ctx2) return
+
+        // 模拟进度：3 秒内从 0 到 1
+        const progress = Math.min(frameCount / 180, 1)
+        const dark = isDarkTheme()
+
+        item.instance.update(progress, dark)
+        item.instance.draw(ctx2)
+
+        frameCount++
+        if (frameCount < 360) {
+          // 最多跑 ~6 秒
+          item.rafId = requestAnimationFrame(loop)
+        } else {
+          item.status = '✅ 完成'
+          // 循环重新开始
+          restartOneAnimation(i)
+        }
+      }
+
+      item.rafId = requestAnimationFrame(loop)
+    } catch (err) {
+      item.status = `❌ ${err instanceof Error ? err.message : '未知错误'}`
+      console.error(`动画 ${item.name} 启动失败:`, err)
+    }
+  }
+}
+
+function restartOneAnimation(idx: number) {
+  const item = animTestModes[idx]
+  if (!item.canvas) return
+
+  const ctx = item.canvas.getContext('2d')
+  if (!ctx) return
+
+  const Constructor = MODE_CLASSES[item.name]
+  if (!Constructor) return
+
+  // 清理旧实例
+  if (item.instance) {
+    item.instance.destroy()
+  }
+
+  const instance = new Constructor()
+  const seed = Date.now() ^ (idx * 999991) ^ Math.floor(Math.random() * 1000000)
+  item.seed = seed
+  item.instance = instance
+  item.status = '▶ 运行中'
+
+  try {
+    instance.init(ctx, animCanvasSize, animCanvasSize, seed)
+
+    let frameCount = 0
+    const loop = () => {
+      if (!item.instance || !item.canvas) return
+      const ctx2 = item.canvas.getContext('2d')
+      if (!ctx2) return
+
+      const progress = Math.min(frameCount / 180, 1)
+      const dark = isDarkTheme()
+
+      item.instance.update(progress, dark)
+      item.instance.draw(ctx2)
+
+      frameCount++
+      if (frameCount < 360) {
+        item.rafId = requestAnimationFrame(loop)
+      } else {
+        item.status = '✅ 完成'
+        restartOneAnimation(idx)
+      }
+    }
+
+    item.rafId = requestAnimationFrame(loop)
+  } catch (err) {
+    item.status = `❌ ${err instanceof Error ? err.message : '未知错误'}`
+    console.error(`动画 ${item.name} 重启动失败:`, err)
+  }
+}
+
+function stopOneAnimation(idx: number) {
+  const item = animTestModes[idx]
+  if (item.rafId !== null) {
+    cancelAnimationFrame(item.rafId)
+    item.rafId = null
+  }
+  if (item.instance) {
+    item.instance.destroy()
+    item.instance = null
+  }
+}
+
+function stopAllAnimations() {
+  for (let i = 0; i < animTestModes.length; i++) {
+    stopOneAnimation(i)
+  }
+}
+
 // 确认并执行清理
 const confirmPurge = async () => {
   const ok = confirm('确定要清理所有已同步且已软删除的记录吗？此操作不可恢复！')
@@ -542,6 +852,9 @@ onUnmounted(() => {
       .removeEventListener('change', handleSystemThemeChange)
   }
 })
+// 保留测试副入口（未在模板中直接引用，但作为手动调试入口保留）
+void openLLMTest
+void openSyncAnimTest
 </script>
 
 <style scoped>
@@ -1083,6 +1396,73 @@ input:active + .toggle-label:before {
   font-size: 14px;
   color: var(--text-secondary);
   line-height: 1.6;
+}
+
+/* ── 同步动画测试 ── */
+
+.sync-anim-modal {
+  width: 95%;
+  max-width: 620px;
+  max-height: 90vh;
+}
+
+.anim-test-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 16px 0;
+  line-height: 1.6;
+}
+
+.anim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  justify-items: center;
+}
+
+.anim-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.anim-cell__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.anim-cell__canvas-wrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.anim-cell__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.anim-cell__progress-tag {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+  line-height: 1.3;
 }
 
 /* 响应式设计 */
