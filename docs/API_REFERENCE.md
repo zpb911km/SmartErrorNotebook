@@ -1,572 +1,857 @@
-# Smart Error Notebook API 参考
+# API Reference
 
-> 本文档列出所有 Tauri `invoke` 命令及其参数、返回值，以及前后端数据契约。
->
-> **平台说明**：以下所有 Tauri 命令在桌面端和 Android 端均可调用。
-> 平台差异主要体现在**前端层**（如 Android 端使用 Web Share API 替代桌面端的保存对话框），
-> 而非 Rust 后端层。详见 [架构设计 - 移动端架构](ARCHITECTURE.md#-移动端架构)。
+Smart Error Notebook 通过 Tauri `invoke` 暴露 50 个数据库命令。本参考手册描述命令签名、参数、返回值、错误和可观察行为。
 
----
+生产实现以 `src-tauri/src/lib.rs` 的命令注册表及 `src-tauri/src/commands/` 为准。文件关联命令、未注册的 `user_config` 模块、连接函数和迁移器不属于本 API。
 
-## 📑 目录
+## 快速开始
 
-1. [如何调用](#-如何调用)
-2. [命令索引](#-命令索引)
-3. [错题 (ErrorQuestion)](#-错题-errorquestion)
-4. [科目 (Subject)](#-科目-subject)
-5. [来源 (Source)](#-来源-source)
-6. [错因标签 (ErrorTag)](#-错因标签-errortag)
-7. [附件 (Attachment)](#-附件-attachment)
-8. [SRS 复习数据](#-srs-复习数据)
-9. [SRS 工具函数](#-srs-工具函数)
-10. [同步 (Sync)](#-同步-sync)
-11. [数据契约](#-数据契约)
-
----
-
-## 💻 如何调用
-
-所有 API 通过 Tauri 的 `invoke` 函数从前端调用：
-
-```typescript
+```ts
 import { invoke } from '@tauri-apps/api/core'
 
-// 无参数
-const result = await invoke('command_name')
+const questions = await invoke<ErrorQuestion[]>('get_questions', {
+  filter: { subject_id: 'subject-id', limit: 20 },
+})
 
-// 有参数（参数名使用 Rust 侧的 snake_case）
-const result = await invoke('command_name', {
-  param_name: value
+const status = await invoke<SRSCardOutput | null>('get_question_srs_status', {
+  questionId: 'question-id',
 })
 ```
 
-> **注意**：所有参数名使用 **snake_case**（Rust 风格），而非 camelCase。
-
----
-
-## 📋 命令索引
-
-| 分类 | 命令 | 说明 |
-|------|------|------|
-| **错题** | `get_questions` | 获取错题列表 |
-| | `get_question` | 获取单个错题 |
-| | `create_question` | 创建错题 |
-| | `update_question` | 更新错题 |
-| | `delete_question` | 软删除错题 |
-| | `get_question_stats` | 获取统计信息 |
-| | `upsert_error_question` | 创建或更新（同步用） |
-| **科目** | `get_subjects` | 获取所有科目 |
-| | `create_subject` | 创建科目 |
-| | `update_subject` | 更新科目 |
-| | `delete_subject` | 删除科目 |
-| | `upsert_subject` | 创建或更新（同步用） |
-| **来源** | `get_sources` | 获取来源列表 |
-| | `get_source` | 获取单个来源 |
-| | `get_books` | 获取所有书名 |
-| | `get_chapters` | 获取章节列表 |
-| | `get_knowledges` | 获取知识点列表 |
-| | `create_source` | 创建来源 |
-| | `update_source` | 更新来源 |
-| | `delete_source` | 删除来源 |
-| | `get_or_create_source_id` | 获取或创建来源 ID |
-| | `upsert_source` | 创建或更新（同步用） |
-| **错因标签** | `get_error_tags` | 获取所有标签 |
-| | `get_full_error_tags` | 获取完整标签信息 |
-| | `get_error_tags_for_question` | 获取题目的标签 |
-| | `create_error_tags_for_question` | 为题目创建标签 |
-| | `delete_error_tag` | 删除标签 |
-| | `update_error_tag_by_id` | 按 ID 更新标签 |
-| | `update_error_tag_by_name` | 按名称更新标签 |
-| | `upsert_error_tag` | 创建或更新（同步用） |
-| **附件** | `create_attachment` | 创建附件 |
-| | `create_attachments_for_question` | 为题目批量创建附件 |
-| | `get_attachments_by_question` | 获取题目的附件列表 |
-| | `delete_attachment` | 删除附件 |
-| | `upsert_attachment` | 创建或更新（同步用） |
-| **SRS** | `create_srs_data` | 初始化 SRS 数据 |
-| | `get_due_questions` | 获取待复习题目 |
-| | `submit_review_result` | 提交复习反馈 |
-| | `get_question_srs_status` | 获取 SRS 状态 |
-| | `reset_srs_progress` | 重置 SRS 进度 |
-| | `upsert_srs_data` | 创建或更新（同步用） |
-| **SRS 工具** | `get_due_count` | 获取待复习数量 |
-| | `get_srs_statistics` | 获取 SRS 统计 |
-| | `get_all_cards` | 获取所有 SRS 卡片 |
-| **同步** | `get_all_pending_records` | 获取所有待同步记录 |
-| | `get_record_for_upload` | 获取上传记录 |
-| | `set_record_sync_status_version` | 设置同步状态和版本 |
-| | `get_all_records` | 获取所有记录（握手用） |
-| | `purge_synced_deletions` | 清理已同步的删除 |
-| | `check_orphan_records` | 检查孤儿记录 |
-
----
-
-## 📝 错题 (ErrorQuestion)
-
-### `get_questions`
-
-获取错题列表，支持筛选。
-
-**参数：**
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|:----:|------|
-| `filter` | `QuestionFilter` | 否 | 筛选条件 |
-
-**`QuestionFilter`：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `subject_id` | `string?` | 科目 ID |
-| `search` | `string?` | 搜索关键词（题干、解析、笔记） |
-| `limit` | `number?` | 返回数量限制 |
-| `offset` | `number?` | 偏移量（分页） |
-
-**返回：** `ErrorQuestion[]`
-
-### `get_question`
-
-获取单个错题详情。
-
-**参数：** `{ id: string }`
-
-**返回：** `ErrorQuestion`
-
-### `create_question`
-
-创建新错题。
-
-**参数：** `{ input: Omit<ErrorQuestion, 'id'> }`
-
-**返回：** `ErrorQuestion`
-
-### `update_question`
-
-更新错题（支持部分更新）。
-
-**参数：** `{ input: UpdateQuestionInput }`
-
-**`UpdateQuestionInput`：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `string` | 错题 ID |
-| `subject_id` | `string?` | 科目 ID |
-| `source_id` | `string?` | 来源 ID |
-| `prompt` | `string?` | 题干 |
-| `type` | `string?` | 题型 |
-| `answer` | `string?` | 标准答案 |
-| `analysis` | `string?` | 解析 |
-| `error_note` | `string?` | 错题笔记 |
-
-**返回：** `ErrorQuestion`
-
-### `delete_question`
-
-软删除错题。
-
-**参数：** `{ id: string }`
-
-**返回：** `void`
-
-### `get_question_stats`
-
-**参数：** 无
-
-**返回：** `{ total: number }`
-
----
-
-## 📚 科目 (Subject)
-
-### `get_subjects`
-
-**参数：** 无
-
-**返回：** `Subject[]`
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `string` | UUID |
-| `name` | `string` | 科目名称 |
-| `color` | `string?` | 标识色 |
-
-### `create_subject`
-
-**参数：** `{ name: string, color?: string }`
-
-**返回：** `Subject`
-
-### `update_subject`
-
-**参数：** `{ id: string, name?: string, color?: string }`
-
-**返回：** `Subject`
-
-### `delete_subject`
-
-**参数：** `{ id: string }`
-
-**返回：** `void`
-
----
-
-## 📖 来源 (Source)
-
-来源采用三级分类：`书 → 章节 → 知识点`
-
-### `get_sources`
-
-**参数：** `{ filter?: { subject_id?: string } }`
-
-**返回：** `Source[]`
-
-### `get_source`
-
-**参数：** `{ id: string }`
-
-**返回：** `Source`
-
-### `get_books`
-
-获取指定科目的所有书名。
-
-**参数：** `{ subject_id?: string }`
-
-**返回：** `string[]`
-
-### `get_chapters`
-
-获取指定书名的所有章节。
-
-**参数：** `{ subject_id?: string, book?: string }`
-
-**返回：** `string[]`
-
-### `get_knowledges`
-
-获取指定章节的所有知识点。
-
-**参数：** `{ subject_id?: string, book?: string, chapter?: string }`
-
-**返回：** `string[]`
-
-### `create_source`
-
-**参数：** `{ input: { subject_id?: string, book?: string, chapter?: string, knowledge?: string } }`
-
-**返回：** `Source`
-
-### `get_or_create_source_id`
-
-根据三级分类查找或自动创建来源，返回 ID。
-
-**参数：** `{ subject_id?: string, book?: string, chapter?: string, knowledge?: string }`
-
-**返回：** `string` (Source ID)
-
----
-
-## 🏷️ 错因标签 (ErrorTag)
-
-### `get_error_tags`
-
-**参数：** 无
-
-**返回：** `string[]`（标签名称列表）
-
-### `get_full_error_tags`
-
-**参数：** 无
-
-**返回：** `ErrorTags[]`
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `string` | UUID |
-| `question_id` | `string` | 关联错题 ID |
-| `name` | `string` | 标签名称 |
-| `color` | `string` | 标签颜色 |
-
-### `get_error_tags_for_question`
-
-**参数：** `{ question_id: string }`
-
-**返回：** `ErrorTags[]`
-
-### `create_error_tags_for_question`
-
-为题目批量设置标签。
-
-**参数：** `{ question_id: string, tags: Array<{ name: string, color: string }> }`
-
-**返回：** `ErrorTags[]`
-
-### `delete_error_tag`
-
-**参数：** `{ id: string }`
-
-**返回：** `void`
-
-### `update_error_tag_by_id`
-
-**参数：** `{ id: string, name?: string, color?: string }`
-
-**返回：** `ErrorTags`
-
-### `update_error_tag_by_name`
-
-**参数：** `{ name: string, new_name?: string, color?: string }`
-
-**返回：** `ErrorTags`
-
----
-
-## 🖼️ 附件 (Attachment)
-
-### `create_attachment`
-
-**参数：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `question_id` | `string` | 错题 ID |
-| `type_` | `string` | 附件类型 (`original` / `answer`) |
-| `file_type` | `string` | 文件类型 (`img`) |
-| `base64_data` | `string` | base64 编码的数据 |
-
-**返回：** `Attachment`
-
-### `create_attachments_for_question`
-
-批量创建附件。
-
-**参数：** `{ question_id: string, attachments: CreateAttachmentInput[] }`
-
-**返回：** `Attachment[]`
-
-### `get_attachments_by_question`
-
-**参数：** `{ question_id: string }`
-
-**返回：** `Attachment[]`
-
-### `delete_attachment`
-
-**参数：** `{ id: string }`
-
-**返回：** `void`
-
----
-
-## 🧠 SRS 复习数据
-
-### `create_srs_data`
-
-为题目初始化 SRS 数据。
-
-**参数：** `{ input: { question_id: string, difficulty?: number } }`
-
-**返回：** `SRSData`
-
-### `get_due_questions`
-
-获取当前到期的待复习题目。
-
-**参数：** `{ subject_id?: string, now?: number }`
-
-**返回：** `Array<{ question: ErrorQuestion, srs: SRSData }>`
-
-### `submit_review_result`
-
-提交一次复习的结果。
-
-**参数：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `question_id` | `string` | 错题 ID |
-| `feedback` | `number` | 反馈值 [0, 1] |
-
-**返回：** `ReviewOutput`
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `next_interval_days` | `number` | 下次复习间隔（天） |
-| `new_stability` | `number` | 更新后的稳定性 |
-| `new_difficulty` | `number` | 更新后的难度 |
-| `next_review_at` | `number` | 下次复习时间戳（秒） |
-
-### `get_question_srs_status`
-
-**参数：** `{ question_id: string }`
-
-**返回：** `SRSCardOutput`
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `string` | SRS 数据 ID |
-| `question_id` | `string` | 错题 ID |
-| `stability` | `number` | 稳定性（天） |
-| `difficulty` | `number` | 难度 [1, 10] |
-| `recall_rate` | `number` | 预测召回率 |
-| `next_review_at` | `number?` | 下次复习时间戳 |
-| `last_review_at` | `number?` | 上次复习时间戳 |
-| `review_count` | `number` | 复习次数 |
-| `is_due` | `boolean` | 是否到期 |
-
-### `reset_srs_progress`
-
-重置指定题目的 SRS 进度。
-
-**参数：** `{ question_id: string }`
-
-**返回：** `void`
-
----
-
-## 📊 SRS 工具函数
-
-### `get_due_count`
-
-**参数：** `{ subject_id?: string }`
-
-**返回：** `number`
-
-### `get_srs_statistics`
-
-**参数：** 无
-
-**返回：** `SRSStatistics`
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `total` | `number` | 总卡片数 |
-| `due_count` | `number` | 待复习数量 |
-| `new_cards` | `number` | 新卡片数量 |
-| `avg_stability` | `number` | 平均稳定性（天） |
-| `avg_difficulty` | `number` | 平均难度 |
-| `total_reviews` | `number` | 总复习次数 |
-
-### `get_all_cards`
-
-**参数：** 无
-
-**返回：** `SRSCardOutput[]`
-
----
-
-## 🔄 同步 (Sync)
-
-### `get_all_pending_records`
-
-获取所有状态为 `pending` 的记录（待同步）。
-
-**参数：** 无
-
-**返回：** `SyncRecordHeader[]`
-
-### `get_record_for_upload`
-
-获取指定 ID 的完整记录数据（含 data 负载）用于上传。
-
-**参数：** `{ id: string, table_name: string }`
-
-**返回：** `SyncRecord`
-
-### `set_record_sync_status_version`
-
-更新记录的同步状态和版本号。
-
-**参数：** `{ id: string, table_name: string, version: number, status: string }`
-
-**返回：** `void`
-
-### `get_all_records`
-
-获取所有记录的头信息（握手协议用）。
-
-**参数：** 无
-
-**返回：** `SyncRecordHeader[]`
-
-### `purge_synced_deletions`
-
-清理已同步到服务器的删除标记。
-
-**参数：** 无
-
-**返回：** `void`
-
-### `check_orphan_records`
-
-检查并清理孤儿记录（子表记录已删但父表不存在的记录）。
-
-**参数：** 无
-
-**返回：** `{ orphan_records_soft_deleted: string[], total_checked: number }`
-
----
-
-## 📐 数据契约
-
-### ErrorQuestion 实体
-
-```typescript
-interface ErrorQuestion {
-  id: string              // UUID
-  user_id: string         // 用户 ID ⚠️ 后端字段名: userid
-  subject_id: string      // 科目 ID ⚠️ 后端字段名: subjectid
-  source_id?: string      // 来源 ID ⚠️ 后端字段名: sourceid
-  prompt: string          // 题干 (支持 Markdown + LaTeX)
-  type: QuestionType      // 题型 ⚠️ 后端字段名: type_
-  answer?: string         // 标准答案
-  analysis?: string       // 解析
-  error_note?: string     // 错题笔记
+### 参数命名
+
+- 命令顶层参数采用 Tauri 默认的 `camelCase`，例如 `questionId`、`recordId`、`tagId` 和 `subjectId`。
+- `input`、`filter` 和数组元素是 Serde 结构，内部字段使用本文列出的名称，通常为 `snake_case`。
+- 错题创建和更新输入使用 `type`；`ErrorQuestion` 输出使用 `type_`。
+- 可选顶层参数可以省略或传 `null`。必填字段缺失、命名错误或类型错误会在 command 执行前产生反序列化错误。
+
+下文的“签名”使用 TypeScript 风格的类型伪代码描述参数形状，并非可直接执行的对象字面量；“快速开始”中的代码才是完整调用示例。
+
+### 通用写入行为
+
+- 时间字段为 UTC Unix 秒；本地生成的 ID 为 UUID v4。
+- 本地创建默认写入 `version = 0`、`sync_status = "pending"`、`sync_hash = null`。
+- 本地更新和软删除写入 `sync_status = "pending"`，当前不会递增 `version`。
+- 所有同步 upsert 都忽略输入的 `status`，并写入 `sync_status = "synced"`。
+- 除非命令说明明确给出排序规则，否则集合顺序不属于契约。
+
+## 命令索引
+
+| 分组 | 命令 |
+| --- | --- |
+| 科目 | `get_subjects`, `create_subject`, `update_subject`, `delete_subject`, `upsert_subject` |
+| 错题 | `get_questions`, `get_question`, `create_question`, `update_question`, `delete_question`, `get_question_stats`, `upsert_error_question` |
+| 来源 | `get_sources`, `get_source`, `get_books`, `get_chapters`, `get_knowledges`, `create_source`, `update_source`, `delete_source`, `get_or_create_source_id`, `upsert_source` |
+| 错因标签 | `create_error_tags_for_question`, `get_error_tags`, `get_full_error_tags`, `get_error_tags_for_question`, `delete_error_tag`, `update_error_tag_by_name`, `update_error_tag_by_id`, `upsert_error_tag` |
+| 附件 | `create_attachment`, `create_attachments_for_question`, `get_attachments_by_question`, `delete_attachment`, `upsert_attachment` |
+| SRS | `create_srs_data`, `get_due_questions`, `submit_review_result`, `get_question_srs_status`, `reset_srs_progress`, `get_due_count`, `get_srs_statistics`, `get_all_cards`, `upsert_srs_data` |
+| 同步 | `get_all_records`, `get_all_pending_records`, `get_record_for_upload`, `set_record_sync_status_version`, `purge_synced_deletions`, `check_orphan_records` |
+
+## 数据类型
+
+### 同步元数据
+
+```ts
+interface SyncMetadata {
+  created_at: number
+  updated_at: number
+  deleted_at: number | null
+  version: number
+  sync_status: string
+  sync_hash: string | null
 }
 ```
 
-### SRSData 实体
+### `Subject`
 
-```typescript
-interface SRSData {
-  id: string                  // UUID
-  question_id: string         // 关联错题 ID
-  stability: number           // 稳定性（天）
-  difficulty: number          // 难度 [1.0, 10.0]
-  recall_rate: number         // 预测召回率
-  next_review_at: number|null // 下次复习时间戳（秒）
-  last_review_at: number|null // 上次复习时间戳 ⚠️ 后端: lastreviewed_at
-  review_count: number        // 复习次数
-  feedback_history: string    // 最近 5 次反馈 JSON
-}
-```
-
-### Source 实体
-
-```typescript
-interface Source {
+```ts
+interface Subject extends SyncMetadata {
   id: string
-  question_id?: string
-  subject_id?: string
-  book?: string        // 书名
-  chapter?: string     // 章节
-  knowledge?: string   // 知识点
-  subject?: Subject    // 关联科目信息
+  name: string
+  color: string | null
 }
 ```
 
-### Attachment 实体
+### `ErrorQuestion`
 
-```typescript
+```ts
+interface ErrorQuestion extends SyncMetadata {
+  id: string
+  userid: string
+  subjectid: string
+  sourceid: string | null
+  prompt: string
+  type_: string
+  answer: string | null
+  analysis: string | null
+  error_note: string | null
+}
+```
+
+### `Source`
+
+```ts
+interface Source extends SyncMetadata {
+  id: string
+  question_id: string | null
+  subject_id: string | null
+  book: string | null
+  chapter: string | null
+  knowledge: string | null
+}
+```
+
+### `ErrorTag`
+
+```ts
+interface ErrorTag extends SyncMetadata {
+  id: string
+  question_id: string
+  name: string
+  color: string
+}
+```
+
+### `Attachment`
+
+```ts
 interface Attachment {
   id: string
   question_id: string
-  type: string          // 'original' | 'answer' ⚠️ 后端: type_
-  file_type: string     // 'img'
-  base64_data: string   // base64 图片数据
-  hash: string          // 文件哈希
+  type_: string
+  file_type: string
+  base64_data: string
+  hash: string
 }
 ```
 
-> API 相关问题请提交 [GitHub Issue](https://github.com/zpb911km/SmartErrorNotebook/issues)
+`Attachment` 是专用输出，不包含同步元数据。数据库字节无法解码为 UTF-8 时，`base64_data` 返回空字符串。
+
+### SRS 类型
+
+```ts
+interface SRSCardOutput {
+  id: string
+  question_id: string
+  stability: number
+  difficulty: number
+  recall_rate: number
+  next_review_at: number | null
+  last_review_at: number | null
+  review_count: number
+  is_due: boolean
+}
+
+interface ReviewOutput {
+  next_interval_days: number
+  new_stability: number
+  new_difficulty: number
+  next_review_at: number
+}
+
+interface SRSStatistics {
+  total: number
+  due_count: number
+  new_cards: number
+  avg_stability: number
+  avg_difficulty: number
+  total_reviews: number
+}
+```
+
+### 同步类型
+
+```ts
+interface SyncRecordHeader {
+  id: string
+  table_name: string
+  version: number
+  status: string
+  deleted_at: number | null
+  updated_at: number
+  created_at: number
+}
+
+interface SyncRecord extends Omit<SyncRecordHeader, 'created_at'> {
+  data: Record<string, unknown>
+}
+
+interface OrphanCheckResult {
+  orphan_records_soft_deleted: string[]
+  total_checked: number
+}
+```
+
+## 科目
+
+### `get_subjects`
+
+**签名**
+
+```text
+invoke<Subject[]>('get_subjects')
+```
+
+**返回**：所有未软删除科目。
+
+**行为**：排除 `deleted_at IS NOT NULL` 的记录；顺序不保证。
+
+### `create_subject`
+
+**签名**
+
+```text
+invoke<Subject>('create_subject', {
+  input: { name: string, color?: string | null },
+})
+```
+
+**返回**：新建的 `Subject`。
+
+### `update_subject`
+
+**签名**
+
+```text
+invoke<Subject>('update_subject', {
+  input: { id: string, name?: string | null, color?: string | null },
+})
+```
+
+**行为**：`name` 或 `color` 为 `null`/省略时保留原值；当前接口不能清空已有颜色。
+
+**错误**：ID 不存在时返回 `Subject not found`。
+
+### `delete_subject`
+
+**签名**：`invoke<null>('delete_subject', { id: string })`
+
+**行为**：软删除科目并标记 `pending`；不会级联处理题目或来源。
+
+**错误**：ID 不存在时返回 `Subject not found`。
+
+### `upsert_subject`
+
+**签名**
+
+```text
+invoke<null>('upsert_subject', {
+  input: {
+    id: string
+    version: number
+    status: string
+    deleted_at?: number | null
+    name: string
+    color?: string | null
+  },
+})
+```
+
+**行为**：按 ID 插入或覆盖业务字段、版本和删除时间；`status` 被忽略，保存状态固定为 `synced`。
+
+## 错题
+
+### `get_questions`
+
+**签名**
+
+```text
+invoke<ErrorQuestion[]>('get_questions', {
+  filter?: {
+    subject_id?: string
+    search?: string
+    limit?: number
+    offset?: number
+  } | null,
+})
+```
+
+**行为**：
+
+- 仅返回未软删除记录。
+- `subject_id` 精确匹配。
+- `search` 以 `%keyword%` 匹配 `prompt`、`analysis` 和 `error_note`。
+- 结果按 `updated_at` 降序，再应用 `limit` 和 `offset`。
+
+### `get_question`
+
+**签名**：`invoke<ErrorQuestion>('get_question', { id: string })`
+
+**行为**：按主键读取，不过滤软删除记录。
+
+**错误**：ID 不存在时返回 `Question not found`。
+
+### `create_question`
+
+**签名**
+
+```text
+invoke<ErrorQuestion>('create_question', {
+  input: {
+    user_id: string
+    subject_id: string
+    source_id?: string | null
+    prompt: string
+    type: string
+    answer?: string | null
+    analysis?: string | null
+    error_note?: string | null
+  },
+})
+```
+
+**行为**：当前不验证科目或来源是否存在。
+
+### `update_question`
+
+**签名**
+
+```text
+invoke<ErrorQuestion>('update_question', {
+  input: {
+    id: string
+    subject_id?: string | null
+    source_id?: string | null
+    prompt?: string | null
+    type?: string | null
+    answer?: string | null
+    analysis?: string | null
+    error_note?: string | null
+  },
+})
+```
+
+**行为**：
+
+- 修改 `subject_id` 时验证目标科目存在。
+- `source_id` 也接受别名 `sourceid`。
+- 可选字段为 `null`/省略时保留原值，因此不能借此清空来源、答案、解析或错题笔记。
+
+**错误**：题目不存在时返回 `Question not found`；目标科目不存在时返回 `Subject not found`。
+
+### `delete_question`
+
+**签名**：`invoke<null>('delete_question', { id: string })`
+
+**行为**：软删除题目，并软删除按 `question_id` 找到的第一条 SRS 记录；标签和附件不受影响。SRS 处理先于题目存在性检查。
+
+**错误**：题目不存在时返回 `Question not found`。
+
+### `get_question_stats`
+
+**签名**：`invoke<{ total: number }>('get_question_stats')`
+
+**返回**：未软删除题目总数。
+
+### `upsert_error_question`
+
+**签名**
+
+```text
+invoke<null>('upsert_error_question', {
+  input: {
+    id: string
+    version: number
+    status: string
+    deleted_at?: number | null
+    userid: string
+    subjectid: string
+    sourceid?: string | null
+    prompt: string
+    type_: string
+    answer?: string | null
+    analysis?: string | null
+    error_note?: string | null
+    sync_hash?: string | null
+  },
+})
+```
+
+**行为**：
+
+- `subjectid`/`sourceid` 也接受 `subject_id`/`source_id`。
+- 插入时写入全部字段；更新已有记录时不修改 `userid` 和 `sync_hash`。
+- `status` 被忽略，保存状态固定为 `synced`。
+
+## 来源
+
+### `get_sources`
+
+**签名**：`invoke<Source[]>('get_sources', { filter?: { subject_id?: string } | null })`
+
+**行为**：排除软删除记录；提供 `subject_id` 时精确过滤。
+
+### `get_source`
+
+**签名**：`invoke<Source>('get_source', { id: string })`
+
+**行为**：不排除软删除记录。
+
+**错误**：ID 不存在时返回 `Source not found`。
+
+### `get_books`
+
+**签名**：`invoke<string[]>('get_books', { subjectId?: string | null })`
+
+**返回**：未软删除记录中的非空书名去重集合；顺序不保证。
+
+### `get_chapters`
+
+**签名**：`invoke<string[]>('get_chapters', { subjectId?: string | null, book: string })`
+
+**返回**：匹配书名和可选科目的非空章节去重集合；顺序不保证。
+
+### `get_knowledges`
+
+**签名**：`invoke<string[]>('get_knowledges', { subjectId?: string | null, book: string, chapter: string })`
+
+**返回**：匹配书名、章节和可选科目的非空知识点去重集合；顺序不保证。
+
+### `create_source`
+
+**签名**
+
+```text
+invoke<Source>('create_source', {
+  input: {
+    subject_id?: string | null
+    book?: string | null
+    chapter?: string | null
+    knowledge?: string | null
+  },
+})
+```
+
+**行为**：新记录的 `question_id = null`；不验证科目是否存在。
+
+### `update_source`
+
+**签名**
+
+```text
+invoke<Source>('update_source', {
+  input: {
+    id: string
+    subject_id?: string | null
+    book?: string | null
+    chapter?: string | null
+    knowledge?: string | null
+  },
+})
+```
+
+**行为**：仅更新非 `null` 字段，当前不能清空已有字段。
+
+**错误**：ID 不存在时返回 `Source not found`。
+
+### `delete_source`
+
+**签名**：`invoke<null>('delete_source', { id: string })`
+
+**行为**：软删除来源并标记 `pending`。
+
+**错误**：ID 不存在时返回 `Source not found`。
+
+### `get_or_create_source_id`
+
+**签名**
+
+```text
+invoke<string>('get_or_create_source_id', {
+  input: {
+    subject_id?: string | null
+    book?: string | null
+    chapter?: string | null
+    knowledge?: string | null
+  },
+})
+```
+
+**行为**：在未软删除记录中对四个字段进行包括 `NULL` 在内的精确匹配；找到时返回已有 ID，否则创建来源并返回新 ID。
+
+### `upsert_source`
+
+**签名**
+
+```text
+invoke<null>('upsert_source', {
+  input: {
+    id: string
+    version: number
+    status: string
+    deleted_at?: number | null
+    question_id?: string | null
+    subject_id?: string | null
+    book?: string | null
+    chapter?: string | null
+    knowledge?: string | null
+  },
+})
+```
+
+**行为**：按 ID 插入或覆盖；`status` 被忽略，保存状态固定为 `synced`。
+
+## 错因标签
+
+### `create_error_tags_for_question`
+
+**签名**
+
+```text
+invoke<ErrorTag[]>('create_error_tags_for_question', {
+  input: {
+    question_id: string
+    tags: Array<{ name: string, color: string }>
+  },
+})
+```
+
+**行为**：按输入顺序逐条创建，不验证题目存在；空数组返回空数组。批量写入不是原子操作。
+
+### `get_error_tags`
+
+**签名**：`invoke<ErrorTag[]>('get_error_tags')`
+
+**返回**：未软删除标签按 `name` 去重后的集合。
+
+**行为**：顺序及同名标签中具体保留哪条记录不保证。
+
+### `get_full_error_tags`
+
+**签名**：`invoke<ErrorTag[]>('get_full_error_tags')`
+
+**返回**：所有未软删除标签，不去重。
+
+### `get_error_tags_for_question`
+
+**签名**：`invoke<ErrorTag[]>('get_error_tags_for_question', { questionId: string })`
+
+**返回**：指定题目的全部未软删除标签。
+
+### `delete_error_tag`
+
+**签名**：`invoke<null>('delete_error_tag', { tagId: string })`
+
+**行为**：软删除标签；ID 不存在时仍成功，因此该操作是幂等的。
+
+### `update_error_tag_by_name`
+
+**签名**
+
+```text
+invoke<null>('update_error_tag_by_name', {
+  oldName: string
+  newName: string
+  newColor: string
+})
+```
+
+**行为**：更新所有未软删除且名称等于 `oldName` 的记录；无匹配时仍成功。
+
+### `update_error_tag_by_id`
+
+**签名**
+
+```text
+invoke<null>('update_error_tag_by_id', {
+  tagId: string
+  newTagName: string
+  newTagColor?: string | null
+})
+```
+
+**行为**：`newTagColor = null` 时保留原颜色。
+
+**错误**：ID 不存在或记录已软删除时返回 `标签不存在`。
+
+### `upsert_error_tag`
+
+**签名**
+
+```text
+invoke<null>('upsert_error_tag', {
+  input: {
+    id: string
+    version: number
+    status: string
+    deleted_at?: number | null
+    question_id: string
+    name: string
+    color: string
+  },
+})
+```
+
+**行为**：按 ID 插入或覆盖；`status` 被忽略，保存状态固定为 `synced`。
+
+## 附件
+
+### `create_attachment`
+
+**签名**
+
+```text
+invoke<Attachment>('create_attachment', {
+  input: {
+    question_id: string
+    type_: string
+    file_type: string
+    base64_data: string
+  },
+})
+```
+
+**行为**：将字符串的 UTF-8 字节写入数据库；`hash` 是生成 UUID 的前八个字符；不验证题目存在。
+
+**已知限制**：调试日志直接读取 `base64_data[..100]`。输入少于 100 字节，或第 100 字节不是 UTF-8 字符边界时，当前实现会 panic。
+
+### `create_attachments_for_question`
+
+**签名**
+
+```text
+invoke<Attachment[]>('create_attachments_for_question', {
+  questionId: string
+  attachments: Array<{
+    question_id: string
+    type_: string
+    file_type: string
+    base64_data: string
+  }>
+})
+```
+
+**行为**：用顶层 `questionId` 覆盖每个元素的 `question_id`，再按顺序逐条创建；批量写入不是原子操作。
+
+### `get_attachments_by_question`
+
+**签名**：`invoke<Attachment[]>('get_attachments_by_question', { questionId: string })`
+
+**返回**：指定题目的全部未软删除附件。
+
+### `delete_attachment`
+
+**签名**：`invoke<null>('delete_attachment', { id: string })`
+
+**行为**：软删除附件并标记 `pending`。
+
+**错误**：ID 不存在时返回 `Attachment not found`。
+
+### `upsert_attachment`
+
+**签名**
+
+```text
+invoke<null>('upsert_attachment', {
+  input: {
+    id: string
+    version: number
+    status: string
+    deleted_at?: number | null
+    question_id: string
+    type_: string
+    file_type: string
+    base64_data: number[]
+    hash: string
+  },
+})
+```
+
+**行为**：同步输入的 `base64_data` 是字节数组；按 ID 插入或覆盖，保存状态固定为 `synced`。
+
+## SRS
+
+### `create_srs_data`
+
+**签名**
+
+```text
+invoke<SRSCardOutput>('create_srs_data', {
+  input: { question_id: string, difficulty?: number | null },
+})
+```
+
+**行为**：不验证题目存在；使用算法初始稳定性和可选难度，`review_count = 1`，下次复习约为一天后。
+
+**错误**：任意同 `question_id` 记录（包括软删除记录）已存在时返回 `SrsData is exist: <question_id>`。
+
+### `get_due_questions`
+
+**签名**：`invoke<SRSCardOutput[]>('get_due_questions', { limit?: number | null })`
+
+**行为**：排除软删除记录；`next_review_at = null` 或时间已到视为到期；按稳定性升序，默认最多返回 1000 条。
+
+### `submit_review_result`
+
+**签名**
+
+```text
+invoke<ReviewOutput>('submit_review_result', {
+  input: { question_id: string, feedback: number },
+})
+```
+
+**行为**：
+
+- `feedback` 必须位于 `[0, 1]`。
+- 更新算法状态、复习次数、最近五次反馈、时间和 `pending` 状态。
+- 查询现有记录时不排除软删除；成功提交会清空 `deleted_at`。
+
+**错误**：记录不存在时返回 `SRS data not found`；反馈越界时返回 `Feedback must be in [0, 1], got <value>`。
+
+### `get_question_srs_status`
+
+**签名**：`invoke<SRSCardOutput | null>('get_question_srs_status', { questionId: string })`
+
+**返回**：题目的未软删除 SRS 状态；不存在时返回 `null`。
+
+### `reset_srs_progress`
+
+**签名**：`invoke<SRSCardOutput>('reset_srs_progress', { questionId: string })`
+
+**行为**：已有未删除记录恢复初始参数并立即到期；不存在时创建新记录，新记录约一天后到期。
+
+### `get_due_count`
+
+**签名**：`invoke<number>('get_due_count')`
+
+**返回**：未软删除且已到期的记录数。
+
+### `get_srs_statistics`
+
+**签名**：`invoke<SRSStatistics>('get_srs_statistics')`
+
+**行为**：仅统计未软删除记录；`new_cards` 是 `review_count === 1` 的数量；无记录时两个平均值均为零。
+
+### `get_all_cards`
+
+**签名**：`invoke<SRSCardOutput[]>('get_all_cards')`
+
+**返回**：全部未软删除卡片；顺序不保证。
+
+### `upsert_srs_data`
+
+**签名**
+
+```text
+invoke<null>('upsert_srs_data', {
+  input: {
+    id: string
+    version: number
+    status: string
+    deleted_at?: number | null
+    question_id: string
+    stability: number
+    difficulty: number
+    next_review_at?: number | null
+    lastreviewed_at?: number | null
+    review_count: number
+    feedback_history: string
+  },
+})
+```
+
+**行为**：更新已有记录时应用 `deleted_at`；插入时当前忽略传入的 `deleted_at` 并写为 `null`；保存状态固定为 `synced`。
+
+## 同步
+
+同步聚合按以下固定表顺序执行：
+
+1. `error_questions`
+2. `subjects`
+3. `srs_data`
+4. `attachments`
+5. `error_tags`
+6. `sources`
+
+表内顺序不保证。
+
+### `get_all_records`
+
+**签名**：`invoke<SyncRecordHeader[]>('get_all_records')`
+
+**返回**：六张表的全部记录头，包括软删除和任意同步状态；不包含 `data`。
+
+### `get_all_pending_records`
+
+**签名**：`invoke<SyncRecord[]>('get_all_pending_records')`
+
+**返回**：六张表中 `sync_status = "pending"` 的记录，包括 pending 的软删除记录。
+
+**数据裁剪**：`data` 保留业务字段、`id` 和 `sync_hash`，移除 `version`、`sync_status`、`deleted_at`、`created_at` 和 `updated_at`。
+
+### `get_record_for_upload`
+
+**签名**：`invoke<SyncRecord>('get_record_for_upload', { recordId: string })`
+
+**行为**：按固定表顺序使用 ID 查找；不同表存在相同 ID 时返回顺序靠前的记录。
+
+**错误**：不存在时返回 `Record not found with id: <recordId>`。
+
+### `set_record_sync_status_version`
+
+**签名**
+
+```text
+invoke<string>('set_record_sync_status_version', {
+  recordId: string
+  status: string
+  version: number
+})
+```
+
+**行为**：按固定表顺序更新第一条匹配记录的状态和版本，返回包含记录 ID 的确认字符串。
+
+**错误**：不存在时返回 `Record not found with id: <recordId>`。
+
+### `purge_synced_deletions`
+
+**签名**
+
+```text
+invoke<Record<string, { deleted: number }>>('purge_synced_deletions')
+```
+
+**行为**：对六张表物理删除同时满足 `sync_status = "synced"` 和 `deleted_at IS NOT NULL` 的记录。
+
+**返回示例**
+
+```json
+{
+  "error_questions": { "deleted": 1 },
+  "subjects": { "deleted": 0 },
+  "srs_data": { "deleted": 0 },
+  "attachments": { "deleted": 0 },
+  "error_tags": { "deleted": 0 },
+  "sources": { "deleted": 0 }
+}
+```
+
+各表删除不提供全有或全无的事务保证。
+
+### `check_orphan_records`
+
+**签名**：`invoke<OrphanCheckResult>('check_orphan_records')`
+
+**行为**：只检查当前未软删除记录。
+
+| 记录 | 父记录缺失时的处理 | 报告格式 |
+| --- | --- | --- |
+| `error_questions` | 将 `subjectid` 改为 `""`，不软删除 | 不加入报告 |
+| `sources` | 软删除并标记 `pending` | `source:<id>` |
+| `srs_data` | 软删除并标记 `pending` | `srs_data:<id>` |
+| `error_tags` | 软删除并标记 `pending` | `error_tag:<id>` |
+| `attachments` | 软删除并标记 `pending` | `attachment:<id>` |
+
+`total_checked` 是上述五类活动记录的检查总数。
+
+## 契约测试
+
+测试通过 Tauri mock runtime 调用共享生产 handler。每个测试使用单连接内存 SQLite 并运行完整迁移。
+
+```powershell
+cd src-tauri
+cargo test --lib -- --test-threads=1
+```
+
+Windows 上启用 Tauri `test` feature 会链接原生对话框。`build.rs` 为测试程序提供 Common Controls v6 manifest 依赖，避免加载不含 `TaskDialogIndirect` 的 v5 `comctl32.dll`。

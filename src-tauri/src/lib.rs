@@ -74,6 +74,76 @@ pub struct AppState {
     pub db: Arc<sea_orm::DbConn>,
 }
 
+// Keep the application and contract tests on one canonical command registry.
+// The two file-association commands remain here because Tauri accepts a single
+// invoke handler; database contract tests exercise only the database commands.
+macro_rules! app_invoke_handler {
+    () => {
+        tauri::generate_handler![
+            // Sync
+            $crate::commands::get_all_pending_records,
+            $crate::commands::get_record_for_upload,
+            $crate::commands::set_record_sync_status_version,
+            $crate::commands::get_all_records,
+            $crate::commands::purge_synced_deletions,
+            $crate::commands::check_orphan_records,
+            // Subject
+            $crate::commands::get_subjects,
+            $crate::commands::create_subject,
+            $crate::commands::update_subject,
+            $crate::commands::delete_subject,
+            $crate::commands::upsert_subject,
+            // Error Question
+            $crate::commands::get_questions,
+            $crate::commands::get_question,
+            $crate::commands::create_question,
+            $crate::commands::update_question,
+            $crate::commands::delete_question,
+            $crate::commands::upsert_error_question,
+            $crate::commands::get_question_stats,
+            // Error Tag
+            $crate::commands::create_error_tags_for_question,
+            $crate::commands::get_error_tags,
+            $crate::commands::get_full_error_tags,
+            $crate::commands::get_error_tags_for_question,
+            $crate::commands::delete_error_tag,
+            $crate::commands::update_error_tag_by_id,
+            $crate::commands::update_error_tag_by_name,
+            $crate::commands::upsert_error_tag,
+            // SRS Data and tools
+            $crate::commands::create_srs_data,
+            $crate::commands::get_due_questions,
+            $crate::commands::submit_review_result,
+            $crate::commands::get_question_srs_status,
+            $crate::commands::reset_srs_progress,
+            $crate::commands::upsert_srs_data,
+            $crate::commands::get_due_count,
+            $crate::commands::get_srs_statistics,
+            $crate::commands::get_all_cards,
+            // Attachment
+            $crate::commands::create_attachment,
+            $crate::commands::create_attachments_for_question,
+            $crate::commands::get_attachments_by_question,
+            $crate::commands::delete_attachment,
+            $crate::commands::upsert_attachment,
+            // Source
+            $crate::commands::get_sources,
+            $crate::commands::get_books,
+            $crate::commands::get_chapters,
+            $crate::commands::get_knowledges,
+            $crate::commands::create_source,
+            $crate::commands::update_source,
+            $crate::commands::delete_source,
+            $crate::commands::get_source,
+            $crate::commands::get_or_create_source_id,
+            $crate::commands::upsert_source,
+            // File Association
+            $crate::opened_urls,
+            $crate::read_opened_file,
+        ]
+    };
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -106,69 +176,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            // Sync
-            commands::get_all_pending_records,
-            commands::get_record_for_upload,
-            commands::set_record_sync_status_version,
-            commands::get_all_records,
-            commands::purge_synced_deletions,
-            commands::check_orphan_records,
-            // Subject
-            commands::get_subjects,
-            commands::create_subject,
-            commands::update_subject,
-            commands::delete_subject,
-            commands::upsert_subject,
-            // Error Question
-            commands::get_questions,
-            commands::get_question,
-            commands::create_question,
-            commands::update_question,
-            commands::delete_question,
-            commands::upsert_error_question,
-            commands::get_question_stats,
-            // Error Tag
-            commands::create_error_tags_for_question,
-            commands::get_error_tags,
-            commands::get_full_error_tags,
-            commands::get_error_tags_for_question,
-            commands::delete_error_tag,
-            commands::update_error_tag_by_id,
-            commands::update_error_tag_by_name,
-            commands::upsert_error_tag,
-            // SRS Data
-            commands::create_srs_data,
-            commands::get_due_questions,
-            commands::submit_review_result,
-            commands::get_question_srs_status,
-            commands::reset_srs_progress,
-            commands::upsert_srs_data,
-            // SRS Tools
-            commands::get_due_count,
-            commands::get_srs_statistics,
-            commands::get_all_cards,
-            // Attachment
-            commands::create_attachment,
-            commands::create_attachments_for_question,
-            commands::get_attachments_by_question,
-            commands::delete_attachment,
-            commands::upsert_attachment,
-            // Source
-            commands::get_sources,
-            commands::get_books,
-            commands::get_chapters,
-            commands::get_knowledges,
-            commands::create_source,
-            commands::update_source,
-            commands::delete_source,
-            commands::get_source,
-            commands::get_or_create_source_id,
-            commands::upsert_source,
-            // File Association
-            opened_urls,
-            read_opened_file,
-        ])
+        .invoke_handler(app_invoke_handler!())
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
@@ -196,3 +204,6 @@ pub fn run() {
         let _ = (app_handle, event);
     });
 }
+
+#[cfg(test)]
+mod tests;

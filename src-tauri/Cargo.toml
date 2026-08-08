@@ -37,6 +37,9 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-share = "2.0.5"
 
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+
 [profile.release]
 codegen-units = 1 # 允许 LLVM 执行更好的优化。
 lto = true # 启用链接时优化。
