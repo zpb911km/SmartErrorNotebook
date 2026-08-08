@@ -36,9 +36,9 @@ jobs:
           node-version: 24
 
       - name: setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v6
         with:
-          version: 8
+          version: '^11.0.0'
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -100,9 +100,9 @@ jobs:
           node-version: 24
 
       - name: setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v6
         with:
-          version: 8
+          version: '^11.0.0'
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable

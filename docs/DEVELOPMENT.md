@@ -24,8 +24,8 @@
 | 工具 | 最低版本 | 安装方式 |
 |------|----------|----------|
 | Rust | 1.77+ | [rustup](https://rustup.rs/) |
-| Node.js | 18+ | [nvm](https://github.com/nvm-sh/nvm) 或官方安装包 |
-| pnpm | 8+ | `npm install -g pnpm` |
+| Node.js | 22.13+ | [nvm](https://github.com/nvm-sh/nvm) 或官方安装包 |
+| pnpm | 11+ | `npm install -g pnpm@^11.0.0` |
 | Tauri CLI | 2.x | 由 pnpm 管理 |
 | Android SDK | 34+ | Android Studio 或命令行 |
 | Android NDK | 26+ | 通过 SDK Manager 安装 |

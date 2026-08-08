@@ -48,8 +48,8 @@
 ```bash
 # 前置要求
 # - Rust toolchain (rustup)
-# - Node.js ≥ 18
-# - pnpm (npm install -g pnpm)
+# - Node.js ≥ 22.13
+# - pnpm 11 (npm install -g pnpm@^11.0.0)
 
 git clone https://github.com/zpb911km/SmartErrorNotebook.git
 cd SmartErrorNotebook

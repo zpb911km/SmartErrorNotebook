@@ -23,10 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Package managers
-pnpm-lock.yaml
-
-
 SEN.prg
 graphs.md
 src-tauri/gen/

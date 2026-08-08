@@ -45,7 +45,7 @@
 ### 桌面端
 
 ```bash
-# 前置要求：Rust toolchain, Node.js ≥ 18, pnpm
+# 前置要求：Rust toolchain, Node.js ≥ 22.13, pnpm 11
 git clone https://github.com/zpb911km/SmartErrorNotebook.git
 cd SmartErrorNotebook
 pnpm install
