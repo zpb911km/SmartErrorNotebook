@@ -83,6 +83,12 @@ graph TB
             CM7[sync.rs] --- CM8[user_config.rs]
         end
 
+        subgraph Repo["repository/（仓储接口与实现）"]
+            RP1[领域 Repository traits]
+            RP2[SeaORM Repository implementations]
+            RP3[Repositories 依赖注入容器]
+        end
+
         subgraph DAL["database/（数据访问层）"]
             D1[connection.rs 数据库连接]
             D2[entities/ ORM 实体定义]
@@ -96,7 +102,8 @@ graph TB
             R4[compute_next_interval 间隔]
         end
 
-        Cmd --> DAL
+        Cmd --> Repo
+        Repo --> DAL
         SRS --> Cmd
     end
 
@@ -214,6 +221,7 @@ flowchart TD
 | 目录 | 职责 | 关键约定 |
 |------|------|----------|
 | `commands/` | Tauri 命令处理器 | 每个文件 ≈ 一个实体，函数标注 `#[tauri::command]` |
+| `repository/` | 数据访问抽象与 SeaORM 实现 | Command 仅通过注入的 Repository trait 访问持久化数据 |
 | `database/entities/` | SeaORM 实体 | `#[derive(DeriveEntityModel)]` |
 | `database/migrations/` | 数据库迁移 | 命名 `mYYYYMMDD_NNNNNN_desc.rs` |
 | `srs/` | 核心复习算法 | 纯函数，不依赖 Tauri/数据库 |

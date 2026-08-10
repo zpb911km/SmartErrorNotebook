@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 mod commands;
 mod database;
+mod repository;
 mod srs;
 
 use database::{establish_connection, init_database};
@@ -71,7 +72,7 @@ fn read_android_content_uri(_url: &str) -> Result<String, String> {
 
 // 数据库连接状态
 pub struct AppState {
-    pub db: Arc<sea_orm::DbConn>,
+    pub repositories: repository::Repositories,
 }
 
 // Keep the application and contract tests on one canonical command registry.
@@ -164,7 +165,9 @@ pub fn run() {
                 db
             });
 
-            let state = AppState { db: Arc::new(db) };
+            let state = AppState {
+                repositories: repository::Repositories::sea_orm(Arc::new(db)),
+            };
             app.manage(state);
 
             #[cfg(debug_assertions)] // 仅在调试构建时包含此代码

@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
-use sea_orm::{ColumnTrait, ConnectOptions, Database, DbConn, EntityTrait, QueryFilter};
+use sea_orm::{
+    ColumnTrait, ConnectOptions, ConnectionTrait, Database, DbConn, EntityTrait, QueryFilter,
+};
 use serde_json::{json, Value};
 use tauri::{test::MockRuntime, WebviewWindow};
 
@@ -28,7 +28,9 @@ impl Harness {
 
         let app = tauri::test::mock_builder()
             .manage(AppState {
-                db: Arc::new(db.clone()),
+                repositories: crate::repository::Repositories::sea_orm(std::sync::Arc::new(
+                    db.clone(),
+                )),
             })
             .invoke_handler(app_invoke_handler!())
             .build(tauri::test::mock_context(tauri::test::noop_assets()))
@@ -651,6 +653,24 @@ async fn error_tag_commands_contract() {
     assert_eq!(remote.sync_status, "synced");
     assert_eq!(remote.deleted_at, Some(42));
     assert_eq!(remote.question_id, "q3");
+
+    h.db.execute_unprepared(
+        "CREATE TRIGGER reject_error_tag_update \
+         BEFORE UPDATE ON error_tags \
+         BEGIN SELECT RAISE(FAIL, 'forced update failure'); END;",
+    )
+    .await
+    .unwrap();
+    let update_error = h
+        .err(
+            "update_error_tag_by_id",
+            json!({ "tagId": concept_id, "newTagName": "must fail" }),
+        )
+        .await;
+    assert!(update_error
+        .as_str()
+        .unwrap()
+        .contains("forced update failure"));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
