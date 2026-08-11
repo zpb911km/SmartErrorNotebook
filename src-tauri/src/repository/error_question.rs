@@ -3,7 +3,10 @@ use crate::database::entities::{
     prelude::{ErrorQuestion, Subject},
     srs_data,
 };
-use crate::repository::{accept_uuid_insert_result, RepositoryError, RepositoryResult};
+use crate::domain;
+use crate::repository::{
+    accept_uuid_insert_result, to_domain, to_domains, RepositoryError, RepositoryResult,
+};
 use async_trait::async_trait;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbConn, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
@@ -61,10 +64,10 @@ pub trait ErrorQuestionRepository: Send + Sync {
     async fn list_active(
         &self,
         query: QuestionQuery,
-    ) -> RepositoryResult<Vec<error_question::Model>>;
-    async fn find_by_id(&self, id: String) -> RepositoryResult<error_question::Model>;
-    async fn create(&self, input: NewQuestion) -> RepositoryResult<error_question::Model>;
-    async fn update(&self, input: QuestionChanges) -> RepositoryResult<error_question::Model>;
+    ) -> RepositoryResult<Vec<domain::ErrorQuestion>>;
+    async fn find_by_id(&self, id: String) -> RepositoryResult<domain::ErrorQuestion>;
+    async fn create(&self, input: NewQuestion) -> RepositoryResult<domain::ErrorQuestion>;
+    async fn update(&self, input: QuestionChanges) -> RepositoryResult<domain::ErrorQuestion>;
     async fn soft_delete_with_srs(&self, id: String, now: i64) -> RepositoryResult<()>;
     async fn count_active(&self) -> RepositoryResult<u64>;
     async fn upsert_synced(&self, input: SyncedQuestion) -> RepositoryResult<()>;
@@ -83,7 +86,7 @@ impl ErrorQuestionRepository for SeaOrmErrorQuestionRepository {
     async fn list_active(
         &self,
         input: QuestionQuery,
-    ) -> RepositoryResult<Vec<error_question::Model>> {
+    ) -> RepositoryResult<Vec<domain::ErrorQuestion>> {
         let mut query = ErrorQuestion::find().filter(error_question::Column::DeletedAt.is_null());
         if let Some(id) = input.subject_id {
             query = query.filter(error_question::Column::Subjectid.eq(id));
@@ -104,47 +107,57 @@ impl ErrorQuestionRepository for SeaOrmErrorQuestionRepository {
         if let Some(offset) = input.offset {
             query = query.offset(offset);
         }
-        query
+        let models = query
             .all(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domains(models)
     }
-    async fn find_by_id(&self, id: String) -> RepositoryResult<error_question::Model> {
-        ErrorQuestion::find_by_id(id)
+    async fn find_by_id(&self, id: String) -> RepositoryResult<domain::ErrorQuestion> {
+        let model = ErrorQuestion::find_by_id(id)
             .one(self.db.as_ref())
             .await
             .map_err(RepositoryError::from)?
-            .ok_or_else(|| RepositoryError::not_found("Question not found"))
+            .ok_or_else(|| RepositoryError::not_found("Question not found"))?;
+        to_domain(model)
     }
-    async fn create(&self, input: NewQuestion) -> RepositoryResult<error_question::Model> {
-        let insert_result = error_question::ActiveModel {
-            id: Set(input.id.clone()),
-            userid: Set(input.user_id),
-            subjectid: Set(input.subject_id),
-            sourceid: Set(input.source_id),
-            prompt: Set(input.prompt),
-            type_: Set(input.type_),
-            answer: Set(input.answer),
-            analysis: Set(input.analysis),
-            error_note: Set(input.error_note),
-            created_at: Set(input.now),
-            updated_at: Set(input.now),
-            deleted_at: Set(None),
-            version: Set(0),
-            sync_status: Set("pending".into()),
-            sync_hash: Set(None),
+    async fn create(&self, input: NewQuestion) -> RepositoryResult<domain::ErrorQuestion> {
+        let id = input.id;
+        let active: error_question::ActiveModel = domain::ErrorQuestion {
+            id: id.clone(),
+            user_id: input.user_id,
+            subject_id: input.subject_id,
+            source_id: input.source_id,
+            prompt: input.prompt,
+            question_type: domain::QuestionType::from(input.type_),
+            answer: input.answer,
+            analysis: input.analysis,
+            error_note: input.error_note,
+            metadata: domain::EntityMetadata {
+                created_at: input.now,
+                updated_at: input.now,
+                deleted_at: None,
+                version: 0,
+                sync_status: domain::SyncStatus::Pending,
+                sync_hash: None,
+            },
         }
-        .insert(self.db.as_ref())
-        .await;
+        .into();
+        let insert_result = active.insert(self.db.as_ref()).await;
         accept_uuid_insert_result(insert_result)?;
-        ErrorQuestion::find_by_id(input.id)
+        let model = ErrorQuestion::find_by_id(id)
             .one(self.db.as_ref())
             .await
             .map_err(RepositoryError::from)?
-            .ok_or_else(|| RepositoryError::not_found("插入后未能找到新创建的记录"))
+            .ok_or_else(|| RepositoryError::not_found("插入后未能找到新创建的记录"))?;
+        to_domain(model)
     }
-    async fn update(&self, input: QuestionChanges) -> RepositoryResult<error_question::Model> {
-        let model = self.find_by_id(input.id).await?;
+    async fn update(&self, input: QuestionChanges) -> RepositoryResult<domain::ErrorQuestion> {
+        let model = ErrorQuestion::find_by_id(input.id)
+            .one(self.db.as_ref())
+            .await
+            .map_err(RepositoryError::from)?
+            .ok_or_else(|| RepositoryError::not_found("Question not found"))?;
         let mut active: error_question::ActiveModel = model.into();
         if let Some(id) = input.subject_id {
             Subject::find_by_id(&id)
@@ -173,11 +186,12 @@ impl ErrorQuestionRepository for SeaOrmErrorQuestionRepository {
             active.error_note = Set(Some(v));
         }
         active.updated_at = Set(input.now);
-        active.sync_status = Set("pending".into());
-        active
+        active.sync_status = Set("pending".to_owned());
+        let model = active
             .update(self.db.as_ref())
             .await
-            .map_err(|e| RepositoryError::context("更新错题失败", e))
+            .map_err(|e| RepositoryError::context("更新错题失败", e))?;
+        to_domain(model)
     }
     async fn soft_delete_with_srs(&self, id: String, now: i64) -> RepositoryResult<()> {
         if let Some(model) = srs_data::Entity::find()
@@ -189,17 +203,21 @@ impl ErrorQuestionRepository for SeaOrmErrorQuestionRepository {
             let mut active: srs_data::ActiveModel = model.into();
             active.deleted_at = Set(Some(now));
             active.updated_at = Set(now);
-            active.sync_status = Set("pending".into());
+            active.sync_status = Set("pending".to_owned());
             active
                 .update(self.db.as_ref())
                 .await
                 .map_err(RepositoryError::from)?;
         }
-        let model = self.find_by_id(id).await?;
+        let model = ErrorQuestion::find_by_id(id)
+            .one(self.db.as_ref())
+            .await
+            .map_err(RepositoryError::from)?
+            .ok_or_else(|| RepositoryError::not_found("Question not found"))?;
         let mut active: error_question::ActiveModel = model.into();
         active.deleted_at = Set(Some(now));
         active.updated_at = Set(now);
-        active.sync_status = Set("pending".into());
+        active.sync_status = Set("pending".to_owned());
         active
             .update(self.db.as_ref())
             .await
@@ -219,7 +237,7 @@ impl ErrorQuestionRepository for SeaOrmErrorQuestionRepository {
             .await
             .map_err(|e| RepositoryError::context("Query failed", e))?;
         let is_update = existing.is_some();
-        let active = if let Some(model) = existing {
+        let active: error_question::ActiveModel = if let Some(model) = existing {
             let mut active: error_question::ActiveModel = model.into();
             active.subjectid = Set(input.subject_id);
             active.sourceid = Set(input.source_id);
@@ -230,27 +248,30 @@ impl ErrorQuestionRepository for SeaOrmErrorQuestionRepository {
             active.error_note = Set(input.error_note);
             active.updated_at = Set(input.now);
             active.version = Set(input.version);
-            active.sync_status = Set("synced".into());
+            active.sync_status = Set("synced".to_owned());
             active.deleted_at = Set(input.deleted_at);
             active
         } else {
-            error_question::ActiveModel {
-                id: Set(input.id),
-                userid: Set(input.user_id),
-                subjectid: Set(input.subject_id),
-                sourceid: Set(input.source_id),
-                prompt: Set(input.prompt),
-                type_: Set(input.type_),
-                answer: Set(input.answer),
-                analysis: Set(input.analysis),
-                error_note: Set(input.error_note),
-                created_at: Set(input.now),
-                updated_at: Set(input.now),
-                deleted_at: Set(input.deleted_at),
-                version: Set(input.version),
-                sync_status: Set("synced".into()),
-                sync_hash: Set(input.sync_hash),
+            domain::ErrorQuestion {
+                id: input.id,
+                user_id: input.user_id,
+                subject_id: input.subject_id,
+                source_id: input.source_id,
+                prompt: input.prompt,
+                question_type: domain::QuestionType::from(input.type_),
+                answer: input.answer,
+                analysis: input.analysis,
+                error_note: input.error_note,
+                metadata: domain::EntityMetadata {
+                    created_at: input.now,
+                    updated_at: input.now,
+                    deleted_at: input.deleted_at,
+                    version: input.version,
+                    sync_status: domain::SyncStatus::Synced,
+                    sync_hash: input.sync_hash,
+                },
             }
+            .into()
         };
         if is_update {
             active

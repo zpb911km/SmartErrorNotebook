@@ -1,5 +1,8 @@
 use crate::database::entities::{prelude::Source, source};
-use crate::repository::{accept_uuid_insert_result, RepositoryError, RepositoryResult};
+use crate::domain;
+use crate::repository::{
+    accept_uuid_insert_result, to_domain, to_domains, RepositoryError, RepositoryResult,
+};
 use async_trait::async_trait;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbConn, EntityTrait, FromQueryResult, QueryFilter, QuerySelect,
@@ -48,9 +51,11 @@ pub struct SyncedSource {
 
 #[async_trait]
 pub trait SourceRepository: Send + Sync {
-    async fn list_active(&self, subject_id: Option<String>)
-        -> RepositoryResult<Vec<source::Model>>;
-    async fn find_by_id(&self, id: String) -> RepositoryResult<source::Model>;
+    async fn list_active(
+        &self,
+        subject_id: Option<String>,
+    ) -> RepositoryResult<Vec<domain::Source>>;
+    async fn find_by_id(&self, id: String) -> RepositoryResult<domain::Source>;
     async fn list_books(&self, subject_id: Option<String>) -> RepositoryResult<Vec<String>>;
     async fn list_chapters(
         &self,
@@ -66,9 +71,9 @@ pub trait SourceRepository: Send + Sync {
     async fn find_active_exact(
         &self,
         values: &SourceValues,
-    ) -> RepositoryResult<Option<source::Model>>;
-    async fn create(&self, input: NewSource) -> RepositoryResult<source::Model>;
-    async fn update(&self, input: SourceChanges) -> RepositoryResult<source::Model>;
+    ) -> RepositoryResult<Option<domain::Source>>;
+    async fn create(&self, input: NewSource) -> RepositoryResult<domain::Source>;
+    async fn update(&self, input: SourceChanges) -> RepositoryResult<domain::Source>;
     async fn soft_delete(&self, id: String, now: i64) -> RepositoryResult<()>;
     async fn upsert_synced(&self, input: SyncedSource) -> RepositoryResult<()>;
 }
@@ -87,22 +92,24 @@ impl SourceRepository for SeaOrmSourceRepository {
     async fn list_active(
         &self,
         subject_id: Option<String>,
-    ) -> RepositoryResult<Vec<source::Model>> {
+    ) -> RepositoryResult<Vec<domain::Source>> {
         let mut query = Source::find().filter(source::Column::DeletedAt.is_null());
         if let Some(id) = subject_id {
             query = query.filter(source::Column::SubjectId.eq(id));
         }
-        query
+        let models = query
             .all(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domains(models)
     }
-    async fn find_by_id(&self, id: String) -> RepositoryResult<source::Model> {
-        Source::find_by_id(id)
+    async fn find_by_id(&self, id: String) -> RepositoryResult<domain::Source> {
+        let model = Source::find_by_id(id)
             .one(self.db.as_ref())
             .await
             .map_err(RepositoryError::from)?
-            .ok_or_else(|| RepositoryError::not_found("Source not found"))
+            .ok_or_else(|| RepositoryError::not_found("Source not found"))?;
+        to_domain(model)
     }
     async fn list_books(&self, subject_id: Option<String>) -> RepositoryResult<Vec<String>> {
         let mut query = Source::find()
@@ -176,7 +183,7 @@ impl SourceRepository for SeaOrmSourceRepository {
     async fn find_active_exact(
         &self,
         values: &SourceValues,
-    ) -> RepositoryResult<Option<source::Model>> {
+    ) -> RepositoryResult<Option<domain::Source>> {
         let mut query = Source::find().filter(source::Column::DeletedAt.is_null());
         query = match &values.subject_id {
             Some(v) => query.filter(source::Column::SubjectId.eq(v)),
@@ -197,34 +204,44 @@ impl SourceRepository for SeaOrmSourceRepository {
         query
             .one(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?
+            .map(to_domain)
+            .transpose()
     }
-    async fn create(&self, input: NewSource) -> RepositoryResult<source::Model> {
-        let insert_result = source::ActiveModel {
-            id: Set(input.id.clone()),
-            question_id: Set(None),
-            subject_id: Set(input.values.subject_id),
-            book: Set(input.values.book),
-            chapter: Set(input.values.chapter),
-            knowledge: Set(input.values.knowledge),
-            created_at: Set(input.now),
-            updated_at: Set(input.now),
-            deleted_at: Set(None),
-            version: Set(0),
-            sync_status: Set("pending".into()),
-            sync_hash: Set(None),
+    async fn create(&self, input: NewSource) -> RepositoryResult<domain::Source> {
+        let id = input.id;
+        let active: source::ActiveModel = domain::Source {
+            id: id.clone(),
+            question_id: None,
+            subject_id: input.values.subject_id,
+            book: input.values.book,
+            chapter: input.values.chapter,
+            knowledge: input.values.knowledge,
+            metadata: domain::EntityMetadata {
+                created_at: input.now,
+                updated_at: input.now,
+                deleted_at: None,
+                version: 0,
+                sync_status: domain::SyncStatus::Pending,
+                sync_hash: None,
+            },
         }
-        .insert(self.db.as_ref())
-        .await;
+        .into();
+        let insert_result = active.insert(self.db.as_ref()).await;
         accept_uuid_insert_result(insert_result)?;
-        Source::find_by_id(input.id)
+        let model = Source::find_by_id(id)
             .one(self.db.as_ref())
             .await
             .map_err(RepositoryError::from)?
-            .ok_or_else(|| RepositoryError::not_found("插入后未能找到新创建的记录"))
+            .ok_or_else(|| RepositoryError::not_found("插入后未能找到新创建的记录"))?;
+        to_domain(model)
     }
-    async fn update(&self, input: SourceChanges) -> RepositoryResult<source::Model> {
-        let model = self.find_by_id(input.id).await?;
+    async fn update(&self, input: SourceChanges) -> RepositoryResult<domain::Source> {
+        let model = Source::find_by_id(input.id)
+            .one(self.db.as_ref())
+            .await
+            .map_err(RepositoryError::from)?
+            .ok_or_else(|| RepositoryError::not_found("Source not found"))?;
         let mut active: source::ActiveModel = model.into();
         if let Some(v) = input.values.subject_id {
             active.subject_id = Set(Some(v));
@@ -239,18 +256,23 @@ impl SourceRepository for SeaOrmSourceRepository {
             active.knowledge = Set(Some(v));
         }
         active.updated_at = Set(input.now);
-        active.sync_status = Set("pending".into());
-        active
+        active.sync_status = Set("pending".to_owned());
+        let model = active
             .update(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domain(model)
     }
     async fn soft_delete(&self, id: String, now: i64) -> RepositoryResult<()> {
-        let model = self.find_by_id(id).await?;
+        let model = Source::find_by_id(id)
+            .one(self.db.as_ref())
+            .await
+            .map_err(RepositoryError::from)?
+            .ok_or_else(|| RepositoryError::not_found("Source not found"))?;
         let mut active: source::ActiveModel = model.into();
         active.deleted_at = Set(Some(now));
         active.updated_at = Set(now);
-        active.sync_status = Set("pending".into());
+        active.sync_status = Set("pending".to_owned());
         active
             .update(self.db.as_ref())
             .await
@@ -263,7 +285,7 @@ impl SourceRepository for SeaOrmSourceRepository {
             .await
             .map_err(|e| RepositoryError::context("Query failed", e))?;
         let is_update = existing.is_some();
-        let active = if let Some(model) = existing {
+        let active: source::ActiveModel = if let Some(model) = existing {
             let mut active: source::ActiveModel = model.into();
             active.question_id = Set(input.question_id);
             active.subject_id = Set(input.values.subject_id);
@@ -272,24 +294,27 @@ impl SourceRepository for SeaOrmSourceRepository {
             active.knowledge = Set(input.values.knowledge);
             active.updated_at = Set(input.now);
             active.version = Set(input.version);
-            active.sync_status = Set("synced".into());
+            active.sync_status = Set("synced".to_owned());
             active.deleted_at = Set(input.deleted_at);
             active
         } else {
-            source::ActiveModel {
-                id: Set(input.id),
-                question_id: Set(input.question_id),
-                subject_id: Set(input.values.subject_id),
-                book: Set(input.values.book),
-                chapter: Set(input.values.chapter),
-                knowledge: Set(input.values.knowledge),
-                created_at: Set(input.now),
-                updated_at: Set(input.now),
-                deleted_at: Set(input.deleted_at),
-                version: Set(input.version),
-                sync_status: Set("synced".into()),
-                sync_hash: Set(None),
+            domain::Source {
+                id: input.id,
+                question_id: input.question_id,
+                subject_id: input.values.subject_id,
+                book: input.values.book,
+                chapter: input.values.chapter,
+                knowledge: input.values.knowledge,
+                metadata: domain::EntityMetadata {
+                    created_at: input.now,
+                    updated_at: input.now,
+                    deleted_at: input.deleted_at,
+                    version: input.version,
+                    sync_status: domain::SyncStatus::Synced,
+                    sync_hash: None,
+                },
             }
+            .into()
         };
         if is_update {
             active

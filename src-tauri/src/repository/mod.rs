@@ -25,6 +25,22 @@ pub enum RepositoryError {
         #[source]
         source: sea_orm::DbErr,
     },
+    #[error("{0}")]
+    Domain(#[from] crate::domain::DomainError),
+}
+
+pub(crate) fn to_domain<T, D>(model: T) -> RepositoryResult<D>
+where
+    D: TryFrom<T, Error = crate::domain::DomainError>,
+{
+    model.try_into().map_err(RepositoryError::from)
+}
+
+pub(crate) fn to_domains<T, D>(models: Vec<T>) -> RepositoryResult<Vec<D>>
+where
+    D: TryFrom<T, Error = crate::domain::DomainError>,
+{
+    models.into_iter().map(to_domain).collect()
 }
 
 impl RepositoryError {

@@ -1,6 +1,6 @@
 // SRS 数据相关命令 - 基于连续反馈的 SDR 模型
 
-use crate::database::entities::srs_data;
+use crate::domain;
 use crate::repository::srs_data::{NewSrsData, SrsStateChanges, SyncedSrsData};
 use crate::srs::{
     config, days_elapsed, predict_retrievability, review_card, update_feedback_history,
@@ -31,7 +31,8 @@ pub struct UpsertSRSDataInput {
     pub stability: f32,
     pub difficulty: f32,
     pub next_review_at: Option<i64>,
-    pub lastreviewed_at: Option<i64>,
+    #[serde(alias = "lastreviewed_at")]
+    pub last_review_at: Option<i64>,
     pub review_count: i32,
     pub feedback_history: String,
 }
@@ -93,15 +94,15 @@ pub struct SRSStatistics {
     pub total_reviews: i64,
 }
 
-fn card(s: srs_data::Model, now: i64, is_due: bool) -> SRSCardOutput {
+fn card(s: domain::SrsData, now: i64, is_due: bool) -> SRSCardOutput {
     SRSCardOutput {
         id: s.id,
         question_id: s.question_id,
         stability: s.stability,
         difficulty: s.difficulty,
-        recall_rate: predict_retrievability(s.stability, days_elapsed(s.lastreviewed_at, now)),
+        recall_rate: predict_retrievability(s.stability, days_elapsed(s.last_review_at, now)),
         next_review_at: s.next_review_at,
-        last_review_at: s.lastreviewed_at,
+        last_review_at: s.last_review_at,
         review_count: s.review_count,
         is_due,
     }
@@ -242,7 +243,7 @@ pub async fn reset_srs_progress(
                 last_reviewed_at: Some(now),
                 review_count: 1,
                 feedback_history: "[]".into(),
-                deleted_at: model.deleted_at,
+                deleted_at: model.metadata.deleted_at,
                 now,
             })
             .await?;
@@ -343,7 +344,7 @@ pub async fn upsert_srs_data(
             stability: input.stability,
             difficulty: input.difficulty,
             next_review_at: input.next_review_at,
-            last_reviewed_at: input.lastreviewed_at,
+            last_reviewed_at: input.last_review_at,
             review_count: input.review_count,
             feedback_history: input.feedback_history,
             now: chrono::Utc::now().timestamp(),

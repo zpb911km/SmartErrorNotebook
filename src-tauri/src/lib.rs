@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 mod commands;
 mod database;
+pub mod domain;
 mod repository;
 mod srs;
 

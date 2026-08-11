@@ -225,9 +225,13 @@ async fn error_question_commands_contract() {
         )
         .await;
     assert_pending_defaults(&first);
-    assert_eq!(first["userid"], "u1");
-    assert_eq!(first["subjectid"], subject_id);
-    assert_eq!(first["type_"], "short");
+    assert_eq!(first["user_id"], "u1");
+    assert_eq!(first["subject_id"], subject_id);
+    assert_eq!(first["type"], "short");
+    assert_eq!(first["userid"], first["user_id"]);
+    assert_eq!(first["subjectid"], first["subject_id"]);
+    assert_eq!(first["sourceid"], first["source_id"]);
+    assert_eq!(first["type_"], first["type"]);
     let first_id = first["id"].as_str().unwrap().to_owned();
 
     // Creation currently accepts an unknown subject ID.
@@ -289,7 +293,7 @@ async fn error_question_commands_contract() {
             }),
         )
         .await;
-    assert_eq!(updated["sourceid"], "source-x");
+    assert_eq!(updated["source_id"], "source-x");
     assert_eq!(updated["answer"], "a");
     assert_eq!(updated["error_note"], "note-one");
 
@@ -682,7 +686,7 @@ async fn attachment_commands_contract() {
             "create_attachment",
             json!({
                 "input": {
-                    "question_id": "q1", "type_": "original", "file_type": "img",
+                    "question_id": "q1", "type": "original", "file_type": "img",
                     "base64_data": payload
                 }
             }),
@@ -690,6 +694,8 @@ async fn attachment_commands_contract() {
         .await;
     let id = created["id"].as_str().unwrap().to_owned();
     assert_eq!(created["question_id"], "q1");
+    assert_eq!(created["type"], "original");
+    assert_eq!(created["type_"], created["type"]);
     assert_eq!(created["base64_data"], payload);
     assert_eq!(created["hash"], &id[..8]);
     assert!(created.get("version").is_none());
@@ -1034,6 +1040,32 @@ async fn sync_commands_contract() {
         .await;
     assert_eq!(upload["table_name"], "error_questions");
     assert_eq!(upload["data"]["prompt"], "p");
+    assert!(upload["data"].get("userid").is_some());
+    assert!(upload["data"].get("subjectid").is_some());
+    assert!(upload["data"].get("sourceid").is_some());
+    assert!(upload["data"].get("type_").is_some());
+    assert!(upload["data"].get("user_id").is_none());
+    assert!(upload["data"].get("subject_id").is_none());
+    assert!(upload["data"].get("source_id").is_none());
+    assert!(upload["data"].get("type").is_none());
+
+    let attachment_upload = pending
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|record| record["table_name"] == "attachments")
+        .unwrap();
+    assert!(attachment_upload["data"].get("type_").is_some());
+    assert!(attachment_upload["data"].get("type").is_none());
+
+    let srs_upload = pending
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|record| record["table_name"] == "srs_data")
+        .unwrap();
+    assert!(srs_upload["data"].get("lastreviewed_at").is_some());
+    assert!(srs_upload["data"].get("last_review_at").is_none());
     assert_eq!(
         h.err("get_record_for_upload", json!({ "recordId": "missing" }))
             .await,
@@ -1054,6 +1086,26 @@ async fn sync_commands_contract() {
         .unwrap();
     assert_eq!(stored_subject.sync_status, "synced");
     assert_eq!(stored_subject.version, 9);
+    h.ok(
+        "set_record_sync_status_version",
+        json!({ "recordId": subject_id, "status": "conflict", "version": 10 }),
+    )
+    .await;
+    let stored_subject = entities::subject::Entity::find_by_id(&subject_id)
+        .one(&h.db)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(stored_subject.sync_status, "conflict");
+    assert_eq!(stored_subject.version, 10);
+    let subjects = h.ok("get_subjects", json!({})).await;
+    let subject = subjects
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|subject| subject["id"] == subject_id)
+        .unwrap();
+    assert_eq!(subject["sync_status"], "conflict");
     assert_eq!(
         h.err(
             "set_record_sync_status_version",

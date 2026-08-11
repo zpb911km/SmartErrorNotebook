@@ -1,4 +1,4 @@
-use crate::database::entities::error_question;
+use crate::domain;
 use crate::repository::error_question::{
     NewQuestion, QuestionChanges, QuestionQuery, SyncedQuestion,
 };
@@ -22,8 +22,8 @@ pub struct CreateQuestionInput {
 pub struct UpdateQuestionInput {
     pub id: String,
     pub subject_id: Option<String>,
-    #[serde(alias = "source_id")]
-    pub sourceid: Option<String>,
+    #[serde(alias = "sourceid")]
+    pub source_id: Option<String>,
     pub prompt: Option<String>,
     #[serde(rename = "type")]
     pub type_: Option<String>,
@@ -37,13 +37,14 @@ pub struct UpsertQuestionInput {
     pub version: i32,
     pub status: String,
     pub deleted_at: Option<i64>,
-    pub userid: String,
-    #[serde(alias = "subject_id")]
-    pub subjectid: String,
-    #[serde(alias = "source_id")]
-    pub sourceid: Option<String>,
+    #[serde(alias = "userid")]
+    pub user_id: String,
+    #[serde(alias = "subjectid")]
+    pub subject_id: String,
+    #[serde(alias = "sourceid")]
+    pub source_id: Option<String>,
     pub prompt: String,
-    #[serde(rename = "type_")]
+    #[serde(rename = "type", alias = "type_")]
     pub type_: String,
     pub answer: Option<String>,
     pub analysis: Option<String>,
@@ -62,11 +63,34 @@ pub struct QuestionStats {
     pub total: u64,
 }
 
+#[derive(serde::Serialize)]
+pub struct ErrorQuestionOutput {
+    #[serde(flatten)]
+    pub question: domain::ErrorQuestion,
+    pub userid: String,
+    pub subjectid: String,
+    pub sourceid: Option<String>,
+    #[serde(rename = "type_")]
+    pub legacy_type: domain::QuestionType,
+}
+
+impl From<domain::ErrorQuestion> for ErrorQuestionOutput {
+    fn from(question: domain::ErrorQuestion) -> Self {
+        Self {
+            userid: question.user_id.clone(),
+            subjectid: question.subject_id.clone(),
+            sourceid: question.source_id.clone(),
+            legacy_type: question.question_type.clone(),
+            question,
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn get_questions(
     state: State<'_, AppState>,
     filter: Option<QuestionFilter>,
-) -> Result<Vec<error_question::Model>, String> {
+) -> Result<Vec<ErrorQuestionOutput>, String> {
     let f = filter.unwrap_or_default();
     state
         .repositories
@@ -78,25 +102,27 @@ pub async fn get_questions(
             offset: f.offset,
         })
         .await
+        .map(|questions| questions.into_iter().map(Into::into).collect())
         .map_err(Into::into)
 }
 #[tauri::command]
 pub async fn get_question(
     state: State<'_, AppState>,
     id: String,
-) -> Result<error_question::Model, String> {
+) -> Result<ErrorQuestionOutput, String> {
     state
         .repositories
         .error_questions
         .find_by_id(id)
         .await
+        .map(Into::into)
         .map_err(Into::into)
 }
 #[tauri::command]
 pub async fn create_question(
     state: State<'_, AppState>,
     input: CreateQuestionInput,
-) -> Result<error_question::Model, String> {
+) -> Result<ErrorQuestionOutput, String> {
     state
         .repositories
         .error_questions
@@ -113,20 +139,21 @@ pub async fn create_question(
             now: chrono::Utc::now().timestamp(),
         })
         .await
+        .map(Into::into)
         .map_err(Into::into)
 }
 #[tauri::command]
 pub async fn update_question(
     state: State<'_, AppState>,
     input: UpdateQuestionInput,
-) -> Result<error_question::Model, String> {
+) -> Result<ErrorQuestionOutput, String> {
     state
         .repositories
         .error_questions
         .update(QuestionChanges {
             id: input.id,
             subject_id: input.subject_id,
-            source_id: input.sourceid,
+            source_id: input.source_id,
             prompt: input.prompt,
             type_: input.type_,
             answer: input.answer,
@@ -135,6 +162,7 @@ pub async fn update_question(
             now: chrono::Utc::now().timestamp(),
         })
         .await
+        .map(Into::into)
         .map_err(Into::into)
 }
 #[tauri::command]
@@ -164,9 +192,9 @@ pub async fn upsert_error_question(
             id: input.id,
             version: input.version,
             deleted_at: input.deleted_at,
-            user_id: input.userid,
-            subject_id: input.subjectid,
-            source_id: input.sourceid,
+            user_id: input.user_id,
+            subject_id: input.subject_id,
+            source_id: input.source_id,
             prompt: input.prompt,
             type_: input.type_,
             answer: input.answer,

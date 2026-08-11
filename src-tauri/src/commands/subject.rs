@@ -1,7 +1,7 @@
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::subject;
+use crate::domain;
 use crate::repository::subject::{NewSubject, SubjectChanges, SyncedSubject};
 use crate::AppState;
 
@@ -29,7 +29,7 @@ pub struct UpsertSubjectInput {
 }
 
 #[tauri::command]
-pub async fn get_subjects(state: State<'_, AppState>) -> Result<Vec<subject::Model>, String> {
+pub async fn get_subjects(state: State<'_, AppState>) -> Result<Vec<domain::Subject>, String> {
     state
         .repositories
         .subjects
@@ -42,7 +42,7 @@ pub async fn get_subjects(state: State<'_, AppState>) -> Result<Vec<subject::Mod
 pub async fn create_subject(
     state: State<'_, AppState>,
     input: CreateSubjectInput,
-) -> Result<subject::Model, String> {
+) -> Result<domain::Subject, String> {
     state
         .repositories
         .subjects
@@ -60,7 +60,7 @@ pub async fn create_subject(
 pub async fn update_subject(
     state: State<'_, AppState>,
     input: UpdateSubjectInput,
-) -> Result<subject::Model, String> {
+) -> Result<domain::Subject, String> {
     state
         .repositories
         .subjects

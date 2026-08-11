@@ -1,4 +1,5 @@
 pub use crate::repository::sync::{CascadeOrphanCheckResult, SyncRecordHeader, SyncRecordOutput};
+use crate::domain::SyncStatus;
 use crate::AppState;
 use tauri::State;
 
@@ -38,7 +39,7 @@ pub async fn get_record_for_upload(
 pub async fn set_record_sync_status_version(
     state: State<'_, AppState>,
     record_id: String,
-    status: String,
+    status: SyncStatus,
     version: i32,
 ) -> Result<String, String> {
     state

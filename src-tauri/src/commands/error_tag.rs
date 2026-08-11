@@ -1,4 +1,4 @@
-use crate::database::entities::error_tag;
+use crate::domain;
 use crate::repository::error_tag::{NewErrorTag, SyncedErrorTag};
 use crate::AppState;
 use std::collections::HashMap;
@@ -30,7 +30,7 @@ pub struct UpsertErrorTagInput {
 pub async fn create_error_tags_for_question(
     state: State<'_, AppState>,
     input: CreateErrorTagsForQuestionInput,
-) -> Result<Vec<error_tag::Model>, String> {
+) -> Result<Vec<domain::ErrorTag>, String> {
     let now = chrono::Utc::now().timestamp();
     state
         .repositories
@@ -52,7 +52,7 @@ pub async fn create_error_tags_for_question(
         .map_err(Into::into)
 }
 #[tauri::command]
-pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag::Model>, String> {
+pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<domain::ErrorTag>, String> {
     Ok(state
         .repositories
         .error_tags
@@ -69,7 +69,7 @@ pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<error_tag:
 #[tauri::command]
 pub async fn get_full_error_tags(
     state: State<'_, AppState>,
-) -> Result<Vec<error_tag::Model>, String> {
+) -> Result<Vec<domain::ErrorTag>, String> {
     state
         .repositories
         .error_tags
@@ -81,7 +81,7 @@ pub async fn get_full_error_tags(
 pub async fn get_error_tags_for_question(
     state: State<'_, AppState>,
     question_id: String,
-) -> Result<Vec<error_tag::Model>, String> {
+) -> Result<Vec<domain::ErrorTag>, String> {
     state
         .repositories
         .error_tags

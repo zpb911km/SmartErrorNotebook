@@ -1,4 +1,4 @@
-use crate::database::entities::source;
+use crate::domain;
 use crate::repository::source::{NewSource, SourceChanges, SourceValues, SyncedSource};
 use crate::AppState;
 use tauri::State;
@@ -47,7 +47,7 @@ fn values(i: CreateSourceInput) -> SourceValues {
 pub async fn get_sources(
     state: State<'_, AppState>,
     filter: Option<SourceFilter>,
-) -> Result<Vec<source::Model>, String> {
+) -> Result<Vec<domain::Source>, String> {
     state
         .repositories
         .sources
@@ -56,7 +56,7 @@ pub async fn get_sources(
         .map_err(Into::into)
 }
 #[tauri::command]
-pub async fn get_source(state: State<'_, AppState>, id: String) -> Result<source::Model, String> {
+pub async fn get_source(state: State<'_, AppState>, id: String) -> Result<domain::Source, String> {
     state
         .repositories
         .sources
@@ -107,7 +107,7 @@ pub async fn get_knowledges(
 pub async fn create_source(
     state: State<'_, AppState>,
     input: CreateSourceInput,
-) -> Result<source::Model, String> {
+) -> Result<domain::Source, String> {
     state
         .repositories
         .sources
@@ -123,7 +123,7 @@ pub async fn create_source(
 pub async fn update_source(
     state: State<'_, AppState>,
     input: UpdateSourceInput,
-) -> Result<source::Model, String> {
+) -> Result<domain::Source, String> {
     state
         .repositories
         .sources

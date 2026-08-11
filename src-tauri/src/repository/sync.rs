@@ -3,6 +3,7 @@ use sea_orm::{ActiveModelTrait, ActiveValue, ColumnTrait, DbConn, EntityTrait, Q
 use serde::Serialize;
 use std::sync::Arc;
 
+use crate::domain::SyncStatus;
 use crate::repository::{RepositoryError, RepositoryResult};
 
 #[derive(Debug, Clone, Serialize)]
@@ -40,7 +41,7 @@ pub trait SyncRepository: Send + Sync {
     async fn set_status_version(
         &self,
         id: String,
-        status: String,
+        status: SyncStatus,
         version: i32,
     ) -> RepositoryResult<String>;
     async fn purge_synced_deletions(&self) -> RepositoryResult<serde_json::Value>;
@@ -282,7 +283,7 @@ impl SyncRepository for SeaOrmSyncRepository {
     async fn set_status_version(
         &self,
         id: String,
-        status: String,
+        status: SyncStatus,
         version: i32,
     ) -> RepositoryResult<String> {
         use crate::database::entities::{
@@ -290,6 +291,7 @@ impl SyncRepository for SeaOrmSyncRepository {
             srs_data as srs, subject as sub,
         };
         let db = self.db.as_ref();
+        let status = String::from(status);
         if let Some(m) = eq::Entity::find_by_id(&id)
             .one(db)
             .await

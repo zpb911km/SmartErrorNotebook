@@ -1,5 +1,8 @@
 use crate::database::entities::{prelude::SrsData, srs_data};
-use crate::repository::{accept_uuid_insert_result, RepositoryError, RepositoryResult};
+use crate::domain;
+use crate::repository::{
+    accept_uuid_insert_result, to_domain, to_domains, RepositoryError, RepositoryResult,
+};
 use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbConn, EntityTrait, QueryFilter, Set};
 use std::sync::Arc;
@@ -46,10 +49,10 @@ pub trait SrsDataRepository: Send + Sync {
         &self,
         question_id: String,
         active_only: bool,
-    ) -> RepositoryResult<Option<srs_data::Model>>;
-    async fn list_active(&self) -> RepositoryResult<Vec<srs_data::Model>>;
-    async fn create(&self, input: NewSrsData) -> RepositoryResult<srs_data::Model>;
-    async fn update_state(&self, input: SrsStateChanges) -> RepositoryResult<srs_data::Model>;
+    ) -> RepositoryResult<Option<domain::SrsData>>;
+    async fn list_active(&self) -> RepositoryResult<Vec<domain::SrsData>>;
+    async fn create(&self, input: NewSrsData) -> RepositoryResult<domain::SrsData>;
+    async fn update_state(&self, input: SrsStateChanges) -> RepositoryResult<domain::SrsData>;
     async fn upsert_synced(&self, input: SyncedSrsData) -> RepositoryResult<()>;
 }
 pub struct SeaOrmSrsDataRepository {
@@ -67,47 +70,56 @@ impl SrsDataRepository for SeaOrmSrsDataRepository {
         &self,
         question_id: String,
         active_only: bool,
-    ) -> RepositoryResult<Option<srs_data::Model>> {
+    ) -> RepositoryResult<Option<domain::SrsData>> {
         let mut q = SrsData::find().filter(srs_data::Column::QuestionId.eq(question_id));
         if active_only {
             q = q.filter(srs_data::Column::DeletedAt.is_null());
         }
-        q.one(self.db.as_ref()).await.map_err(RepositoryError::from)
+        q.one(self.db.as_ref())
+            .await
+            .map_err(RepositoryError::from)?
+            .map(to_domain)
+            .transpose()
     }
-    async fn list_active(&self) -> RepositoryResult<Vec<srs_data::Model>> {
-        SrsData::find()
+    async fn list_active(&self) -> RepositoryResult<Vec<domain::SrsData>> {
+        let models = SrsData::find()
             .filter(srs_data::Column::DeletedAt.is_null())
             .all(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domains(models)
     }
-    async fn create(&self, input: NewSrsData) -> RepositoryResult<srs_data::Model> {
-        let insert_result = srs_data::ActiveModel {
-            id: Set(input.id.clone()),
-            question_id: Set(input.question_id),
-            stability: Set(input.stability),
-            difficulty: Set(input.difficulty),
-            next_review_at: Set(input.next_review_at),
-            lastreviewed_at: Set(input.last_reviewed_at),
-            review_count: Set(input.review_count),
-            feedback_history: Set(input.feedback_history),
-            created_at: Set(input.now),
-            updated_at: Set(input.now),
-            version: Set(0),
-            sync_status: Set("pending".into()),
-            sync_hash: Set(None),
-            deleted_at: Set(None),
+    async fn create(&self, input: NewSrsData) -> RepositoryResult<domain::SrsData> {
+        let id = input.id;
+        let active: srs_data::ActiveModel = domain::SrsData {
+            id: id.clone(),
+            question_id: input.question_id,
+            stability: input.stability,
+            difficulty: input.difficulty,
+            next_review_at: input.next_review_at,
+            last_review_at: input.last_reviewed_at,
+            review_count: input.review_count,
+            feedback_history: input.feedback_history,
+            metadata: domain::EntityMetadata {
+                created_at: input.now,
+                updated_at: input.now,
+                deleted_at: None,
+                version: 0,
+                sync_status: domain::SyncStatus::Pending,
+                sync_hash: None,
+            },
         }
-        .insert(self.db.as_ref())
-        .await;
+        .into();
+        let insert_result = active.insert(self.db.as_ref()).await;
         accept_uuid_insert_result(insert_result)?;
-        SrsData::find_by_id(input.id)
+        let model = SrsData::find_by_id(id)
             .one(self.db.as_ref())
             .await
             .map_err(RepositoryError::from)?
-            .ok_or_else(|| RepositoryError::not_found("SRS 数据插入后查询失败"))
+            .ok_or_else(|| RepositoryError::not_found("SRS 数据插入后查询失败"))?;
+        to_domain(model)
     }
-    async fn update_state(&self, input: SrsStateChanges) -> RepositoryResult<srs_data::Model> {
+    async fn update_state(&self, input: SrsStateChanges) -> RepositoryResult<domain::SrsData> {
         let model = SrsData::find_by_id(input.id)
             .one(self.db.as_ref())
             .await
@@ -121,12 +133,13 @@ impl SrsDataRepository for SeaOrmSrsDataRepository {
         active.review_count = Set(input.review_count);
         active.feedback_history = Set(input.feedback_history);
         active.updated_at = Set(input.now);
-        active.sync_status = Set("pending".into());
+        active.sync_status = Set("pending".to_owned());
         active.deleted_at = Set(input.deleted_at);
-        active
+        let model = active
             .update(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domain(model)
     }
     async fn upsert_synced(&self, input: SyncedSrsData) -> RepositoryResult<()> {
         let existing = SrsData::find_by_id(&input.id)
@@ -134,37 +147,40 @@ impl SrsDataRepository for SeaOrmSrsDataRepository {
             .await
             .map_err(|e| RepositoryError::context("Query failed", e))?;
         let is_update = existing.is_some();
-        let active = if let Some(model) = existing {
-            let mut a: srs_data::ActiveModel = model.into();
-            a.question_id = Set(input.question_id);
-            a.stability = Set(input.stability);
-            a.difficulty = Set(input.difficulty);
-            a.next_review_at = Set(input.next_review_at);
-            a.lastreviewed_at = Set(input.last_reviewed_at);
-            a.review_count = Set(input.review_count);
-            a.feedback_history = Set(input.feedback_history);
-            a.updated_at = Set(input.now);
-            a.version = Set(input.version);
-            a.sync_status = Set("synced".into());
-            a.deleted_at = Set(input.deleted_at);
-            a
+        let active: srs_data::ActiveModel = if let Some(model) = existing {
+            let mut active: srs_data::ActiveModel = model.into();
+            active.question_id = Set(input.question_id);
+            active.stability = Set(input.stability);
+            active.difficulty = Set(input.difficulty);
+            active.next_review_at = Set(input.next_review_at);
+            active.lastreviewed_at = Set(input.last_reviewed_at);
+            active.review_count = Set(input.review_count);
+            active.feedback_history = Set(input.feedback_history);
+            active.updated_at = Set(input.now);
+            active.version = Set(input.version);
+            active.sync_status = Set("synced".to_owned());
+            active.deleted_at = Set(input.deleted_at);
+            active
         } else {
-            srs_data::ActiveModel {
-                id: Set(input.id),
-                question_id: Set(input.question_id),
-                stability: Set(input.stability),
-                difficulty: Set(input.difficulty),
-                next_review_at: Set(input.next_review_at),
-                lastreviewed_at: Set(input.last_reviewed_at),
-                review_count: Set(input.review_count),
-                feedback_history: Set(input.feedback_history),
-                created_at: Set(input.now),
-                updated_at: Set(input.now),
-                version: Set(input.version),
-                sync_status: Set("synced".into()),
-                sync_hash: Set(None),
-                deleted_at: Set(None),
+            domain::SrsData {
+                id: input.id,
+                question_id: input.question_id,
+                stability: input.stability,
+                difficulty: input.difficulty,
+                next_review_at: input.next_review_at,
+                last_review_at: input.last_reviewed_at,
+                review_count: input.review_count,
+                feedback_history: input.feedback_history,
+                metadata: domain::EntityMetadata {
+                    created_at: input.now,
+                    updated_at: input.now,
+                    deleted_at: None,
+                    version: input.version,
+                    sync_status: domain::SyncStatus::Synced,
+                    sync_hash: None,
+                },
             }
+            .into()
         };
         if is_update {
             active

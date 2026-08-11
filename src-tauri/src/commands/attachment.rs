@@ -1,36 +1,41 @@
 use tauri::State;
 use uuid::Uuid;
 
-use crate::database::entities::attachment;
+use crate::domain;
 use crate::repository::attachment::{NewAttachment, SyncedAttachment};
 use crate::AppState;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct CreateAttachmentInput {
     pub question_id: String,
+    #[serde(rename = "type", alias = "type_")]
     pub type_: String,
     pub file_type: String,
     pub base64_data: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, Debug)]
 pub struct AttachmentInterface {
     pub id: String,
     pub question_id: String,
-    pub type_: String,
+    #[serde(rename = "type")]
+    pub attachment_type: String,
+    #[serde(rename = "type_")]
+    pub legacy_attachment_type: String,
     pub file_type: String,
     pub base64_data: String,
     pub hash: String,
 }
 
-impl From<attachment::Model> for AttachmentInterface {
-    fn from(model: attachment::Model) -> Self {
+impl From<domain::Attachment> for AttachmentInterface {
+    fn from(model: domain::Attachment) -> Self {
         Self {
             id: model.id,
             question_id: model.question_id,
-            type_: model.type_,
-            file_type: model.file_type,
-            base64_data: String::from_utf8(model.base64_data).unwrap_or_default(),
+            attachment_type: model.attachment_type.as_str().to_owned(),
+            legacy_attachment_type: model.attachment_type.into(),
+            file_type: model.file_type.into(),
+            base64_data: String::from_utf8(model.data).unwrap_or_default(),
             hash: model.hash,
         }
     }
@@ -43,7 +48,8 @@ pub struct UpsertAttachmentInput {
     pub status: String,
     pub deleted_at: Option<i64>,
     pub question_id: String,
-    pub type_: String,
+    #[serde(rename = "type", alias = "type_")]
+    pub attachment_type: String,
     pub file_type: String,
     pub base64_data: Vec<u8>,
     pub hash: String,
@@ -131,7 +137,7 @@ pub async fn upsert_attachment(
             version: input.version,
             deleted_at: input.deleted_at,
             question_id: input.question_id,
-            type_: input.type_,
+            type_: input.attachment_type,
             file_type: input.file_type,
             base64_data: input.base64_data,
             hash: input.hash,

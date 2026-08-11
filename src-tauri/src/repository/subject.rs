@@ -4,7 +4,10 @@ use async_trait::async_trait;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbConn, EntityTrait, QueryFilter, Set};
 
 use crate::database::entities::{prelude::Subject, subject};
-use crate::repository::{accept_uuid_insert_result, RepositoryError, RepositoryResult};
+use crate::domain;
+use crate::repository::{
+    accept_uuid_insert_result, to_domain, to_domains, RepositoryError, RepositoryResult,
+};
 
 pub struct NewSubject {
     pub id: String,
@@ -31,9 +34,9 @@ pub struct SyncedSubject {
 
 #[async_trait]
 pub trait SubjectRepository: Send + Sync {
-    async fn list_active(&self) -> RepositoryResult<Vec<subject::Model>>;
-    async fn create(&self, input: NewSubject) -> RepositoryResult<subject::Model>;
-    async fn update(&self, input: SubjectChanges) -> RepositoryResult<subject::Model>;
+    async fn list_active(&self) -> RepositoryResult<Vec<domain::Subject>>;
+    async fn create(&self, input: NewSubject) -> RepositoryResult<domain::Subject>;
+    async fn update(&self, input: SubjectChanges) -> RepositoryResult<domain::Subject>;
     async fn soft_delete(&self, id: String, now: i64) -> RepositoryResult<()>;
     async fn upsert_synced(&self, input: SyncedSubject) -> RepositoryResult<()>;
 }
@@ -50,38 +53,43 @@ impl SeaOrmSubjectRepository {
 
 #[async_trait]
 impl SubjectRepository for SeaOrmSubjectRepository {
-    async fn list_active(&self) -> RepositoryResult<Vec<subject::Model>> {
-        Subject::find()
+    async fn list_active(&self) -> RepositoryResult<Vec<domain::Subject>> {
+        let models = Subject::find()
             .filter(subject::Column::DeletedAt.is_null())
             .all(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domains(models)
     }
 
-    async fn create(&self, input: NewSubject) -> RepositoryResult<subject::Model> {
-        let insert_result = subject::ActiveModel {
-            id: Set(input.id.clone()),
-            name: Set(input.name),
-            color: Set(input.color),
-            created_at: Set(input.now),
-            updated_at: Set(input.now),
-            deleted_at: Set(None),
-            version: Set(0),
-            sync_status: Set("pending".to_string()),
-            sync_hash: Set(None),
+    async fn create(&self, input: NewSubject) -> RepositoryResult<domain::Subject> {
+        let id = input.id;
+        let active: subject::ActiveModel = domain::Subject {
+            id: id.clone(),
+            name: input.name,
+            color: input.color,
+            metadata: domain::EntityMetadata {
+                created_at: input.now,
+                updated_at: input.now,
+                deleted_at: None,
+                version: 0,
+                sync_status: domain::SyncStatus::Pending,
+                sync_hash: None,
+            },
         }
-        .insert(self.db.as_ref())
-        .await;
+        .into();
+        let insert_result = active.insert(self.db.as_ref()).await;
         accept_uuid_insert_result(insert_result)?;
 
-        Subject::find_by_id(input.id)
+        let model = Subject::find_by_id(id)
             .one(self.db.as_ref())
             .await
             .map_err(RepositoryError::from)?
-            .ok_or_else(|| RepositoryError::not_found("Subject not found"))
+            .ok_or_else(|| RepositoryError::not_found("Subject not found"))?;
+        to_domain(model)
     }
 
-    async fn update(&self, input: SubjectChanges) -> RepositoryResult<subject::Model> {
+    async fn update(&self, input: SubjectChanges) -> RepositoryResult<domain::Subject> {
         let model = Subject::find_by_id(input.id)
             .one(self.db.as_ref())
             .await
@@ -95,11 +103,12 @@ impl SubjectRepository for SeaOrmSubjectRepository {
             active.color = Set(Some(color));
         }
         active.updated_at = Set(input.now);
-        active.sync_status = Set("pending".to_string());
-        active
+        active.sync_status = Set("pending".to_owned());
+        let model = active
             .update(self.db.as_ref())
             .await
-            .map_err(RepositoryError::from)
+            .map_err(RepositoryError::from)?;
+        to_domain(model)
     }
 
     async fn soft_delete(&self, id: String, now: i64) -> RepositoryResult<()> {
@@ -111,7 +120,7 @@ impl SubjectRepository for SeaOrmSubjectRepository {
         let mut active: subject::ActiveModel = model.into();
         active.deleted_at = Set(Some(now));
         active.updated_at = Set(now);
-        active.sync_status = Set("pending".to_string());
+        active.sync_status = Set("pending".to_owned());
         active
             .update(self.db.as_ref())
             .await
@@ -125,27 +134,30 @@ impl SubjectRepository for SeaOrmSubjectRepository {
             .await
             .map_err(|e| RepositoryError::context("Query failed", e))?;
         let is_update = existing.is_some();
-        let active = if let Some(model) = existing {
+        let active: subject::ActiveModel = if let Some(model) = existing {
             let mut active: subject::ActiveModel = model.into();
             active.name = Set(input.name);
             active.color = Set(input.color);
             active.updated_at = Set(input.now);
             active.version = Set(input.version);
-            active.sync_status = Set("synced".to_string());
+            active.sync_status = Set("synced".to_owned());
             active.deleted_at = Set(input.deleted_at);
             active
         } else {
-            subject::ActiveModel {
-                id: Set(input.id),
-                name: Set(input.name),
-                color: Set(input.color),
-                created_at: Set(input.now),
-                updated_at: Set(input.now),
-                deleted_at: Set(input.deleted_at),
-                version: Set(input.version),
-                sync_status: Set("synced".to_string()),
-                sync_hash: Set(None),
+            domain::Subject {
+                id: input.id,
+                name: input.name,
+                color: input.color,
+                metadata: domain::EntityMetadata {
+                    created_at: input.now,
+                    updated_at: input.now,
+                    deleted_at: input.deleted_at,
+                    version: input.version,
+                    sync_status: domain::SyncStatus::Synced,
+                    sync_hash: None,
+                },
             }
+            .into()
         };
         if is_update {
             active
@@ -165,7 +177,7 @@ mod tests {
 
     use sea_orm::{ConnectOptions, ConnectionTrait, Database};
 
-    use super::{NewSubject, SeaOrmSubjectRepository, SubjectRepository};
+    use super::{NewSubject, SeaOrmSubjectRepository, SubjectChanges, SubjectRepository};
     use crate::repository::RepositoryError;
 
     #[tokio::test]
@@ -174,7 +186,7 @@ mod tests {
         options.max_connections(1).min_connections(1);
         let db = Database::connect(options).await.unwrap();
         crate::database::init_database(&db).await.unwrap();
-        let repository = SeaOrmSubjectRepository::new(Arc::new(db));
+        let repository = SeaOrmSubjectRepository::new(Arc::new(db.clone()));
 
         let created = repository
             .create(NewSubject {
@@ -188,8 +200,27 @@ mod tests {
         assert_eq!(created.id, "repository-subject");
         assert_eq!(repository.list_active().await.unwrap().len(), 1);
 
+        db.execute_unprepared(
+            "CREATE TRIGGER reject_unrelated_subject_update \
+             BEFORE UPDATE OF created_at, sync_hash ON subjects \
+             BEGIN SELECT RAISE(FAIL, 'unrelated fields must not be updated'); END;",
+        )
+        .await
+        .unwrap();
+
+        let updated = repository
+            .update(SubjectChanges {
+                id: "repository-subject".to_string(),
+                name: Some("Updated repository".to_string()),
+                color: None,
+                now: 2,
+            })
+            .await
+            .unwrap();
+        assert_eq!(updated.name, "Updated repository");
+
         repository
-            .soft_delete("repository-subject".to_string(), 2)
+            .soft_delete("repository-subject".to_string(), 3)
             .await
             .unwrap();
         assert!(repository.list_active().await.unwrap().is_empty());

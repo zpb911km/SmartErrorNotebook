@@ -6,7 +6,7 @@
 //
 // 参考文献: https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm
 
-use crate::database::entities::srs_data;
+use crate::domain::SrsData;
 use serde::{Deserialize, Serialize};
 
 /// FSRS-5 模型参数常量
@@ -25,9 +25,8 @@ pub mod config {
     //   w15-w16: 评分乘数 (Hard惩罚 / Easy奖励)
     //   w17-w18: 同日复习
     pub const W: [f32; 19] = [
-        0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046,
-        1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315,
-        2.9898, 0.51655, 0.6621,
+        0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192,
+        1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621,
     ];
 
     // ── 向后兼容常量 ──────────────────────────────────────
@@ -136,7 +135,7 @@ pub fn update_feedback_history(history_json: &str, new_feedback: f32) -> String 
 /// $$G = 3f + 1, \quad G \in [1, 4]$$
 ///
 /// 等价于离散 FSRS 的 Again(1) / Hard(2) / Good(3) / Easy(4)。
-pub fn review_card(card: &srs_data::Model, now: i64, feedback: f32) -> Result<ReviewResult, String> {
+pub fn review_card(card: &SrsData, now: i64, feedback: f32) -> Result<ReviewResult, String> {
     if feedback < 0.0 || feedback > 1.0 {
         return Err(format!("Feedback must be in [0, 1], got {}", feedback));
     }
@@ -168,7 +167,7 @@ pub fn review_card(card: &srs_data::Model, now: i64, feedback: f32) -> Result<Re
     let grade = 3.0 * feedback + 1.0;
 
     // 距离上次复习的天数
-    let elapsed_days = days_elapsed(card.lastreviewed_at, now);
+    let elapsed_days = days_elapsed(card.last_review_at, now);
 
     // 当前可提取度 R（FSRS 遗忘曲线）
     let r_pred = predict_retrievability(card.stability, elapsed_days);
@@ -240,8 +239,7 @@ pub fn review_card(card: &srs_data::Model, now: i64, feedback: f32) -> Result<Re
 ///
 /// $$D_0(G) = w_4 - e^{w_5 \cdot (G - 1)} + 1$$
 fn initial_difficulty(grade: f32) -> f32 {
-    (config::W[4] - (config::W[5] * (grade - 1.0)).exp() + 1.0)
-        .clamp(1.0, 10.0)
+    (config::W[4] - (config::W[5] * (grade - 1.0)).exp() + 1.0).clamp(1.0, 10.0)
 }
 
 /// 连续反馈评分乘数 M(G)
@@ -285,22 +283,24 @@ mod tests {
         last_reviewed_at: Option<i64>,
         review_count: i32,
         feedback_history: &str,
-    ) -> srs_data::Model {
-        srs_data::Model {
+    ) -> SrsData {
+        SrsData {
             id: "test".to_string(),
             question_id: "test-q".to_string(),
             stability,
             difficulty,
             next_review_at: None,
-            lastreviewed_at: last_reviewed_at,
+            last_review_at: last_reviewed_at,
             review_count,
             feedback_history: feedback_history.to_string(),
-            created_at: 0,
-            updated_at: 0,
-            version: 0,
-            sync_status: "synced".to_string(),
-            sync_hash: None,
-            deleted_at: None,
+            metadata: crate::domain::EntityMetadata {
+                created_at: 0,
+                updated_at: 0,
+                version: 0,
+                sync_status: crate::domain::SyncStatus::Synced,
+                sync_hash: None,
+                deleted_at: None,
+            },
         }
     }
 
@@ -412,17 +412,32 @@ mod tests {
     #[test]
     fn test_interpolate_multiplier() {
         let m_hard = interpolate_multiplier(2.0);
-        assert!((m_hard - config::W[15]).abs() < 0.001, "M(2)={} ≠ w15={}", m_hard, config::W[15]);
+        assert!(
+            (m_hard - config::W[15]).abs() < 0.001,
+            "M(2)={} ≠ w15={}",
+            m_hard,
+            config::W[15]
+        );
 
         let m_good = interpolate_multiplier(3.0);
         assert!((m_good - 1.0).abs() < 0.001, "M(3)={} ≠ 1.0", m_good);
 
         let m_easy = interpolate_multiplier(4.0);
-        assert!((m_easy - config::W[16]).abs() < 0.001, "M(4)={} ≠ w16={}", m_easy, config::W[16]);
+        assert!(
+            (m_easy - config::W[16]).abs() < 0.001,
+            "M(4)={} ≠ w16={}",
+            m_easy,
+            config::W[16]
+        );
 
         // 中点测试
         let m_mid = interpolate_multiplier(2.5);
         let expected = (config::W[15] + 1.0) / 2.0;
-        assert!((m_mid - expected).abs() < 0.001, "M(2.5)={} ≠ mid={}", m_mid, expected);
+        assert!(
+            (m_mid - expected).abs() < 0.001,
+            "M(2.5)={} ≠ mid={}",
+            m_mid,
+            expected
+        );
     }
 }
