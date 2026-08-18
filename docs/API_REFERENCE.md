@@ -2,7 +2,7 @@
 
 Smart Error Notebook 通过 Tauri `invoke` 暴露 50 个数据库命令。本参考手册描述命令签名、参数、返回值、错误和可观察行为。
 
-生产实现以 `src-tauri/src/lib.rs` 的命令注册表及 `src-tauri/src/commands/` 为准。文件关联命令、未注册的 `user_config` 模块、连接函数和迁移器不属于本 API。
+生产实现以 `src-tauri/src/command/mod.rs` 的命令注册表及 `src-tauri/src/command/legacy/` 中的兼容处理器为准。数据库连接、仓储实现和迁移器不属于 IPC API。
 
 ## 快速开始
 
@@ -333,7 +333,7 @@ invoke<ErrorQuestion>('update_question', {
 
 **签名**：`invoke<null>('delete_question', { id: string })`
 
-**行为**：软删除题目，并软删除按 `question_id` 找到的第一条 SRS 记录；标签和附件不受影响。SRS 处理先于题目存在性检查。
+**行为**：操作在同一事务内完成：软删除题目和对应的 SRS 记录，并解除题目的全部附件、标签关系。解除关系后仍被其他题目引用的附件或标签会保留并标记为 `pending`；失去最后一条关系的资源会同时软删除。依赖清理先于题目存在性检查。
 
 **错误**：题目不存在时返回 `Question not found`。
 
@@ -506,7 +506,7 @@ invoke<ErrorTag[]>('create_error_tags_for_question', {
 })
 ```
 
-**行为**：按输入顺序逐条创建，不验证题目存在；空数组返回空数组。批量写入不是原子操作。
+**行为**：按输入顺序逐条创建，不显式验证题目存在；空数组返回空数组。整批写入位于同一事务中，任一条失败时不会提交部分结果。
 
 ### `get_error_tags`
 
@@ -530,9 +530,11 @@ invoke<ErrorTag[]>('create_error_tags_for_question', {
 
 ### `delete_error_tag`
 
-**签名**：`invoke<null>('delete_error_tag', { tagId: string })`
+**签名**：`invoke<null>('delete_error_tag', { tagId: string, questionId: string })`
 
-**行为**：软删除标签；ID 不存在时仍成功，因此该操作是幂等的。
+**行为**：解除标签与指定题目的关系；只有最后一条关系解除后才软删除标签并标记 `pending`。
+
+**错误**：关系不存在时返回错误。
 
 ### `update_error_tag_by_name`
 
@@ -575,14 +577,15 @@ invoke<null>('upsert_error_tag', {
     version: number
     status: string
     deleted_at?: number | null
-    question_id: string
+    question_ids: string[]
+    question_id?: string
     name: string
     color: string
   },
 })
 ```
 
-**行为**：按 ID 插入或覆盖；`status` 被忽略，保存状态固定为 `synced`。
+**行为**：按 ID 插入或覆盖，并将关系精确更新为去重后的题目 ID 集合。`question_id` 仅用于兼容旧的单关系调用；`status` 被忽略，保存状态固定为 `synced`。未删除记录的关系集合不能为空。
 
 ## 附件
 
@@ -621,7 +624,7 @@ invoke<Attachment[]>('create_attachments_for_question', {
 })
 ```
 
-**行为**：用顶层 `questionId` 覆盖每个元素的 `question_id`，再按顺序逐条创建；批量写入不是原子操作。
+**行为**：用顶层 `questionId` 覆盖每个元素的 `question_id`，再按顺序逐条创建。整批写入位于同一事务中，任一条失败时不会提交部分结果。
 
 ### `get_attachments_by_question`
 
@@ -631,11 +634,11 @@ invoke<Attachment[]>('create_attachments_for_question', {
 
 ### `delete_attachment`
 
-**签名**：`invoke<null>('delete_attachment', { id: string })`
+**签名**：`invoke<null>('delete_attachment', { id: string, questionId: string })`
 
-**行为**：软删除附件并标记 `pending`。
+**行为**：解除附件与指定题目的关系；只有最后一条关系解除后才软删除附件并标记 `pending`。
 
-**错误**：ID 不存在时返回 `Attachment not found`。
+**错误**：关系不存在时返回错误。
 
 ### `upsert_attachment`
 
@@ -648,7 +651,8 @@ invoke<null>('upsert_attachment', {
     version: number
     status: string
     deleted_at?: number | null
-    question_id: string
+    question_ids: string[]
+    question_id?: string
     type_: string
     file_type: string
     base64_data: number[]
@@ -657,7 +661,7 @@ invoke<null>('upsert_attachment', {
 })
 ```
 
-**行为**：同步输入的 `base64_data` 是字节数组；按 ID 插入或覆盖，保存状态固定为 `synced`。
+**行为**：同步输入的 `base64_data` 是字节数组；按 ID 插入或覆盖，并将关系精确更新为去重后的题目 ID 集合。`question_id` 仅用于兼容旧的单关系调用；保存状态固定为 `synced`。未删除记录的关系集合不能为空。
 
 ## SRS
 
@@ -709,7 +713,7 @@ invoke<ReviewOutput>('submit_review_result', {
 
 **签名**：`invoke<SRSCardOutput>('reset_srs_progress', { questionId: string })`
 
-**行为**：已有未删除记录恢复初始参数并立即到期；不存在时创建新记录，新记录约一天后到期。
+**行为**：查询包括软删除记录在内的现有 SRS。记录存在时恢复初始参数、清除 `deleted_at` 并立即到期；不存在时创建立即到期的新记录。
 
 ### `get_due_count`
 
@@ -751,7 +755,7 @@ invoke<null>('upsert_srs_data', {
 })
 ```
 
-**行为**：更新已有记录时应用 `deleted_at`；插入时当前忽略传入的 `deleted_at` 并写为 `null`；保存状态固定为 `synced`。
+**行为**：插入和更新都会应用传入的 `deleted_at`，保存状态固定为 `synced`。规范化存储使用 `question_id` 作为 SRS 记录标识，兼容字段 `id` 不参与持久化定位；输出中的 `id` 同样等于 `question_id`。
 
 ## 同步
 
@@ -795,14 +799,14 @@ invoke<null>('upsert_srs_data', {
 ```text
 invoke<string>('set_record_sync_status_version', {
   recordId: string
-  status: string
+  status: 'pending' | 'synced' | 'conflict'
   version: number
 })
 ```
 
-**行为**：按固定表顺序更新第一条匹配记录的状态和版本，返回包含记录 ID 的确认字符串。
+**行为**：按固定表顺序更新第一条匹配记录的状态和版本，返回包含记录 ID 的确认字符串。状态输入不区分大小写，响应及其他接口统一输出小写。
 
-**错误**：不存在时返回 `Record not found with id: <recordId>`。
+**错误**：不存在时返回 `Record not found with id: <recordId>`；未知状态在命令执行前返回 `Unknown sync status: <status>`，不会修改记录。
 
 ### `purge_synced_deletions`
 
@@ -827,7 +831,7 @@ invoke<Record<string, { deleted: number }>>('purge_synced_deletions')
 }
 ```
 
-各表删除不提供全有或全无的事务保证。
+六张表的清理在同一个仓储事务中执行。
 
 ### `check_orphan_records`
 
@@ -837,13 +841,10 @@ invoke<Record<string, { deleted: number }>>('purge_synced_deletions')
 
 | 记录 | 父记录缺失时的处理 | 报告格式 |
 | --- | --- | --- |
-| `error_questions` | 将 `subjectid` 改为 `""`，不软删除 | 不加入报告 |
-| `sources` | 软删除并标记 `pending` | `source:<id>` |
-| `srs_data` | 软删除并标记 `pending` | `srs_data:<id>` |
-| `error_tags` | 软删除并标记 `pending` | `error_tag:<id>` |
-| `attachments` | 软删除并标记 `pending` | `attachment:<id>` |
+| `error_tags` | 没有任何题目关系时软删除并标记 `pending` | `error_tags:<id>` |
+| `attachments` | 没有任何题目关系时软删除并标记 `pending` | `attachments:<id>` |
 
-`total_checked` 是上述五类活动记录的检查总数。
+`total_checked` 是上述两类活动记录的检查总数。题目、来源和 SRS 引用完整性由规范化数据库关系及写入事务维护，此命令不扫描这些实体。
 
 ## 契约测试
 

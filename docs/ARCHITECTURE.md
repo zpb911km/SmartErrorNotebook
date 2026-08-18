@@ -18,7 +18,8 @@
 
 ## 🏛️ 总体架构
 
-本项目采用 **三层架构**：前端展示层 → Rust 业务逻辑层 → 本地存储层，外加可选的同步服务器层。
+本项目当前采用 **三层架构**：前端展示层 → Rust 业务逻辑层 → 本地存储层。
+远程同步和社区已停用；`server/` 是不兼容当前数据库模型的历史实现，不属于受支持架构。
 
 ```mermaid
 graph TB
@@ -31,14 +32,14 @@ graph TB
             V3[Manage] --- V4[Manage-Detail]
             V5[Preview] --- V6[Review-Detail]
             V7[Profile] --- V8[Settings]
-            V9[Sync] --- V10[Community]
+            V9[Sync 停用说明]
         end
 
         subgraph C["Components（18 组件）"]
             C1[TopBar / BottomNav]
             C2[CameraModal / ImageEditor]
             C3[MarkdownTextarea / ErrorTagSelector]
-            C4[ConflictResolver / Card]
+            C4[Card]
             C5[ExportModal / ExportPreview]
             C6[ImportModal]
         end
@@ -76,23 +77,23 @@ graph TB
     subgraph Backend["⚙️ Rust 业务逻辑层 (Tauri 2 + SeaORM)"]
         direction TB
 
-        subgraph Cmd["commands/（Tauri 命令）"]
+        subgraph Cmd["command/legacy（兼容 Tauri 命令）"]
             CM1[subject.rs] --- CM2[error_question.rs]
             CM3[error_tag.rs] --- CM4[source.rs]
             CM5[attachment.rs] --- CM6[srs_data.rs]
-            CM7[sync.rs] --- CM8[user_config.rs]
+            CM7[sync.rs] --- CM8[file.rs]
         end
 
-        subgraph Repo["repository/（仓储接口与实现）"]
-            RP1[领域 Repository traits]
-            RP2[SeaORM Repository implementations]
-            RP3[Repositories 依赖注入容器]
+        subgraph Repo["repository/ + data/repository/"]
+            RP1[Repository traits]
+            RP2[legacy 兼容模型]
+            RP3[SeaORM 事务实现]
         end
 
-        subgraph DAL["database/（数据访问层）"]
+        subgraph DAL["data/database/ + crates/migration/"]
             D1[connection.rs 数据库连接]
-            D2[entities/ ORM 实体定义]
-            D3[migrations/ 14 个迁移文件]
+            D2[entity/ 规范化 ORM 实体]
+            D3[migration 独立 crate]
         end
 
         subgraph SRS["srs/（SDR 算法引擎）"]
@@ -111,38 +112,19 @@ graph TB
     Backend -->|SQLite 文件| Storage
 
     subgraph Storage["💾 本地存储层 (SQLite)"]
-        T1[user_config 用户配置]
-        T2[subjects 科目]
-        T3[error_questions 错题]
+        T1[subject 科目]
+        T2[source 来源]
+        T3[question 错题]
         T4[srs_data 复习数据]
-        T5[sources 来源]
-        T6[error_tags 错因标签]
-        T7[attachments 附件]
+        T5[attachment 附件]
+        T6[tag 错因标签]
+        T7[question_attachment_cross_ref]
+        T8[question_tag_cross_ref]
     end
 
     Storage -.-> Location
     Location[数据库位置按平台:<br/>Win: %APPDATA%/<br/>Mac: ~/Library/<br/>Linux: ~/.local/share/]
 
-    %% ══════════ 同步服务器 ══════════
-    Storage -.->|HTTP 可选| SyncServer
-
-    subgraph SyncServer["🌐 同步服务器（可选）<br/>(Flask + SQLAlchemy)"]
-        API1[POST /api/auth/validate]
-        API2[POST /api/sync/handshake]
-        API3[POST /api/sync/push]
-        API4[POST /api/sync/pull]
-        API5[GET /admin 管理后台]
-
-        DB1[(user_auth)]
-        DB2[(records)]
-        DB3[(shared_questions)]
-    end
-
-    API1 --> DB1
-    API2 --> DB2
-    API3 --> DB2
-    API4 --> DB2
-    API5 --> DB1
 ```
 
 ---
@@ -220,19 +202,17 @@ flowchart TD
 
 | 目录 | 职责 | 关键约定 |
 |------|------|----------|
-| `commands/` | Tauri 命令处理器 | 每个文件 ≈ 一个实体，函数标注 `#[tauri::command]` |
-| `repository/` | 数据访问抽象与 SeaORM 实现 | Command 仅通过注入的 Repository trait 访问持久化数据 |
-| `database/entities/` | SeaORM 实体 | `#[derive(DeriveEntityModel)]` |
-| `database/migrations/` | 数据库迁移 | 命名 `mYYYYMMDD_NNNNNN_desc.rs` |
+| `command/` | 命令注册及 legacy 兼容处理器 | 函数标注 `#[tauri::command]`，统一在 `command/mod.rs` 注册 |
+| `repository/` | 仓储 traits 与 legacy 契约 | Command 通过事务中的 RepositoryFactory 访问持久化数据 |
+| `data/repository/` | SeaORM 仓储实现 | 所有命令写入由 RepositoryTransactionExecutor 包裹 |
+| `data/database/entity/` | 规范化 SeaORM 实体 | 使用 UUID、DateTime 和交叉引用实体 |
+| `model/` | 内部领域模型 | 与 legacy IPC 请求/响应隔离 |
+| `crates/migration/` | 独立迁移 crate | 命名 `mYYYYMMDD_NNNNNN_desc.rs` |
 | `srs/` | 核心复习算法 | 纯函数，不依赖 Tauri/数据库 |
 
-### 同步服务器 (`server/`)
+### 历史同步服务器 (`server/`)
 
-| 文件 | 职责 |
-|------|------|
-| `app.py` | Flask 应用，包含所有 API 路由和数据模型 |
-| `requirements.txt` | Python 依赖 |
-| `templates/admin.html` | 管理后台页面 |
+此目录仅供历史参考，客户端不会连接，当前开发和发布流程不支持部署。
 
 ---
 
@@ -320,17 +300,11 @@ graph LR
 
 详见 [SRS 算法文档](SRS_ALGORITHM.md)
 
-### 3. 同步协议为什么设计为离线优先 + 握手模式？
+### 3. 未来同步协议有哪些底线？
 
-**决策**：采用"离线优先 + 双向握手"的同步策略。
-
-**理由**：
-- **离线可用**：用户在地铁/无网络环境下可正常使用，有网时自动同步
-- **版本向量**：每条记录有独立 version，握手时只需传轻量 header
-- **冲突可解**：支持手动解决多设备同时修改同一记录的冲突
-- **通用性强**：同一套协议适用于 7 张业务表
-
-详见 [同步协议文档](SYNC_PROTOCOL.md)
+当前没有受支持的远程同步实现。未来协议必须使用 `(table_name, id)` 复合标识，
+完整同步附件/标签的 `question_ids` 关系集合，并由服务端生成单调递增版本。
+详见 [同步协议草案](SYNC_PROTOCOL.md)。
 
 ### 4. 为什么用 Tauri 而非 Electron？
 
@@ -351,105 +325,80 @@ graph LR
 
 ```mermaid
 erDiagram
-    UserConfig ||--o{ Subject : "1 → N"
-    Subject ||--o{ ErrorQuestion : "1 → N"
-    ErrorQuestion ||--o| SRSData : "1 → 1"
-    ErrorQuestion ||--o{ ErrorTags : "1 → N"
-    ErrorQuestion ||--o{ Attachment : "1 → N"
-    ErrorQuestion }o--|| Source : "N → 1"
+    Subject ||--o{ Source : "1 → N"
+    Source ||--o{ Question : "1 → N"
+    Question ||--o| SRSData : "1 → 1"
+    Question ||--o{ QuestionAttachment : "1 → N"
+    Attachment ||--o{ QuestionAttachment : "1 → N"
+    Question ||--o{ QuestionTag : "1 → N"
+    Tag ||--o{ QuestionTag : "1 → N"
 
-    UserConfig {
-        string username PK
-        string email
-    }
     Subject {
-        string id PK
+        uuid id PK
         string name
         string color
     }
-    ErrorQuestion {
-        string id PK
-        string prompt
-        string type
-        string answer
-        string analysis
-        string error_note
-    }
     Source {
-        string id PK
+        uuid id PK
+        uuid subject_id FK
         string book
         string chapter
         string knowledge
     }
+    Question {
+        uuid id PK
+        uuid source_id FK
+        string stem
+        string question_type
+        string correct_answer
+        string explanation
+        string note
+    }
     SRSData {
-        string id PK
-        string question_id FK
+        uuid question_id PK
         float stability
         float difficulty
-        float recall_rate
-        int next_review_at
+        datetime next_review_at
     }
-    ErrorTags {
-        string id PK
+    Tag {
+        uuid id PK
         string name
         string color
     }
     Attachment {
-        string id PK
-        string question_id FK
-        string type
-        string file_type
-        string base64_data
+        uuid id PK
+        string mime_type
+        blob data
+        string sha256
+    }
+    QuestionAttachment {
+        uuid question_id PK,FK
+        uuid attachment_id PK,FK
+    }
+    QuestionTag {
+        uuid question_id PK,FK
+        uuid tag_id PK,FK
     }
 ```
 
 | 表 | 记录数级（单用户） | 说明 |
 |----|-------------------|------|
-| user_config | 1 | 单用户配置 |
-| subjects | 10-50 | 科目 |
-| error_questions | 100-5000 | 错题主表 |
+| subject | 10-50 | 科目 |
+| source | 50-500 | 来源及科目归属 |
+| question | 100-5000 | 错题主表 |
 | srs_data | = 错题数 | 一对一关系 |
-| sources | 50-500 | 来源 |
-| error_tags | 200-2000 | 错因标签（多对多） |
-| attachments | 100-2000 | 图片附件 |
+| tag | 200-2000 | 可复用错因标签 |
+| attachment | 100-2000 | 二进制附件 |
+| question_tag_cross_ref | 随关系增长 | 题目与标签多对多关系 |
+| question_attachment_cross_ref | 随关系增长 | 题目与附件多对多关系 |
 
 ---
 
 ## 🔗 同步架构
 
-同步功能是本项目最复杂的部分，详见 [同步协议文档](SYNC_PROTOCOL.md)。
-
-核心设计要点：
-
-```mermaid
-sequenceDiagram
-    participant A as 设备 A (SQLite)
-    participant S as 同步服务器 (Flask)
-    participant B as 设备 B (SQLite)
-
-    Note over A: 数据更新 → pending
-    A->>S: 握手
-    S->>B: 握手
-    Note over S: 比对版本
-    B-->>S: 握手响应
-    A->>S: 推送（携带数据）
-    S->>S: version++
-    S->>B: 拉取（转发数据）
-    B-->>S: 拉取完成
-    S-->>A: 推送确认
-    B->>S: 推送（本地修改）
-    S->>A: 拉取（转发）
-    Note over S: 多轮握手直到空结果
-```
-
-### 关键特性
-
-1. **每记录版本号**：每条数据有独立 `version` 字段，单调递增
-2. **延迟冲突检测**：只有真正发生编辑冲突时才提示，而非锁表
-3. **软删除**：删除标记传播到所有设备后才真正清理
-
----
-
+当前客户端不执行远程同步。仅保留本地同步元数据维护命令和未来协议所需的数据字段。
+`server/` 不受支持，不能据此推断当前产品具备同步能力。未来设计约束见
+[同步协议草案](SYNC_PROTOCOL.md)。
 
 ## 📈 性能考虑
 
@@ -458,7 +407,7 @@ sequenceDiagram
 | 图片存储 | base64/BLOB 存入 SQLite | 大文件可改为文件系统存储 |
 | 大数据量查询 | 基础分页 (limit/offset) | 可加游标分页 |
 | 复习队列 | 全量加载后排序 | 可加索引优化 next_review_at 查询 |
-| 同步 | 全量握手 | 可增量握手 |
+| 远程同步 | 当前停用 | 按协议草案重新实现 |
 
 ---
 

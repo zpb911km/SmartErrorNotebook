@@ -13,28 +13,6 @@
         :class="{ collapsed: actionsCollapsed }"
       >
         <button
-          v-if="shareCheckDone && isShared && !isEditing"
-          v-ripple
-          class="action-btn share-btn shared glare-btn"
-          :disabled="shareLoading"
-          @click="handleRevokeShare"
-        >
-          <Icon name="undo" :size="16" class="btn-icon" />
-          <span class="btn-label">{{ shareLoading ? '...' : '撤回分享' }}</span>
-        </button>
-        <button
-          v-if="shareCheckDone && !isShared && serverConfigured && !isEditing"
-          v-ripple
-          class="action-btn share-btn glare-btn"
-          :disabled="shareLoading"
-          @click="handleShare"
-        >
-          <Icon name="upload" :size="16" class="btn-icon" />
-          <span class="btn-label">{{
-            shareLoading ? '...' : '分享到社区'
-          }}</span>
-        </button>
-        <button
           v-ripple
           class="action-btn edit-btn glare-btn"
           @click="toggleEditMode"
@@ -438,7 +416,6 @@ import {
   deleteAttachment
 } from '../apis/attachments'
 import { getQuestionSRSStatus } from '../apis/srsData'
-import { publishShare, revokeShare, checkShare } from '../apis/share'
 import type {
   ErrorQuestion,
   Subject,
@@ -509,84 +486,6 @@ const editForm = ref({
 
 // 弹窗状态
 const showDeleteConfirm = ref(false)
-
-// 分享状态
-const shareLoading = ref(false)
-const shareCheckDone = ref(false)
-const isShared = ref(false)
-const serverConfigured = ref(false)
-
-/**
- * 检查服务器是否已配置
- */
-function checkServerConfig(): boolean {
-  const url = localStorage.getItem('sync_server_url')
-  const auth = localStorage.getItem('auth_key')
-  return !!(url && auth)
-}
-
-/**
- * 检查当前题目是否已分享
- */
-async function checkShareStatus() {
-  if (!serverConfigured.value) return
-
-  const authKey = localStorage.getItem('auth_key') || ''
-  try {
-    isShared.value = await checkShare({ auth_key: authKey, id: errorId.value })
-  } catch {
-    isShared.value = false
-  } finally {
-    shareCheckDone.value = true
-  }
-}
-
-/**
- * 分享当前错题到社区
- */
-async function handleShare() {
-  if (!errorDetail.value || shareLoading.value) return
-
-  shareLoading.value = true
-  const authKey = localStorage.getItem('auth_key') || ''
-  const detail = errorDetail.value as any
-
-  try {
-    await publishShare({
-      auth_key: authKey,
-      id: errorId.value,
-      prompt: detail.prompt,
-      type_: detail.type_ || detail.type || '',
-      answer: detail.answer || '',
-      analysis: detail.analysis || '',
-      error_note: detail.error_note || ''
-    })
-    isShared.value = true
-  } catch (e: any) {
-    alert('分享失败: ' + (e.message || '未知错误'))
-  } finally {
-    shareLoading.value = false
-  }
-}
-
-/**
- * 撤回分享
- */
-async function handleRevokeShare() {
-  if (shareLoading.value) return
-
-  shareLoading.value = true
-  const authKey = localStorage.getItem('auth_key') || ''
-
-  try {
-    await revokeShare({ auth_key: authKey, id: errorId.value })
-    isShared.value = false
-  } catch (e: any) {
-    alert('撤回失败: ' + (e.message || '未知错误'))
-  } finally {
-    shareLoading.value = false
-  }
-}
 
 // 获取错题详情
 const fetchErrorDetail = async () => {
@@ -859,7 +758,7 @@ const saveChanges = async () => {
     if (allImagesToDelete.length > 0) {
       console.log('开始删除', allImagesToDelete.length, '张图片')
       for (const imageId of allImagesToDelete) {
-        await deleteAttachment(imageId)
+        await deleteAttachment(imageId, errorId.value)
         console.log('已删除图片:', imageId)
       }
     }
@@ -964,8 +863,8 @@ const saveChanges = async () => {
       for (const tag of errorTags.value) {
         try {
           console.log('删除标签:', tag.name, '(ID:', tag.id, ')')
-          const deletedCount = await deleteErrorTagById(tag.id)
-          console.log('已删除标签:', tag.name, '(影响行数:', deletedCount, ')')
+          await deleteErrorTagById(tag.id, errorId.value)
+          console.log('已解除标签关联:', tag.name)
         } catch (error) {
           console.error('删除标签失败:', tag.name, error)
         }
@@ -1038,13 +937,6 @@ const calculateMastery = (srs: any): number => {
 // 删除错题
 const deleteError = async () => {
   try {
-    // 如果已分享，异步撤回（不阻塞主操作）
-    if (isShared.value && serverConfigured.value) {
-      const authKey = localStorage.getItem('auth_key') || ''
-      revokeShare({ auth_key: authKey, id: errorId.value }).catch(() => {
-        // 忽略撤回失败，删除是主要操作
-      })
-    }
     await deleteQuestion(errorId.value)
     showDeleteConfirm.value = false
     // 返回管理页面
@@ -1311,10 +1203,9 @@ const deleteTempImage = (image: any) => {
 }
 
 onMounted(() => {
-  serverConfigured.value = checkServerConfig()
   fetchSubjects()
 
-  // 按钮自适应：等数据加载完成（分享按钮 v-if 依赖 shareCheckDone），再测量+启动观察
+  // 按钮自适应：等数据加载完成后再测量并启动观察
   const setupAdaptive = () => {
     nextTick(() => {
       if (headerActionsRef.value) {
@@ -1356,15 +1247,7 @@ onMounted(() => {
   }
 
   // 等异步数据全部到位后再测量
-  fetchErrorDetail().then(() => {
-    if (serverConfigured.value) {
-      checkShareStatus().finally(() => {
-        setupAdaptive()
-      })
-    } else {
-      setupAdaptive()
-    }
-  })
+  fetchErrorDetail().then(setupAdaptive)
 })
 
 onUnmounted(() => {
@@ -1518,30 +1401,6 @@ onUnmounted(() => {
 
 .delete-btn:hover {
   background: #d32f2f;
-}
-
-.share-btn {
-  background: var(--success-color);
-  color: white;
-}
-
-.share-btn:hover {
-  background: var(--success-color);
-  filter: brightness(0.85);
-}
-
-.share-btn.shared {
-  background: var(--warning-color);
-}
-
-.share-btn.shared:hover {
-  background: var(--warning-color);
-  filter: brightness(0.85);
-}
-
-.share-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* 内容区域 */

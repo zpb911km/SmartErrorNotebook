@@ -23,6 +23,3 @@ export * from './attachments'
 
 // 来源相关
 export * from './sources'
-
-// 社区分享相关
-export * from './share'

@@ -6,7 +6,7 @@
 //
 // 参考文献: https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm
 
-use crate::domain::SrsData;
+use crate::model::SrsData;
 use serde::{Deserialize, Serialize};
 
 /// FSRS-5 模型参数常量
@@ -167,7 +167,7 @@ pub fn review_card(card: &SrsData, now: i64, feedback: f32) -> Result<ReviewResu
     let grade = 3.0 * feedback + 1.0;
 
     // 距离上次复习的天数
-    let elapsed_days = days_elapsed(card.last_review_at, now);
+    let elapsed_days = days_elapsed(card.last_review_at.map(|value| value.timestamp()), now);
 
     // 当前可提取度 R（FSRS 遗忘曲线）
     let r_pred = predict_retrievability(card.stability, elapsed_days);
@@ -281,24 +281,23 @@ mod tests {
         stability: f32,
         difficulty: f32,
         last_reviewed_at: Option<i64>,
-        review_count: i32,
+        review_count: i64,
         feedback_history: &str,
     ) -> SrsData {
         SrsData {
-            id: "test".to_string(),
-            question_id: "test-q".to_string(),
+            question_id: uuid::Uuid::nil(),
             stability,
             difficulty,
             next_review_at: None,
-            last_review_at: last_reviewed_at,
-            review_count,
+            last_review_at: last_reviewed_at
+                .map(|value| chrono::DateTime::from_timestamp(value, 0).unwrap()),
+            review_count: review_count,
             feedback_history: feedback_history.to_string(),
-            metadata: crate::domain::EntityMetadata {
-                created_at: 0,
-                updated_at: 0,
-                version: 0,
-                sync_status: crate::domain::SyncStatus::Synced,
-                sync_hash: None,
+            metadata: crate::model::Metadata {
+                created_at: chrono::DateTime::UNIX_EPOCH,
+                updated_at: chrono::DateTime::UNIX_EPOCH,
+                sync_version: 0,
+                sync_status: crate::model::SyncStatus::Synced,
                 deleted_at: None,
             },
         }

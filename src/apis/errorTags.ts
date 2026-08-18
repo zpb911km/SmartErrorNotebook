@@ -50,9 +50,13 @@ export async function createErrorTagsForQuestion(
   })
 }
 
-export async function deleteErrorTagById(tagId: string): Promise<number> {
+export async function deleteErrorTagById(
+  tagId: string,
+  questionId: string
+): Promise<void> {
   return await invoke('delete_error_tag', {
-    tagId: tagId
+    tagId,
+    questionId
   })
 }
 

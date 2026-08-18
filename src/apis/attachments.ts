@@ -113,10 +113,14 @@ export async function getAttachmentsByQuestion(
 /**
  * 删除附件（软删除）
  * @param id 附件ID
+ * @param questionId 错题ID
  * @returns 无返回值
  */
-export async function deleteAttachment(id: string): Promise<void> {
-  return await invoke('delete_attachment', { id })
+export async function deleteAttachment(
+  id: string,
+  questionId: string
+): Promise<void> {
+  return await invoke('delete_attachment', { id, questionId })
 }
 
 // ==================== 工具函数 ====================

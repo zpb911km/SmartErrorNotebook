@@ -12,7 +12,7 @@
 4. [前端开发](#-前端开发)
 5. [Rust 后端开发](#-rust-后端开发)
 6. [数据库开发](#-数据库开发)
-7. [同步服务器开发](#-同步服务器开发)
+7. [历史同步服务器](#-历史同步服务器)
 8. [构建与发布](#-构建与发布)
 9. [代码规范](#-代码规范)
 10. [贡献指南](#-贡献指南)
@@ -134,8 +134,7 @@ SmartErrorNotebook/
 │   │   ├── Review-Detail.vue   # 复习执行（展示题目、评分）
 │   │   ├── Profile.vue         # 个人主页（统计、SRS 图表）
 │   │   ├── Settings.vue        # 设置（主题、AI、导出配置）
-│   │   ├── Sync.vue            # 同步配置（服务器、授权码）
-│   │   ├── Community.vue       # 错题社区（浏览分享）
+│   │   ├── Sync.vue            # 远程服务停用说明
 │   │   └── MarkdownTextareaTest.vue  # 组件测试页
 │   │
 │   ├── components/             # 复用组件
@@ -152,8 +151,6 @@ SmartErrorNotebook/
 │   │   ├── ExportModal.vue     # 导出模态框
 │   │   ├── ExportPreview.vue   # 导出预览
 │   │   ├── ImportModal.vue     # 导入模态框
-│   │   ├── ConflictResolver.vue # 同步冲突解决
-│   │   ├── ConflictItem.vue    # 冲突项展示
 │   │   ├── SyncOverlay.vue     # 同步遮罩层
 │   │   ├── Notification.vue    # 通知消息
 │   │   ├── PromptEditor.vue    # 提示词编辑器
@@ -170,8 +167,7 @@ SmartErrorNotebook/
 │   │   ├── attachments.ts      # 附件
 │   │   ├── srs.ts              # SRS 复习
 │   │   ├── srsData.ts          # SRS 数据
-│   │   ├── share.ts            # 社区分享
-│   │   └── sync.ts             # 同步
+│   │   └── sync.ts             # 本地同步元数据维护
 │   │
 │   ├── services/
 │   │   ├── index.ts            # 统一导出
@@ -210,56 +206,29 @@ SmartErrorNotebook/
 │   ├── build.rs                # 构建脚本
 │   ├── tauri.conf.json         # Tauri 配置
 │   ├── capabilities/default.json # 权限配置
+│   ├── crates/migration/       # 独立 SeaORM 迁移 crate
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── lib.rs          # 迁移注册
+│   │       ├── main.rs         # 迁移 CLI
+│   │       └── m*.rs           # 历史及规范化迁移
 │   └── src/
 │       ├── main.rs             # 入口
-│       ├── lib.rs              # Tauri Builder（注册所有命令）
-│       │
-│       ├── commands/           # Tauri 命令处理器
-│       │   ├── mod.rs          # 模块声明
-│       │   ├── subject.rs      # 科目 CRUD
-│       │   ├── error_question.rs # 错题 CRUD
-│       │   ├── error_tag.rs    # 错因标签 CRUD
-│       │   ├── source.rs       # 来源 CRUD
-│       │   ├── attachment.rs   # 附件 CRUD
-│       │   ├── srs_data.rs     # SRS 数据 CRUD
-│       │   ├── sync.rs         # 同步逻辑
-│       │   └── user_config.rs  # 用户配置
-│       │
-│       ├── database/           # 数据库层
-│       │   ├── mod.rs          # 模块声明
-│       │   ├── connection.rs   # 数据库连接管理
-│       │   ├── entities/       # SeaORM 实体定义
-│       │   │   ├── mod.rs
-│       │   │   ├── prelude.rs
-│       │   │   ├── error_question.rs
-│       │   │   ├── subject.rs
-│       │   │   ├── source.rs
-│       │   │   ├── srs_data.rs
-│       │   │   ├── error_tag.rs
-│       │   │   ├── attachment.rs
-│       │   │   └── user_config.rs
-│       │   └── migrations/     # 数据库迁移
-│       │       ├── mod.rs
-│       │       ├── m20250117_000001_create_user_config.rs
-│       │       ├── m20250117_000002_create_subjects.rs
-│       │       ├── m20250117_000003_create_error_questions.rs
-│       │       ├── m20250117_000004_create_srs_data.rs
-│       │       ├── m20250117_000005_create_sources.rs
-│       │       ├── m20250117_000006_create_error_tags.rs
-│       │       ├── m20250117_000007_create_attachments.rs
-│       │       ├── m20250130_000002_recreate_sources.rs
-│       │       ├── m20250130_000003_alter_attachments_base64.rs
-│       │       ├── m20250206_000001_add_sourceid_to_error_questions.rs
-│       │       ├── m20260428_000005_alter_srs_data_sdr_model.rs
-│       │       ├── m20260512_000001_alter_attachments_base64_to_blob.rs
-│       │       ├── m20260512_000002_alter_errorquestion_prompt_to_text.rs
-│       │       ├── m20260516_000001_remove_foreign_keys.rs
-│       │       └── m20260521_000003_add_deleted_at_to_srs_data.rs
-│       │
+│       ├── lib.rs              # Tauri Builder 与 AppState
+│       ├── command/            # 命令注册和 legacy IPC 兼容层
+│       │   ├── mod.rs
+│       │   └── legacy/         # CRUD、SRS、同步和文件命令
+│       ├── data/               # SeaORM 数据访问实现
+│       │   ├── database/
+│       │   │   ├── connection.rs
+│       │   │   └── entity/     # 规范化实体及交叉引用实体
+│       │   └── repository/     # SeaORM 仓储与事务执行器
+│       ├── model/              # 内部领域模型
+│       ├── repository/         # 仓储 traits 和 legacy 契约模型
 │       └── srs/                # SDR 算法引擎
 │           └── mod.rs          # 核心算法实现
 │
-├── server/                     # ── 同步服务器（Flask，可选）
+├── server/                     # ── 历史同步服务器（当前不支持）
 │   ├── app.py                  # Flask 应用（API + 管理页面）
 │   ├── requirements.txt        # Python 依赖
 │   └── templates/
@@ -310,8 +279,8 @@ SmartErrorNotebook/
 | `/review-detail` | ReviewDetail | 复习详情 |
 | `/stats` | Profile | 个人主页 |
 | `/settings` | Settings | 设置 |
-| `/sync` | Sync | 同步 |
-| `/community` | Community | 错题社区 |
+| `/sync` | Sync | 远程服务停用说明 |
+| `/community` | redirect | 重定向到同步停用说明 |
 | `/markdown-test` | MarkdownTextareaTest | Markdown 组件测试 |
 
 ### 调用 Rust 后端
@@ -360,23 +329,27 @@ const response = await llm.call([
 
 ### 添加新命令
 
-1. 在 `src-tauri/src/commands/` 下创建模块（或添加到已有模块）
-2. 实现函数，标注 `#[tauri::command]`
-3. 在 `src-tauri/src/lib.rs` 的 `invoke_handler!` 中注册
+1. 在 `src-tauri/src/command/legacy/` 下创建模块（或添加到已有模块）
+2. 在 `request/`、`response/` 中定义兼容 IPC 结构，并实现标注 `#[tauri::command]` 的处理器
+3. 从 `command/legacy/mod.rs` 导出处理器
+4. 在 `src-tauri/src/command/mod.rs` 的 `register_command()` 中注册
 
 ```rust
 // 1. 实现命令
 #[tauri::command]
 pub async fn my_new_command(state: tauri::State<'_, AppState>) -> Result<String, String> {
-    let db = &*state.db;
-    // ... 业务逻辑
-    Ok("done".to_string())
+    state.repository_transaction_executor
+        .execute(|factory, _| Box::pin(async move {
+            // 通过 factory 获取仓储并完成同一事务内的操作
+            Ok("done".to_string())
+        }))
+        .await
 }
 
-// 2. 注册命令（lib.rs）
-.invoke_handler(tauri::generate_handler![
+// 2. 注册命令（command/mod.rs）
+self.invoke_handler(tauri::generate_handler![
     // ... 已有命令
-    commands::my_new_command,  // 新增
+    legacy::my_new_command,
 ])
 ```
 
@@ -386,13 +359,13 @@ pub async fn my_new_command(state: tauri::State<'_, AppState>) -> Result<String,
 
 ```rust
 pub struct AppState {
-    pub db: Arc<sea_orm::DbConn>,
+    pub repository_transaction_executor: SeaOrmRepositoryTransactionExecutor,
 }
 ```
 
 数据库文件位置：
-- **开发模式**: 项目根目录下的 `dev.db`
-- **生产模式**: 系统 AppData 目录
+- **桌面和移动端**：系统 AppData 下的 `SmartErrorNotebook/data/database.db`
+- **测试**：测试夹具使用单连接内存 SQLite
 
 ---
 
@@ -403,33 +376,39 @@ pub struct AppState {
 使用 SeaORM 的 `DeriveEntityModel` 派生宏：
 
 ```rust
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "subjects")]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
+#[sea_orm(table_name = "subject")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: String,
+    pub id: Uuid,
+    pub created_at: DateTimeUtc,
+    pub updated_at: DateTimeUtc,
+    pub deleted_at: Option<DateTimeUtc>,
+    pub sync_status: String,
+    pub sync_version: i64,
     pub name: String,
-    pub color: Option<String>,
-    // ...
+    pub color: String,
 }
 ```
 
+题目通过 `source_id` 间接归属科目；标签和附件分别通过 `question_tag_cross_ref`、`question_attachment_cross_ref` 表示多对多关系。
+
 ### 迁移管理
 
-迁移文件位于 `src-tauri/src/database/migrations/`，命名规则：
+迁移文件位于 `src-tauri/crates/migration/src/`，命名规则：
 
 ```
 mYYYYMMDD_NNNNNN_description.rs
 ```
 
-示例：`m20250117_000001_create_user_config.rs`
+示例：`m20260812_100149_normalize_database.rs`
 
 **新建迁移步骤：**
 
-1. 复制现有迁移文件作为模板
-2. 修改文件名和结构体名称
-3. 实现 `up()` 和 `down()` 方法
-4. 在 `migrations/mod.rs` 中注册
+1. 在 migration crate 中创建迁移模块
+2. 实现 `up()`、`down()`，并按数据安全需求决定是否启用事务
+3. 在 `crates/migration/src/lib.rs` 中声明模块并按顺序注册
+4. 为数据变换、失败回滚和兼容升级路径增加迁移测试
 
 ```rust
 use sea_orm_migration::prelude::*;
@@ -451,43 +430,15 @@ impl MigrationTrait for Migration {
 
 > 注意：数据库在应用启动时自动执行迁移，无需手动运行命令。
 
+开发时也可在 `src-tauri/` 下通过 `cargo run -p migration -- -u <database-url> status|up` 检查或执行迁移。
+
 ---
 
-## 🌐 同步服务器开发
+## 🌐 历史同步服务器
 
-同步服务器是一个独立的 Flask 应用，位于 `server/` 目录。
-
-```bash
-cd server
-pip install -r requirements.txt
-
-# 开发模式
-FLASK_ENV=development python app.py
-
-# 生产模式（推荐使用 gunicorn）
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-
-### 环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `DB_TYPE` | 数据库类型 | `sqlite` |
-| `DB_PATH` | SQLite 文件路径 | `./sync_data.db` |
-| `DATABASE_URL` | 外部数据库 URL（pg/mysql 时使用） | — |
-| `SECRET_KEY` | Flask 密钥 | `dev-secret-key-...` |
-
-### API 端点
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/auth/validate` | 验证 auth_key |
-| POST | `/api/auth/generate` | 生成新 auth_key |
-| POST | `/api/sync/handshake` | 握手协议 |
-| POST | `/api/sync/push` | 推送数据 |
-| POST | `/api/sync/pull` | 拉取数据 |
-| POST | `/api/sync/push_pull` | 推送+拉取（合并） |
-| GET | `/admin` | 管理后台页面 |
+`server/` 仅保留为历史代码，与当前规范化数据库模型和多对多关系不兼容。
+客户端不会连接它，开发和发布流程也不支持部署它。未来同步实现应先遵守
+[同步协议草案](SYNC_PROTOCOL.md) 的复合记录标识、关系集合和版本规则。
 
 ---
 
@@ -572,7 +523,7 @@ Android 端需要以下权限，在 `src-tauri/gen/android/app/src/main/AndroidM
 | 权限 | 用途 | 类别 |
 |------|------|:----:|
 | `CAMERA` | 拍照录入错题 | 危险权限 |
-| `INTERNET` | 同步服务器通信、LLM API 调用 | 普通 |
+| `INTERNET` | LLM API 调用 | 普通 |
 | `ACCESS_NETWORK_STATE` | 检查网络状态 | 普通 |
 | `WRITE_EXTERNAL_STORAGE` | 导出文件保存（Android 10 以下） | 危险权限 |
 | `POST_NOTIFICATIONS` | 复习提醒（计划中） | 危险权限 |

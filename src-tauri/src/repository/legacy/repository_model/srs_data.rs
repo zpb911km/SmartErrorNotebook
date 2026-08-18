@@ -1,0 +1,35 @@
+pub struct NewSrsData {
+    pub id: String,
+    pub question_id: String,
+    pub stability: f32,
+    pub difficulty: f32,
+    pub next_review_at: Option<i64>,
+    pub last_reviewed_at: Option<i64>,
+    pub review_count: i32,
+    pub feedback_history: String,
+    pub now: i64,
+}
+pub struct SrsStateChanges {
+    pub id: String,
+    pub stability: f32,
+    pub difficulty: f32,
+    pub next_review_at: Option<i64>,
+    pub last_reviewed_at: Option<i64>,
+    pub review_count: i32,
+    pub feedback_history: String,
+    pub deleted_at: Option<i64>,
+    pub now: i64,
+}
+pub struct SyncedSrsData {
+    pub id: String,
+    pub version: i32,
+    pub deleted_at: Option<i64>,
+    pub question_id: String,
+    pub stability: f32,
+    pub difficulty: f32,
+    pub next_review_at: Option<i64>,
+    pub last_reviewed_at: Option<i64>,
+    pub review_count: i32,
+    pub feedback_history: String,
+    pub now: i64,
+}

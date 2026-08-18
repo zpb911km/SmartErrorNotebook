@@ -1,150 +1,26 @@
-use std::sync::{Arc, Mutex};
-
-mod commands;
-mod database;
-pub mod domain;
+mod command;
+mod data;
+mod model;
 mod repository;
 mod srs;
 
-use database::{establish_connection, init_database};
+use command::CommandRegistry;
+use data::database::connection::{establish_connection, init_database};
+use data::SeaOrmRepositoryTransactionExecutor;
+use repository::RepositoryTransactionExecutor;
+use std::sync::Mutex;
 use tauri::Manager;
+
+// 数据库连接状态
+pub struct AppState<T: RepositoryTransactionExecutor = SeaOrmRepositoryTransactionExecutor> {
+    pub repository_transaction_executor: T,
+}
 
 /// 存储通过文件关联打开的 URL
 /// 覆盖两种场景：
 ///   - 冷启动：应用从文件打开启动，RunEvent::Opened 在 setup 之前或之后触发
 ///   - 热启动：应用已在运行，通过文件关联被唤起
-struct OpenedUrls(Mutex<Vec<String>>);
-
-/// 返回所有已存储的打开文件 URL（前端在冷启动时调用）
-#[tauri::command]
-fn opened_urls(state: tauri::State<'_, OpenedUrls>) -> Vec<String> {
-    state.0.lock().unwrap().clone()
-}
-
-/// 读取通过文件关联传递的文件内容
-/// 桌面端：直接读取文件路径
-/// Android：通过 content:// URI 读取（需 JNI 支持）
-#[tauri::command]
-fn read_opened_file(url: String) -> Result<String, String> {
-    // 尝试 1：解析为 URL，如果是 file:// 协议则提取路径
-    if let Ok(parsed) = tauri::Url::parse(&url) {
-        if parsed.scheme() == "file" {
-            if let Ok(path) = parsed.to_file_path() {
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    return Ok(content);
-                }
-            }
-        }
-    }
-
-    // 尝试 2：直接作为文件路径读取（Linux/macOS 上的常规路径）
-    if let Ok(content) = std::fs::read_to_string(&url) {
-        return Ok(content);
-    }
-
-    // 尝试 3：移除 file:// 前缀后读取
-    if let Some(path) = url.strip_prefix("file://") {
-        if let Ok(content) = std::fs::read_to_string(path) {
-            return Ok(content);
-        }
-    }
-
-    // 尝试 4：Android content:// URI——需通过 JNI 使用 ContentResolver
-    #[cfg(target_os = "android")]
-    {
-        return read_android_content_uri(&url);
-    }
-
-    Err(format!(
-        "无法读取文件。文件路径: {}\n\
-         提示：在移动端，请尝试在应用内使用「选择文件」按钮导入。",
-        url
-    ))
-}
-
-/// Android 上通过 ContentResolver 读取 content:// URI
-#[cfg(target_os = "android")]
-fn read_android_content_uri(_url: &str) -> Result<String, String> {
-    // TODO: 通过 JNI 调用 Android ContentResolver.openInputStream()
-    // 需要 tauri::android::Uri 和 JNI 桥接
-    // 参考：https://docs.rs/tauri/latest/tauri/android/struct.Uri.html
-    Err("Android content:// URI 读取暂未实现。请使用应用内「选择文件」按钮。".to_string())
-}
-
-// 数据库连接状态
-pub struct AppState {
-    pub repositories: repository::Repositories,
-}
-
-// Keep the application and contract tests on one canonical command registry.
-// The two file-association commands remain here because Tauri accepts a single
-// invoke handler; database contract tests exercise only the database commands.
-macro_rules! app_invoke_handler {
-    () => {
-        tauri::generate_handler![
-            // Sync
-            $crate::commands::get_all_pending_records,
-            $crate::commands::get_record_for_upload,
-            $crate::commands::set_record_sync_status_version,
-            $crate::commands::get_all_records,
-            $crate::commands::purge_synced_deletions,
-            $crate::commands::check_orphan_records,
-            // Subject
-            $crate::commands::get_subjects,
-            $crate::commands::create_subject,
-            $crate::commands::update_subject,
-            $crate::commands::delete_subject,
-            $crate::commands::upsert_subject,
-            // Error Question
-            $crate::commands::get_questions,
-            $crate::commands::get_question,
-            $crate::commands::create_question,
-            $crate::commands::update_question,
-            $crate::commands::delete_question,
-            $crate::commands::upsert_error_question,
-            $crate::commands::get_question_stats,
-            // Error Tag
-            $crate::commands::create_error_tags_for_question,
-            $crate::commands::get_error_tags,
-            $crate::commands::get_full_error_tags,
-            $crate::commands::get_error_tags_for_question,
-            $crate::commands::delete_error_tag,
-            $crate::commands::update_error_tag_by_id,
-            $crate::commands::update_error_tag_by_name,
-            $crate::commands::upsert_error_tag,
-            // SRS Data and tools
-            $crate::commands::create_srs_data,
-            $crate::commands::get_due_questions,
-            $crate::commands::submit_review_result,
-            $crate::commands::get_question_srs_status,
-            $crate::commands::reset_srs_progress,
-            $crate::commands::upsert_srs_data,
-            $crate::commands::get_due_count,
-            $crate::commands::get_srs_statistics,
-            $crate::commands::get_all_cards,
-            // Attachment
-            $crate::commands::create_attachment,
-            $crate::commands::create_attachments_for_question,
-            $crate::commands::get_attachments_by_question,
-            $crate::commands::delete_attachment,
-            $crate::commands::upsert_attachment,
-            // Source
-            $crate::commands::get_sources,
-            $crate::commands::get_books,
-            $crate::commands::get_chapters,
-            $crate::commands::get_knowledges,
-            $crate::commands::create_source,
-            $crate::commands::update_source,
-            $crate::commands::delete_source,
-            $crate::commands::get_source,
-            $crate::commands::get_or_create_source_id,
-            $crate::commands::upsert_source,
-            // File Association
-            $crate::opened_urls,
-            $crate::read_opened_file,
-        ]
-    };
-}
+pub struct OpenedUrls(Mutex<Vec<String>>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -167,7 +43,7 @@ pub fn run() {
             });
 
             let state = AppState {
-                repositories: repository::Repositories::sea_orm(Arc::new(db)),
+                repository_transaction_executor: SeaOrmRepositoryTransactionExecutor::new(db),
             };
             app.manage(state);
 
@@ -180,7 +56,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(app_invoke_handler!())
+        .register_command()
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 

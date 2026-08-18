@@ -61,9 +61,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/community',
-    name: 'Community',
-    component: () => import('../views/Community.vue'),
-    meta: { title: '错题社区' }
+    redirect: '/sync'
   },
   {
     path: '/markdown-test',
