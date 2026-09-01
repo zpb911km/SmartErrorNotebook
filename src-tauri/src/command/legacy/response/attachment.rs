@@ -1,6 +1,6 @@
 use crate::{
-    data::util::{codec, legacy::codec as legacy_codec},
     model::Attachment,
+    util::{codec, legacy::codec as legacy_codec},
 };
 use serde::Serialize;
 

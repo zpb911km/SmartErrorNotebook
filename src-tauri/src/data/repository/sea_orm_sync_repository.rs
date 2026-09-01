@@ -3,9 +3,9 @@ use super::super::database::entity::{
     subject, tag,
 };
 use super::{timestamp, uuid};
-use crate::data::util::{codec, legacy::codec as legacy_codec};
 use crate::model::legacy as legacy_model;
 use crate::repository::legacy as legacy_repository;
+use crate::util::{codec, legacy::codec as legacy_codec};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter,
     QueryOrder, Set,
@@ -17,9 +17,7 @@ pub struct SeaOrmSyncRepository<'c, C: ConnectionTrait> {
 }
 impl<'c, C: ConnectionTrait> SeaOrmSyncRepository<'c, C> {
     pub fn new(connection: &'c C) -> Self {
-        Self {
-            connection: connection,
-        }
+        Self { connection }
     }
 }
 

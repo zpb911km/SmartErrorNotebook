@@ -1,5 +1,8 @@
-use super::DomainError;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::model::error::DomainError;
+
+use super::UnknownSyncStatus;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncStatus {
@@ -26,7 +29,7 @@ impl TryFrom<String> for SyncStatus {
             "pending" => Ok(Self::Pending),
             "synced" => Ok(Self::Synced),
             "conflict" => Ok(Self::Conflict),
-            _ => Err(DomainError::UnknownSyncStatus(value)),
+            _ => Err(UnknownSyncStatus { status: value }.into()),
         }
     }
 }
@@ -38,6 +41,25 @@ impl From<SyncStatus> for String {
             SyncStatus::Synced => "synced".to_owned(),
             SyncStatus::Conflict => "conflict".to_owned(),
         }
+    }
+}
+
+impl Serialize for SyncStatus {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SyncStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        SyncStatus::try_from(value).map_err(serde::de::Error::custom)
     }
 }
 
@@ -65,24 +87,5 @@ mod tests {
     fn rejects_unknown_statuses() {
         let error = SyncStatus::try_from("invalid".to_owned()).unwrap_err();
         assert_eq!(error.to_string(), "Unknown sync status: invalid");
-    }
-}
-
-impl Serialize for SyncStatus {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(self.as_str())
-    }
-}
-
-impl<'de> Deserialize<'de> for SyncStatus {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = String::deserialize(deserializer)?;
-        SyncStatus::try_from(value).map_err(serde::de::Error::custom)
     }
 }

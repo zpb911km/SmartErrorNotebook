@@ -16,6 +16,7 @@ mod m20260516_000001_remove_foreign_keys;
 mod m20260521_000003_add_deleted_at_to_srs_data;
 mod m20260812_000001_squashed_schema;
 mod m20260812_100149_normalize_database;
+mod m20260828_105409_normalize_srs_state;
 
 pub struct Migrator;
 
@@ -39,6 +40,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260521_000003_add_deleted_at_to_srs_data::Migration),
             Box::new(m20260812_000001_squashed_schema::Migration),
             Box::new(m20260812_100149_normalize_database::Migration),
+            Box::new(m20260828_105409_normalize_srs_state::Migration),
         ]
     }
 }

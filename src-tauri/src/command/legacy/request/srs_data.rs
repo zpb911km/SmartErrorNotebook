@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct CreateSRSDataInput {
     /// 错题 ID
     pub question_id: String,
-    /// 初始难度；未提供时使用 `config::INITIAL_DIFFICULTY`
+    /// 初始难度；未提供时使用领域模型的默认初始难度。
     pub difficulty: Option<f32>,
 }
 

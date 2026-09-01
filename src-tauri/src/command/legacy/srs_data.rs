@@ -8,9 +8,6 @@ use crate::repository::legacy::repository_model::srs_data::{
 };
 use crate::repository::legacy::SrsDataRepository;
 use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
-use crate::srs::{
-    config, days_elapsed, predict_retrievability, review_card, update_feedback_history,
-};
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;
@@ -19,15 +16,12 @@ fn card(s: SrsData, now: i64, is_due: bool) -> SRSCardOutput {
     SRSCardOutput {
         id: s.question_id.to_string(),
         question_id: s.question_id.to_string(),
-        stability: s.stability,
-        difficulty: s.difficulty,
-        recall_rate: predict_retrievability(
-            s.stability,
-            days_elapsed(s.last_review_at.map(|value| value.timestamp()), now),
-        ),
-        next_review_at: s.next_review_at.map(|value| value.timestamp()),
-        last_review_at: s.last_review_at.map(|value| value.timestamp()),
-        review_count: s.review_count.clamp(i32::MIN as i64, i32::MAX as i64) as i32,
+        stability: s.stability(),
+        difficulty: s.difficulty(),
+        recall_rate: s.retrievability_at(now),
+        next_review_at: s.next_review_at().map(|value| value.timestamp()),
+        last_review_at: s.last_review_at().map(|value| value.timestamp()),
+        review_count: s.review_count().clamp(i32::MIN as i64, i32::MAX as i64) as i32,
         is_due,
     }
 }
@@ -55,8 +49,8 @@ pub async fn create_srs_data(
                     .create(NewSrsData {
                         id: Uuid::new_v4().to_string(),
                         question_id: input.question_id,
-                        stability: config::INITIAL_STABILITY,
-                        difficulty: input.difficulty.unwrap_or(config::INITIAL_DIFFICULTY),
+                        stability: SrsData::INITIAL_STABILITY,
+                        difficulty: input.difficulty.unwrap_or(SrsData::INITIAL_DIFFICULTY),
                         next_review_at: Some(now + 24 * 3600),
                         last_reviewed_at: Some(now),
                         review_count: 1,
@@ -87,12 +81,12 @@ pub async fn get_due_questions(
                     .await
                     .into_iter()
                     .filter(|s| {
-                        s.next_review_at
+                        s.next_review_at()
                             .map(|n| now >= n.timestamp())
                             .unwrap_or(true)
                     })
                     .collect();
-                cards.sort_by(|a, b| a.stability.total_cmp(&b.stability));
+                cards.sort_by(|a, b| a.stability().total_cmp(&b.stability()));
                 cards.truncate(limit.unwrap_or(1000).max(0) as usize);
                 Ok(cards.into_iter().map(|s| card(s, now, true)).collect())
             })
@@ -110,36 +104,39 @@ pub async fn submit_review_result(
         .repository_transaction_executor
         .execute(|factory, _| {
             Box::pin(async move {
-                let now = chrono::Utc::now().timestamp();
+                let now = chrono::Utc::now();
+                let now_timestamp = now.timestamp();
                 let repository = factory.legacy_srs_data_repository();
-                let model = repository
+                let mut model = repository
                     .find_by_question(input.question_id, false)
                     .await
                     .ok_or_else(|| "SRS data not found".to_string())?;
-                let result = review_card(&model, now, input.feedback)?;
+                let next_interval_days = model
+                    .review(now, input.feedback)
+                    .map_err(|error| error.to_string())?;
                 repository
                     .update_state(SrsStateChanges {
                         id: model.question_id.to_string(),
-                        stability: result.new_stability,
-                        difficulty: result.new_difficulty,
-                        next_review_at: Some(result.next_review_at),
-                        last_reviewed_at: Some(now),
-                        review_count: (model.review_count + 1)
-                            .clamp(i32::MIN as i64, i32::MAX as i64)
+                        stability: model.stability(),
+                        difficulty: model.difficulty(),
+                        next_review_at: model.next_review_at().map(|value| value.timestamp()),
+                        last_reviewed_at: model.last_review_at().map(|value| value.timestamp()),
+                        review_count: model.review_count().clamp(i32::MIN as i64, i32::MAX as i64)
                             as i32,
-                        feedback_history: update_feedback_history(
-                            &model.feedback_history,
-                            input.feedback,
-                        ),
+                        feedback_history: serde_json::to_string(model.feedback_history())
+                            .expect("SRS feedback history is always serializable"),
                         deleted_at: None,
-                        now,
+                        now: now_timestamp,
                     })
                     .await;
                 Ok(ReviewOutput {
-                    next_interval_days: result.next_interval_days,
-                    new_stability: result.new_stability,
-                    new_difficulty: result.new_difficulty,
-                    next_review_at: result.next_review_at,
+                    next_interval_days,
+                    new_stability: model.stability(),
+                    new_difficulty: model.difficulty(),
+                    next_review_at: model
+                        .next_review_at()
+                        .expect("review always schedules the next review")
+                        .timestamp(),
                 })
             })
         })
@@ -163,7 +160,7 @@ pub async fn get_question_srs_status(
                     .await
                     .map(|s| {
                         let due = s
-                            .next_review_at
+                            .next_review_at()
                             .map(|n| n.timestamp() <= now)
                             .unwrap_or(true);
                         card(s, now, due)
@@ -183,23 +180,26 @@ pub async fn reset_srs_progress(
         .repository_transaction_executor
         .execute(|factory, _| {
             Box::pin(async move {
-                let now = chrono::Utc::now().timestamp();
+                let now = chrono::Utc::now();
+                let now_timestamp = now.timestamp();
                 let repository = factory.legacy_srs_data_repository();
-                let model = if let Some(model) = repository
+                let model = if let Some(mut model) = repository
                     .find_by_question(question_id.clone(), false)
                     .await
                 {
+                    model.reset(now);
                     repository
                         .update_state(SrsStateChanges {
                             id: model.question_id.to_string(),
-                            stability: config::INITIAL_STABILITY,
-                            difficulty: config::INITIAL_DIFFICULTY,
-                            next_review_at: Some(now),
-                            last_reviewed_at: Some(now),
-                            review_count: 1,
-                            feedback_history: "[]".into(),
+                            stability: model.stability(),
+                            difficulty: model.difficulty(),
+                            next_review_at: model.next_review_at().map(|value| value.timestamp()),
+                            last_reviewed_at: model.last_review_at().map(|value| value.timestamp()),
+                            review_count: model.review_count() as i32,
+                            feedback_history: serde_json::to_string(model.feedback_history())
+                                .expect("SRS feedback history is always serializable"),
                             deleted_at: None,
-                            now,
+                            now: now_timestamp,
                         })
                         .await
                 } else {
@@ -207,17 +207,17 @@ pub async fn reset_srs_progress(
                         .create(NewSrsData {
                             id: Uuid::new_v4().to_string(),
                             question_id,
-                            stability: config::INITIAL_STABILITY,
-                            difficulty: config::INITIAL_DIFFICULTY,
-                            next_review_at: Some(now),
-                            last_reviewed_at: Some(now),
+                            stability: SrsData::INITIAL_STABILITY,
+                            difficulty: SrsData::INITIAL_DIFFICULTY,
+                            next_review_at: Some(now_timestamp),
+                            last_reviewed_at: Some(now_timestamp),
                             review_count: 1,
                             feedback_history: "[]".into(),
-                            now,
+                            now: now_timestamp,
                         })
                         .await
                 };
-                Ok(card(model, now, true))
+                Ok(card(model, now_timestamp, true))
             })
         })
         .await
@@ -239,7 +239,7 @@ pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
                     .await
                     .into_iter()
                     .filter(|s| {
-                        s.next_review_at
+                        s.next_review_at()
                             .map(|n| now >= n.timestamp())
                             .unwrap_or(true)
                     })
@@ -272,17 +272,17 @@ pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatist
                 let due_count = all
                     .iter()
                     .filter(|s| {
-                        s.next_review_at
+                        s.next_review_at()
                             .map(|n| now >= n.timestamp())
                             .unwrap_or(true)
                     })
                     .count() as i32;
-                let new_cards = all.iter().filter(|s| s.review_count == 1).count() as i32;
+                let new_cards = all.iter().filter(|s| s.review_count() == 1).count() as i32;
                 let avg_stability =
-                    all.iter().map(|s| s.stability as f64).sum::<f64>() / all.len() as f64;
+                    all.iter().map(|s| s.stability() as f64).sum::<f64>() / all.len() as f64;
                 let avg_difficulty =
-                    all.iter().map(|s| s.difficulty as f64).sum::<f64>() / all.len() as f64;
-                let total_reviews = all.iter().map(|s| s.review_count as i64).sum();
+                    all.iter().map(|s| s.difficulty() as f64).sum::<f64>() / all.len() as f64;
+                let total_reviews = all.iter().map(SrsData::review_count).sum();
                 Ok(SRSStatistics {
                     total,
                     due_count,
@@ -311,7 +311,7 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
                     .into_iter()
                     .map(|s| {
                         let due = s
-                            .next_review_at
+                            .next_review_at()
                             .map(|n| n.timestamp() <= now)
                             .unwrap_or(true);
                         card(s, now, due)

@@ -1,21 +1,158 @@
-use super::super::database::entity::{attachment, question_attachment_cross_ref};
-use super::{timestamp, uuid};
-use crate::data::util::{codec, legacy::codec as legacy_codec};
-use crate::model::Attachment;
-use crate::repository::legacy;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter, Set,
-};
 use std::collections::HashSet;
+
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QuerySelect, RelationTrait, Set,
+};
+use uuid::Uuid;
+
+use crate::model::Attachment;
+use crate::repository::{
+    error::{
+        CorruptedData, EntityReference, Referenced, RepositoryDeleteError, RepositoryFindError,
+        RepositoryInfrastructureError, RepositorySaveError,
+    },
+    legacy, AttachmentRepository,
+};
+use crate::util::{codec, legacy::codec as legacy_codec};
+
+use super::super::database::entity::{attachment, question, question_attachment_cross_ref};
+use super::{timestamp, uuid};
 
 pub struct SeaOrmAttachmentRepository<'c, C: ConnectionTrait> {
     connection: &'c C,
 }
 impl<'c, C: ConnectionTrait> SeaOrmAttachmentRepository<'c, C> {
     pub fn new(connection: &'c C) -> Self {
-        Self {
-            connection: connection,
+        Self { connection }
+    }
+}
+
+#[async_trait::async_trait]
+impl<'c, C: ConnectionTrait> AttachmentRepository for SeaOrmAttachmentRepository<'c, C> {
+    async fn save(&self, attachment: &Attachment) -> Result<(), RepositorySaveError> {
+        if attachment.metadata.deleted_at.is_some()
+            && question::Entity::find()
+                .join(
+                    sea_orm::JoinType::InnerJoin,
+                    question::Relation::QuestionAttachmentCrossRef.def(),
+                )
+                .filter(question_attachment_cross_ref::Column::AttachmentId.eq(attachment.id))
+                .filter(question::Column::DeletedAt.is_null())
+                .count(self.connection)
+                .await
+                .map_err(|error| {
+                    RepositoryInfrastructureError::new("count active attachment references", error)
+                })?
+                != 0
+        {
+            return Err(Referenced {
+                target: EntityReference {
+                    entity: "attachment",
+                    id: attachment.id,
+                },
+                referenced_by: "question",
+            }
+            .into());
         }
+        let is_existing = attachment::Entity::find_by_id(attachment.id)
+            .one(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query attachment", error))?
+            .is_some();
+        let mut active_model = attachment::ActiveModel {
+            id: Set(attachment.id),
+            created_at: Set(attachment.metadata.created_at),
+            updated_at: Set(attachment.metadata.updated_at),
+            deleted_at: Set(attachment.metadata.deleted_at),
+            sync_status: Set(attachment.metadata.sync_status.clone().into()),
+            sync_version: Set(attachment.metadata.sync_version),
+            mime_type: Set(attachment.mime_type.clone()),
+            data: Set(attachment.data.clone()),
+            sha256: Set(attachment.sha256.clone()),
+        };
+        if is_existing {
+            active_model.id = sea_orm::ActiveValue::Unchanged(attachment.id);
+            active_model
+                .update(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("update attachment", error))?;
+        } else {
+            active_model
+                .insert(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("insert attachment", error))?;
+        }
+        Ok(())
+    }
+
+    async fn delete_by_id(&self, attachment_id: &Uuid) -> Result<(), RepositoryDeleteError> {
+        let reference_count = question_attachment_cross_ref::Entity::find()
+            .filter(question_attachment_cross_ref::Column::AttachmentId.eq(*attachment_id))
+            .count(self.connection)
+            .await
+            .map_err(|error| {
+                RepositoryInfrastructureError::new("count attachment references", error)
+            })?;
+        if reference_count != 0 {
+            return Err(Referenced {
+                target: EntityReference {
+                    entity: "attachment",
+                    id: *attachment_id,
+                },
+                referenced_by: "question",
+            }
+            .into());
+        }
+        attachment::Entity::delete_by_id(*attachment_id)
+            .exec(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("delete attachment", error))?;
+        Ok(())
+    }
+
+    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Attachment>, RepositoryFindError> {
+        attachment::Entity::find_by_id(*id)
+            .one(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query attachment", error))?
+            .map(|model| {
+                let id = model.id;
+                Attachment::try_from(model)
+                    .map_err(|error| CorruptedData::new("attachment", id, error).into())
+            })
+            .transpose()
+    }
+
+    async fn find_by_question_id(
+        &self,
+        question_id: &Uuid,
+    ) -> Result<Vec<Attachment>, RepositoryFindError> {
+        let ids = question_attachment_cross_ref::Entity::find()
+            .filter(question_attachment_cross_ref::Column::QuestionId.eq(*question_id))
+            .all(self.connection)
+            .await
+            .map_err(|error| {
+                RepositoryInfrastructureError::new("query attachment references", error)
+            })?
+            .into_iter()
+            .map(|link| link.attachment_id)
+            .collect::<Vec<_>>();
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        attachment::Entity::find()
+            .filter(attachment::Column::Id.is_in(ids))
+            .all(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query attachments", error))?
+            .into_iter()
+            .map(|model| {
+                let id = model.id;
+                Attachment::try_from(model)
+                    .map_err(|error| CorruptedData::new("attachment", id, error).into())
+            })
+            .collect()
     }
 }
 
@@ -52,7 +189,7 @@ impl<'c, C: ConnectionTrait> legacy::AttachmentRepository for SeaOrmAttachmentRe
         .insert(self.connection)
         .await
         .expect("failed to relate attachment to question");
-        Ok(model.into())
+        Ok(Attachment::try_from(model).expect("created legacy attachment must be mappable"))
     }
 
     async fn list_active_by_question(&self, question_id: String) -> Vec<Attachment> {
@@ -74,7 +211,9 @@ impl<'c, C: ConnectionTrait> legacy::AttachmentRepository for SeaOrmAttachmentRe
             .await
             .expect("failed to query attachments")
             .into_iter()
-            .map(Into::into)
+            .map(|model| {
+                Attachment::try_from(model).expect("persisted legacy attachment must be mappable")
+            })
             .collect()
     }
 

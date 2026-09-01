@@ -1,20 +1,168 @@
-use super::super::database::entity::{question_tag_cross_ref, tag};
-use super::{timestamp, uuid};
-use crate::model::Tag;
-use crate::repository::legacy;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter, Set,
-};
 use std::collections::{HashMap, HashSet};
+
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QuerySelect, RelationTrait, Set,
+};
+use uuid::Uuid;
+
+use crate::model::Tag;
+use crate::repository::{
+    error::{
+        CorruptedData, EntityReference, Referenced, RepositoryDeleteError, RepositoryFindError,
+        RepositoryInfrastructureError, RepositorySaveError,
+    },
+    legacy, TagRepository,
+};
+
+use super::super::database::entity::{question, question_tag_cross_ref, tag};
+use super::{timestamp, uuid};
 
 pub struct SeaOrmTagRepository<'c, C: ConnectionTrait> {
     connection: &'c C,
 }
 impl<'c, C: ConnectionTrait> SeaOrmTagRepository<'c, C> {
     pub fn new(connection: &'c C) -> Self {
-        Self {
-            connection: connection,
+        Self { connection }
+    }
+}
+
+#[async_trait::async_trait]
+impl<'c, C: ConnectionTrait> TagRepository for SeaOrmTagRepository<'c, C> {
+    async fn save(&self, tag: &Tag) -> Result<(), RepositorySaveError> {
+        if tag.metadata.deleted_at.is_some()
+            && question::Entity::find()
+                .join(
+                    sea_orm::JoinType::InnerJoin,
+                    question::Relation::QuestionTagCrossRef.def(),
+                )
+                .filter(question_tag_cross_ref::Column::TagId.eq(tag.id))
+                .filter(question::Column::DeletedAt.is_null())
+                .count(self.connection)
+                .await
+                .map_err(|error| {
+                    RepositoryInfrastructureError::new("count active tag references", error)
+                })?
+                != 0
+        {
+            return Err(Referenced {
+                target: EntityReference {
+                    entity: "tag",
+                    id: tag.id,
+                },
+                referenced_by: "question",
+            }
+            .into());
         }
+        let is_existing = tag::Entity::find_by_id(tag.id)
+            .one(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query tag", error))?
+            .is_some();
+        let mut active_model = tag::ActiveModel {
+            id: Set(tag.id),
+            created_at: Set(tag.metadata.created_at),
+            updated_at: Set(tag.metadata.updated_at),
+            deleted_at: Set(tag.metadata.deleted_at),
+            sync_status: Set(tag.metadata.sync_status.clone().into()),
+            sync_version: Set(tag.metadata.sync_version),
+            name: Set(tag.name.clone()),
+            color: Set(tag.color.clone()),
+        };
+        if is_existing {
+            active_model.id = sea_orm::ActiveValue::Unchanged(tag.id);
+            active_model
+                .update(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("update tag", error))?;
+        } else {
+            active_model
+                .insert(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("insert tag", error))?;
+        }
+        Ok(())
+    }
+
+    async fn delete_by_id(&self, id: &Uuid) -> Result<(), RepositoryDeleteError> {
+        if question_tag_cross_ref::Entity::find()
+            .filter(question_tag_cross_ref::Column::TagId.eq(*id))
+            .count(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("count tag references", error))?
+            != 0
+        {
+            return Err(Referenced {
+                target: EntityReference {
+                    entity: "tag",
+                    id: *id,
+                },
+                referenced_by: "question",
+            }
+            .into());
+        }
+        tag::Entity::delete_by_id(*id)
+            .exec(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("delete tag", error))?;
+        Ok(())
+    }
+
+    async fn find_all(&self, include_deleted: bool) -> Result<Vec<Tag>, RepositoryFindError> {
+        let mut query = tag::Entity::find();
+        if !include_deleted {
+            query = query.filter(tag::Column::DeletedAt.is_null());
+        }
+        query
+            .all(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("list tags", error))?
+            .into_iter()
+            .map(|model| {
+                let id = model.id;
+                Tag::try_from(model).map_err(|error| CorruptedData::new("tag", id, error).into())
+            })
+            .collect()
+    }
+
+    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Tag>, RepositoryFindError> {
+        tag::Entity::find_by_id(*id)
+            .one(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query tag", error))?
+            .map(|model| {
+                let id = model.id;
+                Tag::try_from(model).map_err(|error| CorruptedData::new("tag", id, error).into())
+            })
+            .transpose()
+    }
+
+    async fn find_by_question_id(
+        &self,
+        question_id: &Uuid,
+    ) -> Result<Vec<Tag>, RepositoryFindError> {
+        let ids = question_tag_cross_ref::Entity::find()
+            .filter(question_tag_cross_ref::Column::QuestionId.eq(*question_id))
+            .all(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query tag references", error))?
+            .into_iter()
+            .map(|link| link.tag_id)
+            .collect::<Vec<_>>();
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        tag::Entity::find()
+            .filter(tag::Column::Id.is_in(ids))
+            .all(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query tags", error))?
+            .into_iter()
+            .map(|model| {
+                let id = model.id;
+                Tag::try_from(model).map_err(|error| CorruptedData::new("tag", id, error).into())
+            })
+            .collect()
     }
 }
 
@@ -48,7 +196,7 @@ impl<'c, C: ConnectionTrait> legacy::ErrorTagRepository for SeaOrmTagRepository<
             .insert(self.connection)
             .await
             .expect("failed to relate tag");
-            output.push(model.into());
+            output.push(Tag::try_from(model).expect("created legacy tag must be mappable"));
         }
         output
     }
@@ -60,7 +208,7 @@ impl<'c, C: ConnectionTrait> legacy::ErrorTagRepository for SeaOrmTagRepository<
             .await
             .expect("failed to list tags")
             .into_iter()
-            .map(Into::into)
+            .map(|model| Tag::try_from(model).expect("persisted legacy tag must be mappable"))
             .collect()
     }
 
@@ -124,7 +272,7 @@ impl<'c, C: ConnectionTrait> legacy::ErrorTagRepository for SeaOrmTagRepository<
             .await
             .expect("failed to query tags")
             .into_iter()
-            .map(Into::into)
+            .map(|model| Tag::try_from(model).expect("persisted legacy tag must be mappable"))
             .collect()
     }
 

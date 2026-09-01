@@ -9,9 +9,20 @@ pub struct Metadata {
     pub sync_status: SyncStatus,
     pub sync_version: i64,
 }
+impl Metadata {
+    pub fn new(now: DateTime<Utc>) -> Self {
+        Metadata {
+            created_at: now,
+            updated_at: now,
+            deleted_at: None,
+            sync_status: SyncStatus::Pending,
+            sync_version: 0,
+        }
+    }
+}
 
 pub_string_enum!(
-    SyncStatus{
+    SyncStatus {
         Pending => "PENDING",
         Synced => "SYNCED",
         Conflict => "CONFLICT",

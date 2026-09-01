@@ -6,9 +6,6 @@ mod sea_orm_subject_repository;
 mod sea_orm_sync_repository;
 mod sea_orm_tag_repository;
 
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
-use chrono::{DateTime, Utc};
-use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use sea_orm_attachment_repository::SeaOrmAttachmentRepository;
 use sea_orm_question_repository::SeaOrmQuestionRepository;
 use sea_orm_source_repository::SeaOrmSourceRepository;
@@ -16,8 +13,14 @@ use sea_orm_srs_data_repository::SeaOrmSrsDataRepository;
 use sea_orm_subject_repository::SeaOrmSubjectRepository;
 use sea_orm_sync_repository::SeaOrmSyncRepository;
 use sea_orm_tag_repository::SeaOrmTagRepository;
+
 use std::future::Future;
 use std::pin::Pin;
+
+use chrono::{DateTime, Utc};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
+
+use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 
 fn uuid(value: &str, field: &str) -> uuid::Uuid {
     uuid::Uuid::parse_str(value).unwrap_or_else(|_| panic!("invalid {field}: {value}"))
@@ -32,13 +35,35 @@ pub struct SeaOrmRepositoryFactory<'c, C: ConnectionTrait> {
 }
 impl<'c, C: ConnectionTrait> SeaOrmRepositoryFactory<'c, C> {
     pub fn new(connection: &'c C) -> Self {
-        Self {
-            connection: connection,
-        }
+        Self { connection }
     }
 }
 
 impl<'c, C: ConnectionTrait> RepositoryFactory for SeaOrmRepositoryFactory<'c, C> {
+    fn attachment_repository(&self) -> impl crate::repository::AttachmentRepository {
+        SeaOrmAttachmentRepository::new(self.connection)
+    }
+
+    fn question_repository(&self) -> impl crate::repository::QuestionRepository {
+        SeaOrmQuestionRepository::new(self.connection)
+    }
+
+    fn tag_repository(&self) -> impl crate::repository::TagRepository {
+        SeaOrmTagRepository::new(self.connection)
+    }
+
+    fn source_repository(&self) -> impl crate::repository::SourceRepository {
+        SeaOrmSourceRepository::new(self.connection)
+    }
+
+    fn srs_data_repository(&self) -> impl crate::repository::SrsDataRepository {
+        SeaOrmSrsDataRepository::new(self.connection)
+    }
+
+    fn subject_repository(&self) -> impl crate::repository::SubjectRepository {
+        SeaOrmSubjectRepository::new(self.connection)
+    }
+
     fn legacy_attachment_repository(&self) -> impl crate::repository::legacy::AttachmentRepository {
         SeaOrmAttachmentRepository::new(self.connection)
     }
@@ -75,9 +100,7 @@ pub struct SeaOrmRepositoryTransactionExecutor {
 }
 impl SeaOrmRepositoryTransactionExecutor {
     pub fn new(connection: DatabaseConnection) -> Self {
-        Self {
-            connection: connection,
-        }
+        Self { connection }
     }
 }
 

@@ -1,21 +1,164 @@
-use super::super::database::entity::{question, source};
-use super::{timestamp, uuid};
-use crate::model::Source;
-use crate::repository::legacy;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, QueryFilter,
-    QuerySelect, Set,
-};
 use std::collections::HashMap;
+
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, FromQueryResult, PaginatorTrait,
+    QueryFilter, QuerySelect, Set,
+};
+use uuid::Uuid;
+
+use crate::model::Source;
+use crate::repository::{
+    error::{
+        CorruptedData, EntityReference, MissingReference, Referenced, RepositoryDeleteError,
+        RepositoryFindError, RepositoryInfrastructureError, RepositorySaveError,
+    },
+    legacy, SourceRepository,
+};
+
+use super::super::database::entity::{question, source, subject};
+use super::{timestamp, uuid};
 
 pub struct SeaOrmSourceRepository<'c, C: ConnectionTrait> {
     connection: &'c C,
 }
 impl<'c, C: ConnectionTrait> SeaOrmSourceRepository<'c, C> {
     pub fn new(connection: &'c C) -> Self {
-        Self {
-            connection: connection,
+        Self { connection }
+    }
+}
+
+#[async_trait::async_trait]
+impl<'c, C: ConnectionTrait> SourceRepository for SeaOrmSourceRepository<'c, C> {
+    async fn save(&self, source: &Source) -> Result<(), RepositorySaveError> {
+        if source.metadata.deleted_at.is_some()
+            && question::Entity::find()
+                .filter(question::Column::SourceId.eq(source.id))
+                .filter(question::Column::DeletedAt.is_null())
+                .count(self.connection)
+                .await
+                .map_err(|error| {
+                    RepositoryInfrastructureError::new("count active source references", error)
+                })?
+                != 0
+        {
+            return Err(Referenced {
+                target: EntityReference {
+                    entity: "source",
+                    id: source.id,
+                },
+                referenced_by: "question",
+            }
+            .into());
         }
+        if let Some(subject_id) = source.subject_id {
+            let mut subject_query = subject::Entity::find_by_id(subject_id);
+            if source.metadata.deleted_at.is_none() {
+                subject_query = subject_query.filter(subject::Column::DeletedAt.is_null());
+            }
+            if subject_query
+                .one(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("query source subject", error))?
+                .is_none()
+            {
+                return Err(MissingReference {
+                    owner: EntityReference {
+                        entity: "source",
+                        id: source.id,
+                    },
+                    missing: vec![EntityReference {
+                        entity: "subject",
+                        id: subject_id,
+                    }],
+                }
+                .into());
+            }
+        }
+        let is_existing = source::Entity::find_by_id(source.id)
+            .one(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query source", error))?
+            .is_some();
+        let mut active_model = source::ActiveModel {
+            id: Set(source.id),
+            created_at: Set(source.metadata.created_at),
+            updated_at: Set(source.metadata.updated_at),
+            deleted_at: Set(source.metadata.deleted_at),
+            sync_status: Set(source.metadata.sync_status.clone().into()),
+            sync_version: Set(source.metadata.sync_version),
+            subject_id: Set(source.subject_id),
+            book: Set(source.book.clone()),
+            chapter: Set(source.chapter.clone()),
+            knowledge: Set(source.knowledge.clone()),
+        };
+        if is_existing {
+            active_model.id = sea_orm::ActiveValue::Unchanged(source.id);
+            active_model
+                .update(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("update source", error))?;
+        } else {
+            active_model
+                .insert(self.connection)
+                .await
+                .map_err(|error| RepositoryInfrastructureError::new("insert source", error))?;
+        }
+        Ok(())
+    }
+
+    async fn delete_by_id(&self, id: &Uuid) -> Result<(), RepositoryDeleteError> {
+        if question::Entity::find()
+            .filter(question::Column::SourceId.eq(*id))
+            .count(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("count source references", error))?
+            != 0
+        {
+            return Err(Referenced {
+                target: EntityReference {
+                    entity: "source",
+                    id: *id,
+                },
+                referenced_by: "question",
+            }
+            .into());
+        }
+        source::Entity::delete_by_id(*id)
+            .exec(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("delete source", error))?;
+        Ok(())
+    }
+
+    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Source>, RepositoryFindError> {
+        source::Entity::find_by_id(*id)
+            .one(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query source", error))?
+            .map(|model| {
+                let id = model.id;
+                Source::try_from(model)
+                    .map_err(|error| CorruptedData::new("source", id, error).into())
+            })
+            .transpose()
+    }
+
+    async fn find_by_subject_id(
+        &self,
+        subject_id: &Uuid,
+    ) -> Result<Vec<Source>, RepositoryFindError> {
+        source::Entity::find()
+            .filter(source::Column::SubjectId.eq(*subject_id))
+            .all(self.connection)
+            .await
+            .map_err(|error| RepositoryInfrastructureError::new("query sources", error))?
+            .into_iter()
+            .map(|model| {
+                let id = model.id;
+                Source::try_from(model)
+                    .map_err(|error| CorruptedData::new("source", id, error).into())
+            })
+            .collect()
     }
 }
 
@@ -112,7 +255,7 @@ impl<'c, C: ConnectionTrait> legacy::SourceRepository for SeaOrmSourceRepository
             .await
             .expect("failed to list sources")
             .into_iter()
-            .map(Into::into)
+            .map(|model| Source::try_from(model).expect("persisted legacy source must be mappable"))
             .collect();
         self.with_context(sources).await
     }
@@ -123,7 +266,8 @@ impl<'c, C: ConnectionTrait> legacy::SourceRepository for SeaOrmSourceRepository
             .await
             .expect("failed to query source")
             .expect("Source not found")
-            .into();
+            .try_into()
+            .expect("persisted legacy source must be mappable");
         self.with_context(vec![source]).await.remove(0)
     }
 
@@ -187,7 +331,8 @@ impl<'c, C: ConnectionTrait> legacy::SourceRepository for SeaOrmSourceRepository
         .insert(self.connection)
         .await
         .expect("failed to create source")
-        .into()
+        .try_into()
+        .expect("created legacy source must be mappable")
     }
 
     async fn update(&self, input: legacy::repository_model::source::SourceChanges) -> Source {
@@ -218,7 +363,8 @@ impl<'c, C: ConnectionTrait> legacy::SourceRepository for SeaOrmSourceRepository
             .update(self.connection)
             .await
             .expect("failed to update source")
-            .into()
+            .try_into()
+            .expect("updated legacy source must be mappable")
     }
 
     async fn soft_delete(&self, id: String, now: i64) {

@@ -1,8 +1,9 @@
+mod application;
 mod command;
 mod data;
 mod model;
 mod repository;
-mod srs;
+mod util;
 
 use command::CommandRegistry;
 use data::database::connection::{establish_connection, init_database};
@@ -12,7 +13,7 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 // 数据库连接状态
-pub struct AppState<T: RepositoryTransactionExecutor = SeaOrmRepositoryTransactionExecutor> {
+pub(crate) struct AppState<T: RepositoryTransactionExecutor = SeaOrmRepositoryTransactionExecutor> {
     pub repository_transaction_executor: T,
 }
 

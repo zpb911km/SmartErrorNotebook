@@ -35,6 +35,12 @@ macro_rules! pub_string_enum {
                 }
             }
         }
+
+        impl From<$name> for String {
+            fn from(value: $name) -> Self {
+                value.as_str().to_owned()
+            }
+        }
     };
 }
 
