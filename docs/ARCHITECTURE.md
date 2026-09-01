@@ -84,7 +84,7 @@ graph TB
             CM7[sync.rs] --- CM8[file.rs]
         end
 
-        subgraph Repo["repository/ + data/repository/"]
+        subgraph Repo["domain/repository/ + data/repository/"]
             RP1[Repository traits]
             RP2[legacy 兼容模型]
             RP3[SeaORM 事务实现]
@@ -203,10 +203,10 @@ flowchart TD
 | 目录 | 职责 | 关键约定 |
 |------|------|----------|
 | `command/` | 命令注册及 legacy 兼容处理器 | 函数标注 `#[tauri::command]`，统一在 `command/mod.rs` 注册 |
-| `repository/` | 仓储 traits 与 legacy 契约 | Command 通过事务中的 RepositoryFactory 访问持久化数据 |
+| `domain/repository/` | 仓储 traits 与 legacy 契约 | Command 通过事务中的 RepositoryFactory 访问持久化数据 |
 | `data/repository/` | SeaORM 仓储实现 | 所有命令写入由 RepositoryTransactionExecutor 包裹 |
 | `data/database/entity/` | 规范化 SeaORM 实体 | 使用 UUID、DateTime 和交叉引用实体 |
-| `model/` | 内部领域模型 | 与 legacy IPC 请求/响应隔离 |
+| `domain/model/` | 内部领域模型 | 与 legacy IPC 请求/响应隔离 |
 | `crates/migration/` | 独立迁移 crate | 命名 `mYYYYMMDD_NNNNNN_desc.rs` |
 | `srs/` | 核心复习算法 | 纯函数，不依赖 Tauri/数据库 |
 

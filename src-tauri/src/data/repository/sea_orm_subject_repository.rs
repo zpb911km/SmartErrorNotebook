@@ -3,8 +3,8 @@ use sea_orm::{
 };
 use uuid::Uuid;
 
-use crate::model::Subject;
-use crate::repository::{
+use crate::domain::model::Subject;
+use crate::domain::repository::{
     error::{
         CorruptedData, EntityReference, Referenced, RepositoryDeleteError, RepositoryFindError,
         RepositoryInfrastructureError, RepositorySaveError,
@@ -254,7 +254,7 @@ mod tests {
     use sea_orm::{ActiveModelTrait, Database, Set};
 
     use super::*;
-    use crate::repository::error::CorruptedData;
+    use crate::domain::repository::error::CorruptedData;
 
     #[tokio::test]
     async fn persisted_mapping_failures_are_returned_instead_of_panicking() {

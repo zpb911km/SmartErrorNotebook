@@ -1,7 +1,7 @@
 use super::repository_model::source::{
     NewSource, SourceChanges, SourceValues, SourceWithContext, SyncedSource,
 };
-use crate::model::Source;
+use crate::domain::model::Source;
 
 #[async_trait::async_trait]
 pub trait SourceRepository: Send + Sync {

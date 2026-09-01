@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::model::error::DomainError;
+use crate::domain::model::error::DomainError;
 
 use super::UnknownSyncStatus;
 

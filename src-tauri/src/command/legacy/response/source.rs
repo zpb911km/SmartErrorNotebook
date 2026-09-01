@@ -1,5 +1,5 @@
 use super::metadata::MetadataOutput;
-use crate::model::Source;
+use crate::domain::model::Source;
 use serde::Serialize;
 
 #[derive(Serialize)]

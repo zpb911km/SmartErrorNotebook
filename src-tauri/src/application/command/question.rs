@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::model::QuestionType;
+use crate::domain::model::QuestionType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CreateQuestionCommand {

@@ -47,7 +47,7 @@ pub struct InvalidFeedbackHistory;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::legacy::UnknownSyncStatus;
+    use crate::domain::model::legacy::UnknownSyncStatus;
 
     #[test]
     fn wraps_specific_errors_transparently() {

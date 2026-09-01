@@ -1,8 +1,10 @@
 use super::request::attachment::{CreateAttachmentInput, UpsertAttachmentInput};
 use super::response::attachment::AttachmentInterface;
-use crate::repository::legacy::repository_model::attachment::{NewAttachment, SyncedAttachment};
-use crate::repository::legacy::AttachmentRepository;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::repository_model::attachment::{
+    NewAttachment, SyncedAttachment,
+};
+use crate::domain::repository::legacy::AttachmentRepository;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;

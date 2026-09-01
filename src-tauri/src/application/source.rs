@@ -1,5 +1,7 @@
-use crate::model::Source;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor, SourceRepository};
+use crate::domain::model::Source;
+use crate::domain::repository::{
+    RepositoryFactory, RepositoryTransactionExecutor, SourceRepository,
+};
 
 use super::{
     command::{DeleteSourceCommand, SaveSourceCommand},
@@ -91,8 +93,8 @@ mod tests {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::model::{Metadata, Source};
-    use crate::repository::error::{
+    use crate::domain::model::{Metadata, Source};
+    use crate::domain::repository::error::{
         EntityReference, MissingReference, RepositoryError, RepositorySaveError,
     };
 

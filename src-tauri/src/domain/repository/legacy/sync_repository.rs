@@ -1,5 +1,5 @@
 use super::repository_model::sync::{CascadeOrphanCheckResult, SyncRecordHeader, SyncRecordOutput};
-use crate::model::legacy;
+use crate::domain::model::legacy;
 
 #[async_trait::async_trait]
 pub trait SyncRepository: Send + Sync {

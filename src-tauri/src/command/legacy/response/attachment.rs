@@ -1,5 +1,5 @@
 use crate::{
-    model::Attachment,
+    domain::model::Attachment,
     util::{codec, legacy::codec as legacy_codec},
 };
 use serde::Serialize;

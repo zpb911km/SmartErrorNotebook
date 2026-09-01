@@ -1,5 +1,5 @@
 use super::repository_model::subject::{NewSubject, SubjectChanges, SyncedSubject};
-use crate::model::Subject;
+use crate::domain::model::Subject;
 
 #[async_trait::async_trait]
 pub trait SubjectRepository: Send + Sync {

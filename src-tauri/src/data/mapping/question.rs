@@ -3,7 +3,7 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::data::database::entity::question;
-use crate::model::{Question, QuestionType};
+use crate::domain::model::{Question, QuestionType};
 
 use super::{error::MappingError, metadata};
 

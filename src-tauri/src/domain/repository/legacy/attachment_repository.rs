@@ -1,5 +1,5 @@
 use super::repository_model::attachment::{NewAttachment, SyncedAttachment};
-use crate::model::Attachment;
+use crate::domain::model::Attachment;
 
 #[async_trait::async_trait]
 pub trait AttachmentRepository: Send + Sync {

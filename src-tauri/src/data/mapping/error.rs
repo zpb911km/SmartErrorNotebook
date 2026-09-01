@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::model::error::DomainError;
+use crate::domain::model::error::DomainError;
 
 #[derive(Debug, Error)]
 pub enum MappingError {

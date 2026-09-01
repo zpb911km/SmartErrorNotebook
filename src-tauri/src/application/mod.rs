@@ -37,7 +37,7 @@ async fn test_executor() -> SeaOrmRepositoryTransactionExecutor {
 mod tests {
     use sea_orm::{ConnectionTrait, Database};
 
-    use crate::repository::error::{
+    use crate::domain::repository::error::{
         RepositoryError, RepositoryFindError, RepositoryInfrastructureError,
     };
 

@@ -3,8 +3,8 @@ use super::super::database::entity::{
     subject, tag,
 };
 use super::{timestamp, uuid};
-use crate::model::legacy as legacy_model;
-use crate::repository::legacy as legacy_repository;
+use crate::domain::model::legacy as legacy_model;
+use crate::domain::repository::legacy as legacy_repository;
 use crate::util::{codec, legacy::codec as legacy_codec};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, PaginatorTrait, QueryFilter,

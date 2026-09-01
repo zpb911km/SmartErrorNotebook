@@ -1,5 +1,5 @@
 use crate::data::database::entity::attachment;
-use crate::model::Attachment;
+use crate::domain::model::Attachment;
 
 use super::{error::MappingError, metadata};
 

@@ -1,8 +1,8 @@
 use super::request::error_tag::{CreateErrorTagsForQuestionInput, UpsertErrorTagInput};
 use super::response::error_tag::TagOutput;
-use crate::repository::legacy::repository_model::error_tag::{NewErrorTag, SyncedErrorTag};
-use crate::repository::legacy::ErrorTagRepository;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::repository_model::error_tag::{NewErrorTag, SyncedErrorTag};
+use crate::domain::repository::legacy::ErrorTagRepository;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use std::collections::HashMap;
 use tauri::State;

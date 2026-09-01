@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::model::SrsData;
+use crate::domain::model::SrsData;
 
 use super::error::{RepositoryFindError, RepositorySaveError};
 

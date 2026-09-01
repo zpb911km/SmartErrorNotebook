@@ -1,8 +1,10 @@
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::model::{Attachment, Metadata};
-use crate::repository::{AttachmentRepository, RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::model::{Attachment, Metadata};
+use crate::domain::repository::{
+    AttachmentRepository, RepositoryFactory, RepositoryTransactionExecutor,
+};
 use crate::util::codec::sha256;
 
 use super::{

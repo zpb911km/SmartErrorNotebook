@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::model::Subject;
+use crate::domain::model::Subject;
 
 use super::error::{RepositoryDeleteError, RepositoryFindError, RepositorySaveError};
 

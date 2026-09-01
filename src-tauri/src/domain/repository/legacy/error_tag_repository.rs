@@ -1,5 +1,5 @@
 use super::repository_model::error_tag::{NewErrorTag, SyncedErrorTag, TagWithQuestion};
-use crate::model::Tag;
+use crate::domain::model::Tag;
 
 #[async_trait::async_trait]
 pub trait ErrorTagRepository: Send + Sync {

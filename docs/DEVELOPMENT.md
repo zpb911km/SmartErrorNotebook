@@ -223,8 +223,9 @@ SmartErrorNotebook/
 │       │   │   ├── connection.rs
 │       │   │   └── entity/     # 规范化实体及交叉引用实体
 │       │   └── repository/     # SeaORM 仓储与事务执行器
-│       ├── model/              # 内部领域模型
-│       ├── repository/         # 仓储 traits 和 legacy 契约模型
+│       ├── domain/             # 领域层
+│       │   ├── model/          # 内部领域模型
+│       │   └── repository/     # 仓储 traits 和 legacy 契约模型
 │       └── srs/                # SDR 算法引擎
 │           └── mod.rs          # 核心算法实现
 │

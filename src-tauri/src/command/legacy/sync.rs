@@ -1,9 +1,9 @@
-use crate::model::legacy::SyncStatus;
-use crate::repository::legacy::repository_model::sync::{
+use crate::domain::model::legacy::SyncStatus;
+use crate::domain::repository::legacy::repository_model::sync::{
     CascadeOrphanCheckResult, SyncRecordHeader, SyncRecordOutput,
 };
-use crate::repository::legacy::SyncRepository;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::SyncRepository;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use tauri::State;
 

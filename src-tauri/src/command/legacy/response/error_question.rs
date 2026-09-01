@@ -1,5 +1,5 @@
 use super::metadata::MetadataOutput;
-use crate::model::{Question, QuestionType};
+use crate::domain::model::{Question, QuestionType};
 use serde::Serialize;
 
 fn legacy_question_type(value: Option<&QuestionType>) -> String {

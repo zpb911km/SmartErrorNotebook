@@ -1,5 +1,5 @@
-use crate::model::Tag;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor, TagRepository};
+use crate::domain::model::Tag;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor, TagRepository};
 
 use super::{
     command::{DeleteTagCommand, SaveTagCommand},

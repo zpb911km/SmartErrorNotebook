@@ -1,10 +1,10 @@
 use super::request::subject::{CreateSubjectInput, UpdateSubjectInput, UpsertSubjectInput};
 use super::response::subject::SubjectOutput;
-use crate::repository::legacy::repository_model::subject::{
+use crate::domain::repository::legacy::repository_model::subject::{
     NewSubject, SubjectChanges, SyncedSubject,
 };
-use crate::repository::legacy::SubjectRepository;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::SubjectRepository;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;

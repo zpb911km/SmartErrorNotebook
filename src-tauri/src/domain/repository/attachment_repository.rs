@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::model::Attachment;
+use crate::domain::model::Attachment;
 
 use super::error::{RepositoryDeleteError, RepositoryFindError, RepositorySaveError};
 

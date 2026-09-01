@@ -1,4 +1,4 @@
-use crate::model::Tag;
+use crate::domain::model::Tag;
 
 pub struct TagWithQuestion {
     pub tag: Tag,

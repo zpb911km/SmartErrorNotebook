@@ -6,8 +6,8 @@ use sea_orm::{
 };
 use uuid::Uuid;
 
-use crate::model::Question;
-use crate::repository::{
+use crate::domain::model::Question;
+use crate::domain::repository::{
     error::{
         CorruptedData, EntityReference, MissingReference, RepositoryCountError,
         RepositoryDeleteError, RepositoryFindError, RepositoryInfrastructureError,

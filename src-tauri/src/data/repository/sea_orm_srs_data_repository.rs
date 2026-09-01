@@ -2,8 +2,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, Query
 use uuid::Uuid;
 
 use crate::data::mapping::legacy::normalize_srs_state;
-use crate::model::SrsData;
-use crate::repository::{
+use crate::domain::model::SrsData;
+use crate::domain::repository::{
     error::{
         CorruptedData, EntityReference, MissingReference, RepositoryFindError,
         RepositoryInfrastructureError, RepositorySaveError,

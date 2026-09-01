@@ -2,12 +2,12 @@
 
 use super::request::srs_data::{CreateSRSDataInput, SubmitReviewInput, UpsertSRSDataInput};
 use super::response::srs_data::{ReviewOutput, SRSCardOutput, SRSStatistics};
-use crate::model::SrsData;
-use crate::repository::legacy::repository_model::srs_data::{
+use crate::domain::model::SrsData;
+use crate::domain::repository::legacy::repository_model::srs_data::{
     NewSrsData, SrsStateChanges, SyncedSrsData,
 };
-use crate::repository::legacy::SrsDataRepository;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::SrsDataRepository;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;

@@ -1,4 +1,4 @@
-use crate::model::{Metadata, SyncStatus};
+use crate::domain::model::{Metadata, SyncStatus};
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]

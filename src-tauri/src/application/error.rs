@@ -1,5 +1,5 @@
-use crate::model::error::DomainError;
-use crate::repository::error::{
+use crate::domain::model::error::DomainError;
+use crate::domain::repository::error::{
     RepositoryCountError, RepositoryDeleteError, RepositoryError, RepositoryFindError,
     RepositorySaveError,
 };

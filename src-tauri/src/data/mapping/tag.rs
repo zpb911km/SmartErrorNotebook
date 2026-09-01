@@ -1,5 +1,5 @@
 use crate::data::database::entity::tag;
-use crate::model::Tag;
+use crate::domain::model::Tag;
 
 use super::{error::MappingError, metadata};
 

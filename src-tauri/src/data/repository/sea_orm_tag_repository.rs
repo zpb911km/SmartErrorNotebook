@@ -6,8 +6,8 @@ use sea_orm::{
 };
 use uuid::Uuid;
 
-use crate::model::Tag;
-use crate::repository::{
+use crate::domain::model::Tag;
+use crate::domain::repository::{
     error::{
         CorruptedData, EntityReference, Referenced, RepositoryDeleteError, RepositoryFindError,
         RepositoryInfrastructureError, RepositorySaveError,

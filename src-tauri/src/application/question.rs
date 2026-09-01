@@ -1,8 +1,8 @@
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::model::{Metadata, Question, SrsData, SyncStatus};
-use crate::repository::{
+use crate::domain::model::{Metadata, Question, SrsData, SyncStatus};
+use crate::domain::repository::{
     QuestionRepository, RepositoryFactory, RepositoryTransactionExecutor, SrsDataRepository,
 };
 
@@ -163,14 +163,14 @@ mod tests {
         },
         source, srs_data, subject, tag, UseCaseError,
     };
-    use crate::model::{
+    use crate::domain::model::{
         Attachment, Metadata, QuestionType, Source, SrsData, Subject, SyncStatus, Tag,
     };
-    use crate::repository::error::{
+    use crate::domain::repository::error::{
         EntityReference, MissingReference, Referenced, RepositoryDeleteError, RepositoryError,
         RepositorySaveError,
     };
-    use crate::repository::{
+    use crate::domain::repository::{
         AttachmentRepository, QuestionRepository, RepositoryFactory, RepositoryTransactionExecutor,
         SourceRepository, SrsDataRepository, SubjectRepository, TagRepository,
     };

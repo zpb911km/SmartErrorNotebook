@@ -2,12 +2,12 @@ use super::request::error_question::{
     CreateQuestionInput, QuestionFilter, UpdateQuestionInput, UpsertQuestionInput,
 };
 use super::response::error_question::{ErrorQuestionOutput, QuestionStats};
-use crate::model::Question;
-use crate::repository::legacy::repository_model::error_question::{
+use crate::domain::model::Question;
+use crate::domain::repository::legacy::repository_model::error_question::{
     NewQuestion, QuestionChanges, QuestionQuery, SyncedQuestion,
 };
-use crate::repository::legacy::{ErrorQuestionRepository, SourceRepository};
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::{ErrorQuestionRepository, SourceRepository};
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;

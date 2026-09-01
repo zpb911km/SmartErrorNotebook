@@ -1,5 +1,7 @@
-use crate::model::Subject;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor, SubjectRepository};
+use crate::domain::model::Subject;
+use crate::domain::repository::{
+    RepositoryFactory, RepositoryTransactionExecutor, SubjectRepository,
+};
 
 use super::{
     command::{DeleteSubjectCommand, SaveSubjectCommand},

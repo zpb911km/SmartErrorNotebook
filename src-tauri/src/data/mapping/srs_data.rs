@@ -1,5 +1,5 @@
 use crate::data::database::entity::srs_data;
-use crate::model::SrsData;
+use crate::domain::model::SrsData;
 
 use super::{error::MappingError, metadata};
 

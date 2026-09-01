@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 
-use crate::model::{Metadata, SyncStatus};
+use crate::domain::model::{Metadata, SyncStatus};
 
 use super::error::MappingError;
 

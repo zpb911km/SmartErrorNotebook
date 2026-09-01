@@ -1,5 +1,5 @@
 use crate::data::database::entity::subject;
-use crate::model::Subject;
+use crate::domain::model::Subject;
 
 use super::{error::MappingError, metadata};
 

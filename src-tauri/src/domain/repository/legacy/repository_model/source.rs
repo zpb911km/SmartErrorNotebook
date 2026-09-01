@@ -1,4 +1,4 @@
-use crate::model::Source;
+use crate::domain::model::Source;
 
 pub struct SourceWithContext {
     pub source: Source,

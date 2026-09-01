@@ -1552,9 +1552,9 @@ async fn sync_commands_contract() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn repository_transaction_executor_commits_and_rolls_back() {
-    use crate::repository::legacy::repository_model::subject::NewSubject;
-    use crate::repository::legacy::SubjectRepository;
-    use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+    use crate::domain::repository::legacy::repository_model::subject::NewSubject;
+    use crate::domain::repository::legacy::SubjectRepository;
+    use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 
     let mut options = ConnectOptions::new("sqlite::memory:");
     options.max_connections(1).min_connections(1);

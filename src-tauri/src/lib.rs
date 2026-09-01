@@ -1,14 +1,13 @@
 mod application;
 mod command;
 mod data;
-mod model;
-mod repository;
+mod domain;
 mod util;
 
 use command::CommandRegistry;
 use data::database::connection::{establish_connection, init_database};
 use data::SeaOrmRepositoryTransactionExecutor;
-use repository::RepositoryTransactionExecutor;
+use domain::repository::RepositoryTransactionExecutor;
 use std::sync::Mutex;
 use tauri::Manager;
 

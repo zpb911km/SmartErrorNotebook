@@ -2,11 +2,11 @@ use super::request::source::{
     CreateSourceInput, SourceFilter, UpdateSourceInput, UpsertSourceInput,
 };
 use super::response::source::SourceOutput;
-use crate::repository::legacy::repository_model::source::{
+use crate::domain::repository::legacy::repository_model::source::{
     NewSource, SourceChanges, SourceValues, SyncedSource,
 };
-use crate::repository::legacy::SourceRepository;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor};
+use crate::domain::repository::legacy::SourceRepository;
+use crate::domain::repository::{RepositoryFactory, RepositoryTransactionExecutor};
 use crate::AppState;
 use tauri::State;
 use uuid::Uuid;

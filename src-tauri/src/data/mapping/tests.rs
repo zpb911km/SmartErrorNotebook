@@ -3,8 +3,8 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::data::database::entity::{attachment, question, srs_data};
-use crate::model::error::DomainError;
-use crate::model::{Attachment, SrsData};
+use crate::domain::model::error::DomainError;
+use crate::domain::model::{Attachment, SrsData};
 
 use super::error::MappingError;
 

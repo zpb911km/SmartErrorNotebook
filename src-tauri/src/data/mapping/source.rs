@@ -1,5 +1,5 @@
 use crate::data::database::entity::source;
-use crate::model::Source;
+use crate::domain::model::Source;
 
 use super::{error::MappingError, metadata};
 

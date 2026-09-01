@@ -1,7 +1,7 @@
 use super::repository_model::error_question::{
     NewQuestion, QuestionChanges, QuestionQuery, SyncedQuestion,
 };
-use crate::model::Question;
+use crate::domain::model::Question;
 
 #[async_trait::async_trait]
 pub trait ErrorQuestionRepository: Send + Sync {

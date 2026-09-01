@@ -1,5 +1,7 @@
-use crate::model::SrsData;
-use crate::repository::{RepositoryFactory, RepositoryTransactionExecutor, SrsDataRepository};
+use crate::domain::model::SrsData;
+use crate::domain::repository::{
+    RepositoryFactory, RepositoryTransactionExecutor, SrsDataRepository,
+};
 
 use super::{command::UpdateSrsDataCommand, query::GetSrsDataQuery, UseCaseError};
 
@@ -56,12 +58,12 @@ mod tests {
     use chrono::{Duration, Utc};
     use uuid::Uuid;
 
-    use crate::model::error::{DomainError, InvalidFeedback, InvalidReviewTime};
-    use crate::model::{Metadata, Question, SrsData, SyncStatus};
-    use crate::repository::error::RepositoryError;
-    use crate::repository::legacy::repository_model::srs_data::SyncedSrsData;
-    use crate::repository::legacy::SrsDataRepository as LegacySrsDataRepository;
-    use crate::repository::{
+    use crate::domain::model::error::{DomainError, InvalidFeedback, InvalidReviewTime};
+    use crate::domain::model::{Metadata, Question, SrsData, SyncStatus};
+    use crate::domain::repository::error::RepositoryError;
+    use crate::domain::repository::legacy::repository_model::srs_data::SyncedSrsData;
+    use crate::domain::repository::legacy::SrsDataRepository as LegacySrsDataRepository;
+    use crate::domain::repository::{
         QuestionRepository, RepositoryFactory, RepositoryTransactionExecutor, SrsDataRepository,
     };
 

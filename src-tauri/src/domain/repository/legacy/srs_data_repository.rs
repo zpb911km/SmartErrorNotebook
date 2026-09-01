@@ -1,5 +1,5 @@
 use super::repository_model::srs_data::{NewSrsData, SrsStateChanges, SyncedSrsData};
-use crate::model::SrsData;
+use crate::domain::model::SrsData;
 
 #[async_trait::async_trait]
 pub trait SrsDataRepository: Send + Sync {

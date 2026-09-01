@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::model::Metadata;
+use crate::domain::model::Metadata;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SaveSubjectCommand {

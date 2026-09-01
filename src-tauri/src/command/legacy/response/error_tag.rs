@@ -1,5 +1,5 @@
 use super::metadata::MetadataOutput;
-use crate::model::Tag;
+use crate::domain::model::Tag;
 use serde::Serialize;
 
 #[derive(Serialize)]
