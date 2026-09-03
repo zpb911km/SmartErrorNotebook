@@ -1,5 +1,5 @@
 import { showError } from './notification'
-import type { ErrorQuestion } from '../types'
+import type { ErrorQuestion } from '../types/legacy'
 import { jsPDF } from 'jspdf'
 import { exportFile } from './exportFile'
 import { Marked } from 'marked'

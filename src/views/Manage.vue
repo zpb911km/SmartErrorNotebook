@@ -405,21 +405,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getQuestions } from '../apis/errorQuestions'
-import { getSubjects } from '../apis/subjects'
 import {
-  getBooks,
-  getChapters,
-  getKnowledges,
-  getSources
-} from '../apis/sources'
-import { getFullErrorTags } from '../apis/errorTags'
-import { createSRSData } from '../apis/srsData'
-import { getAllSRSStatus } from '../apis/srs'
+  legacyCreateSRSData,
+  legacyGetAllSRSStatus,
+  legacyGetBooks,
+  legacyGetChapters,
+  legacyGetFullErrorTags,
+  legacyGetKnowledges,
+  legacyGetQuestions,
+  legacyGetSubjects,
+  legacyGetSources
+} from '../api/legacy'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
 import { importStore, clearPendingImport } from '../stores/importStore'
-import type { Subject } from '../types'
+import type { Subject } from '../types/legacy'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 
@@ -688,7 +688,7 @@ const handleBookClick = async (book: string) => {
   // 加载该书名的章节
   if (filters.value.subject_id && book) {
     try {
-      chapters.value = await getChapters(book, filters.value.subject_id)
+      chapters.value = await legacyGetChapters(book, filters.value.subject_id)
     } catch (error) {
       console.error('获取章节失败:', error)
       chapters.value = []
@@ -716,7 +716,7 @@ const handleChapterClick = async (chapter: string) => {
   if (filters.value.subject_id && currentBook.value && chapter) {
     try {
       console.log('开始获取知识点...')
-      knowledges.value = await getKnowledges(
+      knowledges.value = await legacyGetKnowledges(
         currentBook.value,
         chapter,
         filters.value.subject_id
@@ -752,7 +752,7 @@ const showCascadeMenuForSubject = async (subjectId: string) => {
 
   // 加载当前科目的书名
   try {
-    books.value = await getBooks(subjectId)
+    books.value = await legacyGetBooks(subjectId)
   } catch (error) {
     console.error('获取书名失败:', error)
     books.value = []
@@ -862,10 +862,10 @@ const fetchData = async () => {
     // 并行获取科目、错题、标签和来源数据
     const [subjectsData, questionsData, tagsData, sourcesData] =
       await Promise.all([
-        getSubjects(),
-        getQuestions(),
-        getFullErrorTags(),
-        getSources()
+        legacyGetSubjects(),
+        legacyGetQuestions(),
+        legacyGetFullErrorTags(),
+        legacyGetSources()
       ])
 
     subjects.value = subjectsData
@@ -877,7 +877,7 @@ const fetchData = async () => {
     const srsMap = new Map<string, any>()
     const questionsWithoutSRS: any[] = []
 
-    const allSRS = await getAllSRSStatus()
+    const allSRS = await legacyGetAllSRSStatus()
     for (const srs of allSRS) {
       srsMap.set(srs.question_id, srs)
       srs.question_id &&
@@ -903,7 +903,7 @@ const fetchData = async () => {
       const createPromises = questionsWithoutSRS.map(async (question: any) => {
         try {
           // 使用 FSRS-5 默认初始难度
-          const srsData = await createSRSData(question.id)
+          const srsData = await legacyCreateSRSData(question.id)
           srsMap.set(question.id, srsData)
           console.log(`为题目 ${question.id} 创建 SRS 数据成功:`, srsData)
         } catch (error) {

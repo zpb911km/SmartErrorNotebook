@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import {
-  getBooks,
-  getChapters,
-  getKnowledges,
-  getOrCreateSourceId,
-  getSource
-} from '../apis/sources'
-import { Source } from '../types'
+  legacyGetBooks,
+  legacyGetChapters,
+  legacyGetKnowledges,
+  legacyGetOrCreateSourceId,
+  legacyGetSource
+} from '../api/legacy'
+import { Source } from '../types/legacy'
 import { showError, showWarning } from '../utils/notification'
 
 const selectedSource = ref<Source | null>(null)
@@ -82,7 +82,7 @@ const resetSelection = () => {
 }
 
 const loadBooks = () => {
-  getBooks(props.subjectId)
+  legacyGetBooks(props.subjectId)
     .then((data) => {
       books.value = data
     })
@@ -131,7 +131,7 @@ const addAllToBackend = async () => {
       selectedChapter.value,
       selectedKnowledge.value
     )
-    await getOrCreateSourceId({
+    await legacyGetOrCreateSourceId({
       subject_id: props.subjectId,
       book: selectedBook.value,
       chapter: selectedChapter.value === '' ? undefined : selectedChapter.value,
@@ -165,7 +165,7 @@ const loadSourceById = async (sourceId: string) => {
   }
 
   try {
-    const source = await getSource(sourceId)
+    const source = await legacyGetSource(sourceId)
     // console.log("source:", source.book, source.chapter, source.knowledge)
     // 在初始化模式下直接赋值，不触发 watcher 的级联清空逻辑
     isInitializing.value = true
@@ -189,7 +189,7 @@ const loadSourceById = async (sourceId: string) => {
     }, 1000)
 
     if (props.subjectId) {
-      books.value = await getBooks(props.subjectId)
+      books.value = await legacyGetBooks(props.subjectId)
     }
     console.log(
       'data:',
@@ -199,10 +199,10 @@ const loadSourceById = async (sourceId: string) => {
     )
     // 预加载下一级数据
     if (source.book) {
-      getChapters(source.book).then((data) => {
+      legacyGetChapters(source.book).then((data) => {
         chapters.value = data
         if (source.chapter && source.book) {
-          getKnowledges(source.book, source.chapter).then((data) => {
+          legacyGetKnowledges(source.book, source.chapter).then((data) => {
             knowledges.value = data
           })
         }
@@ -221,7 +221,7 @@ watch(selectedBook, (newBook) => {
     selectedKnowledge.value = ''
     showAddChapterInput.value = false
     showAddKnowledgeInput.value = false
-    getChapters(newBook)
+    legacyGetChapters(newBook)
       .then((data) => {
         chapters.value = data
       })
@@ -237,7 +237,7 @@ watch(selectedChapter, (newChapter) => {
   if (newChapter && selectedBook.value && !isInitializing.value) {
     selectedKnowledge.value = ''
     showAddKnowledgeInput.value = false
-    getKnowledges(selectedBook.value, newChapter)
+    legacyGetKnowledges(selectedBook.value, newChapter)
       .then((data) => {
         knowledges.value = data
       })
@@ -273,7 +273,7 @@ watch(isExpanded, async (newVal) => {
     props.subjectId !== '' &&
     atLeastOneSelected()
   ) {
-    await getOrCreateSourceId({
+    await legacyGetOrCreateSourceId({
       subject_id: props.subjectId,
       book: selectedBook.value,
       chapter: selectedChapter.value === '' ? undefined : selectedChapter.value,
@@ -317,7 +317,7 @@ const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
     loadBooks()
   } else {
     if (props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
-      await getOrCreateSourceId({
+      await legacyGetOrCreateSourceId({
         subject_id: props.subjectId,
         book: selectedBook.value,
         chapter:

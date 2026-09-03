@@ -28,7 +28,7 @@ fn card(s: SrsData, now: i64, is_due: bool) -> SRSCardOutput {
 
 /// 为指定题目创建或初始化 SRS 数据
 #[tauri::command]
-pub async fn create_srs_data(
+pub async fn legacy_create_srs_data(
     state: State<'_, AppState>,
     input: CreateSRSDataInput,
 ) -> Result<SRSCardOutput, String> {
@@ -66,7 +66,7 @@ pub async fn create_srs_data(
 
 /// 获取待复习的题目列表
 #[tauri::command]
-pub async fn get_due_questions(
+pub async fn legacy_get_due_questions(
     state: State<'_, AppState>,
     limit: Option<i32>,
 ) -> Result<Vec<SRSCardOutput>, String> {
@@ -96,7 +96,7 @@ pub async fn get_due_questions(
 
 /// 提交复习结果并更新 SRS 状态
 #[tauri::command]
-pub async fn submit_review_result(
+pub async fn legacy_submit_review_result(
     state: State<'_, AppState>,
     input: SubmitReviewInput,
 ) -> Result<ReviewOutput, String> {
@@ -145,7 +145,7 @@ pub async fn submit_review_result(
 
 /// 获取单个题目的 SRS 状态
 #[tauri::command]
-pub async fn get_question_srs_status(
+pub async fn legacy_get_question_srs_status(
     state: State<'_, AppState>,
     question_id: String,
 ) -> Result<Option<SRSCardOutput>, String> {
@@ -172,7 +172,7 @@ pub async fn get_question_srs_status(
 
 /// 将单个题目的 SRS 进度重置为新卡片状态
 #[tauri::command]
-pub async fn reset_srs_progress(
+pub async fn legacy_reset_srs_progress(
     state: State<'_, AppState>,
     question_id: String,
 ) -> Result<SRSCardOutput, String> {
@@ -227,7 +227,7 @@ pub async fn reset_srs_progress(
 
 /// 获取当前待复习卡片总数
 #[tauri::command]
-pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
+pub async fn legacy_get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
     let now = chrono::Utc::now().timestamp();
     state
         .repository_transaction_executor
@@ -251,7 +251,9 @@ pub async fn get_due_count(state: State<'_, AppState>) -> Result<i32, String> {
 
 /// 获取所有 SRS 数据的统计信息
 #[tauri::command]
-pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatistics, String> {
+pub async fn legacy_get_srs_statistics(
+    state: State<'_, AppState>,
+) -> Result<SRSStatistics, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -298,7 +300,9 @@ pub async fn get_srs_statistics(state: State<'_, AppState>) -> Result<SRSStatist
 
 /// 获取所有卡片
 #[tauri::command]
-pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutput>, String> {
+pub async fn legacy_get_all_cards(
+    state: State<'_, AppState>,
+) -> Result<Vec<SRSCardOutput>, String> {
     let now = chrono::Utc::now().timestamp();
     state
         .repository_transaction_executor
@@ -324,7 +328,7 @@ pub async fn get_all_cards(state: State<'_, AppState>) -> Result<Vec<SRSCardOutp
 
 /// 根据 ID 插入或更新同步下发的 SRS 数据
 #[tauri::command]
-pub async fn upsert_srs_data(
+pub async fn legacy_upsert_srs_data(
     state: State<'_, AppState>,
     input: UpsertSRSDataInput,
 ) -> Result<(), String> {

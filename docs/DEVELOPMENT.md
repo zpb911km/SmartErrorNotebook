@@ -158,7 +158,7 @@ SmartErrorNotebook/
 │   │   ├── Tag.vue             # 标签组件
 │   │   └── Icon.vue            # Lucide 图标封装
 │   │
-│   ├── apis/                   # 对 Rust 后端的 API 调用
+│   ├── api/legacy/             # 对 Rust 后端的 legacy API 调用
 │   │   ├── index.ts            # 统一导出
 │   │   ├── errorQuestions.ts   # 错题 CRUD
 │   │   ├── errorTags.ts        # 错因标签
@@ -188,7 +188,8 @@ SmartErrorNotebook/
 │   │   └── shareContent.ts     # 分享内容工具
 │   │
 │   ├── types/
-│   │   └── index.ts            # TypeScript 类型定义
+│   │   ├── index.ts            # 空占位文件
+│   │   └── legacy.ts           # Legacy TypeScript 类型定义
 │   │
 │   ├── directives/
 │   │   ├── ripple.ts           # 水波纹点击效果
@@ -292,10 +293,10 @@ SmartErrorNotebook/
 import { invoke } from '@tauri-apps/api/core'
 
 // 示例：获取所有科目
-const subjects = await invoke('get_subjects')
+const subjects = await invoke('legacy_get_subjects')
 
 // 示例：创建错题
-const newQuestion = await invoke('create_question', {
+const newQuestion = await invoke('legacy_create_question', {
   prompt: '题目内容',
   type_: '多选题',
   subject_id: 'xxx'

@@ -45,8 +45,8 @@ graph TB
         end
 
         subgraph S["Services / Utils"]
-            S1[apis/ invoke 调用层]
-            S2[types/ TS 接口定义]
+            S1[api/legacy/ invoke 调用层]
+            S2[types/legacy.ts TS 接口定义]
             S3[services/llm.ts AI 识别]
             S4[utils/export* 导出]
             S5[utils/import* 导入]
@@ -146,13 +146,13 @@ sequenceDiagram
     LLM-->>App: ← JSON 响应（题干/答案/解析）
     User->>App: ③ 确认信息
     User->>App: ④ 点击保存
-    App->>Rust: invoke('create_question')
+    App->>Rust: invoke('legacy_create_question')
     Rust->>DB: 生成 UUID + 写入
     DB-->>Rust: 返回新记录
     Rust-->>App: 返回结果
-    App->>Rust: invoke('create_attachments_for_question')
-    App->>Rust: invoke('create_srs_data')
-    App->>Rust: invoke('create_error_tags_for_question')
+    App->>Rust: invoke('legacy_create_attachments_for_question')
+    App->>Rust: invoke('legacy_create_srs_data')
+    App->>Rust: invoke('legacy_create_error_tags_for_question')
     Rust->>DB: 批量写入
     DB-->>Rust: 写入完成
     Rust-->>App: 全部完成
@@ -163,14 +163,14 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[① 进入复习页] --> B{invoke get_due_questions}
+    A[① 进入复习页] --> B{invoke legacy_get_due_questions}
     B --> C[Rust 查询 SRS 数据]
     C --> C1[next_review_at ≤ now]
     C1 --> C2[deleted_at IS NULL]
     C2 --> D[返回待复习列表]
     D --> E[② 逐题复习<br/>显示题目 → 回忆 → 显示答案]
     E --> F[③ 滑动评分<br/>反馈值 0.0 ~ 1.0]
-    F --> G[invoke submit_review_result]
+    F --> G[invoke legacy_submit_review_result]
     G --> H{进入 srs/mod.rs}
     H --> H1[predict_retrievability]
     H1 --> H2[更新稳定性 S]
@@ -191,10 +191,10 @@ flowchart TD
 |------|------|----------|
 | `views/` | 页面组件，对应路由 | 每个 `.vue` 一个页面，命名 PascalCase |
 | `components/` | 可复用 UI 组件 | 无业务逻辑，通过 props/events 通信 |
-| `apis/` | `invoke()` 封装层 | 每个 Rust 实体对应一个文件 |
+| `api/legacy/` | `invoke()` 封装层 | 每个 Rust 实体对应一个文件 |
 | `services/` | 状态管理 + 业务服务 | LLM 服务为单例模式 |
 | `utils/` | 纯函数工具 | 不含副作用 |
-| `types/` | TypeScript 接口定义 | 前后端契约 |
+| `types/legacy.ts` | Legacy TypeScript 接口定义 | 前后端契约 |
 | `directives/` | Vue 自定义指令 | — |
 | `styles/` | 全局样式 + 主题变量 | 主题通过 CSS 变量切换 |
 

@@ -9,7 +9,7 @@ use tauri::State;
 use uuid::Uuid;
 
 #[tauri::command]
-pub async fn create_error_tags_for_question(
+pub async fn legacy_create_error_tags_for_question(
     state: State<'_, AppState>,
     input: CreateErrorTagsForQuestionInput,
 ) -> Result<Vec<TagOutput>, String> {
@@ -44,7 +44,7 @@ pub async fn create_error_tags_for_question(
 }
 
 #[tauri::command]
-pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<TagOutput>, String> {
+pub async fn legacy_get_error_tags(state: State<'_, AppState>) -> Result<Vec<TagOutput>, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -67,7 +67,9 @@ pub async fn get_error_tags(state: State<'_, AppState>) -> Result<Vec<TagOutput>
 }
 
 #[tauri::command]
-pub async fn get_full_error_tags(state: State<'_, AppState>) -> Result<Vec<TagOutput>, String> {
+pub async fn legacy_get_full_error_tags(
+    state: State<'_, AppState>,
+) -> Result<Vec<TagOutput>, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -87,7 +89,7 @@ pub async fn get_full_error_tags(state: State<'_, AppState>) -> Result<Vec<TagOu
 }
 
 #[tauri::command]
-pub async fn get_error_tags_for_question(
+pub async fn legacy_get_error_tags_for_question(
     state: State<'_, AppState>,
     question_id: String,
 ) -> Result<Vec<TagOutput>, String> {
@@ -109,7 +111,7 @@ pub async fn get_error_tags_for_question(
 }
 
 #[tauri::command]
-pub async fn delete_error_tag(
+pub async fn legacy_delete_error_tag(
     state: State<'_, AppState>,
     question_id: String,
     tag_id: String,
@@ -128,7 +130,7 @@ pub async fn delete_error_tag(
 }
 
 #[tauri::command]
-pub async fn upsert_error_tag(
+pub async fn legacy_upsert_error_tag(
     state: State<'_, AppState>,
     input: UpsertErrorTagInput,
 ) -> Result<(), String> {
@@ -161,7 +163,7 @@ pub async fn upsert_error_tag(
 }
 
 #[tauri::command]
-pub async fn update_error_tag_by_name(
+pub async fn legacy_update_error_tag_by_name(
     state: State<'_, AppState>,
     old_name: String,
     new_name: String,
@@ -187,7 +189,7 @@ pub async fn update_error_tag_by_name(
 }
 
 #[tauri::command]
-pub async fn update_error_tag_by_id(
+pub async fn legacy_update_error_tag_by_id(
     state: State<'_, AppState>,
     tag_id: String,
     new_tag_name: String,

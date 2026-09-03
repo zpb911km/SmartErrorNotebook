@@ -1,7 +1,7 @@
 // SRS (间隔重复学习) API 接口
 
 import { invoke } from '@tauri-apps/api/core'
-import { SRSData } from '../types'
+import { SRSData } from '../../types/legacy'
 
 // ==================== Input/Output Types ====================
 
@@ -51,8 +51,10 @@ export interface ReviewOutput {
  * @param limit 返回数量限制（可选，默认 30）
  * @returns 待复习题目列表
  */
-export async function getDueQuestions(limit?: number): Promise<SRSData[]> {
-  return invoke('get_due_questions', { limit })
+export async function legacyGetDueQuestions(
+  limit?: number
+): Promise<SRSData[]> {
+  return invoke('legacy_get_due_questions', { limit })
 }
 
 /**
@@ -60,10 +62,10 @@ export async function getDueQuestions(limit?: number): Promise<SRSData[]> {
  * @param input 复习结果参数
  * @returns 复习结果（包含新的 SRS 状态）
  */
-export async function submitReviewResult(
+export async function legacySubmitReviewResult(
   input: SubmitReviewInput
 ): Promise<ReviewOutput> {
-  return invoke('submit_review_result', { input })
+  return invoke('legacy_submit_review_result', { input })
 }
 
 /**
@@ -71,10 +73,10 @@ export async function submitReviewResult(
  * @param questionId 错题 ID
  * @returns SRS 数据对象，不存在则返回 undefined
  */
-export async function getSRSStatus(
+export async function legacyGetSRSStatus(
   questionId: string
 ): Promise<SRSData | undefined> {
-  return invoke('get_question_srs_status', { questionId })
+  return invoke('legacy_get_question_srs_status', { questionId })
 }
 
 /**
@@ -82,23 +84,25 @@ export async function getSRSStatus(
  * @param questionId 错题 ID
  * @returns 更新后的 SRS 数据对象
  */
-export async function resetSRSProgress(questionId: string): Promise<SRSData> {
-  return invoke('reset_srs_progress', { questionId })
+export async function legacyResetSRSProgress(
+  questionId: string
+): Promise<SRSData> {
+  return invoke('legacy_reset_srs_progress', { questionId })
 }
 
 /**
  * 获取所有题目的 SRS 状态
  * @returns 所有题目的 SRS 数据对象
  */
-export async function getAllSRSStatus(): Promise<SRSData[]> {
-  return invoke('get_all_cards')
+export async function legacyGetAllSRSStatus(): Promise<SRSData[]> {
+  return invoke('legacy_get_all_cards')
 }
 
-export async function getDueCount(): Promise<number> {
-  return invoke('get_due_count')
+export async function legacyGetDueCount(): Promise<number> {
+  return invoke('legacy_get_due_count')
 }
 
-export async function getSRSStatistics(): Promise<{
+export async function legacyGetSRSStatistics(): Promise<{
   total: number
   due_count: number
   new_cards: number
@@ -106,5 +110,5 @@ export async function getSRSStatistics(): Promise<{
   avg_difficulty: number
   total_reviews: number
 }> {
-  return invoke('get_srs_statistics')
+  return invoke('legacy_get_srs_statistics')
 }

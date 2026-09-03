@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { SRSData } from '../types'
+import { SRSData } from '../../types/legacy'
 
 // ==================== API 接口 ====================
 
@@ -10,11 +10,11 @@ import { SRSData } from '../types'
  * @param mastery 掌握程度（百分比）
  * @returns 创建的 SRS 数据对象
  */
-export async function createSRSData(
+export async function legacyCreateSRSData(
   questionId: string,
   difficulty?: number
 ): Promise<SRSData> {
-  return await invoke('create_srs_data', {
+  return await invoke('legacy_create_srs_data', {
     input: {
       question_id: questionId,
       difficulty
@@ -27,8 +27,8 @@ export async function createSRSData(
  * @param questionId 错题ID
  * @returns SRS 数据对象，如果不存在则返回 null
  */
-export async function getQuestionSRSStatus(
+export async function legacyGetQuestionSRSStatus(
   questionId: string
 ): Promise<SRSData | null> {
-  return await invoke('get_question_srs_status', { questionId })
+  return await invoke('legacy_get_question_srs_status', { questionId })
 }

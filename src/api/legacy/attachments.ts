@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
-import { Attachment, CreateAttachmentInput } from '../types'
-import { compressImageIfTooLarge } from '../utils/imageCompression'
+import { Attachment, CreateAttachmentInput } from '../../types/legacy'
+import { compressImageIfTooLarge } from '../../utils/imageCompression'
 
 // ==================== API 接口 ====================
 
@@ -9,7 +9,7 @@ import { compressImageIfTooLarge } from '../utils/imageCompression'
  * @param input 附件数据（包含题目ID、类型、文件类型、base64数据）
  * @returns 创建的附件对象
  */
-export async function createAttachment(
+export async function legacyCreateAttachment(
   input: CreateAttachmentInput
 ): Promise<Attachment> {
   // 阻塞式图片压缩（等待压缩完成）
@@ -34,7 +34,7 @@ export async function createAttachment(
     base64_data: compressedBase64Data
   }
 
-  return await invoke('create_attachment', { input: updatedInput })
+  return await invoke('legacy_create_attachment', { input: updatedInput })
 }
 
 /**
@@ -43,11 +43,11 @@ export async function createAttachment(
  * @param attachments 附件数据数组
  * @returns 创建的附件列表
  */
-export async function createAttachmentsForQuestion(
+export async function legacyCreateAttachmentsForQuestion(
   questionId: string,
   attachments: CreateAttachmentInput[]
 ): Promise<Attachment[]> {
-  console.log('========== createAttachmentsForQuestion ==========')
+  console.log('========== legacyCreateAttachmentsForQuestion ==========')
   console.log('questionId:', questionId)
   console.log('附件数量:', attachments.length)
 
@@ -93,7 +93,7 @@ export async function createAttachmentsForQuestion(
     }))
   )
 
-  return await invoke('create_attachments_for_question', {
+  return await invoke('legacy_create_attachments_for_question', {
     questionId: questionId,
     attachments: compressedAttachments
   })
@@ -104,10 +104,10 @@ export async function createAttachmentsForQuestion(
  * @param questionId 错题ID
  * @returns 附件列表（已过滤软删除的记录）
  */
-export async function getAttachmentsByQuestion(
+export async function legacyGetAttachmentsByQuestion(
   questionId: string
 ): Promise<Attachment[]> {
-  return await invoke('get_attachments_by_question', { questionId })
+  return await invoke('legacy_get_attachments_by_question', { questionId })
 }
 
 /**
@@ -116,11 +116,11 @@ export async function getAttachmentsByQuestion(
  * @param questionId 错题ID
  * @returns 无返回值
  */
-export async function deleteAttachment(
+export async function legacyDeleteAttachment(
   id: string,
   questionId: string
 ): Promise<void> {
-  return await invoke('delete_attachment', { id, questionId })
+  return await invoke('legacy_delete_attachment', { id, questionId })
 }
 
 // ==================== 工具函数 ====================

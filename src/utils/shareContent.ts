@@ -2,7 +2,7 @@ import { appCacheDir, join } from '@tauri-apps/api/path'
 import { writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs'
 import { shareFile } from 'tauri-plugin-share'
 import { showError } from './notification'
-import type { ErrorQuestion } from '../types'
+import type { ErrorQuestion } from '../types/legacy'
 import { buildQuestionsHTML } from './exportHtml'
 
 /**

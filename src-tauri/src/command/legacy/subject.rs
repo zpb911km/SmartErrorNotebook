@@ -10,7 +10,7 @@ use tauri::State;
 use uuid::Uuid;
 
 #[tauri::command]
-pub async fn get_subjects(state: State<'_, AppState>) -> Result<Vec<SubjectOutput>, String> {
+pub async fn legacy_get_subjects(state: State<'_, AppState>) -> Result<Vec<SubjectOutput>, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -28,7 +28,7 @@ pub async fn get_subjects(state: State<'_, AppState>) -> Result<Vec<SubjectOutpu
 }
 
 #[tauri::command]
-pub async fn create_subject(
+pub async fn legacy_create_subject(
     state: State<'_, AppState>,
     input: CreateSubjectInput,
 ) -> Result<SubjectOutput, String> {
@@ -52,7 +52,7 @@ pub async fn create_subject(
 }
 
 #[tauri::command]
-pub async fn update_subject(
+pub async fn legacy_update_subject(
     state: State<'_, AppState>,
     input: UpdateSubjectInput,
 ) -> Result<SubjectOutput, String> {
@@ -76,7 +76,7 @@ pub async fn update_subject(
 }
 
 #[tauri::command]
-pub async fn delete_subject(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub async fn legacy_delete_subject(state: State<'_, AppState>, id: String) -> Result<(), String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -92,7 +92,7 @@ pub async fn delete_subject(state: State<'_, AppState>, id: String) -> Result<()
 }
 
 #[tauri::command]
-pub async fn upsert_subject(
+pub async fn legacy_upsert_subject(
     state: State<'_, AppState>,
     input: UpsertSubjectInput,
 ) -> Result<(), String> {

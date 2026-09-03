@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { Subject } from '../types'
+import { Subject } from '../../types/legacy'
 
 // ==================== API 接口 ====================
 
@@ -7,8 +7,8 @@ import { Subject } from '../types'
  * 获取所有科目
  * @returns 科目列表（已过滤软删除的记录）
  */
-export async function getSubjects(): Promise<Subject[]> {
-  return await invoke('get_subjects')
+export async function legacyGetSubjects(): Promise<Subject[]> {
+  return await invoke('legacy_get_subjects')
 }
 
 /**
@@ -16,10 +16,10 @@ export async function getSubjects(): Promise<Subject[]> {
  * @param subject 科目数据（不包含 id）
  * @returns 创建的科目对象
  */
-export async function createSubject(
+export async function legacyCreateSubject(
   subject: Omit<Subject, 'id'>
 ): Promise<Subject> {
-  return await invoke('create_subject', { input: subject })
+  return await invoke('legacy_create_subject', { input: subject })
 }
 
 /**
@@ -27,8 +27,8 @@ export async function createSubject(
  * @param subject 科目数据（必须包含 id）
  * @returns 更新后的科目对象
  */
-export async function updateSubject(subject: Subject): Promise<Subject> {
-  return await invoke('update_subject', { input: subject })
+export async function legacyUpdateSubject(subject: Subject): Promise<Subject> {
+  return await invoke('legacy_update_subject', { input: subject })
 }
 
 /**
@@ -36,6 +36,6 @@ export async function updateSubject(subject: Subject): Promise<Subject> {
  * @param id 科目ID
  * @returns 无返回值
  */
-export async function deleteSubject(id: string): Promise<void> {
-  return await invoke('delete_subject', { id })
+export async function legacyDeleteSubject(id: string): Promise<void> {
+  return await invoke('legacy_delete_subject', { id })
 }

@@ -68,7 +68,7 @@ pub fn run() {
 
             let urls_str: Vec<String> = urls.iter().map(|u| u.as_str().to_string()).collect();
 
-            // 存入 State，供冷启动时前端通过 opened_urls 命令读取
+            // 存入 State，供冷启动时前端通过 legacy_opened_urls 命令读取
             app_handle
                 .state::<OpenedUrls>()
                 .0

@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { ErrorTags } from '../types'
+import { ErrorTags } from '../../types/legacy'
 
 // ==================== API 接口 ====================
 
@@ -7,16 +7,16 @@ import { ErrorTags } from '../types'
  * 获取所有不重复的错因标签
  * @returns 错因标签列表
  */
-export async function getErrorTags(): Promise<ErrorTags[]> {
-  return await invoke('get_error_tags')
+export async function legacyGetErrorTags(): Promise<ErrorTags[]> {
+  return await invoke('legacy_get_error_tags')
 }
 
 /**
  * 获取所有错因标签
  * @returns 错因标签列表
  */
-export async function getFullErrorTags(): Promise<ErrorTags[]> {
-  return await invoke('get_full_error_tags')
+export async function legacyGetFullErrorTags(): Promise<ErrorTags[]> {
+  return await invoke('legacy_get_full_error_tags')
 }
 
 /**
@@ -24,10 +24,10 @@ export async function getFullErrorTags(): Promise<ErrorTags[]> {
  * @param questionId 错题ID
  * @returns 错因标签列表
  */
-export async function getErrorTagByQuestionId(
+export async function legacyGetErrorTagByQuestionId(
   questionId: string
 ): Promise<ErrorTags[]> {
-  return await invoke('get_error_tags_for_question', {
+  return await invoke('legacy_get_error_tags_for_question', {
     questionId: questionId
   })
 }
@@ -38,11 +38,11 @@ export async function getErrorTagByQuestionId(
  * @param tags 标签数组，每个标签包含名称和颜色
  * @returns 创建的错因标签列表
  */
-export async function createErrorTagsForQuestion(
+export async function legacyCreateErrorTagsForQuestion(
   questionId: string,
   tags: Array<{ name: string; color: string }>
 ): Promise<ErrorTags[]> {
-  return await invoke('create_error_tags_for_question', {
+  return await invoke('legacy_create_error_tags_for_question', {
     input: {
       question_id: questionId,
       tags: tags
@@ -50,22 +50,22 @@ export async function createErrorTagsForQuestion(
   })
 }
 
-export async function deleteErrorTagById(
+export async function legacyDeleteErrorTagById(
   tagId: string,
   questionId: string
 ): Promise<void> {
-  return await invoke('delete_error_tag', {
+  return await invoke('legacy_delete_error_tag', {
     tagId,
     questionId
   })
 }
 
-export async function updateErrorTagById(
+export async function legacyUpdateErrorTagById(
   tagId: string,
   name: string,
   color: string
 ): Promise<number> {
-  return await invoke('update_error_tag_by_id', {
+  return await invoke('legacy_update_error_tag_by_id', {
     tag_id: tagId,
     new_tag_name: name,
     new_tag_color: color
@@ -75,8 +75,8 @@ export async function updateErrorTagById(
  * 获取所有唯一的错因标签名称列表
  * @returns 不重复的标签名称数组
  */
-export async function getAllUniqueTags(): Promise<string[]> {
-  const allTags = await invoke('get_error_tags')
+export async function legacyGetAllUniqueTags(): Promise<string[]> {
+  const allTags = await invoke('legacy_get_error_tags')
   const tagNames = (allTags as ErrorTags[]).map((tag) => tag.name)
   // 去重
   return [...new Set(tagNames)]

@@ -214,9 +214,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { submitReviewResult } from '../apis/srs'
+import { legacySubmitReviewResult, type ReviewOutput } from '../api/legacy'
 import { getReviewQueue, clearReviewQueue } from '../services/reviewStore'
-import type { ReviewOutput } from '../apis/srs'
 
 const router = useRouter()
 
@@ -389,7 +388,7 @@ async function submitReview() {
   if (submitting.value || !currentCard.value) return
   submitting.value = true
   try {
-    const result = await submitReviewResult({
+    const result = await legacySubmitReviewResult({
       question_id: currentCard.value.questionId,
       feedback: feedbackValue.value
     })

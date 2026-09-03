@@ -398,30 +398,26 @@ marked.use(
 )
 
 import {
-  getQuestion,
-  updateQuestion,
-  deleteQuestion
-} from '../apis/errorQuestions'
-import { getSubjects } from '../apis/subjects'
-import {
-  getErrorTagByQuestionId,
-  createErrorTagsForQuestion,
-  deleteErrorTagById
-} from '../apis/errorTags'
-import {
-  getAttachmentsByQuestion,
   buildDataUrl,
-  createAttachmentsForQuestion,
   fileToBase64,
-  deleteAttachment
-} from '../apis/attachments'
-import { getQuestionSRSStatus } from '../apis/srsData'
+  legacyCreateAttachmentsForQuestion,
+  legacyCreateErrorTagsForQuestion,
+  legacyDeleteAttachment,
+  legacyDeleteErrorTagById,
+  legacyDeleteQuestion,
+  legacyGetAttachmentsByQuestion,
+  legacyGetErrorTagByQuestionId,
+  legacyGetQuestion,
+  legacyGetQuestionSRSStatus,
+  legacyGetSubjects,
+  legacyUpdateQuestion
+} from '../api/legacy'
 import type {
   ErrorQuestion,
   Subject,
   ErrorTags as ErrorTagType,
   Attachment
-} from '../types'
+} from '../types/legacy'
 import SourceSelector from '../components/SourceSelector.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
@@ -493,7 +489,7 @@ const fetchErrorDetail = async () => {
   console.log('错题ID:', errorId.value)
 
   try {
-    const question = await getQuestion(errorId.value)
+    const question = await legacyGetQuestion(errorId.value)
     console.log('========== 后端返回的原始数据 ==========')
     console.log('question 对象:', question)
     console.log('question 类型:', typeof question)
@@ -565,7 +561,7 @@ const fetchErrorDetail = async () => {
     // 获取标签
     try {
       console.log('开始获取标签...')
-      const allTags = await getErrorTagByQuestionId(errorId.value)
+      const allTags = await legacyGetErrorTagByQuestionId(errorId.value)
       console.log('获取到的标签数量:', allTags.length)
       errorTags.value = allTags
     } catch (error) {
@@ -582,7 +578,7 @@ const fetchErrorDetail = async () => {
         return
       }
 
-      const attachments = await getAttachmentsByQuestion(errorId.value)
+      const attachments = await legacyGetAttachmentsByQuestion(errorId.value)
       console.log('获取到的附件:', attachments)
 
       // 分类附件（注意：后端字段名是 type_ 不是 type）
@@ -599,7 +595,7 @@ const fetchErrorDetail = async () => {
     // 获取 SRS 数据
     try {
       console.log('开始获取 SRS 数据...')
-      const srs = await getQuestionSRSStatus(errorId.value)
+      const srs = await legacyGetQuestionSRSStatus(errorId.value)
       if (srs) {
         srsData.value = srs
         console.log('SRS 数据:', srs)
@@ -619,7 +615,7 @@ const fetchErrorDetail = async () => {
 // 获取科目列表
 const fetchSubjects = async () => {
   try {
-    subjects.value = await getSubjects()
+    subjects.value = await legacyGetSubjects()
   } catch (error) {
     console.error('获取科目列表失败:', error)
   }
@@ -696,7 +692,7 @@ const saveChanges = async () => {
       JSON.parse(JSON.stringify(updateData))
     )
 
-    await updateQuestion(updateData)
+    await legacyUpdateQuestion(updateData)
     console.log('题目基本信息保存成功')
 
     // 3. 处理图片更新（包括新增、删除和编辑）
@@ -758,7 +754,7 @@ const saveChanges = async () => {
     if (allImagesToDelete.length > 0) {
       console.log('开始删除', allImagesToDelete.length, '张图片')
       for (const imageId of allImagesToDelete) {
-        await deleteAttachment(imageId, errorId.value)
+        await legacyDeleteAttachment(imageId, errorId.value)
         console.log('已删除图片:', imageId)
       }
     }
@@ -840,7 +836,7 @@ const saveChanges = async () => {
     // 批量创建所有需要保留的图片
     if (imagesToUpload.length > 0) {
       console.log('开始上传', imagesToUpload.length, '张图片')
-      await createAttachmentsForQuestion(errorId.value, imagesToUpload)
+      await legacyCreateAttachmentsForQuestion(errorId.value, imagesToUpload)
       console.log('图片上传成功')
     }
 
@@ -863,7 +859,7 @@ const saveChanges = async () => {
       for (const tag of errorTags.value) {
         try {
           console.log('删除标签:', tag.name, '(ID:', tag.id, ')')
-          await deleteErrorTagById(tag.id, errorId.value)
+          await legacyDeleteErrorTagById(tag.id, errorId.value)
           console.log('已解除标签关联:', tag.name)
         } catch (error) {
           console.error('删除标签失败:', tag.name, error)
@@ -877,7 +873,7 @@ const saveChanges = async () => {
     // 4.2 创建新标签（只为当前题目创建）
     if (tempErrorTags.value.length > 0) {
       console.log('开始创建', tempErrorTags.value.length, '个新标签...')
-      const createdTags = await createErrorTagsForQuestion(
+      const createdTags = await legacyCreateErrorTagsForQuestion(
         errorId.value,
         tempErrorTags.value
       )
@@ -937,7 +933,7 @@ const calculateMastery = (srs: any): number => {
 // 删除错题
 const deleteError = async () => {
   try {
-    await deleteQuestion(errorId.value)
+    await legacyDeleteQuestion(errorId.value)
     showDeleteConfirm.value = false
     // 返回管理页面
     router.push('/manage')

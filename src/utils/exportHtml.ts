@@ -1,4 +1,4 @@
-import type { ErrorQuestion } from '../types'
+import type { ErrorQuestion } from '../types/legacy'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import { showError } from './notification'

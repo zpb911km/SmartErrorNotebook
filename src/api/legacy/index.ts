@@ -1,6 +1,6 @@
 /**
- * APIs 模块
- * 统一导出所有 API 接口
+ * Legacy API 模块
+ * 统一导出所有 legacy API 接口
  */
 
 // 科目相关
@@ -23,3 +23,6 @@ export * from './attachments'
 
 // 来源相关
 export * from './sources'
+
+// 同步相关
+export * from './sync'

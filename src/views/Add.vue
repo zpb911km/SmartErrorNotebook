@@ -192,18 +192,18 @@ import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import SourceSelector from '../components/SourceSelector.vue'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
-import { QuestionType } from '../types'
-import { createErrorQuestion } from '../apis/errorQuestions'
-import { createErrorTagsForQuestion } from '../apis/errorTags'
-import { createSRSData } from '../apis/srsData'
+import { QuestionType } from '../types/legacy'
 import {
-  createAttachmentsForQuestion,
-  blobUrlToBase64
-} from '../apis/attachments'
+  blobUrlToBase64,
+  legacyCreateAttachmentsForQuestion,
+  legacyCreateErrorQuestion,
+  legacyCreateErrorTagsForQuestion,
+  legacyCreateSRSData,
+  legacyGetSubjects
+} from '../api/legacy'
 import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { llm } from '../services/llm'
-import { getSubjects } from '../apis'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 import { getSharedData, clearSharedData } from '../services/shareStore'
 
@@ -304,7 +304,7 @@ const inquiryAI = async () => {
       if (result[0]?.success) anySuccess = true
       const subjectName = result[0]?.parsedContent?.subject || ''
       if (subjectName) {
-        return getSubjects()
+        return legacyGetSubjects()
           .then((subjects) => {
             const subj = subjects.find((i) => i.name === subjectName)
             if (subj) {
@@ -547,7 +547,7 @@ const saveError = async () => {
   try {
     // 1. 创建错题
     console.log('正在创建错题...')
-    const errorQuestion = await createErrorQuestion({
+    const errorQuestion = await legacyCreateErrorQuestion({
       user_id: 'current_user', // TODO: 从用户状态获取
       subject_id: form.value.subject,
       source_id: form.value.source || undefined,
@@ -561,12 +561,15 @@ const saveError = async () => {
 
     // 2. 批量创建错因标签
     if (form.value.error_tags.length > 0) {
-      await createErrorTagsForQuestion(errorQuestion.id, form.value.error_tags)
+      await legacyCreateErrorTagsForQuestion(
+        errorQuestion.id,
+        form.value.error_tags
+      )
     }
 
     // 3. 创建SRS数据（失败不阻塞保存流程，可在复习时重新生成）
     try {
-      await createSRSData(errorQuestion.id, form.value.difficulty)
+      await legacyCreateSRSData(errorQuestion.id, form.value.difficulty)
       console.log('SRS数据创建成功')
     } catch (srsErr) {
       console.warn('SRS数据创建失败（不影响错题保存）:', srsErr)
@@ -597,7 +600,10 @@ const saveError = async () => {
       )
 
       console.log('正在调用后端保存图片...')
-      await createAttachmentsForQuestion(errorQuestion.id, attachmentsData)
+      await legacyCreateAttachmentsForQuestion(
+        errorQuestion.id,
+        attachmentsData
+      )
       console.log('图片保存完成')
     } else {
       console.log('没有图片需要保存')

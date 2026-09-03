@@ -10,7 +10,7 @@ use tauri::State;
 use uuid::Uuid;
 
 #[tauri::command]
-pub async fn create_attachment(
+pub async fn legacy_create_attachment(
     state: State<'_, AppState>,
     input: CreateAttachmentInput,
 ) -> Result<AttachmentInterface, String> {
@@ -38,7 +38,7 @@ pub async fn create_attachment(
 }
 
 #[tauri::command]
-pub async fn create_attachments_for_question(
+pub async fn legacy_create_attachments_for_question(
     state: State<'_, AppState>,
     question_id: String,
     attachments: Vec<CreateAttachmentInput>,
@@ -70,7 +70,7 @@ pub async fn create_attachments_for_question(
 }
 
 #[tauri::command]
-pub async fn get_attachments_by_question(
+pub async fn legacy_get_attachments_by_question(
     state: State<'_, AppState>,
     question_id: String,
 ) -> Result<Vec<AttachmentInterface>, String> {
@@ -91,7 +91,7 @@ pub async fn get_attachments_by_question(
 }
 
 #[tauri::command]
-pub async fn delete_attachment(
+pub async fn legacy_delete_attachment(
     state: State<'_, AppState>,
     question_id: String,
     id: String,
@@ -110,7 +110,7 @@ pub async fn delete_attachment(
 }
 
 #[tauri::command]
-pub async fn upsert_attachment(
+pub async fn legacy_upsert_attachment(
     state: State<'_, AppState>,
     input: UpsertAttachmentInput,
 ) -> Result<(), String> {

@@ -333,7 +333,10 @@ import type { AnimationMode } from '../utils/sync-animations'
 import { isDarkTheme } from '../utils/sync-animations/utils'
 import { llm } from '../services'
 import PromptEditor from '../components/PromptEditor.vue'
-import { checkAndDeleteOrphans, purgeSyncedDeletions } from '../apis/sync'
+import {
+  legacyCheckAndDeleteOrphans,
+  legacyPurgeSyncedDeletions
+} from '../api/legacy'
 import { showInfo, showSuccess } from '../utils/notification'
 
 // AI 选项
@@ -794,7 +797,7 @@ const confirmPurge = async () => {
   if (!ok) return
 
   try {
-    const result = await purgeSyncedDeletions()
+    const result = await legacyPurgeSyncedDeletions()
     const parts: string[] = []
     let total = 0
     for (const [table, info] of Object.entries(result)) {
@@ -812,8 +815,8 @@ const confirmPurge = async () => {
     } else {
       showInfo('没有需要清理的记录', '')
     }
-    checkAndDeleteOrphans().then((orphans) => {
-      console.log('checkAndDeleteOrphans result:', orphans)
+    legacyCheckAndDeleteOrphans().then((orphans) => {
+      console.log('legacyCheckAndDeleteOrphans result:', orphans)
       showSuccess(
         '自动检查完成',
         `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`,

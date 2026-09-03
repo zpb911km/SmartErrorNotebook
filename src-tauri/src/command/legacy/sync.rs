@@ -8,7 +8,9 @@ use crate::AppState;
 use tauri::State;
 
 #[tauri::command]
-pub async fn get_all_records(state: State<'_, AppState>) -> Result<Vec<SyncRecordHeader>, String> {
+pub async fn legacy_get_all_records(
+    state: State<'_, AppState>,
+) -> Result<Vec<SyncRecordHeader>, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -18,7 +20,7 @@ pub async fn get_all_records(state: State<'_, AppState>) -> Result<Vec<SyncRecor
 }
 
 #[tauri::command]
-pub async fn get_all_pending_records(
+pub async fn legacy_get_all_pending_records(
     state: State<'_, AppState>,
 ) -> Result<Vec<SyncRecordOutput>, String> {
     state
@@ -30,7 +32,7 @@ pub async fn get_all_pending_records(
 }
 
 #[tauri::command]
-pub async fn get_record_for_upload(
+pub async fn legacy_get_record_for_upload(
     state: State<'_, AppState>,
     table_name: Option<String>,
     record_id: String,
@@ -49,7 +51,7 @@ pub async fn get_record_for_upload(
 }
 
 #[tauri::command]
-pub async fn set_record_sync_status_version(
+pub async fn legacy_set_record_sync_status_version(
     state: State<'_, AppState>,
     table_name: Option<String>,
     record_id: String,
@@ -70,7 +72,7 @@ pub async fn set_record_sync_status_version(
 }
 
 #[tauri::command]
-pub async fn purge_synced_deletions(
+pub async fn legacy_purge_synced_deletions(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     state
@@ -87,7 +89,7 @@ pub async fn purge_synced_deletions(
 }
 
 #[tauri::command]
-pub async fn check_orphan_records(
+pub async fn legacy_check_orphan_records(
     state: State<'_, AppState>,
 ) -> Result<CascadeOrphanCheckResult, String> {
     state

@@ -1,8 +1,10 @@
-import { createErrorQuestion } from '../apis/errorQuestions'
-import { createErrorTagsForQuestion } from '../apis/errorTags'
-import { createSRSData } from '../apis/srsData'
-import { getQuestions } from '../apis/errorQuestions'
-import type { ExportJSONSchema, ErrorQuestion } from '../types'
+import {
+  legacyCreateErrorQuestion,
+  legacyCreateErrorTagsForQuestion,
+  legacyCreateSRSData,
+  legacyGetQuestions
+} from '../api/legacy'
+import type { ExportJSONSchema, ErrorQuestion } from '../types/legacy'
 
 /** 解析并校验 JSON 文件，返回题目列表和错误信息 */
 export function parseImportFile(content: string): {
@@ -71,7 +73,7 @@ export async function importSingleQuestion(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. 创建错题
-    const created = await createErrorQuestion({
+    const created = await legacyCreateErrorQuestion({
       user_id: userId,
       subject_id: subjectId,
       source_id: undefined,
@@ -84,7 +86,7 @@ export async function importSingleQuestion(
 
     // 2. 自动创建 SRS 数据（使用 FSRS-5 默认初始难度）
     try {
-      await createSRSData(created.id)
+      await legacyCreateSRSData(created.id)
     } catch (srsError) {
       console.warn('创建 SRS 数据失败（不影响导入）:', srsError)
     }
@@ -92,7 +94,7 @@ export async function importSingleQuestion(
     // 3. 创建错因标签（如果有选）
     if (tags && tags.length > 0) {
       try {
-        await createErrorTagsForQuestion(created.id, tags)
+        await legacyCreateErrorTagsForQuestion(created.id, tags)
       } catch (tagError) {
         console.warn('创建错因标签失败（不影响导入）:', tagError)
       }
@@ -110,7 +112,7 @@ export async function importSingleQuestion(
 export async function getExistingPromptSet(): Promise<Set<string>> {
   const set = new Set<string>()
   try {
-    const existing: ErrorQuestion[] = await getQuestions()
+    const existing: ErrorQuestion[] = await legacyGetQuestions()
     existing.forEach((q) => {
       if (q.prompt) set.add(q.prompt.trim())
     })

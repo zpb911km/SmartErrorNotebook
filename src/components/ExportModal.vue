@@ -99,7 +99,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Icon from './Icon.vue'
-import type { ErrorQuestion } from '../types'
+import type { ErrorQuestion } from '../types/legacy'
 import { exportQuestionsToJSON } from '../utils/exportJson'
 import { exportQuestionsToHTML } from '../utils/exportHtml'
 import {

@@ -21,7 +21,7 @@ fn values(i: CreateSourceInput) -> SourceValues {
 }
 
 #[tauri::command]
-pub async fn get_sources(
+pub async fn legacy_get_sources(
     state: State<'_, AppState>,
     filter: Option<SourceFilter>,
 ) -> Result<Vec<SourceOutput>, String> {
@@ -43,7 +43,10 @@ pub async fn get_sources(
 }
 
 #[tauri::command]
-pub async fn get_source(state: State<'_, AppState>, id: String) -> Result<SourceOutput, String> {
+pub async fn legacy_get_source(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<SourceOutput, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -56,7 +59,7 @@ pub async fn get_source(state: State<'_, AppState>, id: String) -> Result<Source
 }
 
 #[tauri::command]
-pub async fn get_books(
+pub async fn legacy_get_books(
     state: State<'_, AppState>,
     subject_id: Option<String>,
 ) -> Result<Vec<String>, String> {
@@ -74,7 +77,7 @@ pub async fn get_books(
 }
 
 #[tauri::command]
-pub async fn get_chapters(
+pub async fn legacy_get_chapters(
     state: State<'_, AppState>,
     subject_id: Option<String>,
     book: String,
@@ -93,7 +96,7 @@ pub async fn get_chapters(
 }
 
 #[tauri::command]
-pub async fn get_knowledges(
+pub async fn legacy_get_knowledges(
     state: State<'_, AppState>,
     subject_id: Option<String>,
     book: String,
@@ -113,7 +116,7 @@ pub async fn get_knowledges(
 }
 
 #[tauri::command]
-pub async fn create_source(
+pub async fn legacy_create_source(
     state: State<'_, AppState>,
     input: CreateSourceInput,
 ) -> Result<SourceOutput, String> {
@@ -138,7 +141,7 @@ pub async fn create_source(
 }
 
 #[tauri::command]
-pub async fn update_source(
+pub async fn legacy_update_source(
     state: State<'_, AppState>,
     input: UpdateSourceInput,
 ) -> Result<SourceOutput, String> {
@@ -168,7 +171,7 @@ pub async fn update_source(
 }
 
 #[tauri::command]
-pub async fn delete_source(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub async fn legacy_delete_source(state: State<'_, AppState>, id: String) -> Result<(), String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -184,7 +187,7 @@ pub async fn delete_source(state: State<'_, AppState>, id: String) -> Result<(),
 }
 
 #[tauri::command]
-pub async fn get_or_create_source_id(
+pub async fn legacy_get_or_create_source_id(
     state: State<'_, AppState>,
     input: CreateSourceInput,
 ) -> Result<String, String> {
@@ -212,7 +215,7 @@ pub async fn get_or_create_source_id(
 }
 
 #[tauri::command]
-pub async fn upsert_source(
+pub async fn legacy_upsert_source(
     state: State<'_, AppState>,
     input: UpsertSourceInput,
 ) -> Result<(), String> {

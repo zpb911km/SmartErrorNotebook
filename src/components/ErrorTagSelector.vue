@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
-import { getErrorTags } from '../apis/errorTags'
-import { ErrorTags } from '../types'
+import { legacyGetErrorTags } from '../api/legacy'
+import { ErrorTags } from '../types/legacy'
 import { showInfo } from '../utils/notification'
 
 // 定义选中的标签信息类型
@@ -128,7 +128,7 @@ const removeTag = (index: number) => {
 
 watch(isExpanded, (newVal) => {
   if (newVal) {
-    getErrorTags()
+    legacyGetErrorTags()
       .then((data) => {
         errorTags.value = data
       })
@@ -139,7 +139,7 @@ watch(isExpanded, (newVal) => {
 })
 
 onMounted(() => {
-  getErrorTags()
+  legacyGetErrorTags()
     .then((data) => {
       errorTags.value = data
     })

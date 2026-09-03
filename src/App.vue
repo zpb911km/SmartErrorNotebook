@@ -106,7 +106,7 @@ onMounted(async () => {
 
   // 1. 冷启动：检查 Rust State 中是否有通过文件关联传入的 URL
   try {
-    const initialUrls: string[] = await invoke('opened_urls')
+    const initialUrls: string[] = await invoke('legacy_opened_urls')
     if (initialUrls.length > 0) {
       await handleOpenedUrl(initialUrls[0])
     }

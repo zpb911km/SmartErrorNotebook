@@ -28,7 +28,7 @@ async fn output(factory: &impl RepositoryFactory, question: Question) -> ErrorQu
 }
 
 #[tauri::command]
-pub async fn get_questions(
+pub async fn legacy_get_questions(
     state: State<'_, AppState>,
     filter: Option<QuestionFilter>,
 ) -> Result<Vec<ErrorQuestionOutput>, String> {
@@ -57,7 +57,7 @@ pub async fn get_questions(
 }
 
 #[tauri::command]
-pub async fn get_question(
+pub async fn legacy_get_question(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<ErrorQuestionOutput, String> {
@@ -76,7 +76,7 @@ pub async fn get_question(
 }
 
 #[tauri::command]
-pub async fn create_question(
+pub async fn legacy_create_question(
     state: State<'_, AppState>,
     input: CreateQuestionInput,
 ) -> Result<ErrorQuestionOutput, String> {
@@ -106,7 +106,7 @@ pub async fn create_question(
 }
 
 #[tauri::command]
-pub async fn update_question(
+pub async fn legacy_update_question(
     state: State<'_, AppState>,
     input: UpdateQuestionInput,
 ) -> Result<ErrorQuestionOutput, String> {
@@ -135,7 +135,7 @@ pub async fn update_question(
 }
 
 #[tauri::command]
-pub async fn delete_question(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub async fn legacy_delete_question(state: State<'_, AppState>, id: String) -> Result<(), String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -151,7 +151,9 @@ pub async fn delete_question(state: State<'_, AppState>, id: String) -> Result<(
 }
 
 #[tauri::command]
-pub async fn get_question_stats(state: State<'_, AppState>) -> Result<QuestionStats, String> {
+pub async fn legacy_get_question_stats(
+    state: State<'_, AppState>,
+) -> Result<QuestionStats, String> {
     state
         .repository_transaction_executor
         .execute(|factory, _| {
@@ -168,7 +170,7 @@ pub async fn get_question_stats(state: State<'_, AppState>) -> Result<QuestionSt
 }
 
 #[tauri::command]
-pub async fn upsert_error_question(
+pub async fn legacy_upsert_error_question(
     state: State<'_, AppState>,
     input: UpsertQuestionInput,
 ) -> Result<(), String> {

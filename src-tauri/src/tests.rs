@@ -101,14 +101,14 @@ fn string_set(value: &Value) -> std::collections::HashSet<String> {
 async fn create_subject_and_question(harness: &Harness) -> (String, String) {
     let subject = harness
         .ok(
-            "create_subject",
+            "legacy_create_subject",
             json!({"input":{"name":"Math","color":"blue"}}),
         )
         .await;
     let subject_id = subject["id"].as_str().unwrap().to_owned();
     let question = harness
         .ok(
-            "create_question",
+            "legacy_create_question",
             json!({"input":{
                 "user_id":"user", "subject_id":subject_id, "source_id":null,
                 "prompt":"2 + 2", "type":"简答题", "answer":"4",
@@ -124,7 +124,7 @@ async fn subject_source_and_question_commands_use_normalized_models() {
     let harness = Harness::new().await;
     let subject = harness
         .ok(
-            "create_subject",
+            "legacy_create_subject",
             json!({"input":{"name":"Math","color":"blue"}}),
         )
         .await;
@@ -133,14 +133,14 @@ async fn subject_source_and_question_commands_use_normalized_models() {
 
     let source = harness
         .ok(
-            "create_source",
+            "legacy_create_source",
             json!({"input":{"subject_id":subject_id,"book":"Book","chapter":"1","knowledge":"Algebra"}}),
         )
         .await;
     let source_id = source["id"].as_str().unwrap().to_owned();
     let question = harness
         .ok(
-            "create_question",
+            "legacy_create_question",
             json!({"input":{
                 "user_id":"user", "subject_id":subject_id, "source_id":source_id,
                 "prompt":"x + 1 = 2", "type":"简答题", "answer":"1",
@@ -153,14 +153,17 @@ async fn subject_source_and_question_commands_use_normalized_models() {
     assert_eq!(question["source_id"], source_id);
 
     let filtered = harness
-        .ok("get_sources", json!({"filter":{"subject_id":subject_id}}))
+        .ok(
+            "legacy_get_sources",
+            json!({"filter":{"subject_id":subject_id}}),
+        )
         .await;
     assert_eq!(filtered.as_array().unwrap().len(), 1);
     assert_eq!(filtered[0]["book"], "Book");
     assert_eq!(filtered[0]["subject_id"], subject_id);
     assert_eq!(filtered[0]["question_id"], question["id"]);
 
-    let unfiltered = harness.ok("get_sources", json!({"filter":{}})).await;
+    let unfiltered = harness.ok("legacy_get_sources", json!({"filter":{}})).await;
     assert_eq!(unfiltered.as_array().unwrap().len(), 1);
     assert_eq!(unfiltered[0]["subject_id"], subject_id);
     assert_eq!(unfiltered[0]["question_id"], question["id"]);
@@ -173,7 +176,7 @@ async fn attachment_tag_and_srs_commands_persist_relations() {
 
     let attachment = harness
         .ok(
-            "create_attachment",
+            "legacy_create_attachment",
             json!({"input":{
                 "question_id":question_id,"type":"answer","file_type":"image/png","base64_data":"aW1hZ2U="
             }}),
@@ -183,7 +186,7 @@ async fn attachment_tag_and_srs_commands_persist_relations() {
     assert_eq!(attachment["type_"], "original");
     let listed = harness
         .ok(
-            "get_attachments_by_question",
+            "legacy_get_attachments_by_question",
             json!({"questionId":question_id}),
         )
         .await;
@@ -191,14 +194,14 @@ async fn attachment_tag_and_srs_commands_persist_relations() {
 
     let tags = harness
         .ok(
-            "create_error_tags_for_question",
+            "legacy_create_error_tags_for_question",
             json!({"input":{"question_id":question_id,"tags":[{"name":"Arithmetic","color":"red"}]}}),
         )
         .await;
     assert_eq!(tags[0]["question_id"], question_id);
     let listed_tags = harness
         .ok(
-            "get_error_tags_for_question",
+            "legacy_get_error_tags_for_question",
             json!({"questionId":question_id}),
         )
         .await;
@@ -206,7 +209,7 @@ async fn attachment_tag_and_srs_commands_persist_relations() {
 
     let card = harness
         .ok(
-            "create_srs_data",
+            "legacy_create_srs_data",
             json!({"input":{"question_id":question_id}}),
         )
         .await;
@@ -219,11 +222,11 @@ async fn sync_commands_keep_legacy_wire_shape() {
     let (subject_id, question_id) = create_subject_and_question(&harness).await;
     harness
         .ok(
-            "create_srs_data",
+            "legacy_create_srs_data",
             json!({"input":{"question_id":question_id}}),
         )
         .await;
-    let headers = harness.ok("get_all_records", json!({})).await;
+    let headers = harness.ok("legacy_get_all_records", json!({})).await;
     assert!(headers
         .as_array()
         .unwrap()
@@ -238,7 +241,9 @@ async fn sync_commands_keep_legacy_wire_shape() {
         .iter()
         .any(|header| { header["id"] == question_id && header["table_name"] == "srs_data" }));
 
-    let pending = harness.ok("get_all_pending_records", json!({})).await;
+    let pending = harness
+        .ok("legacy_get_all_pending_records", json!({}))
+        .await;
     assert!(pending
         .as_array()
         .unwrap()
@@ -246,7 +251,7 @@ async fn sync_commands_keep_legacy_wire_shape() {
         .all(|record| record["status"] == "pending"));
     let upload = harness
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":question_id,"tableName":"error_questions"}),
         )
         .await;
@@ -254,18 +259,18 @@ async fn sync_commands_keep_legacy_wire_shape() {
     assert!(upload["data"].get("sync_status").is_none());
     let srs_upload = harness
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":question_id,"tableName":"srs_data"}),
         )
         .await;
     assert_eq!(srs_upload["table_name"], "srs_data");
     harness
         .ok(
-            "set_record_sync_status_version",
+            "legacy_set_record_sync_status_version",
             json!({"recordId":question_id,"tableName":"srs_data","status":"synced","version":9}),
         )
         .await;
-    let headers = harness.ok("get_all_records", json!({})).await;
+    let headers = harness.ok("legacy_get_all_records", json!({})).await;
     assert!(headers.as_array().unwrap().iter().any(|header| {
         header["id"] == question_id && header["table_name"] == "srs_data" && header["version"] == 9
     }));
@@ -281,11 +286,11 @@ async fn subject_source_and_question_command_contract_is_complete() {
     let harness = Harness::new().await;
     let (subject_id, question_id) = create_subject_and_question(&harness).await;
 
-    let subjects = harness.ok("get_subjects", json!({})).await;
+    let subjects = harness.ok("legacy_get_subjects", json!({})).await;
     assert_eq!(subjects.as_array().unwrap().len(), 1);
     let updated_subject = harness
         .ok(
-            "update_subject",
+            "legacy_update_subject",
             json!({"input":{"id":subject_id,"name":"Mathematics","color":"navy"}}),
         )
         .await;
@@ -293,31 +298,33 @@ async fn subject_source_and_question_command_contract_is_complete() {
 
     let source = harness
         .ok(
-            "create_source",
+            "legacy_create_source",
             json!({"input":{"subject_id":subject_id,"book":"Book A","chapter":"C1","knowledge":"K1"}}),
         )
         .await;
     let source_id = source["id"].as_str().unwrap().to_owned();
     assert_eq!(
-        harness.ok("get_source", json!({"id":source_id})).await["book"],
+        harness
+            .ok("legacy_get_source", json!({"id":source_id}))
+            .await["book"],
         "Book A"
     );
     harness
         .ok(
-            "update_question",
+            "legacy_update_question",
             json!({"input":{"id":question_id,"source_id":source_id}}),
         )
         .await;
     assert_eq!(
         harness
-            .ok("get_books", json!({"subjectId":subject_id}))
+            .ok("legacy_get_books", json!({"subjectId":subject_id}))
             .await,
         json!(["Book A"])
     );
     assert_eq!(
         harness
             .ok(
-                "get_chapters",
+                "legacy_get_chapters",
                 json!({"subjectId":subject_id,"book":"Book A"}),
             )
             .await,
@@ -326,7 +333,7 @@ async fn subject_source_and_question_command_contract_is_complete() {
     assert_eq!(
         harness
             .ok(
-                "get_knowledges",
+                "legacy_get_knowledges",
                 json!({"subjectId":subject_id,"book":"Book A","chapter":"C1"}),
             )
             .await,
@@ -335,7 +342,7 @@ async fn subject_source_and_question_command_contract_is_complete() {
     assert_eq!(
         harness
             .ok(
-                "get_or_create_source_id",
+                "legacy_get_or_create_source_id",
                 json!({"input":{"subject_id":subject_id,"book":"Book A","chapter":"C1","knowledge":"K1"}}),
             )
             .await,
@@ -343,19 +350,21 @@ async fn subject_source_and_question_command_contract_is_complete() {
     );
     let updated_source = harness
         .ok(
-            "update_source",
+            "legacy_update_source",
             json!({"input":{"id":source_id,"subject_id":subject_id,"book":"Book B","chapter":"C2","knowledge":"K2"}}),
         )
         .await;
     assert_eq!(updated_source["book"], "Book B");
 
-    let question = harness.ok("get_question", json!({"id":question_id})).await;
+    let question = harness
+        .ok("legacy_get_question", json!({"id":question_id}))
+        .await;
     assert_eq!(question["id"], question_id);
     assert_eq!(question["subjectid"], subject_id);
     assert_eq!(question["type_"], "简答题");
     let updated_question = harness
         .ok(
-            "update_question",
+            "legacy_update_question",
             json!({"input":{"id":question_id,"prompt":"updated prompt","type":"论述题"}}),
         )
         .await;
@@ -364,7 +373,7 @@ async fn subject_source_and_question_command_contract_is_complete() {
     assert_eq!(
         harness
             .ok(
-                "get_questions",
+                "legacy_get_questions",
                 json!({"filter":{"subject_id":subject_id,"search":"updated"}}),
             )
             .await
@@ -374,16 +383,23 @@ async fn subject_source_and_question_command_contract_is_complete() {
         1
     );
     assert_eq!(
-        harness.ok("get_question_stats", json!({})).await["total"],
+        harness.ok("legacy_get_question_stats", json!({})).await["total"],
         1
     );
 
     harness
-        .ok("delete_question", json!({"id":question_id}))
+        .ok("legacy_delete_question", json!({"id":question_id}))
         .await;
-    harness.ok("delete_source", json!({"id":source_id})).await;
-    harness.ok("delete_subject", json!({"id":subject_id})).await;
-    assert_eq!(harness.ok("get_subjects", json!({})).await, json!([]));
+    harness
+        .ok("legacy_delete_source", json!({"id":source_id}))
+        .await;
+    harness
+        .ok("legacy_delete_subject", json!({"id":subject_id}))
+        .await;
+    assert_eq!(
+        harness.ok("legacy_get_subjects", json!({})).await,
+        json!([])
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -393,7 +409,7 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
 
     let attachments = harness
         .ok(
-            "create_attachments_for_question",
+            "legacy_create_attachments_for_question",
             json!({"questionId":question_id,"attachments":[
                 {"question_id":question_id,"type_":"original","file_type":"image/png","base64_data":"AQID"},
                 {"question_id":question_id,"type":"answer","file_type":"image/jpeg","base64_data":"/9j/2Q=="}
@@ -404,14 +420,14 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
     let first_attachment_id = attachments[0]["id"].as_str().unwrap().to_owned();
     harness
         .ok(
-            "delete_attachment",
+            "legacy_delete_attachment",
             json!({"id":first_attachment_id,"questionId":question_id}),
         )
         .await;
     let synced_attachment_id = new_id();
     harness
         .ok(
-            "upsert_attachment",
+            "legacy_upsert_attachment",
             json!({"input":{
                 "id":synced_attachment_id,"version":3,"status":"pending","deleted_at":null,
                 "question_id":question_id,"type_":"answer","file_type":"image/png",
@@ -421,7 +437,7 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
         .await;
     let active_attachments = harness
         .ok(
-            "get_attachments_by_question",
+            "legacy_get_attachments_by_question",
             json!({"questionId":question_id}),
         )
         .await;
@@ -438,7 +454,7 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
     assert_ne!(synced_attachment["hash"], "hash");
     let synced_upload = harness
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":synced_attachment_id,"tableName":"attachments"}),
         )
         .await;
@@ -451,7 +467,7 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
 
     let tags = harness
         .ok(
-            "create_error_tags_for_question",
+            "legacy_create_error_tags_for_question",
             json!({"input":{"question_id":question_id,"tags":[
                 {"name":"Arithmetic","color":"red"},
                 {"name":"Concept","color":"blue"}
@@ -462,26 +478,26 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
     let concept_id = tags[1]["id"].as_str().unwrap().to_owned();
     harness
         .ok(
-            "update_error_tag_by_name",
+            "legacy_update_error_tag_by_name",
             json!({"oldName":"Arithmetic","newName":"Calculation","newColor":"orange"}),
         )
         .await;
     harness
         .ok(
-            "update_error_tag_by_id",
+            "legacy_update_error_tag_by_id",
             json!({"tagId":concept_id,"newTagName":"Theory","newTagColor":"purple"}),
         )
         .await;
     assert_eq!(
         harness
-            .ok("get_error_tags", json!({}))
+            .ok("legacy_get_error_tags", json!({}))
             .await
             .as_array()
             .unwrap()
             .len(),
         2
     );
-    let full_tags = harness.ok("get_full_error_tags", json!({})).await;
+    let full_tags = harness.ok("legacy_get_full_error_tags", json!({})).await;
     assert_eq!(full_tags.as_array().unwrap().len(), 2);
     assert!(full_tags
         .as_array()
@@ -490,14 +506,14 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
         .all(|tag| tag["question_id"] == question_id));
     harness
         .ok(
-            "delete_error_tag",
+            "legacy_delete_error_tag",
             json!({"tagId":arithmetic_id,"questionId":question_id}),
         )
         .await;
     let synced_tag_id = new_id();
     harness
         .ok(
-            "upsert_error_tag",
+            "legacy_upsert_error_tag",
             json!({"input":{
                 "id":synced_tag_id,"version":2,"status":"pending","deleted_at":null,
                 "question_id":question_id,"name":"Synced","color":"green"
@@ -507,43 +523,51 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
 
     harness
         .ok(
-            "create_srs_data",
+            "legacy_create_srs_data",
             json!({"input":{"question_id":question_id,"difficulty":0.4}}),
         )
         .await;
     assert!(harness
-        .ok("get_question_srs_status", json!({"questionId":question_id}),)
+        .ok(
+            "legacy_get_question_srs_status",
+            json!({"questionId":question_id}),
+        )
         .await
         .is_object());
     assert_eq!(
         harness
-            .ok("get_all_cards", json!({}))
+            .ok("legacy_get_all_cards", json!({}))
             .await
             .as_array()
             .unwrap()
             .len(),
         1
     );
-    assert_eq!(harness.ok("get_due_count", json!({})).await, 0);
+    assert_eq!(harness.ok("legacy_get_due_count", json!({})).await, 0);
     assert_eq!(
-        harness.ok("get_due_questions", json!({"limit":10})).await,
+        harness
+            .ok("legacy_get_due_questions", json!({"limit":10}))
+            .await,
         json!([])
     );
-    let statistics = harness.ok("get_srs_statistics", json!({})).await;
+    let statistics = harness.ok("legacy_get_srs_statistics", json!({})).await;
     assert_eq!(statistics["total"], 1);
     harness
-        .ok("reset_srs_progress", json!({"questionId":question_id}))
+        .ok(
+            "legacy_reset_srs_progress",
+            json!({"questionId":question_id}),
+        )
         .await;
     let review = harness
         .ok(
-            "submit_review_result",
+            "legacy_submit_review_result",
             json!({"input":{"question_id":question_id,"feedback":0.8}}),
         )
         .await;
     assert!(review["next_review_at"].as_i64().unwrap() > 0);
     harness
         .ok(
-            "upsert_srs_data",
+            "legacy_upsert_srs_data",
             json!({"input":{
                 "id":question_id,"version":4,"status":"pending","deleted_at":null,
                 "question_id":question_id,"stability":3.0,"difficulty":0.3,
@@ -554,7 +578,10 @@ async fn attachment_tag_and_srs_tool_commands_keep_legacy_shapes() {
         .await;
     assert_eq!(
         harness
-            .ok("get_question_srs_status", json!({"questionId":question_id}),)
+            .ok(
+                "legacy_get_question_srs_status",
+                json!({"questionId":question_id}),
+            )
             .await["review_count"],
         5
     );
@@ -566,7 +593,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
     let (subject_id, first_question_id) = create_subject_and_question(&harness).await;
     let second_question = harness
         .ok(
-            "create_question",
+            "legacy_create_question",
             json!({"input":{
                 "user_id":"user", "subject_id":subject_id, "source_id":null,
                 "prompt":"3 + 3", "type":"简答题", "answer":"6",
@@ -579,7 +606,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
     let attachment_id = new_id();
     harness
         .ok(
-            "upsert_attachment",
+            "legacy_upsert_attachment",
             json!({"input":{
                 "id":attachment_id,"version":3,"status":"pending","deleted_at":null,
                 "question_ids":[first_question_id,second_question_id],
@@ -590,7 +617,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
     let tag_id = new_id();
     harness
         .ok(
-            "upsert_error_tag",
+            "legacy_upsert_error_tag",
             json!({"input":{
                 "id":tag_id,"version":2,"status":"pending","deleted_at":null,
                 "question_ids":[first_question_id,second_question_id],
@@ -603,7 +630,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
         assert_eq!(
             harness
                 .ok(
-                    "get_attachments_by_question",
+                    "legacy_get_attachments_by_question",
                     json!({"questionId":question_id}),
                 )
                 .await
@@ -615,7 +642,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
         assert_eq!(
             harness
                 .ok(
-                    "get_error_tags_for_question",
+                    "legacy_get_error_tags_for_question",
                     json!({"questionId":question_id}),
                 )
                 .await
@@ -634,7 +661,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
     assert_eq!(
         harness
             .ok(
-                "get_record_for_upload",
+                "legacy_get_record_for_upload",
                 json!({"recordId":attachment_id,"tableName":"attachments"}),
             )
             .await["data"]["question_ids"],
@@ -643,7 +670,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
     assert_eq!(
         harness
             .ok(
-                "get_record_for_upload",
+                "legacy_get_record_for_upload",
                 json!({"recordId":tag_id,"tableName":"error_tags"}),
             )
             .await["data"]["question_ids"],
@@ -652,20 +679,20 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
 
     harness
         .ok(
-            "delete_attachment",
+            "legacy_delete_attachment",
             json!({"id":attachment_id,"questionId":first_question_id}),
         )
         .await;
     harness
         .ok(
-            "delete_error_tag",
+            "legacy_delete_error_tag",
             json!({"tagId":tag_id,"questionId":first_question_id}),
         )
         .await;
     assert_eq!(
         harness
             .ok(
-                "get_attachments_by_question",
+                "legacy_get_attachments_by_question",
                 json!({"questionId":second_question_id}),
             )
             .await
@@ -677,7 +704,7 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
     assert_eq!(
         harness
             .ok(
-                "get_error_tags_for_question",
+                "legacy_get_error_tags_for_question",
                 json!({"questionId":second_question_id}),
             )
             .await
@@ -689,25 +716,25 @@ async fn attachments_and_tags_preserve_many_to_many_relations() {
 
     harness
         .ok(
-            "delete_attachment",
+            "legacy_delete_attachment",
             json!({"id":attachment_id,"questionId":second_question_id}),
         )
         .await;
     harness
         .ok(
-            "delete_error_tag",
+            "legacy_delete_error_tag",
             json!({"tagId":tag_id,"questionId":second_question_id}),
         )
         .await;
     let deleted_attachment = harness
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":attachment_id,"tableName":"attachments"}),
         )
         .await;
     let deleted_tag = harness
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":tag_id,"tableName":"error_tags"}),
         )
         .await;
@@ -725,14 +752,14 @@ async fn sync_upsert_status_cleanup_and_orphan_commands_are_registered() {
     let synced_subject_id = new_id();
     harness
         .ok(
-            "upsert_subject",
+            "legacy_upsert_subject",
             json!({"input":{"id":synced_subject_id,"version":2,"status":"pending","name":"Remote","color":null}}),
         )
         .await;
     let synced_question_id = new_id();
     harness
         .ok(
-            "upsert_error_question",
+            "legacy_upsert_error_question",
             json!({"input":{
                 "id":synced_question_id,"version":2,"status":"pending","deleted_at":null,
                 "userid":"remote","subjectid":subject_id,"sourceid":null,
@@ -744,7 +771,7 @@ async fn sync_upsert_status_cleanup_and_orphan_commands_are_registered() {
     let synced_source_id = new_id();
     harness
         .ok(
-            "upsert_source",
+            "legacy_upsert_source",
             json!({"input":{
                 "id":synced_source_id,"version":2,"status":"pending","deleted_at":null,
                 "question_id":question_id,"subject_id":subject_id,
@@ -755,40 +782,44 @@ async fn sync_upsert_status_cleanup_and_orphan_commands_are_registered() {
 
     let status_result = harness
         .ok(
-            "set_record_sync_status_version",
+            "legacy_set_record_sync_status_version",
             json!({"recordId":subject_id,"tableName":"subjects","status":"synced","version":7}),
         )
         .await;
     assert!(status_result.as_str().unwrap().contains(&subject_id));
-    let pending = harness.ok("get_all_pending_records", json!({})).await;
+    let pending = harness
+        .ok("legacy_get_all_pending_records", json!({}))
+        .await;
     assert!(!pending
         .as_array()
         .unwrap()
         .iter()
         .any(|record| record["id"] == subject_id));
 
-    let orphan_result = harness.ok("check_orphan_records", json!({})).await;
+    let orphan_result = harness.ok("legacy_check_orphan_records", json!({})).await;
     assert!(orphan_result["total_checked"].is_number());
 
-    harness.ok("delete_subject", json!({"id":subject_id})).await;
+    harness
+        .ok("legacy_delete_subject", json!({"id":subject_id}))
+        .await;
     harness
         .ok(
-            "set_record_sync_status_version",
+            "legacy_set_record_sync_status_version",
             json!({"recordId":subject_id,"tableName":"subjects","status":"synced","version":8}),
         )
         .await;
-    let purge = harness.ok("purge_synced_deletions", json!({})).await;
+    let purge = harness.ok("legacy_purge_synced_deletions", json!({})).await;
     assert!(purge.is_object());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn subject_commands_contract() {
     let h = Harness::new().await;
-    assert_eq!(h.ok("get_subjects", json!({})).await, json!([]));
+    assert_eq!(h.ok("legacy_get_subjects", json!({})).await, json!([]));
 
     let created = h
         .ok(
-            "create_subject",
+            "legacy_create_subject",
             json!({"input":{"name":"Mathematics","color":"#123456"}}),
         )
         .await;
@@ -799,41 +830,43 @@ async fn subject_commands_contract() {
 
     let updated = h
         .ok(
-            "update_subject",
+            "legacy_update_subject",
             json!({"input":{"id":id,"name":"Math","color":null}}),
         )
         .await;
     assert_eq!(updated["name"], "Math");
     assert_eq!(updated["color"], "#123456");
-    let unchanged = h.ok("update_subject", json!({"input":{"id":id}})).await;
+    let unchanged = h
+        .ok("legacy_update_subject", json!({"input":{"id":id}}))
+        .await;
     assert_eq!(unchanged["name"], "Math");
 
     let missing = new_id();
     assert_eq!(
         h.err(
-            "update_subject",
+            "legacy_update_subject",
             json!({"input":{"id":missing,"name":"missing"}}),
         )
         .await,
         "Subject not found"
     );
-    h.ok("delete_subject", json!({"id":id})).await;
-    assert_eq!(h.ok("get_subjects", json!({})).await, json!([]));
+    h.ok("legacy_delete_subject", json!({"id":id})).await;
+    assert_eq!(h.ok("legacy_get_subjects", json!({})).await, json!([]));
 
     let remote_id = new_id();
     h.ok(
-        "upsert_subject",
+        "legacy_upsert_subject",
         json!({"input":{"id":remote_id,"version":7,"status":"ignored","name":"Physics"}}),
     )
     .await;
     h.ok(
-        "upsert_subject",
+        "legacy_upsert_subject",
         json!({"input":{"id":remote_id,"version":8,"status":"pending","deleted_at":99,"name":"Modern Physics","color":"blue"}}),
     )
     .await;
     let upload = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":remote_id,"tableName":"subjects"}),
         )
         .await;
@@ -849,7 +882,7 @@ async fn error_question_commands_contract() {
     let (subject_id, first_id) = create_subject_and_question(&h).await;
     let second = h
         .ok(
-            "create_question",
+            "legacy_create_question",
             json!({"input":{
                 "user_id":"u2","subject_id":subject_id,"source_id":null,
                 "prompt":"geometry quadratic","type":"选择题","answer":null,
@@ -859,7 +892,7 @@ async fn error_question_commands_contract() {
         .await;
     let second_id = second["id"].as_str().unwrap().to_owned();
     assert_eq!(
-        h.ok("get_questions", json!({}))
+        h.ok("legacy_get_questions", json!({}))
             .await
             .as_array()
             .unwrap()
@@ -868,7 +901,7 @@ async fn error_question_commands_contract() {
     );
     let search = h
         .ok(
-            "get_questions",
+            "legacy_get_questions",
             json!({"filter":{"subject_id":subject_id,"search":"quadratic"}}),
         )
         .await;
@@ -876,30 +909,33 @@ async fn error_question_commands_contract() {
     assert_eq!(search[0]["id"], second_id);
 
     assert_eq!(
-        h.ok("get_question", json!({"id":first_id})).await["id"],
+        h.ok("legacy_get_question", json!({"id":first_id})).await["id"],
         first_id
     );
     let updated = h
         .ok(
-            "update_question",
+            "legacy_update_question",
             json!({"input":{"id":first_id,"prompt":"updated","type":"论述题","answer":null}}),
         )
         .await;
     assert_eq!(updated["prompt"], "updated");
     assert_eq!(updated["answer"], "4");
 
-    h.ok("create_srs_data", json!({"input":{"question_id":first_id}}))
-        .await;
-    h.ok("delete_question", json!({"id":first_id})).await;
+    h.ok(
+        "legacy_create_srs_data",
+        json!({"input":{"question_id":first_id}}),
+    )
+    .await;
+    h.ok("legacy_delete_question", json!({"id":first_id})).await;
     assert_eq!(
-        h.ok("get_question_stats", json!({})).await,
+        h.ok("legacy_get_question_stats", json!({})).await,
         json!({"total":1})
     );
-    assert!(!h.ok("get_question", json!({"id":first_id})).await["deleted_at"].is_null());
+    assert!(!h.ok("legacy_get_question", json!({"id":first_id})).await["deleted_at"].is_null());
 
     let srs_upload = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":first_id,"tableName":"srs_data"}),
         )
         .await;
@@ -907,7 +943,7 @@ async fn error_question_commands_contract() {
 
     let remote_id = new_id();
     h.ok(
-        "upsert_error_question",
+        "legacy_upsert_error_question",
         json!({"input":{
             "id":remote_id,"version":4,"status":"pending","deleted_at":123,
             "userid":"remote-user","subjectid":subject_id,"sourceid":null,
@@ -918,7 +954,7 @@ async fn error_question_commands_contract() {
     .await;
     let remote = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":remote_id,"tableName":"error_questions"}),
         )
         .await;
@@ -932,13 +968,13 @@ async fn error_question_commands_contract() {
 async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
     let h = Harness::new().await;
     let (subject_id, question_id) = create_subject_and_question(&h).await;
-    let source_id = h.ok("get_question", json!({"id":question_id})).await["source_id"]
+    let source_id = h.ok("legacy_get_question", json!({"id":question_id})).await["source_id"]
         .as_str()
         .unwrap()
         .to_owned();
     let attachment = h
         .ok(
-            "create_attachment",
+            "legacy_create_attachment",
             json!({"input":{
                 "question_id":question_id,"type":"original",
                 "file_type":"image/png","base64_data":"aW1hZ2U="
@@ -948,7 +984,7 @@ async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
     let attachment_id = attachment["id"].as_str().unwrap().to_owned();
     let tags = h
         .ok(
-            "create_error_tags_for_question",
+            "legacy_create_error_tags_for_question",
             json!({"input":{"question_id":question_id,"tags":[
                 {"name":"Arithmetic","color":"red"}
             ]}}),
@@ -956,13 +992,13 @@ async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
         .await;
     let tag_id = tags[0]["id"].as_str().unwrap().to_owned();
     h.ok(
-        "create_srs_data",
+        "legacy_create_srs_data",
         json!({"input":{"question_id":question_id}}),
     )
     .await;
 
     h.ok(
-        "upsert_error_question",
+        "legacy_upsert_error_question",
         json!({"input":{
             "id":question_id,"version":7,"status":"ignored","deleted_at":1700000000,
             "userid":"remote-user","subjectid":subject_id,"sourceid":null,
@@ -972,10 +1008,10 @@ async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
     )
     .await;
 
-    assert_eq!(h.ok("get_questions", json!({})).await, json!([]));
+    assert_eq!(h.ok("legacy_get_questions", json!({})).await, json!([]));
     assert_eq!(
         h.ok(
-            "get_attachments_by_question",
+            "legacy_get_attachments_by_question",
             json!({"questionId":question_id})
         )
         .await,
@@ -983,21 +1019,24 @@ async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
     );
     assert_eq!(
         h.ok(
-            "get_error_tags_for_question",
+            "legacy_get_error_tags_for_question",
             json!({"questionId":question_id})
         )
         .await,
         json!([])
     );
     assert_eq!(
-        h.ok("get_question_srs_status", json!({"questionId":question_id}))
-            .await,
+        h.ok(
+            "legacy_get_question_srs_status",
+            json!({"questionId":question_id})
+        )
+        .await,
         Value::Null
     );
 
     let question_upload = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":question_id,"tableName":"error_questions"}),
         )
         .await;
@@ -1013,7 +1052,7 @@ async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
     ] {
         let upload = h
             .ok(
-                "get_record_for_upload",
+                "legacy_get_record_for_upload",
                 json!({"recordId":id,"tableName":table_name}),
             )
             .await;
@@ -1025,19 +1064,19 @@ async fn synced_question_tombstone_unlinks_and_tombstones_dependents() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn source_commands_contract() {
     let h = Harness::new().await;
-    assert_eq!(h.ok("get_sources", json!({})).await, json!([]));
+    assert_eq!(h.ok("legacy_get_sources", json!({})).await, json!([]));
     let first_subject = h
-        .ok("create_subject", json!({"input":{"name":"First"}}))
+        .ok("legacy_create_subject", json!({"input":{"name":"First"}}))
         .await;
     let second_subject = h
-        .ok("create_subject", json!({"input":{"name":"Second"}}))
+        .ok("legacy_create_subject", json!({"input":{"name":"Second"}}))
         .await;
     let first_subject_id = first_subject["id"].as_str().unwrap().to_owned();
     let second_subject_id = second_subject["id"].as_str().unwrap().to_owned();
 
     let one = h
         .ok(
-            "create_source",
+            "legacy_create_source",
             json!({"input":{"subject_id":first_subject_id,"book":"Book A","chapter":"C1","knowledge":"K1"}}),
         )
         .await;
@@ -1045,19 +1084,19 @@ async fn source_commands_contract() {
     assert_pending(&one);
     let two = h
         .ok(
-            "create_source",
+            "legacy_create_source",
             json!({"input":{"subject_id":first_subject_id,"book":"Book A","chapter":"C2","knowledge":"K2"}}),
         )
         .await;
     h.ok(
-        "create_source",
+        "legacy_create_source",
         json!({"input":{"subject_id":second_subject_id,"book":"Book B","chapter":"C1","knowledge":null}}),
     )
     .await;
 
     assert_eq!(
         h.ok(
-            "get_sources",
+            "legacy_get_sources",
             json!({"filter":{"subject_id":first_subject_id}}),
         )
         .await
@@ -1067,13 +1106,13 @@ async fn source_commands_contract() {
         2
     );
     assert_eq!(
-        string_set(&h.ok("get_books", json!({})).await),
+        string_set(&h.ok("legacy_get_books", json!({})).await),
         ["Book A".to_owned(), "Book B".to_owned()].into()
     );
     assert_eq!(
         string_set(
             &h.ok(
-                "get_chapters",
+                "legacy_get_chapters",
                 json!({"subjectId":first_subject_id,"book":"Book A"}),
             )
             .await,
@@ -1082,7 +1121,7 @@ async fn source_commands_contract() {
     );
     assert_eq!(
         h.ok(
-            "get_or_create_source_id",
+            "legacy_get_or_create_source_id",
             json!({"input":{"subject_id":first_subject_id,"book":"Book A","chapter":"C2","knowledge":"K2"}}),
         )
         .await,
@@ -1091,19 +1130,19 @@ async fn source_commands_contract() {
 
     let updated = h
         .ok(
-            "update_source",
+            "legacy_update_source",
             json!({"input":{"id":one_id,"subject_id":null,"book":"Book A2","chapter":null,"knowledge":null}}),
         )
         .await;
     assert_eq!(updated["book"], "Book A2");
     assert_eq!(updated["subject_id"], first_subject_id);
     assert_eq!(updated["chapter"], "C1");
-    h.ok("delete_source", json!({"id":one_id})).await;
-    assert!(!h.ok("get_source", json!({"id":one_id})).await["deleted_at"].is_null());
+    h.ok("legacy_delete_source", json!({"id":one_id})).await;
+    assert!(!h.ok("legacy_get_source", json!({"id":one_id})).await["deleted_at"].is_null());
 
     let remote_id = new_id();
     h.ok(
-        "upsert_source",
+        "legacy_upsert_source",
         json!({"input":{
             "id":remote_id,"version":3,"status":"pending","deleted_at":77,
             "question_id":null,"subject_id":second_subject_id,
@@ -1113,7 +1152,7 @@ async fn source_commands_contract() {
     .await;
     let remote = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":remote_id,"tableName":"sources"}),
         )
         .await;
@@ -1126,10 +1165,10 @@ async fn source_commands_contract() {
 async fn error_tag_commands_contract() {
     let h = Harness::new().await;
     let (_, question_id) = create_subject_and_question(&h).await;
-    assert_eq!(h.ok("get_error_tags", json!({})).await, json!([]));
+    assert_eq!(h.ok("legacy_get_error_tags", json!({})).await, json!([]));
     let created = h
         .ok(
-            "create_error_tags_for_question",
+            "legacy_create_error_tags_for_question",
             json!({"input":{"question_id":question_id,"tags":[
                 {"name":"Calculation","color":"red"},
                 {"name":"Concept","color":"green"}
@@ -1139,7 +1178,7 @@ async fn error_tag_commands_contract() {
     assert_eq!(created.as_array().unwrap().len(), 2);
     assert_eq!(
         h.ok(
-            "get_error_tags_for_question",
+            "legacy_get_error_tags_for_question",
             json!({"questionId":question_id})
         )
         .await
@@ -1150,19 +1189,19 @@ async fn error_tag_commands_contract() {
     );
 
     h.ok(
-        "update_error_tag_by_name",
+        "legacy_update_error_tag_by_name",
         json!({"oldName":"Calculation","newName":"Arithmetic","newColor":"orange"}),
     )
     .await;
     let concept_id = created[1]["id"].as_str().unwrap().to_owned();
     h.ok(
-        "update_error_tag_by_id",
+        "legacy_update_error_tag_by_id",
         json!({"tagId":concept_id,"newTagName":"Theory"}),
     )
     .await;
     let tags = h
         .ok(
-            "get_error_tags_for_question",
+            "legacy_get_error_tags_for_question",
             json!({"questionId":question_id}),
         )
         .await;
@@ -1179,13 +1218,13 @@ async fn error_tag_commands_contract() {
 
     let first_id = created[0]["id"].as_str().unwrap().to_owned();
     h.ok(
-        "delete_error_tag",
+        "legacy_delete_error_tag",
         json!({"tagId":first_id,"questionId":question_id}),
     )
     .await;
     assert_eq!(
         h.ok(
-            "get_error_tags_for_question",
+            "legacy_get_error_tags_for_question",
             json!({"questionId":question_id})
         )
         .await
@@ -1197,7 +1236,7 @@ async fn error_tag_commands_contract() {
 
     let remote_id = new_id();
     h.ok(
-        "upsert_error_tag",
+        "legacy_upsert_error_tag",
         json!({"input":{
             "id":remote_id,"version":5,"status":"pending","deleted_at":null,
             "question_ids":[question_id],"name":"Remote","color":"white"
@@ -1206,7 +1245,7 @@ async fn error_tag_commands_contract() {
     .await;
     let remote = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":remote_id,"tableName":"error_tags"}),
         )
         .await;
@@ -1220,7 +1259,7 @@ async fn error_tag_commands_contract() {
     .unwrap();
     let update_error = h
         .err(
-            "update_error_tag_by_id",
+            "legacy_update_error_tag_by_id",
             json!({"tagId":concept_id,"newTagName":"must fail"}),
         )
         .await;
@@ -1234,7 +1273,7 @@ async fn attachment_commands_contract() {
     let payload = "aW1hZ2U=";
     let created = h
         .ok(
-            "create_attachment",
+            "legacy_create_attachment",
             json!({"input":{
                 "question_id":first_question_id,"type":"original",
                 "file_type":"image/png","base64_data":payload
@@ -1247,13 +1286,13 @@ async fn attachment_commands_contract() {
     assert_eq!(created["base64_data"], payload);
     assert_eq!(created["hash"].as_str().unwrap().len(), 64);
 
-    let subject_id = h.ok("get_subjects", json!({})).await[0]["id"]
+    let subject_id = h.ok("legacy_get_subjects", json!({})).await[0]["id"]
         .as_str()
         .unwrap()
         .to_owned();
     let second_question = h
         .ok(
-            "create_question",
+            "legacy_create_question",
             json!({"input":{
                 "user_id":"u","subject_id":subject_id,"source_id":null,
                 "prompt":"second","type":"简答题","answer":"a",
@@ -1264,7 +1303,7 @@ async fn attachment_commands_contract() {
     let second_question_id = second_question["id"].as_str().unwrap().to_owned();
     let batch = h
         .ok(
-            "create_attachments_for_question",
+            "legacy_create_attachments_for_question",
             json!({"questionId":second_question_id,"attachments":[
                 {"question_id":first_question_id,"type_":"original","file_type":"image/png","base64_data":"AQID"},
                 {"question_id":first_question_id,"type_":"answer","file_type":"image/jpeg","base64_data":"/9j/2Q=="}
@@ -1279,13 +1318,13 @@ async fn attachment_commands_contract() {
         .all(|attachment| attachment["question_id"] == second_question_id));
 
     h.ok(
-        "delete_attachment",
+        "legacy_delete_attachment",
         json!({"id":id,"questionId":first_question_id}),
     )
     .await;
     assert_eq!(
         h.ok(
-            "get_attachments_by_question",
+            "legacy_get_attachments_by_question",
             json!({"questionId":first_question_id})
         )
         .await,
@@ -1294,7 +1333,7 @@ async fn attachment_commands_contract() {
 
     let remote_id = new_id();
     h.ok(
-        "upsert_attachment",
+        "legacy_upsert_attachment",
         json!({"input":{
             "id":remote_id,"version":3,"status":"pending","deleted_at":null,
             "question_ids":[second_question_id],"type_":"answer",
@@ -1304,7 +1343,7 @@ async fn attachment_commands_contract() {
     .await;
     let remote = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":remote_id,"tableName":"attachments"}),
         )
         .await;
@@ -1317,7 +1356,7 @@ async fn attachment_commands_contract() {
 async fn srs_commands_contract() {
     let h = Harness::new().await;
     assert_eq!(
-        h.ok("get_srs_statistics", json!({})).await,
+        h.ok("legacy_get_srs_statistics", json!({})).await,
         json!({
             "total":0,"due_count":0,"new_cards":0,
             "avg_stability":0.0,"avg_difficulty":0.0,"total_reviews":0
@@ -1326,7 +1365,7 @@ async fn srs_commands_contract() {
     let (_, question_id) = create_subject_and_question(&h).await;
     let created = h
         .ok(
-            "create_srs_data",
+            "legacy_create_srs_data",
             json!({"input":{"question_id":question_id}}),
         )
         .await;
@@ -1335,7 +1374,7 @@ async fn srs_commands_contract() {
     assert_eq!(created["is_due"], false);
     assert_eq!(
         h.err(
-            "create_srs_data",
+            "legacy_create_srs_data",
             json!({"input":{"question_id":question_id,"difficulty":8.0}}),
         )
         .await,
@@ -1343,35 +1382,41 @@ async fn srs_commands_contract() {
     );
 
     let reset = h
-        .ok("reset_srs_progress", json!({"questionId":question_id}))
+        .ok(
+            "legacy_reset_srs_progress",
+            json!({"questionId":question_id}),
+        )
         .await;
     assert_eq!(reset["review_count"], 1);
     assert_eq!(reset["is_due"], true);
     let invalid = h
         .err(
-            "submit_review_result",
+            "legacy_submit_review_result",
             json!({"input":{"question_id":question_id,"feedback":2.0}}),
         )
         .await;
     assert!(invalid.to_string().contains("Feedback must be in [0, 1]"));
     let review = h
         .ok(
-            "submit_review_result",
+            "legacy_submit_review_result",
             json!({"input":{"question_id":question_id,"feedback":0.8}}),
         )
         .await;
     assert!(review["next_interval_days"].as_f64().unwrap() > 0.0);
     assert_eq!(
-        h.ok("get_question_srs_status", json!({"questionId":question_id}))
-            .await["review_count"],
+        h.ok(
+            "legacy_get_question_srs_status",
+            json!({"questionId":question_id})
+        )
+        .await["review_count"],
         2
     );
-    let statistics = h.ok("get_srs_statistics", json!({})).await;
+    let statistics = h.ok("legacy_get_srs_statistics", json!({})).await;
     assert_eq!(statistics["total"], 1);
     assert_eq!(statistics["total_reviews"], 2);
 
     h.ok(
-        "upsert_srs_data",
+        "legacy_upsert_srs_data",
         json!({"input":{
             "id":question_id,"version":4,"status":"pending","deleted_at":null,
             "question_id":question_id,"stability":3.0,"difficulty":0.3,
@@ -1381,7 +1426,10 @@ async fn srs_commands_contract() {
     )
     .await;
     let synced = h
-        .ok("get_question_srs_status", json!({"questionId":question_id}))
+        .ok(
+            "legacy_get_question_srs_status",
+            json!({"questionId":question_id}),
+        )
         .await;
     assert_eq!(synced["review_count"], 5);
 }
@@ -1391,12 +1439,12 @@ async fn reset_srs_progress_revives_deleted_cards_and_creates_due_cards() {
     let h = Harness::new().await;
     let (subject_id, deleted_question_id) = create_subject_and_question(&h).await;
     h.ok(
-        "create_srs_data",
+        "legacy_create_srs_data",
         json!({"input":{"question_id":deleted_question_id}}),
     )
     .await;
     h.ok(
-        "upsert_srs_data",
+        "legacy_upsert_srs_data",
         json!({"input":{
             "id":deleted_question_id,"version":4,"status":"synced","deleted_at":1700000000,
             "question_id":deleted_question_id,"stability":3.0,"difficulty":0.3,
@@ -1408,7 +1456,7 @@ async fn reset_srs_progress_revives_deleted_cards_and_creates_due_cards() {
 
     let revived = h
         .ok(
-            "reset_srs_progress",
+            "legacy_reset_srs_progress",
             json!({"questionId":deleted_question_id}),
         )
         .await;
@@ -1419,7 +1467,7 @@ async fn reset_srs_progress_revives_deleted_cards_and_creates_due_cards() {
     assert!(revived["next_review_at"].as_i64().unwrap() <= chrono::Utc::now().timestamp());
     let revived_upload = h
         .ok(
-            "get_record_for_upload",
+            "legacy_get_record_for_upload",
             json!({"recordId":deleted_question_id,"tableName":"srs_data"}),
         )
         .await;
@@ -1428,7 +1476,7 @@ async fn reset_srs_progress_revives_deleted_cards_and_creates_due_cards() {
 
     let question = h
         .ok(
-            "create_question",
+            "legacy_create_question",
             json!({"input":{
                 "user_id":"user","subject_id":subject_id,"source_id":null,
                 "prompt":"new card","type":"简答题","answer":"answer",
@@ -1438,12 +1486,15 @@ async fn reset_srs_progress_revives_deleted_cards_and_creates_due_cards() {
         .await;
     let new_question_id = question["id"].as_str().unwrap().to_owned();
     let created = h
-        .ok("reset_srs_progress", json!({"questionId":new_question_id}))
+        .ok(
+            "legacy_reset_srs_progress",
+            json!({"questionId":new_question_id}),
+        )
         .await;
     assert_eq!(created["question_id"], new_question_id);
     assert_eq!(created["is_due"], true);
     assert!(created["next_review_at"].as_i64().unwrap() <= chrono::Utc::now().timestamp());
-    let due = h.ok("get_due_questions", json!({"limit":10})).await;
+    let due = h.ok("legacy_get_due_questions", json!({"limit":10})).await;
     assert!(due
         .as_array()
         .unwrap()
@@ -1456,12 +1507,12 @@ async fn sync_commands_contract() {
     let h = Harness::new().await;
     let (subject_id, question_id) = create_subject_and_question(&h).await;
     h.ok(
-        "create_srs_data",
+        "legacy_create_srs_data",
         json!({"input":{"question_id":question_id}}),
     )
     .await;
 
-    let pending = h.ok("get_all_pending_records", json!({})).await;
+    let pending = h.ok("legacy_get_all_pending_records", json!({})).await;
     assert!(pending
         .as_array()
         .unwrap()
@@ -1483,7 +1534,10 @@ async fn sync_commands_contract() {
     }
 
     let upload = h
-        .ok("get_record_for_upload", json!({"recordId":question_id}))
+        .ok(
+            "legacy_get_record_for_upload",
+            json!({"recordId":question_id}),
+        )
         .await;
     assert_eq!(upload["table_name"], "error_questions");
     assert!(upload["data"].get("userid").is_some());
@@ -1491,12 +1545,12 @@ async fn sync_commands_contract() {
     assert!(upload["data"].get("user_id").is_none());
 
     h.ok(
-        "set_record_sync_status_version",
+        "legacy_set_record_sync_status_version",
         json!({"recordId":subject_id,"status":"conflict","version":10}),
     )
     .await;
     let subject = h
-        .ok("get_subjects", json!({}))
+        .ok("legacy_get_subjects", json!({}))
         .await
         .as_array()
         .unwrap()
@@ -1509,7 +1563,7 @@ async fn sync_commands_contract() {
 
     let invalid_status = h
         .err(
-            "set_record_sync_status_version",
+            "legacy_set_record_sync_status_version",
             json!({"recordId":subject_id,"status":"invalid","version":99}),
         )
         .await;
@@ -1517,7 +1571,7 @@ async fn sync_commands_contract() {
         .to_string()
         .contains("Unknown sync status: invalid"));
     let unchanged_subject = h
-        .ok("get_subjects", json!({}))
+        .ok("legacy_get_subjects", json!({}))
         .await
         .as_array()
         .unwrap()
@@ -1530,23 +1584,27 @@ async fn sync_commands_contract() {
 
     let collision_id = question_id.clone();
     h.ok(
-        "upsert_subject",
+        "legacy_upsert_subject",
         json!({"input":{"id":collision_id,"version":1,"status":"ignored","name":"Collision","color":null}}),
     )
     .await;
     assert_eq!(
-        h.ok("get_record_for_upload", json!({"recordId":question_id}))
-            .await["table_name"],
+        h.ok(
+            "legacy_get_record_for_upload",
+            json!({"recordId":question_id})
+        )
+        .await["table_name"],
         "error_questions"
     );
 
-    h.ok("delete_subject", json!({"id":subject_id})).await;
+    h.ok("legacy_delete_subject", json!({"id":subject_id}))
+        .await;
     h.ok(
-        "set_record_sync_status_version",
+        "legacy_set_record_sync_status_version",
         json!({"recordId":subject_id,"status":"synced","version":11}),
     )
     .await;
-    let purge = h.ok("purge_synced_deletions", json!({})).await;
+    let purge = h.ok("legacy_purge_synced_deletions", json!({})).await;
     assert_eq!(purge["subjects"]["deleted"], 1);
 }
 

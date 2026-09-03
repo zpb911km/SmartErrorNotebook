@@ -1,4 +1,4 @@
-import type { ErrorQuestion, ExportJSONSchema } from '../types'
+import type { ErrorQuestion, ExportJSONSchema } from '../types/legacy'
 import { showError } from './notification'
 import { exportFile } from './exportFile'
 

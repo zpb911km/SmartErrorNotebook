@@ -211,7 +211,7 @@ import { ref, computed, onMounted } from 'vue'
 import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
 import ErrorTagSelector from './ErrorTagSelector.vue'
-import { QuestionType } from '../types'
+import { QuestionType } from '../types/legacy'
 import {
   parseImportFile,
   importSingleQuestion,

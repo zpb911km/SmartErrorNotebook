@@ -4,7 +4,7 @@ import {
   CreateSourceInput,
   UpdateSourceInput,
   SourceFilter
-} from '../types'
+} from '../../types/legacy'
 
 // ==================== API 接口 ====================
 
@@ -13,9 +13,9 @@ import {
  * @param subjectId 科目ID（可选）
  * @returns 来源列表（已过滤软删除的记录）
  */
-export async function getSources(subjectId?: string): Promise<Source[]> {
+export async function legacyGetSources(subjectId?: string): Promise<Source[]> {
   const filter: SourceFilter = subjectId ? { subject_id: subjectId } : {}
-  return await invoke('get_sources', { filter })
+  return await invoke('legacy_get_sources', { filter })
 }
 
 /**
@@ -24,8 +24,8 @@ export async function getSources(subjectId?: string): Promise<Source[]> {
  * @returns 来源对象
  * @throws 如果来源不存在则抛出错误
  */
-export async function getSource(id: string): Promise<Source> {
-  return await invoke('get_source', { id })
+export async function legacyGetSource(id: string): Promise<Source> {
+  return await invoke('legacy_get_source', { id })
 }
 
 /**
@@ -33,8 +33,8 @@ export async function getSource(id: string): Promise<Source> {
  * @param subjectId 科目ID（可选）
  * @returns 书名列表
  */
-export async function getBooks(subjectId?: string): Promise<string[]> {
-  return await invoke('get_books', { subjectId })
+export async function legacyGetBooks(subjectId?: string): Promise<string[]> {
+  return await invoke('legacy_get_books', { subjectId })
 }
 
 /**
@@ -43,11 +43,11 @@ export async function getBooks(subjectId?: string): Promise<string[]> {
  * @param subjectId 科目ID（可选）
  * @returns 章节列表
  */
-export async function getChapters(
+export async function legacyGetChapters(
   book: string,
   subjectId?: string
 ): Promise<string[]> {
-  return await invoke('get_chapters', { book, subjectId })
+  return await invoke('legacy_get_chapters', { book, subjectId })
 }
 
 /**
@@ -57,12 +57,12 @@ export async function getChapters(
  * @param subjectId 科目ID（可选）
  * @returns 知识点列表
  */
-export async function getKnowledges(
+export async function legacyGetKnowledges(
   book: string,
   chapter: string,
   subjectId?: string
 ): Promise<string[]> {
-  return await invoke('get_knowledges', { book, chapter, subjectId })
+  return await invoke('legacy_get_knowledges', { book, chapter, subjectId })
 }
 
 /**
@@ -70,8 +70,10 @@ export async function getKnowledges(
  * @param source 来源数据（不包含 id 和 question_id）
  * @returns 创建的来源对象
  */
-export async function createSource(source: CreateSourceInput): Promise<Source> {
-  return await invoke('create_source', { input: source })
+export async function legacyCreateSource(
+  source: CreateSourceInput
+): Promise<Source> {
+  return await invoke('legacy_create_source', { input: source })
 }
 
 /**
@@ -79,8 +81,10 @@ export async function createSource(source: CreateSourceInput): Promise<Source> {
  * @param source 来源数据（必须包含 id）
  * @returns 更新后的来源对象
  */
-export async function updateSource(source: UpdateSourceInput): Promise<Source> {
-  return await invoke('update_source', { input: source })
+export async function legacyUpdateSource(
+  source: UpdateSourceInput
+): Promise<Source> {
+  return await invoke('legacy_update_source', { input: source })
 }
 
 /**
@@ -88,8 +92,8 @@ export async function updateSource(source: UpdateSourceInput): Promise<Source> {
  * @param sourceId 来源ID
  * @returns 无返回值
  */
-export async function deleteSource(sourceId: string): Promise<void> {
-  return await invoke('delete_source', { id: sourceId })
+export async function legacyDeleteSource(sourceId: string): Promise<void> {
+  return await invoke('legacy_delete_source', { id: sourceId })
 }
 
 /**
@@ -98,8 +102,8 @@ export async function deleteSource(sourceId: string): Promise<void> {
  * @param source 来源数据（不包含 id 和 question_id）
  * @returns 来源ID
  */
-export async function getOrCreateSourceId(
+export async function legacyGetOrCreateSourceId(
   source: CreateSourceInput
 ): Promise<string> {
-  return await invoke('get_or_create_source_id', { input: source })
+  return await invoke('legacy_get_or_create_source_id', { input: source })
 }

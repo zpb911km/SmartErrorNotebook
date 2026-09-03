@@ -233,19 +233,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSubjects } from '../apis/subjects'
-import { getQuestions } from '../apis/errorQuestions'
-import { getAllSRSStatus } from '../apis/srs'
 import {
-  getBooks,
-  getChapters,
-  getKnowledges,
-  getSources
-} from '../apis/sources'
-import { getFullErrorTags } from '../apis/errorTags'
+  legacyGetAllSRSStatus,
+  legacyGetBooks,
+  legacyGetChapters,
+  legacyGetFullErrorTags,
+  legacyGetKnowledges,
+  legacyGetQuestions,
+  legacyGetSubjects,
+  legacyGetSources
+} from '../api/legacy'
 import { setReviewQueue } from '../services/reviewStore'
 import type { ReviewCard } from '../services/reviewStore'
-import type { Subject } from '../types'
+import type { Subject } from '../types/legacy'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 
@@ -498,7 +498,7 @@ function handleSubjectClick(id: string) {
   knowledges.value = []
   cascadeVisible.value = true
   if (id) {
-    getBooks(id)
+    legacyGetBooks(id)
       .then((b) => {
         books.value = b
       })
@@ -518,7 +518,7 @@ function handleBookClick(book: string) {
   currentChapter.value = null
   knowledges.value = []
   if (filters.value.subject_id && book) {
-    getChapters(book, filters.value.subject_id)
+    legacyGetChapters(book, filters.value.subject_id)
       .then((c) => {
         chapters.value = c
       })
@@ -535,7 +535,7 @@ function handleChapterClick(ch: string) {
   filters.value.knowledge = ''
   currentChapter.value = ch || null
   if (filters.value.subject_id && filters.value.book && ch) {
-    getKnowledges(filters.value.book, ch, filters.value.subject_id)
+    legacyGetKnowledges(filters.value.book, ch, filters.value.subject_id)
       .then((k) => {
         knowledges.value = k
       })
@@ -560,7 +560,7 @@ function selectSubject(id: string) {
   if (id) {
     currentSubjectId.value = id
     cascadeVisible.value = true
-    getBooks(id)
+    legacyGetBooks(id)
       .then((b) => {
         books.value = b
       })
@@ -628,11 +628,11 @@ onMounted(async () => {
   isLoading.value = true
   try {
     const [subs, qs, srs, tags, srcs] = await Promise.all([
-      getSubjects(),
-      getQuestions(),
-      getAllSRSStatus(),
-      getFullErrorTags(),
-      getSources()
+      legacyGetSubjects(),
+      legacyGetQuestions(),
+      legacyGetAllSRSStatus(),
+      legacyGetFullErrorTags(),
+      legacyGetSources()
     ])
     subjects.value = subs
     questions.value = qs as any[]

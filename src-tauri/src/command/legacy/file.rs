@@ -2,7 +2,7 @@ use crate::OpenedUrls;
 
 /// 返回所有已存储的打开文件 URL（前端在冷启动时调用）
 #[tauri::command]
-pub fn opened_urls(state: tauri::State<'_, OpenedUrls>) -> Vec<String> {
+pub fn legacy_opened_urls(state: tauri::State<'_, OpenedUrls>) -> Vec<String> {
     state.0.lock().unwrap().clone()
 }
 
@@ -10,7 +10,7 @@ pub fn opened_urls(state: tauri::State<'_, OpenedUrls>) -> Vec<String> {
 /// 桌面端：直接读取文件路径
 /// Android：通过 content:// URI 读取（需 JNI 支持）
 #[tauri::command]
-pub fn read_opened_file(url: String) -> Result<String, String> {
+pub fn legacy_read_opened_file(url: String) -> Result<String, String> {
     // 尝试 1：解析为 URL，如果是 file:// 协议则提取路径
     if let Ok(parsed) = tauri::Url::parse(&url) {
         if parsed.scheme() == "file" {

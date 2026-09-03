@@ -9,11 +9,11 @@ Smart Error Notebook 通过 Tauri `invoke` 暴露 50 个数据库命令。本参
 ```ts
 import { invoke } from '@tauri-apps/api/core'
 
-const questions = await invoke<ErrorQuestion[]>('get_questions', {
+const questions = await invoke<ErrorQuestion[]>('legacy_get_questions', {
   filter: { subject_id: 'subject-id', limit: 20 },
 })
 
-const status = await invoke<SRSCardOutput | null>('get_question_srs_status', {
+const status = await invoke<SRSCardOutput | null>('legacy_get_question_srs_status', {
   questionId: 'question-id',
 })
 ```
@@ -39,13 +39,13 @@ const status = await invoke<SRSCardOutput | null>('get_question_srs_status', {
 
 | 分组 | 命令 |
 | --- | --- |
-| 科目 | `get_subjects`, `create_subject`, `update_subject`, `delete_subject`, `upsert_subject` |
-| 错题 | `get_questions`, `get_question`, `create_question`, `update_question`, `delete_question`, `get_question_stats`, `upsert_error_question` |
-| 来源 | `get_sources`, `get_source`, `get_books`, `get_chapters`, `get_knowledges`, `create_source`, `update_source`, `delete_source`, `get_or_create_source_id`, `upsert_source` |
-| 错因标签 | `create_error_tags_for_question`, `get_error_tags`, `get_full_error_tags`, `get_error_tags_for_question`, `delete_error_tag`, `update_error_tag_by_name`, `update_error_tag_by_id`, `upsert_error_tag` |
-| 附件 | `create_attachment`, `create_attachments_for_question`, `get_attachments_by_question`, `delete_attachment`, `upsert_attachment` |
-| SRS | `create_srs_data`, `get_due_questions`, `submit_review_result`, `get_question_srs_status`, `reset_srs_progress`, `get_due_count`, `get_srs_statistics`, `get_all_cards`, `upsert_srs_data` |
-| 同步 | `get_all_records`, `get_all_pending_records`, `get_record_for_upload`, `set_record_sync_status_version`, `purge_synced_deletions`, `check_orphan_records` |
+| 科目 | `legacy_get_subjects`, `legacy_create_subject`, `legacy_update_subject`, `legacy_delete_subject`, `legacy_upsert_subject` |
+| 错题 | `legacy_get_questions`, `legacy_get_question`, `legacy_create_question`, `legacy_update_question`, `legacy_delete_question`, `legacy_get_question_stats`, `legacy_upsert_error_question` |
+| 来源 | `legacy_get_sources`, `legacy_get_source`, `legacy_get_books`, `legacy_get_chapters`, `legacy_get_knowledges`, `legacy_create_source`, `legacy_update_source`, `legacy_delete_source`, `legacy_get_or_create_source_id`, `legacy_upsert_source` |
+| 错因标签 | `legacy_create_error_tags_for_question`, `legacy_get_error_tags`, `legacy_get_full_error_tags`, `legacy_get_error_tags_for_question`, `legacy_delete_error_tag`, `legacy_update_error_tag_by_name`, `legacy_update_error_tag_by_id`, `legacy_upsert_error_tag` |
+| 附件 | `legacy_create_attachment`, `legacy_create_attachments_for_question`, `legacy_get_attachments_by_question`, `legacy_delete_attachment`, `legacy_upsert_attachment` |
+| SRS | `legacy_create_srs_data`, `legacy_get_due_questions`, `legacy_submit_review_result`, `legacy_get_question_srs_status`, `legacy_reset_srs_progress`, `legacy_get_due_count`, `legacy_get_srs_statistics`, `legacy_get_all_cards`, `legacy_upsert_srs_data` |
+| 同步 | `legacy_get_all_records`, `legacy_get_all_pending_records`, `legacy_get_record_for_upload`, `legacy_set_record_sync_status_version`, `legacy_purge_synced_deletions`, `legacy_check_orphan_records` |
 
 ## 数据类型
 
@@ -184,36 +184,36 @@ interface OrphanCheckResult {
 
 ## 科目
 
-### `get_subjects`
+### `legacy_get_subjects`
 
 **签名**
 
 ```text
-invoke<Subject[]>('get_subjects')
+invoke<Subject[]>('legacy_get_subjects')
 ```
 
 **返回**：所有未软删除科目。
 
 **行为**：排除 `deleted_at IS NOT NULL` 的记录；顺序不保证。
 
-### `create_subject`
+### `legacy_create_subject`
 
 **签名**
 
 ```text
-invoke<Subject>('create_subject', {
+invoke<Subject>('legacy_create_subject', {
   input: { name: string, color?: string | null },
 })
 ```
 
 **返回**：新建的 `Subject`。
 
-### `update_subject`
+### `legacy_update_subject`
 
 **签名**
 
 ```text
-invoke<Subject>('update_subject', {
+invoke<Subject>('legacy_update_subject', {
   input: { id: string, name?: string | null, color?: string | null },
 })
 ```
@@ -222,20 +222,20 @@ invoke<Subject>('update_subject', {
 
 **错误**：ID 不存在时返回 `Subject not found`。
 
-### `delete_subject`
+### `legacy_delete_subject`
 
-**签名**：`invoke<null>('delete_subject', { id: string })`
+**签名**：`invoke<null>('legacy_delete_subject', { id: string })`
 
 **行为**：软删除科目并标记 `pending`；不会级联处理题目或来源。
 
 **错误**：ID 不存在时返回 `Subject not found`。
 
-### `upsert_subject`
+### `legacy_upsert_subject`
 
 **签名**
 
 ```text
-invoke<null>('upsert_subject', {
+invoke<null>('legacy_upsert_subject', {
   input: {
     id: string
     version: number
@@ -251,12 +251,12 @@ invoke<null>('upsert_subject', {
 
 ## 错题
 
-### `get_questions`
+### `legacy_get_questions`
 
 **签名**
 
 ```text
-invoke<ErrorQuestion[]>('get_questions', {
+invoke<ErrorQuestion[]>('legacy_get_questions', {
   filter?: {
     subject_id?: string
     search?: string
@@ -273,20 +273,20 @@ invoke<ErrorQuestion[]>('get_questions', {
 - `search` 以 `%keyword%` 匹配 `prompt`、`analysis` 和 `error_note`。
 - 结果按 `updated_at` 降序，再应用 `limit` 和 `offset`。
 
-### `get_question`
+### `legacy_get_question`
 
-**签名**：`invoke<ErrorQuestion>('get_question', { id: string })`
+**签名**：`invoke<ErrorQuestion>('legacy_get_question', { id: string })`
 
 **行为**：按主键读取，不过滤软删除记录。
 
 **错误**：ID 不存在时返回 `Question not found`。
 
-### `create_question`
+### `legacy_create_question`
 
 **签名**
 
 ```text
-invoke<ErrorQuestion>('create_question', {
+invoke<ErrorQuestion>('legacy_create_question', {
   input: {
     user_id: string
     subject_id: string
@@ -302,12 +302,12 @@ invoke<ErrorQuestion>('create_question', {
 
 **行为**：当前不验证科目或来源是否存在。
 
-### `update_question`
+### `legacy_update_question`
 
 **签名**
 
 ```text
-invoke<ErrorQuestion>('update_question', {
+invoke<ErrorQuestion>('legacy_update_question', {
   input: {
     id: string
     subject_id?: string | null
@@ -329,26 +329,26 @@ invoke<ErrorQuestion>('update_question', {
 
 **错误**：题目不存在时返回 `Question not found`；目标科目不存在时返回 `Subject not found`。
 
-### `delete_question`
+### `legacy_delete_question`
 
-**签名**：`invoke<null>('delete_question', { id: string })`
+**签名**：`invoke<null>('legacy_delete_question', { id: string })`
 
 **行为**：操作在同一事务内完成：软删除题目和对应的 SRS 记录，并解除题目的全部附件、标签关系。解除关系后仍被其他题目引用的附件或标签会保留并标记为 `pending`；失去最后一条关系的资源会同时软删除。依赖清理先于题目存在性检查。
 
 **错误**：题目不存在时返回 `Question not found`。
 
-### `get_question_stats`
+### `legacy_get_question_stats`
 
-**签名**：`invoke<{ total: number }>('get_question_stats')`
+**签名**：`invoke<{ total: number }>('legacy_get_question_stats')`
 
 **返回**：未软删除题目总数。
 
-### `upsert_error_question`
+### `legacy_upsert_error_question`
 
 **签名**
 
 ```text
-invoke<null>('upsert_error_question', {
+invoke<null>('legacy_upsert_error_question', {
   input: {
     id: string
     version: number
@@ -375,44 +375,44 @@ invoke<null>('upsert_error_question', {
 
 ## 来源
 
-### `get_sources`
+### `legacy_get_sources`
 
-**签名**：`invoke<Source[]>('get_sources', { filter?: { subject_id?: string } | null })`
+**签名**：`invoke<Source[]>('legacy_get_sources', { filter?: { subject_id?: string } | null })`
 
 **行为**：排除软删除记录；提供 `subject_id` 时精确过滤。
 
-### `get_source`
+### `legacy_get_source`
 
-**签名**：`invoke<Source>('get_source', { id: string })`
+**签名**：`invoke<Source>('legacy_get_source', { id: string })`
 
 **行为**：不排除软删除记录。
 
 **错误**：ID 不存在时返回 `Source not found`。
 
-### `get_books`
+### `legacy_get_books`
 
-**签名**：`invoke<string[]>('get_books', { subjectId?: string | null })`
+**签名**：`invoke<string[]>('legacy_get_books', { subjectId?: string | null })`
 
 **返回**：未软删除记录中的非空书名去重集合；顺序不保证。
 
-### `get_chapters`
+### `legacy_get_chapters`
 
-**签名**：`invoke<string[]>('get_chapters', { subjectId?: string | null, book: string })`
+**签名**：`invoke<string[]>('legacy_get_chapters', { subjectId?: string | null, book: string })`
 
 **返回**：匹配书名和可选科目的非空章节去重集合；顺序不保证。
 
-### `get_knowledges`
+### `legacy_get_knowledges`
 
-**签名**：`invoke<string[]>('get_knowledges', { subjectId?: string | null, book: string, chapter: string })`
+**签名**：`invoke<string[]>('legacy_get_knowledges', { subjectId?: string | null, book: string, chapter: string })`
 
 **返回**：匹配书名、章节和可选科目的非空知识点去重集合；顺序不保证。
 
-### `create_source`
+### `legacy_create_source`
 
 **签名**
 
 ```text
-invoke<Source>('create_source', {
+invoke<Source>('legacy_create_source', {
   input: {
     subject_id?: string | null
     book?: string | null
@@ -424,12 +424,12 @@ invoke<Source>('create_source', {
 
 **行为**：新记录的 `question_id = null`；不验证科目是否存在。
 
-### `update_source`
+### `legacy_update_source`
 
 **签名**
 
 ```text
-invoke<Source>('update_source', {
+invoke<Source>('legacy_update_source', {
   input: {
     id: string
     subject_id?: string | null
@@ -444,20 +444,20 @@ invoke<Source>('update_source', {
 
 **错误**：ID 不存在时返回 `Source not found`。
 
-### `delete_source`
+### `legacy_delete_source`
 
-**签名**：`invoke<null>('delete_source', { id: string })`
+**签名**：`invoke<null>('legacy_delete_source', { id: string })`
 
 **行为**：软删除来源并标记 `pending`。
 
 **错误**：ID 不存在时返回 `Source not found`。
 
-### `get_or_create_source_id`
+### `legacy_get_or_create_source_id`
 
 **签名**
 
 ```text
-invoke<string>('get_or_create_source_id', {
+invoke<string>('legacy_get_or_create_source_id', {
   input: {
     subject_id?: string | null
     book?: string | null
@@ -469,12 +469,12 @@ invoke<string>('get_or_create_source_id', {
 
 **行为**：在未软删除记录中对四个字段进行包括 `NULL` 在内的精确匹配；找到时返回已有 ID，否则创建来源并返回新 ID。
 
-### `upsert_source`
+### `legacy_upsert_source`
 
 **签名**
 
 ```text
-invoke<null>('upsert_source', {
+invoke<null>('legacy_upsert_source', {
   input: {
     id: string
     version: number
@@ -493,12 +493,12 @@ invoke<null>('upsert_source', {
 
 ## 错因标签
 
-### `create_error_tags_for_question`
+### `legacy_create_error_tags_for_question`
 
 **签名**
 
 ```text
-invoke<ErrorTag[]>('create_error_tags_for_question', {
+invoke<ErrorTag[]>('legacy_create_error_tags_for_question', {
   input: {
     question_id: string
     tags: Array<{ name: string, color: string }>
@@ -508,40 +508,40 @@ invoke<ErrorTag[]>('create_error_tags_for_question', {
 
 **行为**：按输入顺序逐条创建，不显式验证题目存在；空数组返回空数组。整批写入位于同一事务中，任一条失败时不会提交部分结果。
 
-### `get_error_tags`
+### `legacy_get_error_tags`
 
-**签名**：`invoke<ErrorTag[]>('get_error_tags')`
+**签名**：`invoke<ErrorTag[]>('legacy_get_error_tags')`
 
 **返回**：未软删除标签按 `name` 去重后的集合。
 
 **行为**：顺序及同名标签中具体保留哪条记录不保证。
 
-### `get_full_error_tags`
+### `legacy_get_full_error_tags`
 
-**签名**：`invoke<ErrorTag[]>('get_full_error_tags')`
+**签名**：`invoke<ErrorTag[]>('legacy_get_full_error_tags')`
 
 **返回**：所有未软删除标签，不去重。
 
-### `get_error_tags_for_question`
+### `legacy_get_error_tags_for_question`
 
-**签名**：`invoke<ErrorTag[]>('get_error_tags_for_question', { questionId: string })`
+**签名**：`invoke<ErrorTag[]>('legacy_get_error_tags_for_question', { questionId: string })`
 
 **返回**：指定题目的全部未软删除标签。
 
-### `delete_error_tag`
+### `legacy_delete_error_tag`
 
-**签名**：`invoke<null>('delete_error_tag', { tagId: string, questionId: string })`
+**签名**：`invoke<null>('legacy_delete_error_tag', { tagId: string, questionId: string })`
 
 **行为**：解除标签与指定题目的关系；只有最后一条关系解除后才软删除标签并标记 `pending`。
 
 **错误**：关系不存在时返回错误。
 
-### `update_error_tag_by_name`
+### `legacy_update_error_tag_by_name`
 
 **签名**
 
 ```text
-invoke<null>('update_error_tag_by_name', {
+invoke<null>('legacy_update_error_tag_by_name', {
   oldName: string
   newName: string
   newColor: string
@@ -550,12 +550,12 @@ invoke<null>('update_error_tag_by_name', {
 
 **行为**：更新所有未软删除且名称等于 `oldName` 的记录；无匹配时仍成功。
 
-### `update_error_tag_by_id`
+### `legacy_update_error_tag_by_id`
 
 **签名**
 
 ```text
-invoke<null>('update_error_tag_by_id', {
+invoke<null>('legacy_update_error_tag_by_id', {
   tagId: string
   newTagName: string
   newTagColor?: string | null
@@ -566,12 +566,12 @@ invoke<null>('update_error_tag_by_id', {
 
 **错误**：ID 不存在或记录已软删除时返回 `标签不存在`。
 
-### `upsert_error_tag`
+### `legacy_upsert_error_tag`
 
 **签名**
 
 ```text
-invoke<null>('upsert_error_tag', {
+invoke<null>('legacy_upsert_error_tag', {
   input: {
     id: string
     version: number
@@ -589,12 +589,12 @@ invoke<null>('upsert_error_tag', {
 
 ## 附件
 
-### `create_attachment`
+### `legacy_create_attachment`
 
 **签名**
 
 ```text
-invoke<Attachment>('create_attachment', {
+invoke<Attachment>('legacy_create_attachment', {
   input: {
     question_id: string
     type_: string
@@ -608,12 +608,12 @@ invoke<Attachment>('create_attachment', {
 
 **已知限制**：调试日志直接读取 `base64_data[..100]`。输入少于 100 字节，或第 100 字节不是 UTF-8 字符边界时，当前实现会 panic。
 
-### `create_attachments_for_question`
+### `legacy_create_attachments_for_question`
 
 **签名**
 
 ```text
-invoke<Attachment[]>('create_attachments_for_question', {
+invoke<Attachment[]>('legacy_create_attachments_for_question', {
   questionId: string
   attachments: Array<{
     question_id: string
@@ -626,26 +626,26 @@ invoke<Attachment[]>('create_attachments_for_question', {
 
 **行为**：用顶层 `questionId` 覆盖每个元素的 `question_id`，再按顺序逐条创建。整批写入位于同一事务中，任一条失败时不会提交部分结果。
 
-### `get_attachments_by_question`
+### `legacy_get_attachments_by_question`
 
-**签名**：`invoke<Attachment[]>('get_attachments_by_question', { questionId: string })`
+**签名**：`invoke<Attachment[]>('legacy_get_attachments_by_question', { questionId: string })`
 
 **返回**：指定题目的全部未软删除附件。
 
-### `delete_attachment`
+### `legacy_delete_attachment`
 
-**签名**：`invoke<null>('delete_attachment', { id: string, questionId: string })`
+**签名**：`invoke<null>('legacy_delete_attachment', { id: string, questionId: string })`
 
 **行为**：解除附件与指定题目的关系；只有最后一条关系解除后才软删除附件并标记 `pending`。
 
 **错误**：关系不存在时返回错误。
 
-### `upsert_attachment`
+### `legacy_upsert_attachment`
 
 **签名**
 
 ```text
-invoke<null>('upsert_attachment', {
+invoke<null>('legacy_upsert_attachment', {
   input: {
     id: string
     version: number
@@ -665,12 +665,12 @@ invoke<null>('upsert_attachment', {
 
 ## SRS
 
-### `create_srs_data`
+### `legacy_create_srs_data`
 
 **签名**
 
 ```text
-invoke<SRSCardOutput>('create_srs_data', {
+invoke<SRSCardOutput>('legacy_create_srs_data', {
   input: { question_id: string, difficulty?: number | null },
 })
 ```
@@ -679,18 +679,18 @@ invoke<SRSCardOutput>('create_srs_data', {
 
 **错误**：任意同 `question_id` 记录（包括软删除记录）已存在时返回 `SrsData is exist: <question_id>`。
 
-### `get_due_questions`
+### `legacy_get_due_questions`
 
-**签名**：`invoke<SRSCardOutput[]>('get_due_questions', { limit?: number | null })`
+**签名**：`invoke<SRSCardOutput[]>('legacy_get_due_questions', { limit?: number | null })`
 
 **行为**：排除软删除记录；`next_review_at = null` 或时间已到视为到期；按稳定性升序，默认最多返回 1000 条。
 
-### `submit_review_result`
+### `legacy_submit_review_result`
 
 **签名**
 
 ```text
-invoke<ReviewOutput>('submit_review_result', {
+invoke<ReviewOutput>('legacy_submit_review_result', {
   input: { question_id: string, feedback: number },
 })
 ```
@@ -703,42 +703,42 @@ invoke<ReviewOutput>('submit_review_result', {
 
 **错误**：记录不存在时返回 `SRS data not found`；反馈越界时返回 `Feedback must be in [0, 1], got <value>`。
 
-### `get_question_srs_status`
+### `legacy_get_question_srs_status`
 
-**签名**：`invoke<SRSCardOutput | null>('get_question_srs_status', { questionId: string })`
+**签名**：`invoke<SRSCardOutput | null>('legacy_get_question_srs_status', { questionId: string })`
 
 **返回**：题目的未软删除 SRS 状态；不存在时返回 `null`。
 
-### `reset_srs_progress`
+### `legacy_reset_srs_progress`
 
-**签名**：`invoke<SRSCardOutput>('reset_srs_progress', { questionId: string })`
+**签名**：`invoke<SRSCardOutput>('legacy_reset_srs_progress', { questionId: string })`
 
 **行为**：查询包括软删除记录在内的现有 SRS。记录存在时恢复初始参数、清除 `deleted_at` 并立即到期；不存在时创建立即到期的新记录。
 
-### `get_due_count`
+### `legacy_get_due_count`
 
-**签名**：`invoke<number>('get_due_count')`
+**签名**：`invoke<number>('legacy_get_due_count')`
 
 **返回**：未软删除且已到期的记录数。
 
-### `get_srs_statistics`
+### `legacy_get_srs_statistics`
 
-**签名**：`invoke<SRSStatistics>('get_srs_statistics')`
+**签名**：`invoke<SRSStatistics>('legacy_get_srs_statistics')`
 
 **行为**：仅统计未软删除记录；`new_cards` 是 `review_count === 1` 的数量；无记录时两个平均值均为零。
 
-### `get_all_cards`
+### `legacy_get_all_cards`
 
-**签名**：`invoke<SRSCardOutput[]>('get_all_cards')`
+**签名**：`invoke<SRSCardOutput[]>('legacy_get_all_cards')`
 
 **返回**：全部未软删除卡片；顺序不保证。
 
-### `upsert_srs_data`
+### `legacy_upsert_srs_data`
 
 **签名**
 
 ```text
-invoke<null>('upsert_srs_data', {
+invoke<null>('legacy_upsert_srs_data', {
   input: {
     id: string
     version: number
@@ -770,34 +770,34 @@ invoke<null>('upsert_srs_data', {
 
 表内顺序不保证。
 
-### `get_all_records`
+### `legacy_get_all_records`
 
-**签名**：`invoke<SyncRecordHeader[]>('get_all_records')`
+**签名**：`invoke<SyncRecordHeader[]>('legacy_get_all_records')`
 
 **返回**：六张表的全部记录头，包括软删除和任意同步状态；不包含 `data`。
 
-### `get_all_pending_records`
+### `legacy_get_all_pending_records`
 
-**签名**：`invoke<SyncRecord[]>('get_all_pending_records')`
+**签名**：`invoke<SyncRecord[]>('legacy_get_all_pending_records')`
 
 **返回**：六张表中 `sync_status = "pending"` 的记录，包括 pending 的软删除记录。
 
 **数据裁剪**：`data` 保留业务字段、`id` 和 `sync_hash`，移除 `version`、`sync_status`、`deleted_at`、`created_at` 和 `updated_at`。
 
-### `get_record_for_upload`
+### `legacy_get_record_for_upload`
 
-**签名**：`invoke<SyncRecord>('get_record_for_upload', { recordId: string })`
+**签名**：`invoke<SyncRecord>('legacy_get_record_for_upload', { recordId: string })`
 
 **行为**：按固定表顺序使用 ID 查找；不同表存在相同 ID 时返回顺序靠前的记录。
 
 **错误**：不存在时返回 `Record not found with id: <recordId>`。
 
-### `set_record_sync_status_version`
+### `legacy_set_record_sync_status_version`
 
 **签名**
 
 ```text
-invoke<string>('set_record_sync_status_version', {
+invoke<string>('legacy_set_record_sync_status_version', {
   recordId: string
   status: 'pending' | 'synced' | 'conflict'
   version: number
@@ -808,12 +808,12 @@ invoke<string>('set_record_sync_status_version', {
 
 **错误**：不存在时返回 `Record not found with id: <recordId>`；未知状态在命令执行前返回 `Unknown sync status: <status>`，不会修改记录。
 
-### `purge_synced_deletions`
+### `legacy_purge_synced_deletions`
 
 **签名**
 
 ```text
-invoke<Record<string, { deleted: number }>>('purge_synced_deletions')
+invoke<Record<string, { deleted: number }>>('legacy_purge_synced_deletions')
 ```
 
 **行为**：对六张表物理删除同时满足 `sync_status = "synced"` 和 `deleted_at IS NOT NULL` 的记录。
@@ -833,9 +833,9 @@ invoke<Record<string, { deleted: number }>>('purge_synced_deletions')
 
 六张表的清理在同一个仓储事务中执行。
 
-### `check_orphan_records`
+### `legacy_check_orphan_records`
 
-**签名**：`invoke<OrphanCheckResult>('check_orphan_records')`
+**签名**：`invoke<OrphanCheckResult>('legacy_check_orphan_records')`
 
 **行为**：只检查当前未软删除记录。
 
