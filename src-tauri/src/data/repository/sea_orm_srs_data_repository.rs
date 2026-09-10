@@ -1,4 +1,7 @@
-use sea_orm::{ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect,
+    RelationTrait, Set,
+};
 use uuid::Uuid;
 
 use crate::data::mapping::legacy::normalize_srs_state;
@@ -89,9 +92,14 @@ impl<'c, C: ConnectionTrait> SrsDataRepository for SeaOrmSrsDataRepository<'c, C
     }
 
     async fn find_all(&self, include_deleted: bool) -> Result<Vec<SrsData>, RepositoryFindError> {
-        let mut query = srs_data::Entity::find();
+        let mut query = srs_data::Entity::find().join(
+            sea_orm::JoinType::InnerJoin,
+            srs_data::Relation::Question.def(),
+        );
         if !include_deleted {
-            query = query.filter(srs_data::Column::DeletedAt.is_null());
+            query = query
+                .filter(srs_data::Column::DeletedAt.is_null())
+                .filter(question::Column::DeletedAt.is_null());
         }
         query
             .all(self.connection)
@@ -106,8 +114,21 @@ impl<'c, C: ConnectionTrait> SrsDataRepository for SeaOrmSrsDataRepository<'c, C
             .collect()
     }
 
-    async fn find_by_question_id(&self, id: &Uuid) -> Result<Option<SrsData>, RepositoryFindError> {
-        srs_data::Entity::find_by_id(*id)
+    async fn find_by_question_id(
+        &self,
+        id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<Option<SrsData>, RepositoryFindError> {
+        let mut query = srs_data::Entity::find_by_id(*id).join(
+            sea_orm::JoinType::InnerJoin,
+            srs_data::Relation::Question.def(),
+        );
+        if !include_deleted {
+            query = query
+                .filter(srs_data::Column::DeletedAt.is_null())
+                .filter(question::Column::DeletedAt.is_null());
+        }
+        query
             .one(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query SRS data", error))?

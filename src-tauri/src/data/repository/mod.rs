@@ -17,6 +17,7 @@ use crate::domain::repository::{
     RepositoryTransactionExecutor, SourceRepository, SrsDataRepository, SubjectRepository,
     TagRepository,
 };
+use crate::util::parsing::parse_uuid;
 
 use sea_orm_attachment_repository::SeaOrmAttachmentRepository;
 use sea_orm_question_repository::SeaOrmQuestionRepository;
@@ -27,7 +28,7 @@ use sea_orm_sync_repository::SeaOrmSyncRepository;
 use sea_orm_tag_repository::SeaOrmTagRepository;
 
 fn uuid(value: &str, field: &str) -> uuid::Uuid {
-    uuid::Uuid::parse_str(value).unwrap_or_else(|_| panic!("invalid {field}: {value}"))
+    parse_uuid(value, field).unwrap_or_else(|error| panic!("{error}: {value}"))
 }
 
 fn timestamp(value: i64, field: &str) -> DateTime<Utc> {

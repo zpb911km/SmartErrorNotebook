@@ -2,9 +2,10 @@ use chrono::{DateTime, Duration, Utc};
 use uuid::Uuid;
 
 use super::error::{
-    DomainError, InvalidFeedback, InvalidFeedbackHistory, InvalidReviewTime, InvalidSrsState,
+    DomainError, InvalidFeedback, InvalidFeedbackHistory, InvalidResetTime, InvalidReviewTime,
+    InvalidSrsState,
 };
-use super::{Metadata, SyncStatus};
+use super::Metadata;
 
 // FSRS-5 default weights. The model uses continuous feedback in [0, 1],
 // mapped to the original FSRS grades with G = 3f + 1.
@@ -192,22 +193,31 @@ impl SrsData {
         self.last_review_at = Some(now);
         self.review_count = self.review_count.saturating_add(1);
         self.feedback_history = feedback_history;
-        self.metadata.updated_at = now;
-        self.metadata.sync_status = SyncStatus::Pending;
+        self.metadata.touch(now);
         self.metadata.deleted_at = None;
         Ok(next_interval_days as f32)
     }
 
-    pub(crate) fn reset(&mut self, now: DateTime<Utc>) {
+    pub(crate) fn reset(&mut self, now: DateTime<Utc>) -> Result<(), DomainError> {
+        if let Some(last_review_at) = self.last_review_at {
+            if now < last_review_at {
+                return Err(InvalidResetTime {
+                    reset_at: now,
+                    last_review_at,
+                }
+                .into());
+            }
+        }
+
         self.stability = Self::INITIAL_STABILITY;
         self.difficulty = Self::INITIAL_DIFFICULTY;
         self.next_review_at = Some(now);
         self.last_review_at = Some(now);
         self.review_count = 1;
         self.feedback_history.clear();
-        self.metadata.updated_at = now;
-        self.metadata.sync_status = SyncStatus::Pending;
+        self.metadata.touch(now);
         self.metadata.deleted_at = None;
+        Ok(())
     }
 }
 
@@ -559,15 +569,70 @@ mod tests {
 
     #[test]
     fn reset_restores_all_scheduling_state() {
-        let now = Utc::now();
         let mut card = srs_data(vec![0.5]);
-        card.reset(now);
+        let now = Utc::now();
+        card.reset(now).unwrap();
         assert_eq!(card.stability(), SrsData::INITIAL_STABILITY);
         assert_eq!(card.difficulty(), SrsData::INITIAL_DIFFICULTY);
         assert_eq!(card.next_review_at(), Some(now));
         assert_eq!(card.last_review_at(), Some(now));
         assert_eq!(card.review_count(), 1);
         assert!(card.feedback_history().is_empty());
+    }
+
+    #[test]
+    fn rejects_reset_before_the_last_review_without_mutating_card() {
+        let last_review_at = Utc::now();
+        let mut card = SrsData::new(Uuid::new_v4(), Metadata::new(last_review_at));
+        let original = card.clone();
+        let reset_at = last_review_at - Duration::seconds(1);
+
+        assert_eq!(
+            card.reset(reset_at),
+            Err(DomainError::InvalidResetTime(InvalidResetTime {
+                reset_at,
+                last_review_at,
+            }))
+        );
+        assert_eq!(card, original);
+    }
+
+    #[test]
+    fn reset_allows_metadata_time_to_move_back_after_the_last_review() {
+        let last_review_at = Utc::now();
+        let mut metadata = Metadata::new(last_review_at);
+        metadata.updated_at = last_review_at + Duration::minutes(2);
+        let mut card = SrsData::new(Uuid::new_v4(), metadata);
+        let reset_at = last_review_at + Duration::minutes(1);
+
+        card.reset(reset_at).unwrap();
+
+        assert_eq!(card.last_review_at(), Some(reset_at));
+        assert_eq!(card.metadata.updated_at, reset_at);
+    }
+
+    #[test]
+    fn reset_without_a_last_review_has_no_time_lower_bound() {
+        let created_at = Utc::now();
+        let mut metadata = Metadata::new(created_at);
+        metadata.updated_at = created_at + Duration::minutes(2);
+        let mut card = SrsData::new_with_state(
+            Uuid::new_v4(),
+            metadata,
+            SrsData::INITIAL_STABILITY,
+            SrsData::INITIAL_DIFFICULTY,
+            None,
+            None,
+            0,
+            Vec::new(),
+        )
+        .unwrap();
+        let reset_at = created_at - Duration::minutes(1);
+
+        card.reset(reset_at).unwrap();
+
+        assert_eq!(card.last_review_at(), Some(reset_at));
+        assert_eq!(card.metadata.updated_at, reset_at);
     }
 
     #[test]

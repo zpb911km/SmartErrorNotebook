@@ -234,15 +234,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  legacyGetAllSRSStatus,
-  legacyGetBooks,
-  legacyGetChapters,
-  legacyGetFullErrorTags,
-  legacyGetKnowledges,
-  legacyGetQuestions,
-  legacyGetSubjects,
-  legacyGetSources
-} from '../api/legacy'
+  getAllSrs,
+  getBooks,
+  getChapters,
+  getFullErrorTags,
+  getKnowledges,
+  getQuestions,
+  getSubjects,
+  getSources
+} from '../api/compat'
 import { setReviewQueue } from '../services/reviewStore'
 import type { ReviewCard } from '../services/reviewStore'
 import type { Subject } from '../types/legacy'
@@ -498,7 +498,7 @@ function handleSubjectClick(id: string) {
   knowledges.value = []
   cascadeVisible.value = true
   if (id) {
-    legacyGetBooks(id)
+    getBooks(id)
       .then((b) => {
         books.value = b
       })
@@ -518,7 +518,7 @@ function handleBookClick(book: string) {
   currentChapter.value = null
   knowledges.value = []
   if (filters.value.subject_id && book) {
-    legacyGetChapters(book, filters.value.subject_id)
+    getChapters(book, filters.value.subject_id)
       .then((c) => {
         chapters.value = c
       })
@@ -535,7 +535,7 @@ function handleChapterClick(ch: string) {
   filters.value.knowledge = ''
   currentChapter.value = ch || null
   if (filters.value.subject_id && filters.value.book && ch) {
-    legacyGetKnowledges(filters.value.book, ch, filters.value.subject_id)
+    getKnowledges(filters.value.book, ch, filters.value.subject_id)
       .then((k) => {
         knowledges.value = k
       })
@@ -560,7 +560,7 @@ function selectSubject(id: string) {
   if (id) {
     currentSubjectId.value = id
     cascadeVisible.value = true
-    legacyGetBooks(id)
+    getBooks(id)
       .then((b) => {
         books.value = b
       })
@@ -628,11 +628,11 @@ onMounted(async () => {
   isLoading.value = true
   try {
     const [subs, qs, srs, tags, srcs] = await Promise.all([
-      legacyGetSubjects(),
-      legacyGetQuestions(),
-      legacyGetAllSRSStatus(),
-      legacyGetFullErrorTags(),
-      legacyGetSources()
+      getSubjects(),
+      getQuestions(),
+      getAllSrs(),
+      getFullErrorTags(),
+      getSources()
     ])
     subjects.value = subs
     questions.value = qs as any[]

@@ -1,11 +1,15 @@
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::domain::model::Metadata;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CreateSubjectCommand {
+    pub name: String,
+    pub color: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SaveSubjectCommand {
+pub(crate) struct UpdateSubjectCommand {
     pub id: Uuid,
-    pub metadata: Metadata,
     pub name: String,
     pub color: String,
 }
@@ -13,4 +17,5 @@ pub(crate) struct SaveSubjectCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DeleteSubjectCommand {
     pub id: Uuid,
+    pub deleted_at: DateTime<Utc>,
 }

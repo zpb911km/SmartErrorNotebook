@@ -54,11 +54,11 @@ impl<'c, C: ConnectionTrait> TagRepository for SeaOrmTagRepository<'c, C> {
             }
             .into());
         }
-        let is_existing = tag::Entity::find_by_id(tag.id)
+        let existing_entity = tag::Entity::find_by_id(tag.id)
             .one(self.connection)
             .await
-            .map_err(|error| RepositoryInfrastructureError::new("query tag", error))?
-            .is_some();
+            .map_err(|error| RepositoryInfrastructureError::new("query tag", error))?;
+        let is_existing = existing_entity.is_some();
         let mut active_model = tag::ActiveModel {
             id: Set(tag.id),
             created_at: Set(tag.metadata.created_at),
@@ -125,8 +125,16 @@ impl<'c, C: ConnectionTrait> TagRepository for SeaOrmTagRepository<'c, C> {
             .collect()
     }
 
-    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Tag>, RepositoryFindError> {
-        tag::Entity::find_by_id(*id)
+    async fn find_by_id(
+        &self,
+        id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<Option<Tag>, RepositoryFindError> {
+        let mut query = tag::Entity::find_by_id(*id);
+        if !include_deleted {
+            query = query.filter(tag::Column::DeletedAt.is_null());
+        }
+        query
             .one(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query tag", error))?
@@ -140,6 +148,7 @@ impl<'c, C: ConnectionTrait> TagRepository for SeaOrmTagRepository<'c, C> {
     async fn find_by_question_id(
         &self,
         question_id: &Uuid,
+        include_deleted: bool,
     ) -> Result<Vec<Tag>, RepositoryFindError> {
         let ids = question_tag_cross_ref::Entity::find()
             .filter(question_tag_cross_ref::Column::QuestionId.eq(*question_id))
@@ -152,8 +161,11 @@ impl<'c, C: ConnectionTrait> TagRepository for SeaOrmTagRepository<'c, C> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        tag::Entity::find()
-            .filter(tag::Column::Id.is_in(ids))
+        let mut query = tag::Entity::find().filter(tag::Column::Id.is_in(ids));
+        if !include_deleted {
+            query = query.filter(tag::Column::DeletedAt.is_null());
+        }
+        query
             .all(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query tags", error))?

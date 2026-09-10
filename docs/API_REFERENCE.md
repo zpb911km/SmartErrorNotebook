@@ -1,4 +1,7 @@
-# API Reference
+# 旧版 IPC API 参考手册
+
+> 新应用代码应使用[新版 IPC API](IPC_API.md)。本文仅记录迁移期继续保留的
+> `legacy_*` 兼容接口。
 
 Smart Error Notebook 通过 Tauri `invoke` 暴露 50 个数据库命令。本参考手册描述命令签名、参数、返回值、错误和可观察行为。
 

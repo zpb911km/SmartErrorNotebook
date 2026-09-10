@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
-import { legacyGetErrorTags } from '../api/legacy'
+import { getErrorTags } from '../api/compat'
 import { ErrorTags } from '../types/legacy'
 import { showInfo } from '../utils/notification'
 
@@ -128,7 +128,7 @@ const removeTag = (index: number) => {
 
 watch(isExpanded, (newVal) => {
   if (newVal) {
-    legacyGetErrorTags()
+    getErrorTags()
       .then((data) => {
         errorTags.value = data
       })
@@ -139,7 +139,7 @@ watch(isExpanded, (newVal) => {
 })
 
 onMounted(() => {
-  legacyGetErrorTags()
+  getErrorTags()
     .then((data) => {
       errorTags.value = data
     })

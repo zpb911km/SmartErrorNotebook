@@ -12,7 +12,9 @@ pub(crate) mod error;
 pub(crate) mod legacy;
 
 pub(crate) use attachment_repository::AttachmentRepository;
-pub(crate) use question_repository::QuestionRepository;
+pub(crate) use question_repository::{
+    QuestionFilter, QuestionRepository, QuestionSort, ReviewState,
+};
 pub(crate) use source_repository::SourceRepository;
 pub(crate) use srs_data_repository::SrsDataRepository;
 pub(crate) use subject_repository::SubjectRepository;

@@ -1667,3 +1667,1044 @@ async fn repository_transaction_executor_commits_and_rolls_back() {
     assert_eq!(subjects.len(), 1);
     assert_eq!(subjects[0].name, "Committed");
 }
+
+#[tokio::test]
+async fn current_ipc_creates_and_reads_a_question_with_related_outputs() {
+    let harness = Harness::new().await;
+    let subject = harness
+        .ok(
+            "create_subject",
+            json!({"request":{"name":"Mathematics","color":"#336699"}}),
+        )
+        .await;
+    let subject_id = subject["subject"]["id"].as_str().unwrap();
+    let source = harness
+        .ok("create_source", json!({"request":{"subjectId":subject_id}}))
+        .await;
+    let source_id = source["source"]["id"].as_str().unwrap();
+    let tag = harness
+        .ok(
+            "create_tag",
+            json!({"request":{"name":"careless","color":"#ff0000"}}),
+        )
+        .await;
+    let attachment = harness
+        .ok(
+            "create_attachment",
+            json!({"request":{
+                "mimeType":"image/png",
+                "base64Data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+            }}),
+        )
+        .await;
+
+    let created_response = harness
+        .ok(
+            "create_question",
+            json!({"request":{
+                "sourceId": source_id,
+                "questionType": "SHORT_ANSWER",
+                "stem": "What is 2 + 2?",
+                "correctAnswer": "4",
+                "explanation": null,
+                "note": "mental arithmetic",
+                "tagIds": [tag["tag"]["id"]],
+                "attachmentIds": [attachment["id"]]
+            }}),
+        )
+        .await;
+    let created = created_response["question"].clone();
+    assert_eq!(created["sourceId"], source_id);
+    assert_eq!(created["questionType"], "SHORT_ANSWER");
+    assert_eq!(created["tagIds"], json!([tag["tag"]["id"]]));
+    assert_eq!(created["attachmentIds"], json!([attachment["id"]]));
+    for relation in ["subject", "source", "tags", "srs", "attachments"] {
+        assert!(created.get(relation).is_none());
+    }
+    let updated = harness
+        .ok(
+            "update_question",
+            json!({"request":{
+                "id":created["id"],
+                "sourceId":source_id,
+                "questionType":"SHORT_ANSWER",
+                "stem":"What is 2 + 2?",
+                "correctAnswer":"4",
+                "explanation":null,
+                "note":"updated note",
+                "tagIds":[tag["tag"]["id"]],
+                "attachmentIds":[attachment["id"]]
+            }}),
+        )
+        .await;
+    assert_eq!(updated["question"]["note"], "updated note");
+    let fetched_question = harness
+        .ok("get_question", json!({"request":{"id":created["id"]}}))
+        .await;
+    assert_eq!(fetched_question["question"]["id"], created["id"]);
+    assert_eq!(
+        fetched_question["question"]["attachmentIds"],
+        created["attachmentIds"]
+    );
+    let fetched_attachment = harness
+        .ok("get_attachment", json!({"request":{"id":attachment["id"]}}))
+        .await;
+    assert_eq!(fetched_attachment["attachment"]["mimeType"], "image/png");
+    assert!(fetched_attachment["attachment"]["base64Data"]
+        .as_str()
+        .unwrap()
+        .starts_with("iVBOR"));
+    assert_eq!(
+        harness
+            .err(
+                "delete_attachment",
+                json!({"request":{"id":attachment["id"]}}),
+            )
+            .await["code"],
+        "RESOURCE_IN_USE"
+    );
+    let srs = harness
+        .ok(
+            "get_srs_data",
+            json!({"request":{
+                "questionId":created["id"],
+                "at":chrono::Utc::now().to_rfc3339()
+            }}),
+        )
+        .await;
+    assert!(srs["srs"]["nextReviewAt"].as_str().unwrap().contains('T'));
+    assert!(created.get("syncStatus").is_none());
+
+    let page = harness
+        .ok("list_questions", json!({"request":{"sort":[]}}))
+        .await;
+    assert_eq!(page["total"], 1);
+    assert_eq!(page["items"][0]["stem"], "What is 2 + 2?");
+    assert_eq!(page["items"][0]["attachmentIds"], created["attachmentIds"]);
+
+    // Legacy remains registered during the migration window.
+    assert_eq!(
+        harness.ok("legacy_get_question_stats", json!({})).await["total"],
+        1
+    );
+    let deleted = harness
+        .ok("delete_question", json!({"request":{"id":created["id"]}}))
+        .await;
+    assert_eq!(deleted["id"], created["id"]);
+}
+
+#[tokio::test]
+async fn current_subject_ipc_uses_operation_specific_wrappers() {
+    let harness = Harness::new().await;
+    let created = harness
+        .ok(
+            "create_subject",
+            json!({"request":{"name":"   ","color":""}}),
+        )
+        .await;
+    let id = created["subject"]["id"].as_str().unwrap();
+    assert_eq!(created["subject"]["name"], "   ");
+    assert_eq!(created["subject"]["color"], "");
+
+    let listed = harness.ok("list_subjects", json!({})).await;
+    assert_eq!(listed["subjects"].as_array().unwrap().len(), 1);
+    assert_eq!(listed["subjects"][0]["id"], id);
+
+    let updated = harness
+        .ok(
+            "update_subject",
+            json!({"request":{"id":id,"name":"","color":"  "}}),
+        )
+        .await;
+    assert_eq!(updated["subject"]["name"], "");
+    assert_eq!(updated["subject"]["color"], "  ");
+
+    let deleted = harness
+        .ok("delete_subject", json!({"request":{"id":id}}))
+        .await;
+    assert_eq!(deleted["id"], id);
+    assert!(harness.ok("list_subjects", json!({})).await["subjects"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
+
+#[tokio::test]
+async fn current_ipc_validates_the_full_request_before_writing() {
+    let harness = Harness::new().await;
+    let error = harness
+        .err(
+            "create_question",
+            json!({"input":{"stem":"old wire shape","correctAnswer":""}}),
+        )
+        .await;
+    assert!(error
+        .as_str()
+        .is_some_and(|message| message.contains("request")));
+
+    let error = harness
+        .err(
+            "create_question",
+            json!({"request":{
+                "sourceId": null,
+                "questionType": "SHORT_ANSWER",
+                "stem": "invalid attachment",
+                "correctAnswer": "",
+                "newAttachments": [{"mimeType":"image/png","base64Data":"not base64"}]
+            }}),
+        )
+        .await;
+    assert!(error
+        .as_str()
+        .is_some_and(|message| message.contains("unknown field `newAttachments`")));
+
+    let error = harness
+        .err(
+            "create_question",
+            json!({"request":{
+                "stem":"inline tag",
+                "correctAnswer":"",
+                "tags":[{"name":"temporary","color":"#000000"}]
+            }}),
+        )
+        .await;
+    assert!(error
+        .as_str()
+        .is_some_and(|message| message.contains("unknown field `tags`")));
+
+    let error = harness
+        .err(
+            "create_attachment",
+            json!({"request":{"mimeType":"image/png","base64Data":"not base64"}}),
+        )
+        .await;
+    assert_eq!(error["code"], "INVALID_ARGUMENT");
+
+    let error = harness
+        .err(
+            "create_attachment",
+            json!({"request":{
+                "mimeType":"image/jpeg",
+                "base64Data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+            }}),
+        )
+        .await;
+    assert_eq!(error["code"], "INVALID_ARGUMENT");
+
+    let oversized = crate::util::codec::encode_base64(&vec![0; 10 * 1024 * 1024 + 1]);
+    let error = harness
+        .err(
+            "create_attachment",
+            json!({"request":{"mimeType":"image/png","base64Data":oversized}}),
+        )
+        .await;
+    assert_eq!(error["code"], "INVALID_ARGUMENT");
+
+    let attachment = harness
+        .ok(
+            "create_attachment",
+            json!({"request":{
+                "mimeType":"image/png",
+                "base64Data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+            }}),
+        )
+        .await;
+    assert_eq!(
+        harness
+            .ok(
+                "delete_attachment",
+                json!({"request":{"id":attachment["id"]}}),
+            )
+            .await["id"],
+        attachment["id"]
+    );
+    assert_eq!(
+        harness
+            .err("get_attachment", json!({"request":{"id":attachment["id"]}}),)
+            .await["code"],
+        "NOT_FOUND"
+    );
+
+    let stats = harness
+        .ok(
+            "get_library_statistics",
+            json!({"request":{"at":chrono::Utc::now().to_rfc3339()}}),
+        )
+        .await;
+    let stats = &stats["statistics"];
+    assert_eq!(stats["questionTotal"], 0);
+    assert_eq!(stats["cardTotal"], 0);
+
+    for (command, request) in [
+        (
+            "create_question",
+            json!({"sourceId":"","stem":"empty source","correctAnswer":""}),
+        ),
+        (
+            "create_source",
+            json!({"subjectId":"","book":null,"chapter":null,"knowledge":null}),
+        ),
+        ("list_sources", json!({"subjectId":""})),
+    ] {
+        assert_eq!(
+            harness.err(command, json!({"request":request})).await["code"],
+            "INVALID_ARGUMENT"
+        );
+    }
+
+    let empty_stem = harness
+        .ok(
+            "create_question",
+            json!({"request":{"stem":"","correctAnswer":""}}),
+        )
+        .await;
+    assert_eq!(empty_stem["question"]["stem"], "");
+    let empty_stem = harness
+        .ok(
+            "update_question",
+            json!({"request":{
+                "id":empty_stem["question"]["id"],
+                "sourceId":null,
+                "questionType":null,
+                "stem":"   ",
+                "correctAnswer":"",
+                "explanation":null,
+                "note":null,
+                "tagIds":[],
+                "attachmentIds":[]
+            }}),
+        )
+        .await;
+    assert_eq!(empty_stem["question"]["stem"], "   ");
+
+    assert_eq!(
+        harness
+            .err(
+                "create_question",
+                json!({"request":{
+                    "questionType":"UNSUPPORTED",
+                    "stem":"type",
+                    "correctAnswer":""
+                }}),
+            )
+            .await["code"],
+        "INVALID_ARGUMENT"
+    );
+    assert_eq!(
+        harness
+            .err(
+                "list_questions",
+                json!({"request":{"filter":{"updatedSince":"invalid"},"sort":[]}}),
+            )
+            .await["code"],
+        "INVALID_ARGUMENT"
+    );
+    assert!(harness
+        .err(
+            "list_questions",
+            json!({"request":{"filter":{"updatedAfter":"2026-01-02T00:00:00Z"},"sort":[]}}),
+        )
+        .await
+        .is_string());
+
+    let missing_tag_id = new_id();
+    let error = harness
+        .err(
+            "create_question",
+            json!({"request":{
+                "stem":"invalid tag reference",
+                "correctAnswer":"",
+                "tagIds":[missing_tag_id]
+            }}),
+        )
+        .await;
+    assert_eq!(error["code"], "MISSING_REFERENCE");
+    assert!(harness.ok("list_tags", json!({})).await["tags"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+
+    let missing_attachment_id = new_id();
+    let error = harness
+        .err(
+            "create_question",
+            json!({"request":{
+                "stem":"invalid attachment reference",
+                "correctAnswer":"",
+                "attachmentIds":[missing_attachment_id]
+            }}),
+        )
+        .await;
+    assert_eq!(error["code"], "MISSING_REFERENCE");
+
+    let error = harness
+        .err(
+            "create_question",
+            json!({"request":{
+                "subjectId":null,
+                "sourceId":null,
+                "stem":"subject is not a question input",
+                "correctAnswer":""
+            }}),
+        )
+        .await;
+    assert!(error
+        .as_str()
+        .is_some_and(|message| message.contains("unknown field `subjectId`")));
+
+    let error = harness
+        .err(
+            "update_question",
+            json!({"request":{
+                "id":new_id(),
+                "subjectId":null,
+                "stem":"subject is not an update input",
+                "correctAnswer":""
+            }}),
+        )
+        .await;
+    assert!(error
+        .as_str()
+        .is_some_and(|message| message.contains("unknown field `subjectId`")));
+
+    let error = harness
+        .err(
+            "list_questions",
+            json!({"request":{"filter":{"subjectId":null},"sort":[]}}),
+        )
+        .await;
+    assert!(error
+        .as_str()
+        .is_some_and(|message| message.contains("unknown field `subjectId`")));
+}
+
+#[tokio::test]
+async fn current_ipc_preserves_distinct_tag_identities() {
+    let harness = Harness::new().await;
+    let first = harness
+        .ok(
+            "create_tag",
+            json!({"request":{"name":"same","color":"#123456"}}),
+        )
+        .await;
+    let second = harness
+        .ok(
+            "create_tag",
+            json!({"request":{"name":"same","color":"#123456"}}),
+        )
+        .await;
+
+    assert_ne!(first["tag"]["id"], second["tag"]["id"]);
+    let tags = harness.ok("list_tags", json!({})).await;
+    assert_eq!(tags["tags"].as_array().unwrap().len(), 2);
+
+    let question = harness
+        .ok(
+            "create_question",
+            json!({"request":{
+                "stem":"reuse tag",
+                "correctAnswer":"answer",
+                "tagIds":[first["tag"]["id"]]
+            }}),
+        )
+        .await;
+    assert_eq!(question["question"]["tagIds"][0], first["tag"]["id"]);
+    assert_eq!(
+        harness.ok("list_tags", json!({})).await["tags"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+
+    let second_id = second["tag"]["id"].as_str().unwrap();
+    let updated = harness
+        .ok(
+            "update_tag",
+            json!({"request":{"id":second_id,"name":"  ","color":""}}),
+        )
+        .await;
+    assert_eq!(updated["tag"]["name"], "  ");
+    assert_eq!(updated["tag"]["color"], "");
+
+    let empty = harness
+        .ok("create_tag", json!({"request":{"name":"","color":"  "}}))
+        .await;
+    assert_eq!(empty["tag"]["name"], "");
+    assert_eq!(empty["tag"]["color"], "  ");
+    let deleted = harness
+        .ok("delete_tag", json!({"request":{"id":second_id}}))
+        .await;
+    assert_eq!(deleted["id"], second_id);
+}
+
+#[tokio::test]
+async fn current_ipc_create_source_always_creates_a_new_source() {
+    let harness = Harness::new().await;
+    let request = json!({"request":{
+        "subjectId": null,
+        "book": "Rust",
+        "chapter": "Ownership",
+        "knowledge": "Borrowing"
+    }});
+    let first = harness.ok("create_source", request.clone()).await;
+    let second = harness.ok("create_source", request).await;
+
+    assert_ne!(first["source"]["id"], second["source"]["id"]);
+    assert_eq!(
+        harness
+            .ok("list_sources", json!({"request":{"subjectId":null}}))
+            .await["sources"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+
+    let first_id = first["source"]["id"].as_str().unwrap();
+    let fetched = harness
+        .ok("get_source", json!({"request":{"id":first_id}}))
+        .await;
+    assert_eq!(fetched["source"]["book"], "Rust");
+    let updated = harness
+        .ok(
+            "update_source",
+            json!({"request":{
+                "id":first_id,
+                "subjectId":null,
+                "book":"Rust",
+                "chapter":"Lifetimes",
+                "knowledge":null
+            }}),
+        )
+        .await;
+    assert_eq!(updated["source"]["chapter"], "Lifetimes");
+    let second_id = second["source"]["id"].as_str().unwrap();
+    let deleted = harness
+        .ok("delete_source", json!({"request":{"id":second_id}}))
+        .await;
+    assert_eq!(deleted["id"], second_id);
+}
+
+#[tokio::test]
+async fn current_ipc_updates_require_complete_replace_state() {
+    let harness = Harness::new().await;
+    let subject = harness
+        .ok(
+            "create_subject",
+            json!({"request":{"name":"Math","color":"blue"}}),
+        )
+        .await;
+    let source = harness
+        .ok(
+            "create_source",
+            json!({"request":{
+                "subjectId":subject["subject"]["id"],
+                "book":"Algebra",
+                "chapter":"Linear equations",
+                "knowledge":"Elimination"
+            }}),
+        )
+        .await;
+    let tag = harness
+        .ok(
+            "create_tag",
+            json!({"request":{"name":"careless","color":"#ff0000"}}),
+        )
+        .await;
+    let question = harness
+        .ok(
+            "create_question",
+            json!({"request":{
+                "sourceId":source["source"]["id"],
+                "questionType":"SHORT_ANSWER",
+                "stem":"Solve x + 1 = 2",
+                "correctAnswer":"x = 1",
+                "explanation":"Subtract one",
+                "note":"Check the sign",
+                "tagIds":[tag["tag"]["id"]],
+                "attachmentIds":[]
+            }}),
+        )
+        .await;
+
+    let complete_question_update = json!({
+        "id":question["question"]["id"],
+        "sourceId":null,
+        "questionType":null,
+        "stem":"Updated",
+        "correctAnswer":"Updated answer",
+        "explanation":null,
+        "note":null,
+        "tagIds":[],
+        "attachmentIds":[]
+    });
+    for field in [
+        "sourceId",
+        "questionType",
+        "explanation",
+        "note",
+        "tagIds",
+        "attachmentIds",
+    ] {
+        let mut request = complete_question_update.clone();
+        request.as_object_mut().unwrap().remove(field);
+        let error = harness
+            .err("update_question", json!({"request":request}))
+            .await;
+        assert!(
+            error
+                .as_str()
+                .is_some_and(|message| message.contains("missing field")),
+            "missing {field} returned {error}"
+        );
+    }
+    let unchanged_question = harness
+        .ok(
+            "get_question",
+            json!({"request":{"id":question["question"]["id"]}}),
+        )
+        .await;
+    assert_eq!(unchanged_question["question"], question["question"]);
+
+    let cleared_question = harness
+        .ok(
+            "update_question",
+            json!({"request":complete_question_update}),
+        )
+        .await;
+    for field in ["sourceId", "questionType", "explanation", "note"] {
+        assert!(cleared_question["question"][field].is_null());
+    }
+    assert_eq!(cleared_question["question"]["tagIds"], json!([]));
+    assert_eq!(cleared_question["question"]["attachmentIds"], json!([]));
+
+    let complete_source_update = json!({
+        "id":source["source"]["id"],
+        "subjectId":null,
+        "book":null,
+        "chapter":null,
+        "knowledge":null
+    });
+    for field in ["subjectId", "book", "chapter", "knowledge"] {
+        let mut request = complete_source_update.clone();
+        request.as_object_mut().unwrap().remove(field);
+        let error = harness
+            .err("update_source", json!({"request":request}))
+            .await;
+        assert!(
+            error
+                .as_str()
+                .is_some_and(|message| message.contains("missing field")),
+            "missing {field} returned {error}"
+        );
+    }
+    let unchanged_source = harness
+        .ok(
+            "get_source",
+            json!({"request":{"id":source["source"]["id"]}}),
+        )
+        .await;
+    assert_eq!(unchanged_source["source"], source["source"]);
+
+    let cleared_source = harness
+        .ok("update_source", json!({"request":complete_source_update}))
+        .await;
+    for field in ["subjectId", "book", "chapter", "knowledge"] {
+        assert!(cleared_source["source"][field].is_null());
+    }
+}
+
+#[tokio::test]
+async fn current_ipc_paginates_questions_after_counting_matches() {
+    let harness = Harness::new().await;
+    let mut ids = Vec::new();
+    for stem in ["first", "second", "third"] {
+        let created = harness
+            .ok(
+                "create_question",
+                json!({"request":{"stem":stem,"correctAnswer":"answer"}}),
+            )
+            .await;
+        ids.push(created["question"]["id"].as_str().unwrap().to_owned());
+    }
+
+    let unsorted = harness.ok("list_questions", json!({"request":{}})).await;
+    assert_eq!(unsorted["total"], 3);
+    assert_eq!(unsorted["items"].as_array().unwrap().len(), 3);
+
+    let page = harness
+        .ok(
+            "list_questions",
+            json!({"request":{"sort":["UPDATED_AT_DESC"],"offset":1,"limit":1}}),
+        )
+        .await;
+    assert_eq!(page["total"], 3);
+    assert_eq!(page["items"].as_array().unwrap().len(), 1);
+
+    ids.sort();
+    let single_level_sort = harness
+        .ok("list_questions", json!({"request":{"sort":["ID_ASC"]}}))
+        .await;
+    assert_eq!(
+        single_level_sort["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ids.iter().map(String::as_str).collect::<Vec<_>>()
+    );
+
+    let multi_sort = harness
+        .ok(
+            "list_questions",
+            json!({"request":{"sort":["ID_DESC","UPDATED_AT_ASC"]}}),
+        )
+        .await;
+    assert_eq!(
+        multi_sort["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ids.iter().rev().map(String::as_str).collect::<Vec<_>>()
+    );
+
+    let unsorted = harness
+        .ok("list_questions", json!({"request":{"sort":[]}}))
+        .await;
+    assert_eq!(unsorted["total"], 3);
+    assert_eq!(unsorted["items"].as_array().unwrap().len(), 3);
+
+    assert_eq!(
+        harness
+            .err(
+                "list_questions",
+                json!({"request":{"sort":["UPDATED_AT_DESC","UNSUPPORTED"]}}),
+            )
+            .await["code"],
+        "INVALID_ARGUMENT"
+    );
+    assert!(harness
+        .err("list_questions", json!({"request":{"sort":"ID_ASC"}}),)
+        .await
+        .as_str()
+        .is_some());
+    assert!(harness
+        .err("list_questions", json!({}))
+        .await
+        .as_str()
+        .is_some_and(|message| message.contains("request")));
+}
+
+#[tokio::test]
+async fn current_ipc_subject_deletion_keeps_sources_and_questions_atomically() {
+    let harness = Harness::new().await;
+    let subject = harness
+        .ok(
+            "create_subject",
+            json!({"request":{"name":"Math","color":"blue"}}),
+        )
+        .await;
+    let subject_id = subject["subject"]["id"].as_str().unwrap();
+    let source = harness
+        .ok(
+            "create_source",
+            json!({"request":{"subjectId":subject_id,"book":"Algebra"}}),
+        )
+        .await;
+    let source_id = source["source"]["id"].as_str().unwrap();
+    let question = harness
+        .ok(
+            "create_question",
+            json!({"request":{"sourceId":source_id,"stem":"1+1","correctAnswer":"2"}}),
+        )
+        .await;
+    let question_id = question["question"]["id"].as_str().unwrap();
+
+    let empty_subject = harness
+        .ok(
+            "create_subject",
+            json!({"request":{"name":"Empty","color":"gray"}}),
+        )
+        .await;
+    let empty_subject_id = empty_subject["subject"]["id"].as_str().unwrap();
+    harness
+        .ok("delete_subject", json!({"request":{"id":empty_subject_id}}))
+        .await;
+    let still_classified = harness
+        .ok("get_question", json!({"request":{"id":question_id}}))
+        .await;
+    assert_eq!(still_classified["question"]["sourceId"], source_id);
+
+    harness
+        .ok("delete_subject", json!({"request":{"id":subject_id}}))
+        .await;
+    let retained = harness
+        .ok("get_question", json!({"request":{"id":question_id}}))
+        .await;
+    assert_eq!(retained["question"]["sourceId"], source_id);
+    let retained_source = harness
+        .ok("get_source", json!({"request":{"id":source_id}}))
+        .await;
+    assert_eq!(retained_source["source"]["id"], source_id);
+    assert_eq!(
+        retained_source["source"]["subjectId"],
+        serde_json::Value::Null
+    );
+    assert!(harness.ok("list_subjects", json!({})).await["subjects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|subject| subject["id"] != subject_id));
+}
+
+#[tokio::test]
+async fn current_ipc_batch_source_delete_validates_before_mutating() {
+    let harness = Harness::new().await;
+    let source = harness
+        .ok("create_source", json!({"request":{"book":"kept"}}))
+        .await;
+    let source_id = source["source"]["id"].as_str().unwrap();
+    let question = harness
+        .ok(
+            "create_question",
+            json!({"request":{"sourceId":source_id,"stem":"kept","correctAnswer":"answer"}}),
+        )
+        .await;
+    let question_id = question["question"]["id"].as_str().unwrap();
+    harness
+        .ok("delete_sources", json!({"request":{"ids":[]}}))
+        .await;
+    assert_eq!(
+        harness
+            .ok("get_source", json!({"request":{"id":source_id}}))
+            .await["source"]["id"],
+        source_id
+    );
+    let missing_id = new_id();
+    let error = harness
+        .err(
+            "delete_sources",
+            json!({"request":{"ids":[source_id, missing_id]}}),
+        )
+        .await;
+    assert_eq!(error["code"], "NOT_FOUND");
+    assert_eq!(error["details"]["id"], missing_id);
+    assert_eq!(
+        harness
+            .ok("get_source", json!({"request":{"id":source_id}}))
+            .await["source"]["id"],
+        source_id
+    );
+    harness
+        .ok("delete_sources", json!({"request":{"ids":[source_id]}}))
+        .await;
+    assert_eq!(
+        harness
+            .ok("get_question", json!({"request":{"id":question_id}}))
+            .await["question"]["sourceId"],
+        serde_json::Value::Null
+    );
+}
+
+#[tokio::test]
+async fn current_ipc_composes_review_operations_from_question_and_srs_use_cases() {
+    let harness = Harness::new().await;
+    let first = harness
+        .ok(
+            "create_question",
+            json!({"request":{"stem":"due question","correctAnswer":"answer"}}),
+        )
+        .await;
+    harness
+        .ok(
+            "create_question",
+            json!({"request":{"stem":"future question","correctAnswer":"answer"}}),
+        )
+        .await;
+    let first_id = first["question"]["id"].as_str().unwrap();
+    for (command, arguments) in [
+        (
+            "submit_review",
+            json!({"input":{"questionId":first_id,"feedback":0.5}}),
+        ),
+        ("reset_review_progress", json!({"questionId":first_id})),
+        ("get_library_statistics", json!({})),
+    ] {
+        assert!(harness
+            .err(command, arguments)
+            .await
+            .as_str()
+            .is_some_and(|message| message.contains("request")));
+    }
+
+    for (command, request) in [
+        (
+            "submit_review",
+            json!({"questionId":first_id,"feedback":0.5,"reviewedAt":"invalid"}),
+        ),
+        (
+            "reset_review_progress",
+            json!({"questionId":first_id,"resetAt":"invalid"}),
+        ),
+        (
+            "get_srs_data",
+            json!({"questionId":first_id,"at":"invalid"}),
+        ),
+        ("list_srs_data", json!({"at":"invalid"})),
+        ("get_library_statistics", json!({"at":"invalid"})),
+    ] {
+        assert_eq!(
+            harness.err(command, json!({"request":request})).await["code"],
+            "INVALID_ARGUMENT"
+        );
+    }
+
+    assert_eq!(
+        harness
+            .ok(
+                "get_library_statistics",
+                json!({"request":{"at":"2100-01-01T00:00:00Z"}}),
+            )
+            .await["statistics"]["dueCount"],
+        2
+    );
+
+    let before_invalid_reset = harness
+        .ok(
+            "get_srs_data",
+            json!({"request":{"questionId":first_id,"at":chrono::Utc::now().to_rfc3339()}}),
+        )
+        .await;
+    let invalid_reset = harness
+        .err(
+            "reset_review_progress",
+            json!({"request":{
+                "questionId":first_id,
+                "resetAt":"1970-01-01T00:00:00Z"
+            }}),
+        )
+        .await;
+    assert_eq!(invalid_reset["code"], "INVALID_ARGUMENT");
+    let after_invalid_reset = harness
+        .ok(
+            "get_srs_data",
+            json!({"request":{"questionId":first_id,"at":chrono::Utc::now().to_rfc3339()}}),
+        )
+        .await;
+    assert_eq!(after_invalid_reset["srs"], before_invalid_reset["srs"]);
+
+    harness
+        .ok(
+            "reset_review_progress",
+            json!({"request":{
+                "questionId":first_id,
+                "resetAt":chrono::Utc::now().to_rfc3339()
+            }}),
+        )
+        .await;
+    let due = harness
+        .ok(
+            "list_questions",
+            json!({"request":{
+                "filter":{"reviewState":"DUE"},
+                "sort":["MASTERY_ASC"],
+                "limit":1
+            }}),
+        )
+        .await;
+    assert_eq!(due["total"], 1);
+    assert_eq!(due["items"].as_array().unwrap().len(), 1);
+    assert_eq!(due["items"][0]["id"], first_id);
+    assert_eq!(due["items"][0]["attachmentIds"], json!([]));
+
+    let all = harness
+        .ok(
+            "list_questions",
+            json!({"request":{"sort":["MASTERY_ASC"],"limit":1}}),
+        )
+        .await;
+    assert_eq!(all["total"], 2);
+    assert_eq!(all["items"].as_array().unwrap().len(), 1);
+
+    let review = harness
+        .ok(
+            "submit_review",
+            json!({"request":{
+                "questionId":first_id,
+                "feedback":0.5,
+                "reviewedAt":chrono::Utc::now().to_rfc3339()
+            }}),
+        )
+        .await;
+    assert_eq!(review["srs"]["reviewCount"], 2);
+    assert!(review["nextIntervalDays"].as_f64().unwrap() > 0.0);
+
+    assert!(harness
+        .ok(
+            "list_questions",
+            json!({"request":{"filter":{"reviewState":"DUE"},"sort":[]}}),
+        )
+        .await["items"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    let at = chrono::Utc::now().to_rfc3339();
+    let srs_items = harness
+        .ok("list_srs_data", json!({"request":{"at":&at}}))
+        .await;
+    assert_eq!(srs_items["items"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        harness
+            .err(
+                "get_srs_data",
+                json!({"request":{"questionId":new_id(),"at":&at}}),
+            )
+            .await["code"],
+        "NOT_FOUND"
+    );
+    let statistics = harness
+        .ok(
+            "get_library_statistics",
+            json!({"request":{"at":chrono::Utc::now().to_rfc3339()}}),
+        )
+        .await;
+    let statistics = &statistics["statistics"];
+    assert_eq!(statistics["questionTotal"], 2);
+    assert_eq!(statistics["cardTotal"], 2);
+    assert_eq!(statistics["dueCount"], 0);
+    assert_eq!(statistics["newCardCount"], 1);
+    assert_eq!(statistics["totalReviews"], 3);
+}
+
+#[tokio::test]
+async fn current_ipc_preserves_the_domain_interval_for_an_immediate_lapse() {
+    let harness = Harness::new().await;
+    let question = harness
+        .ok(
+            "create_question",
+            json!({"request":{"stem":"lapsed question","correctAnswer":"answer"}}),
+        )
+        .await;
+    let question_id = question["question"]["id"].as_str().unwrap();
+    let reviewed_at = chrono::Utc::now().to_rfc3339();
+
+    let review = harness
+        .ok(
+            "submit_review",
+            json!({"request":{
+                "questionId":question_id,
+                "feedback":0.0,
+                "reviewedAt":reviewed_at
+            }}),
+        )
+        .await;
+
+    assert_eq!(review["nextIntervalDays"], 1.0);
+    assert_eq!(review["srs"]["nextReviewAt"], reviewed_at);
+    assert_eq!(review["srs"]["reviewCount"], 2);
+    assert_eq!(review["srs"]["isDue"], true);
+}

@@ -155,7 +155,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { legacyGetDueCount } from '../api/legacy'
+import { getDueCount } from '../api/compat'
 
 // 轮播组件逻辑
 const currentSlide = ref(0)
@@ -212,7 +212,7 @@ onMounted(() => {
   if (leftArrow) leftArrow.addEventListener('click', prevSlide)
   if (rightArrow) rightArrow.addEventListener('click', nextSlide)
 
-  legacyGetDueCount().then((count) => {
+  getDueCount().then((count) => {
     console.log('due count:', count)
     hasDue.value = count > 0
     // hasDue.value = true

@@ -1,4 +1,4 @@
-import { legacyGetSubjects } from '../api/legacy'
+import { getSubjects } from '../api/compat'
 import { llm } from '../services'
 import { ImageContent, TextContent } from '../services'
 import { QuestionType } from '../types/legacy'
@@ -7,7 +7,7 @@ import { format } from './formatter'
 // ==================== 提示词构造辅助函数 ====================
 const getExistingSubjects = async (): Promise<string[]> => {
   try {
-    const data = await legacyGetSubjects()
+    const data = await getSubjects()
     return data.map((s) => s.name)
   } catch (error) {
     console.error('获取科目失败：', error)

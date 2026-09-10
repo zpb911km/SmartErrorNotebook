@@ -1,19 +1,20 @@
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, ExprTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Set,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, EntityTrait, ExprTrait,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
 };
 use uuid::Uuid;
 
-use crate::domain::model::Question;
+use crate::domain::model::{Question, SrsData};
 use crate::domain::repository::{
     error::{
         CorruptedData, EntityReference, MissingReference, RepositoryCountError,
         RepositoryDeleteError, RepositoryFindError, RepositoryInfrastructureError,
         RepositorySaveError,
     },
-    legacy, QuestionRepository,
+    legacy, QuestionFilter, QuestionRepository, QuestionSort, ReviewState,
 };
 
 use super::super::database::entity::{
@@ -23,6 +24,14 @@ use super::super::database::entity::{
 use super::{timestamp, uuid};
 
 const RELATION_QUERY_BATCH_SIZE: usize = 500;
+
+fn mastery_at(value: &(Question, Option<SrsData>), at: chrono::DateTime<chrono::Utc>) -> f32 {
+    value
+        .1
+        .as_ref()
+        .map(|srs| srs.retrievability_at(at.timestamp()))
+        .unwrap_or_default()
+}
 
 pub struct SeaOrmQuestionRepository<'c, C: ConnectionTrait> {
     connection: &'c C,
@@ -355,8 +364,16 @@ impl<'c, C: ConnectionTrait> QuestionRepository for SeaOrmQuestionRepository<'c,
         self.try_into_questions(models).await
     }
 
-    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Question>, RepositoryFindError> {
-        let Some(value) = question::Entity::find_by_id(*id)
+    async fn find_by_id(
+        &self,
+        id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<Option<Question>, RepositoryFindError> {
+        let mut query = question::Entity::find_by_id(*id);
+        if !include_deleted {
+            query = query.filter(question::Column::DeletedAt.is_null());
+        }
+        let Some(value) = query
             .one(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query question", error))?
@@ -364,6 +381,92 @@ impl<'c, C: ConnectionTrait> QuestionRepository for SeaOrmQuestionRepository<'c,
             return Ok(None);
         };
         Ok(Some(self.try_into_question(value).await?))
+    }
+
+    async fn find_filtered(
+        &self,
+        filter: QuestionFilter,
+        sort: Vec<QuestionSort>,
+        offset: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<Vec<Question>, RepositoryFindError> {
+        if !sort.iter().any(|value| {
+            matches!(
+                value,
+                QuestionSort::MasteryAsc(_) | QuestionSort::MasteryDesc(_)
+            )
+        }) {
+            let mut query = self.filtered_query(&filter);
+            for value in &sort {
+                query = match value {
+                    QuestionSort::UpdatedAtAsc => query.order_by_asc(question::Column::UpdatedAt),
+                    QuestionSort::UpdatedAtDesc => query.order_by_desc(question::Column::UpdatedAt),
+                    QuestionSort::IdAsc => query.order_by_asc(question::Column::Id),
+                    QuestionSort::IdDesc => query.order_by_desc(question::Column::Id),
+                    QuestionSort::MasteryAsc(_) | QuestionSort::MasteryDesc(_) => {
+                        unreachable!("mastery sorting is handled in memory")
+                    }
+                };
+            }
+            if let Some(offset) = offset {
+                query = query.offset(offset as u64);
+            }
+            if let Some(limit) = limit {
+                query = query.limit(limit as u64);
+            }
+            let models = query.all(self.connection).await.map_err(|error| {
+                RepositoryInfrastructureError::new("list filtered questions", error)
+            })?;
+            return self.try_into_questions(models).await;
+        }
+
+        let models = self
+            .filtered_query(&filter)
+            .all(self.connection)
+            .await
+            .map_err(|error| {
+                RepositoryInfrastructureError::new("list filtered questions", error)
+            })?;
+        let srs_by_id = self.srs_for_question_models(&models).await?;
+        let mut items = self
+            .try_into_questions(models)
+            .await?
+            .into_iter()
+            .map(|question| {
+                let srs = srs_by_id.get(&question.id).cloned();
+                (question, srs)
+            })
+            .collect::<Vec<_>>();
+        items.sort_by(|a, b| {
+            for value in &sort {
+                let ordering = match value {
+                    QuestionSort::UpdatedAtAsc => {
+                        a.0.metadata.updated_at.cmp(&b.0.metadata.updated_at)
+                    }
+                    QuestionSort::UpdatedAtDesc => {
+                        b.0.metadata.updated_at.cmp(&a.0.metadata.updated_at)
+                    }
+                    QuestionSort::MasteryAsc(at) => {
+                        mastery_at(a, *at).total_cmp(&mastery_at(b, *at))
+                    }
+                    QuestionSort::MasteryDesc(at) => {
+                        mastery_at(b, *at).total_cmp(&mastery_at(a, *at))
+                    }
+                    QuestionSort::IdAsc => a.0.id.cmp(&b.0.id),
+                    QuestionSort::IdDesc => b.0.id.cmp(&a.0.id),
+                };
+                if ordering != Ordering::Equal {
+                    return ordering;
+                }
+            }
+            Ordering::Equal
+        });
+        Ok(items
+            .into_iter()
+            .skip(offset.unwrap_or_default())
+            .take(limit.unwrap_or(usize::MAX))
+            .map(|(question, _)| question)
+            .collect())
     }
 
     async fn count_all(&self, include_deleted: bool) -> Result<u64, RepositoryCountError> {
@@ -375,6 +478,16 @@ impl<'c, C: ConnectionTrait> QuestionRepository for SeaOrmQuestionRepository<'c,
             .count(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("count questions", error))?)
+    }
+
+    async fn count_filtered(&self, filter: QuestionFilter) -> Result<usize, RepositoryFindError> {
+        Ok(self
+            .filtered_query(&filter)
+            .count(self.connection)
+            .await
+            .map_err(|error| {
+                RepositoryInfrastructureError::new("count filtered questions", error)
+            })? as usize)
     }
 }
 impl<'c, C: ConnectionTrait> SeaOrmQuestionRepository<'c, C> {
@@ -452,6 +565,109 @@ impl<'c, C: ConnectionTrait> SeaOrmQuestionRepository<'c, C> {
             })?;
         }
         Ok(())
+    }
+
+    fn filtered_query(&self, filter: &QuestionFilter) -> Select<question::Entity> {
+        let mut query = question::Entity::find().filter(question::Column::DeletedAt.is_null());
+        if !filter.source_ids.is_empty() {
+            query =
+                query.filter(question::Column::SourceId.is_in(filter.source_ids.iter().copied()));
+        }
+        if let Some(search) = filter.search.as_ref().filter(|value| !value.is_empty()) {
+            query = query.filter(
+                Condition::any()
+                    .add(question::Column::Stem.contains(search))
+                    .add(question::Column::Explanation.contains(search))
+                    .add(question::Column::Note.contains(search)),
+            );
+        }
+        if filter.subject_id.is_some()
+            || filter.book.is_some()
+            || filter.chapter.is_some()
+            || filter.knowledge.is_some()
+        {
+            query = query
+                .join(
+                    sea_orm::JoinType::InnerJoin,
+                    question::Relation::Source.def(),
+                )
+                .filter(source::Column::DeletedAt.is_null());
+            if let Some(value) = filter.subject_id {
+                query = query.filter(source::Column::SubjectId.eq(value));
+            }
+            if let Some(value) = filter.book.as_ref() {
+                query = query.filter(source::Column::Book.eq(value));
+            }
+            if let Some(value) = filter.chapter.as_ref() {
+                query = query.filter(source::Column::Chapter.eq(value));
+            }
+            if let Some(value) = filter.knowledge.as_ref() {
+                query = query.filter(source::Column::Knowledge.eq(value));
+            }
+        }
+        if !filter.tag_ids.is_empty() {
+            query = query
+                .join(
+                    sea_orm::JoinType::InnerJoin,
+                    question::Relation::QuestionTagCrossRef.def(),
+                )
+                .join(
+                    sea_orm::JoinType::InnerJoin,
+                    question_tag_cross_ref::Relation::Tag.def(),
+                )
+                .filter(tag::Column::Id.is_in(filter.tag_ids.iter().copied()))
+                .filter(tag::Column::DeletedAt.is_null())
+                .distinct();
+        }
+        if let Some(value) = filter.updated_since {
+            query = query.filter(question::Column::UpdatedAt.gte(value));
+        }
+        if let Some(state) = filter.review_state {
+            query = query
+                .join(
+                    sea_orm::JoinType::InnerJoin,
+                    question::Relation::SrsData.def(),
+                )
+                .filter(srs_data::Column::DeletedAt.is_null());
+            query = match state {
+                ReviewState::Due(at) => query.filter(
+                    Condition::any()
+                        .add(srs_data::Column::NextReviewAt.is_null())
+                        .add(srs_data::Column::NextReviewAt.lte(at)),
+                ),
+                ReviewState::NotDue(at) => query.filter(srs_data::Column::NextReviewAt.gt(at)),
+            };
+        }
+        query
+    }
+
+    async fn srs_for_question_models(
+        &self,
+        models: &[question::Model],
+    ) -> Result<HashMap<Uuid, SrsData>, RepositoryFindError> {
+        let mut result = HashMap::new();
+        for batch in models
+            .iter()
+            .map(|model| model.id)
+            .collect::<Vec<_>>()
+            .chunks(RELATION_QUERY_BATCH_SIZE)
+        {
+            for model in srs_data::Entity::find()
+                .filter(srs_data::Column::QuestionId.is_in(batch.iter().copied()))
+                .filter(srs_data::Column::DeletedAt.is_null())
+                .all(self.connection)
+                .await
+                .map_err(|error| {
+                    RepositoryInfrastructureError::new("query question SRS data", error)
+                })?
+            {
+                let id = model.question_id;
+                let data = SrsData::try_from(model)
+                    .map_err(|error| CorruptedData::new("srs_data", id, error))?;
+                result.insert(id, data);
+            }
+        }
+        Ok(result)
     }
 
     async fn try_into_questions(

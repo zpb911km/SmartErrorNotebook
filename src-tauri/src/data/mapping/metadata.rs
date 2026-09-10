@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use chrono::{DateTime, Utc};
 
 use crate::domain::model::{Metadata, SyncStatus};

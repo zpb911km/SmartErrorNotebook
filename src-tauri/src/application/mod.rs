@@ -1,13 +1,15 @@
-#![allow(dead_code)] // Staged internal API; Tauri adapters are intentionally not registered yet.
+#![allow(dead_code)] // Internal use cases include primitives retained for compatibility work.
 
 pub(crate) mod attachment;
-pub(crate) mod command;
-pub(crate) mod query;
 pub(crate) mod question;
 pub(crate) mod source;
 pub(crate) mod srs_data;
 pub(crate) mod subject;
 pub(crate) mod tag;
+
+pub(crate) mod command;
+pub(crate) mod query;
+pub(crate) mod result;
 
 pub(crate) mod error;
 

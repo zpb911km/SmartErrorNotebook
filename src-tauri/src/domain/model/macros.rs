@@ -10,7 +10,14 @@ macro_rules! pub_string_enum {
         }
 
         impl $name {
-            pub fn as_str(&self) -> &str {
+            pub fn from_str(value: &str) -> Result<Self, &'static str> {
+                match value {
+                    $($value => Ok(Self::$variant),)+
+                    _ => Err("invalid value"),
+                }
+            }
+
+            pub fn as_str(&self) -> &'static str {
                 match self {
                     $(Self::$variant => $value,)+
                 }
@@ -21,18 +28,13 @@ macro_rules! pub_string_enum {
             type Err = &'static str;
 
             fn from_str(value: &str) -> Result<Self, Self::Err> {
-                match value {
-                    $($value => Ok(Self::$variant),)+
-                    _ => Err("invalid value"),
-                }
+                Self::from_str(value)
             }
         }
 
         impl From<$name> for &str {
             fn from(value: $name) -> Self {
-                match value {
-                    $($name::$variant => $value,)+
-                }
+                value.as_str()
             }
         }
 

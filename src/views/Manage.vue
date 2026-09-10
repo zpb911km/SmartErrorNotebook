@@ -406,16 +406,16 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
-  legacyCreateSRSData,
-  legacyGetAllSRSStatus,
-  legacyGetBooks,
-  legacyGetChapters,
-  legacyGetFullErrorTags,
-  legacyGetKnowledges,
-  legacyGetQuestions,
-  legacyGetSubjects,
-  legacyGetSources
-} from '../api/legacy'
+  ensureQuestionSrs,
+  getAllSrs,
+  getBooks,
+  getChapters,
+  getFullErrorTags,
+  getKnowledges,
+  getQuestions,
+  getSubjects,
+  getSources
+} from '../api/compat'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
 import { importStore, clearPendingImport } from '../stores/importStore'
@@ -688,7 +688,7 @@ const handleBookClick = async (book: string) => {
   // 加载该书名的章节
   if (filters.value.subject_id && book) {
     try {
-      chapters.value = await legacyGetChapters(book, filters.value.subject_id)
+      chapters.value = await getChapters(book, filters.value.subject_id)
     } catch (error) {
       console.error('获取章节失败:', error)
       chapters.value = []
@@ -716,7 +716,7 @@ const handleChapterClick = async (chapter: string) => {
   if (filters.value.subject_id && currentBook.value && chapter) {
     try {
       console.log('开始获取知识点...')
-      knowledges.value = await legacyGetKnowledges(
+      knowledges.value = await getKnowledges(
         currentBook.value,
         chapter,
         filters.value.subject_id
@@ -752,7 +752,7 @@ const showCascadeMenuForSubject = async (subjectId: string) => {
 
   // 加载当前科目的书名
   try {
-    books.value = await legacyGetBooks(subjectId)
+    books.value = await getBooks(subjectId)
   } catch (error) {
     console.error('获取书名失败:', error)
     books.value = []
@@ -862,10 +862,10 @@ const fetchData = async () => {
     // 并行获取科目、错题、标签和来源数据
     const [subjectsData, questionsData, tagsData, sourcesData] =
       await Promise.all([
-        legacyGetSubjects(),
-        legacyGetQuestions(),
-        legacyGetFullErrorTags(),
-        legacyGetSources()
+        getSubjects(),
+        getQuestions(),
+        getFullErrorTags(),
+        getSources()
       ])
 
     subjects.value = subjectsData
@@ -877,7 +877,7 @@ const fetchData = async () => {
     const srsMap = new Map<string, any>()
     const questionsWithoutSRS: any[] = []
 
-    const allSRS = await legacyGetAllSRSStatus()
+    const allSRS = await getAllSrs()
     for (const srs of allSRS) {
       srsMap.set(srs.question_id, srs)
       srs.question_id &&
@@ -903,7 +903,7 @@ const fetchData = async () => {
       const createPromises = questionsWithoutSRS.map(async (question: any) => {
         try {
           // 使用 FSRS-5 默认初始难度
-          const srsData = await legacyCreateSRSData(question.id)
+          const srsData = await ensureQuestionSrs(question.id)
           srsMap.set(question.id, srsData)
           console.log(`为题目 ${question.id} 创建 SRS 数据成功:`, srsData)
         } catch (error) {

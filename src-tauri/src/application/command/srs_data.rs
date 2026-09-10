@@ -7,3 +7,9 @@ pub(crate) struct UpdateSrsDataCommand {
     pub review_feedback: f32,
     pub reviewed_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ResetSrsDataCommand {
+    pub question_id: Uuid,
+    pub reset_at: DateTime<Utc>,
+}

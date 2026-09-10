@@ -373,8 +373,8 @@ impl<'c, C: ConnectionTrait> legacy_repository::SyncRepository for SeaOrmSyncRep
         table_name: Option<String>,
         id: String,
     ) -> Result<legacy_repository::repository_model::sync::SyncRecordOutput, String> {
-        let parsed_id =
-            uuid::Uuid::parse_str(&id).map_err(|_| format!("invalid record id: {id}"))?;
+        let parsed_id = crate::util::parsing::parse_uuid(&id, "record id")
+            .map_err(|error| error.to_string())?;
         self.output_for(parsed_id, table_name.as_deref())
             .await
             .ok_or_else(|| match table_name {
@@ -391,8 +391,8 @@ impl<'c, C: ConnectionTrait> legacy_repository::SyncRepository for SeaOrmSyncRep
         version: i32,
     ) -> Result<String, String> {
         let original_id = id;
-        let id = uuid::Uuid::parse_str(&original_id)
-            .map_err(|_| format!("invalid record id: {original_id}"))?;
+        let id = crate::util::parsing::parse_uuid(&original_id, "record id")
+            .map_err(|error| error.to_string())?;
         let table_name = match table_name {
             Some(table_name) => table_name,
             None => self

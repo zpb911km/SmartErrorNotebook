@@ -1,3 +1,4 @@
-pub mod codec;
+pub(crate) mod codec;
+pub(crate) mod parsing;
 
-pub mod legacy;
+pub(crate) mod legacy;

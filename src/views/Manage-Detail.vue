@@ -16,6 +16,7 @@
           v-ripple
           class="action-btn edit-btn glare-btn"
           @click="toggleEditMode"
+          :disabled="saving || detailLoadState !== 'ready'"
         >
           <Icon name="square-pen" :size="16" class="btn-icon" />
           <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
@@ -29,6 +30,12 @@
           <span class="btn-label">删除</span>
         </button>
       </div>
+    </div>
+
+    <p v-if="detailLoadState === 'loading'" role="status">正在加载详情…</p>
+    <div v-else-if="detailLoadState === 'error'" role="alert">
+      详情未完整加载，暂时无法编辑。
+      <button :disabled="saving" @click="fetchErrorDetail">重试加载</button>
     </div>
 
     <div v-if="errorDetail" class="detail-content">
@@ -50,10 +57,10 @@
         <div class="form-group">
           <label>来源信息</label>
           <SourceSelector
+            v-model="sourceSelection"
             :disable="!isEditing || sourceSelectorDisabled"
-            :currentSourceId="editForm.source_id"
+            :sources="sources"
             :subjectId="editForm.subject_id"
-            @select="handleSourceSelect"
           />
         </div>
 
@@ -355,7 +362,7 @@
         v-ripple
         class="save-btn glare-btn"
         @click="saveChanges"
-        :disabled="saving"
+        :disabled="saving || detailLoadState !== 'ready'"
       >
         {{ saving ? '保存中...' : '保存修改' }}
       </button>
@@ -400,18 +407,22 @@ marked.use(
 import {
   buildDataUrl,
   fileToBase64,
-  legacyCreateAttachmentsForQuestion,
-  legacyCreateErrorTagsForQuestion,
-  legacyDeleteAttachment,
-  legacyDeleteErrorTagById,
-  legacyDeleteQuestion,
-  legacyGetAttachmentsByQuestion,
-  legacyGetErrorTagByQuestionId,
-  legacyGetQuestion,
-  legacyGetQuestionSRSStatus,
-  legacyGetSubjects,
-  legacyUpdateQuestion
-} from '../api/legacy'
+  removeQuestion,
+  getAttachmentsForQuestion,
+  getErrorTagsForQuestion,
+  getQuestionForUi,
+  getQuestionSrs,
+  getSubjects,
+  saveQuestionAggregate,
+  CompatibilityOperationError
+} from '../api/compat'
+import { listSources } from '../api/source'
+import type { Source } from '../types/source'
+import {
+  selectSourceValues,
+  type SourceSelection
+} from '../services/sourceSelection'
+import { materializeSourceSelection } from '../services/sourcePersistence'
 import type {
   ErrorQuestion,
   Subject,
@@ -440,6 +451,8 @@ const errorTags = ref<ErrorTagType[]>([])
 const srsData = ref<any>(null)
 const questionImages = ref<Attachment[]>([])
 const answerImages = ref<Attachment[]>([])
+const sources = ref<Source[]>([])
+const sourceSelection = ref<SourceSelection>({ kind: 'none' })
 
 // 图片上传相关
 const imageInput = ref<HTMLInputElement | null>(null)
@@ -483,139 +496,54 @@ const editForm = ref({
 // 弹窗状态
 const showDeleteConfirm = ref(false)
 
-// 获取错题详情
+const detailLoadState = ref<'loading' | 'ready' | 'error'>('loading')
+let detailLoadVersion = 0
+
+// Publish editable data only after every required resource has loaded.
 const fetchErrorDetail = async () => {
-  console.log('========== 开始获取错题详情 ==========')
-  console.log('错题ID:', errorId.value)
-
+  const version = ++detailLoadVersion
+  detailLoadState.value = 'loading'
   try {
-    const question = await legacyGetQuestion(errorId.value)
-    console.log('========== 后端返回的原始数据 ==========')
-    console.log('question 对象:', question)
-    console.log('question 类型:', typeof question)
-    console.log('question.keys:', Object.keys(question))
+    const [question, tags, attachments, srs, loadedSources] = await Promise.all([
+      getQuestionForUi(errorId.value),
+      getErrorTagsForQuestion(errorId.value),
+      getAttachmentsForQuestion(errorId.value),
+      getQuestionSrs(errorId.value).catch(() => null),
+      listSources()
+    ])
+    if (version !== detailLoadVersion) return false
 
-    // 详细记录所有字段
-    console.log('========== 字段详细检查 ==========')
-    console.log('question.id:', (question as any).id)
-    console.log('question.subjectid:', (question as any).subjectid)
-    console.log('question.subject_id:', (question as any).subject_id)
-    console.log('question.sourceid:', (question as any).sourceid)
-    console.log('question.source_id:', (question as any).source_id)
-    console.log('question.userid:', (question as any).userid)
-    console.log('question.user_id:', (question as any).user_id)
-    console.log('question.prompt:', (question as any).prompt)
-    console.log('question.type_:', (question as any).type_)
-    console.log('question.type:', (question as any).type)
-    console.log('question.answer:', (question as any).answer)
-    console.log('question.analysis:', (question as any).analysis)
-    console.log('question.error_note:', (question as any).error_note)
-
-    // 处理后端返回的字段映射（subjectid -> subject_id, sourceid -> source_id 等）
-    // 注意：使用 ?? 运算符以正确保留 null 值
-    const mappedQuestion = {
-      ...question,
-      subject_id: (question as any).subjectid ?? question.subject_id,
-      source_id: (question as any).sourceid ?? question.source_id,
-      user_id: (question as any).userid ?? question.user_id,
-      error_note: (question as any).error_note || '',
-      created_at: (question as any).created_at,
-      updated_at: (question as any).updated_at
-    } as any
-
-    console.log('========== 映射后的数据 ==========')
-    console.log('mappedQuestion:', mappedQuestion)
-    console.log('mappedQuestion.subject_id:', mappedQuestion.subject_id)
-    console.log('mappedQuestion.source_id:', mappedQuestion.source_id)
-    console.log(
-      'mappedQuestion.source_id 类型:',
-      typeof mappedQuestion.source_id
-    )
-    console.log('mappedQuestion.source_id 是否为空:', !mappedQuestion.source_id)
-
-    errorDetail.value = mappedQuestion
-    console.log('errorDetail.value 已设置')
-
-    // 初始化编辑表单
-    // 注意：source_id 使用 ?? 保留 null 值，避免 || 运算符将 null 转换为 undefined
+    errorDetail.value = question
+    sources.value = loadedSources
+    sourceSelection.value = question.source_id
+      ? { kind: 'existing', sourceId: question.source_id }
+      : selectSourceValues(loadedSources, question.subject_id, null, null, null)
     editForm.value = {
-      subject_id: mappedQuestion.subject_id,
-      source_id: mappedQuestion.source_id ?? '',
-      prompt: mappedQuestion.prompt,
-      type: (question as any).type_ || mappedQuestion.type,
-      answer: mappedQuestion.answer || '',
-      analysis: mappedQuestion.analysis || '',
-      error_note: mappedQuestion.error_note || ''
+      subject_id: question.subject_id,
+      source_id: question.source_id ?? '',
+      prompt: question.prompt,
+      type: question.type,
+      answer: question.answer ?? '',
+      analysis: question.analysis ?? '',
+      error_note: question.error_note ?? ''
     }
-
-    console.log('========== 编辑表单初始化 ==========')
-    console.log('editForm.value:', editForm.value)
-    console.log('editForm.value.subject_id:', editForm.value.subject_id)
-    console.log('editForm.value.source_id:', editForm.value.source_id)
-    console.log(
-      'editForm.value.source_id 类型:',
-      typeof editForm.value.source_id
-    )
-    console.log('editForm.value.source_id 是否为空:', !editForm.value.source_id)
-
-    // 获取标签
-    try {
-      console.log('开始获取标签...')
-      const allTags = await legacyGetErrorTagByQuestionId(errorId.value)
-      console.log('获取到的标签数量:', allTags.length)
-      errorTags.value = allTags
-    } catch (error) {
-      console.error('获取标签失败:', error)
-    }
-
-    // 获取题目图片
-    try {
-      console.log('开始获取题目附件...')
-      console.log('错题ID:', errorId.value)
-
-      if (!errorId.value) {
-        console.error('错题ID为空，无法获取附件')
-        return
-      }
-
-      const attachments = await legacyGetAttachmentsByQuestion(errorId.value)
-      console.log('获取到的附件:', attachments)
-
-      // 分类附件（注意：后端字段名是 type_ 不是 type）
-      questionImages.value = attachments.filter(
-        (a: any) => a.type_ === 'original'
-      )
-      answerImages.value = attachments.filter((a: any) => a.type_ === 'answer')
-      console.log('题目图片数量:', questionImages.value.length)
-      console.log('答案图片数量:', answerImages.value.length)
-    } catch (error) {
-      console.error('获取附件失败:', error)
-    }
-
-    // 获取 SRS 数据
-    try {
-      console.log('开始获取 SRS 数据...')
-      const srs = await legacyGetQuestionSRSStatus(errorId.value)
-      if (srs) {
-        srsData.value = srs
-        console.log('SRS 数据:', srs)
-      } else {
-        console.log('该题目没有 SRS 数据')
-        srsData.value = null
-      }
-    } catch (error) {
-      console.error('获取 SRS 数据失败:', error)
-      srsData.value = null
-    }
+    errorTags.value = tags
+    questionImages.value = attachments.filter((item) => item.type_ === 'original')
+    answerImages.value = attachments.filter((item) => item.type_ === 'answer')
+    srsData.value = srs
+    detailLoadState.value = 'ready'
+    return true
   } catch (error) {
+    if (version === detailLoadVersion) detailLoadState.value = 'error'
     console.error('获取错题详情失败:', error)
+    return false
   }
 }
 
 // 获取科目列表
 const fetchSubjects = async () => {
   try {
-    subjects.value = await legacyGetSubjects()
+    subjects.value = await getSubjects()
   } catch (error) {
     console.error('获取科目列表失败:', error)
   }
@@ -623,6 +551,7 @@ const fetchSubjects = async () => {
 
 // 切换编辑模式
 const toggleEditMode = () => {
+  if (saving.value || detailLoadState.value !== 'ready') return
   if (isEditing.value) {
     // 取消编辑，恢复原值
     console.log('取消编辑，恢复原始状态...')
@@ -637,6 +566,15 @@ const toggleEditMode = () => {
         analysis: errorDetail.value.analysis || '',
         error_note: errorDetail.value.error_note || ''
       }
+      sourceSelection.value = errorDetail.value.source_id
+        ? { kind: 'existing', sourceId: errorDetail.value.source_id }
+        : selectSourceValues(
+            sources.value,
+            errorDetail.value.subject_id,
+            null,
+            null,
+            null
+          )
     }
 
     // 清空临时数据（不需要重新加载，因为原始数据还在）
@@ -662,248 +600,61 @@ const toggleEditMode = () => {
 
 // 保存修改
 const saveChanges = async () => {
-  if (!errorDetail.value) return
-
-  console.log('========== 开始保存流程 ==========')
-  console.log('1. 先禁用SourceSelector')
-
-  // 1. 先禁用SourceSelector，确保下拉框收起
-  sourceSelectorDisabled.value = true
-
-  // 2. 等待一小段时间，确保组件响应disabled状态并收起
-  await new Promise((resolve) => setTimeout(resolve, 100))
-
-  console.log('2. SourceSelector已禁用，开始执行保存操作')
+  if (!errorDetail.value || saving.value || detailLoadState.value !== 'ready') return
 
   saving.value = true
+  sourceSelectorDisabled.value = true
+
   try {
-    // 1. 更新题目基本信息
-    console.log('========== 开始保存题目基本信息 ==========')
-    console.log('editForm:', JSON.parse(JSON.stringify(editForm.value)))
-    console.log('editForm.source_id:', editForm.value.source_id)
-    console.log('editForm.subject_id:', editForm.value.subject_id)
-
-    const updateData = {
-      id: errorId.value,
-      ...editForm.value
+    // Persist the synchronous selector draft before updating the question. Once
+    // created, retain its ID so a failed question save can be retried without
+    // creating a duplicate source.
+    const materializedSource = await materializeSourceSelection(
+      sourceSelection.value
+    )
+    sourceSelection.value = materializedSource.selection
+    editForm.value.source_id = materializedSource.sourceId ?? ''
+    if (
+      materializedSource.source &&
+      !sources.value.some((source) => source.id === materializedSource.source?.id)
+    ) {
+      sources.value.push(materializedSource.source)
     }
-    console.log(
-      '准备发送给后端的 updateData:',
-      JSON.parse(JSON.stringify(updateData))
+
+    // Compatibility bridge for the current aggregate-shaped UI only. Questions,
+    // tags and attachments have independent lifecycles and this sequence is not
+    // transactional. A future UI should call the Current APIs per resource and
+    // expose separate saving/error/retry state instead of one aggregate request.
+    await saveQuestionAggregate(
+      { id: errorId.value, ...editForm.value },
+      tempErrorTags.value,
+      tempQuestionImages.value,
+      questionImages.value
     )
 
-    await legacyUpdateQuestion(updateData)
-    console.log('题目基本信息保存成功')
-
-    // 3. 处理图片更新（包括新增、删除和编辑）
-    console.log('========== 开始处理图片 ==========')
-    console.log('原始图片数量:', questionImages.value.length)
-    console.log('临时图片数量:', tempQuestionImages.value.length)
-    console.log('待删除图片ID:', imagesToDelete.value)
-
-    // 3.1 找出被编辑过的图片（在临时列表中存在但 base64_data 已改变的图片）
-    const editedImageIds: string[] = []
-    console.log('开始检测编辑过的图片...')
-    for (const tempImg of tempQuestionImages.value) {
-      console.log('\n--- 检查图片 ---')
-      console.log('图片ID:', tempImg.id)
-      console.log('是否为临时图片:', tempImg.id.startsWith('temp-'))
-
-      // 跳过新添加的临时图片（ID以temp-开头）
-      if (tempImg.id.startsWith('temp-')) {
-        console.log('跳过新添加的临时图片')
-        continue
-      }
-
-      // 查找原始图片列表中对应的图片
-      const originalImg = questionImages.value.find(
-        (img) => img.id === tempImg.id
-      )
-      console.log('找到原始图片:', !!originalImg)
-
-      if (originalImg) {
-        const originalLen = originalImg.base64_data?.length || 0
-        const tempLen = tempImg.base64_data?.length || 0
-        const isSame = originalImg.base64_data === tempImg.base64_data
-
-        console.log('原始 base64 长度:', originalLen)
-        console.log('临时 base64 长度:', tempLen)
-        console.log('长度差异:', Math.abs(originalLen - tempLen))
-        console.log('base64 是否相同:', isSame)
-
-        if (!isSame) {
-          console.log('✅ 发现编辑过的图片:', tempImg.id)
-          console.log(
-            '   原始前50字符:',
-            originalImg.base64_data?.substring(0, 50)
-          )
-          console.log('   临时前50字符:', tempImg.base64_data?.substring(0, 50))
-          editedImageIds.push(tempImg.id)
-        } else {
-          console.log('❌ 图片未编辑')
-        }
-      } else {
-        console.log('⚠️ 未找到原始图片')
-      }
-    }
-    console.log('\n========== 编辑过的图片ID列表 ==========')
-    console.log(editedImageIds)
-
-    // 3.2 删除所有需要删除或更新的图片（包括显式删除的和编辑过的）
-    const allImagesToDelete = [...imagesToDelete.value, ...editedImageIds]
-    if (allImagesToDelete.length > 0) {
-      console.log('开始删除', allImagesToDelete.length, '张图片')
-      for (const imageId of allImagesToDelete) {
-        await legacyDeleteAttachment(imageId, errorId.value)
-        console.log('已删除图片:', imageId)
-      }
-    }
-
-    // 3.3 上传需要新增或更新的图片（只上传编辑后的和新添加的）
-    const imagesToUpload: any[] = []
-
-    // 添加编辑后的图片（使用新的 base64 数据）
-    console.log('\n========== 准备上传编辑后的图片 ==========')
-    for (const tempImg of tempQuestionImages.value) {
-      if (editedImageIds.includes(tempImg.id)) {
-        console.log('准备上传编辑后的图片:')
-        console.log('  ID:', tempImg.id)
-        console.log('  type_:', (tempImg as any).type_ || tempImg.type)
-        console.log('  file_type:', tempImg.file_type)
-        console.log('  base64_data 长度:', tempImg.base64_data?.length || 0)
-
-        imagesToUpload.push({
-          question_id: errorId.value,
-          type_: (tempImg as any).type_ || tempImg.type,
-          file_type: tempImg.file_type,
-          base64_data: tempImg.base64_data
-        })
-      }
-    }
-
-    // 添加新上传的图片（优先使用 tempQuestionImages 中已编辑的数据）
-    console.log('\n========== 准备上传新添加的图片 ==========')
-    console.log('imagesToAdd 数量:', imagesToAdd.value.length)
-    console.log('tempQuestionImages 数量:', tempQuestionImages.value.length)
-
-    if (imagesToAdd.value.length > 0) {
-      for (let i = 0; i < imagesToAdd.value.length; i++) {
-        const file = imagesToAdd.value[i]
-        console.log(`\n处理新图片 ${i + 1}:`, file.name)
-
-        // 查找对应的临时图片对象（可能已经被编辑过）
-        const tempImg = tempQuestionImages.value.find((img) => {
-          if (!img.id.startsWith('temp-')) return false
-          const imgAny = img as any
-          return imgAny._file === file
-        })
-
-        if (tempImg && tempImg.base64_data && tempImg.base64_data.length > 0) {
-          // 如果临时图片已经有 base64_data（可能被编辑过），直接使用
-          console.log('✅ 使用已编辑的 base64 数据')
-          console.log('  base64_data 长度:', tempImg.base64_data.length)
-
-          imagesToUpload.push({
-            question_id: errorId.value,
-            type_: 'original',
-            file_type: tempImg.file_type,
-            base64_data: tempImg.base64_data
-          })
-        } else {
-          // 否则从原始文件转换
-          console.log('⚠️ 从原始文件转换 base64')
-          const base64Data = await fileToBase64(file)
-
-          let fileType = 'png'
-          if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
-            fileType = 'jpeg'
-          } else if (file.type === 'image/webp') {
-            fileType = 'webp'
-          } else if (file.type === 'image/gif') {
-            fileType = 'gif'
-          }
-
-          imagesToUpload.push({
-            question_id: errorId.value,
-            type_: 'original',
-            file_type: fileType,
-            base64_data: base64Data
-          })
-        }
-      }
-    }
-
-    // 批量创建所有需要保留的图片
-    if (imagesToUpload.length > 0) {
-      console.log('开始上传', imagesToUpload.length, '张图片')
-      await legacyCreateAttachmentsForQuestion(errorId.value, imagesToUpload)
-      console.log('图片上传成功')
-    }
-
-    // 4. 处理标签更新
-    console.log('========== 开始更新标签 ==========')
-    console.log('旧标签数量:', errorTags.value.length)
-    console.log(
-      '旧标签列表:',
-      errorTags.value.map((t) => `${t.name}(${t.id})`)
-    )
-    console.log('新标签数量:', tempErrorTags.value.length)
-    console.log(
-      '新标签列表:',
-      tempErrorTags.value.map((t) => `${t.name}(${t.color})`)
-    )
-
-    // 4.1 删除当前题目的所有旧标签（使用ID精确删除）
-    if (errorTags.value.length > 0) {
-      console.log('开始删除', errorTags.value.length, '个旧标签...')
-      for (const tag of errorTags.value) {
-        try {
-          console.log('删除标签:', tag.name, '(ID:', tag.id, ')')
-          await legacyDeleteErrorTagById(tag.id, errorId.value)
-          console.log('已解除标签关联:', tag.name)
-        } catch (error) {
-          console.error('删除标签失败:', tag.name, error)
-        }
-      }
-      console.log('所有旧标签删除完成')
-    } else {
-      console.log('没有旧标签需要删除')
-    }
-
-    // 4.2 创建新标签（只为当前题目创建）
-    if (tempErrorTags.value.length > 0) {
-      console.log('开始创建', tempErrorTags.value.length, '个新标签...')
-      const createdTags = await legacyCreateErrorTagsForQuestion(
-        errorId.value,
-        tempErrorTags.value
-      )
-      console.log('新标签创建成功，创建了', createdTags.length, '个标签')
-      console.log('创建的标签:', createdTags)
-    } else {
-      console.log('没有新标签需要创建')
-    }
-
-    console.log('========== 标签更新完成 ==========')
-
-    // 5. 重新获取详情（包括最新的图片和标签）
-    await fetchErrorDetail()
+    const refreshed = await fetchErrorDetail()
     isEditing.value = false
-
-    // 清空临时数据
     tempQuestionImages.value = []
     imagesToDelete.value = []
     imagesToAdd.value = []
-
-    // 显示成功提示
-    alert('保存成功！')
+    alert(refreshed ? '保存成功！' : '题目已保存，但详情刷新失败，请稍后刷新页面。')
   } catch (error) {
     console.error('保存失败:', error)
-    alert('保存失败，请重试')
+    if (error instanceof CompatibilityOperationError && error.committed) {
+      const refreshed = await fetchErrorDetail()
+      isEditing.value = false
+      tempQuestionImages.value = []
+      imagesToDelete.value = []
+      imagesToAdd.value = []
+      alert(refreshed
+        ? '题目已保存，但部分旧附件未能清理。'
+        : '题目已保存，但部分旧附件未能清理，详情刷新也失败。请重试加载。')
+    } else {
+      alert('保存失败，请重试')
+    }
   } finally {
     saving.value = false
-    // 恢复SourceSelector的disabled状态（根据isEditing决定）
     sourceSelectorDisabled.value = false
-    console.log('3. 保存完成，恢复SourceSelector状态')
   }
 }
 
@@ -933,7 +684,7 @@ const calculateMastery = (srs: any): number => {
 // 删除错题
 const deleteError = async () => {
   try {
-    await legacyDeleteQuestion(errorId.value)
+    await removeQuestion(errorId.value)
     showDeleteConfirm.value = false
     // 返回管理页面
     router.push('/manage')
@@ -957,24 +708,16 @@ const goBack = () => {
 
 // 处理科目选择
 const handleSubjectSelect = (subjectId: string) => {
-  console.log('========== 科目选择事件 ==========')
-  console.log('选中的科目ID:', subjectId)
+  if (editForm.value.subject_id === subjectId) return
   editForm.value.subject_id = subjectId
-  console.log('editForm.value.subject_id:', editForm.value.subject_id)
-}
-
-// 处理来源选择
-const handleSourceSelect = (sourceId: string) => {
-  console.log('========== 来源选择事件 ==========')
-  console.log('选中的来源ID:', sourceId)
-  console.log('选中前 editForm.source_id:', editForm.value.source_id)
-  editForm.value.source_id = sourceId
-  console.log('选中后 editForm.source_id:', editForm.value.source_id)
-
-  // 验证是否真的更新了
-  setTimeout(() => {
-    console.log('100ms 后 editForm.source_id:', editForm.value.source_id)
-  }, 100)
+  editForm.value.source_id = ''
+  sourceSelection.value = selectSourceValues(
+    sources.value,
+    subjectId,
+    null,
+    null,
+    null
+  )
 }
 
 // 构建图片src

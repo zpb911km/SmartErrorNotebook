@@ -14,6 +14,8 @@ pub enum DomainError {
     #[error(transparent)]
     InvalidReviewTime(#[from] InvalidReviewTime),
     #[error(transparent)]
+    InvalidResetTime(#[from] InvalidResetTime),
+    #[error(transparent)]
     InvalidFeedbackHistory(#[from] InvalidFeedbackHistory),
 }
 
@@ -37,6 +39,13 @@ pub struct InvalidFeedback {
 #[error("Review time {reviewed_at} must not be earlier than last review {last_review_at}")]
 pub struct InvalidReviewTime {
     pub(crate) reviewed_at: DateTime<Utc>,
+    pub(crate) last_review_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("Reset time {reset_at} must not be earlier than last review {last_review_at}")]
+pub struct InvalidResetTime {
+    pub(crate) reset_at: DateTime<Utc>,
     pub(crate) last_review_at: DateTime<Utc>,
 }
 
@@ -84,6 +93,17 @@ mod tests {
             format!(
                 "Review time {reviewed_at} must not be earlier than last review {last_review_at}"
             )
+        );
+
+        let reset_at = reviewed_at;
+        let reset: DomainError = InvalidResetTime {
+            reset_at,
+            last_review_at,
+        }
+        .into();
+        assert_eq!(
+            reset.to_string(),
+            format!("Reset time {reset_at} must not be earlier than last review {last_review_at}")
         );
     }
 }

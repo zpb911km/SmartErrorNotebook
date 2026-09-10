@@ -187,7 +187,7 @@ pub async fn legacy_reset_srs_progress(
                     .find_by_question(question_id.clone(), false)
                     .await
                 {
-                    model.reset(now);
+                    model.reset(now).map_err(|error| error.to_string())?;
                     repository
                         .update_state(SrsStateChanges {
                             id: model.question_id.to_string(),

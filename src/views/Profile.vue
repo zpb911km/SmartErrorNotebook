@@ -790,24 +790,24 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import {
-  legacyDeleteSource,
-  legacyDeleteSubject,
-  legacyGetAllSRSStatus,
-  legacyGetBooks,
-  legacyGetChapters,
-  legacyGetDueCount,
-  legacyGetFullErrorTags,
-  legacyGetKnowledges,
-  legacyGetQuestions,
-  legacyGetQuestionStats,
-  legacyGetSources,
-  legacyGetSubjects,
-  legacyGetSRSStatistics,
-  legacyUpdateSource,
-  legacyUpdateSubject
-} from '../api/legacy'
+  removeSubject,
+  getAllSrs,
+  getBooks,
+  getChapters,
+  getDueCount,
+  getFullErrorTags,
+  getKnowledges,
+  getQuestions,
+  getQuestionStats,
+  getSources,
+  getSubjects,
+  getSrsStatistics,
+  editSource,
+  editSubject,
+  editTag
+} from '../api/compat'
+import { deleteSources } from '../api'
 import type { Subject, Source, ErrorTags } from '../types/legacy'
 import { useCountUp } from '../composables/useCountUp'
 
@@ -839,7 +839,7 @@ const srsStats = ref({
   total_reviews: 0
 })
 const subjects = ref<Subject[]>([])
-const questions = ref<{ id: string; subject_id: string }[]>([])
+const questions = ref<{ id: string; source_id?: string }[]>([])
 const allCards = ref<
   {
     question_id: string
@@ -901,6 +901,20 @@ interface SubjectDistItem {
   color: string
 }
 
+// Question only owns source_id. Its subject is always projected from the
+// current Source collection so hierarchy mutations cannot leave stale stats.
+const sourceSubjectById = computed(
+  () =>
+    new Map(
+      allSources.value.map((source) => [source.id, source.subject_id ?? ''])
+    )
+)
+
+const questionSubjectId = (question: { source_id?: string }) =>
+  question.source_id
+    ? (sourceSubjectById.value.get(question.source_id) ?? '')
+    : ''
+
 const subjectDistribution = computed<SubjectDistItem[]>(() => {
   const subjectMap = new Map<string, { name: string; color: string }>()
   subjects.value.forEach((s) =>
@@ -909,7 +923,7 @@ const subjectDistribution = computed<SubjectDistItem[]>(() => {
 
   const countMap = new Map<string, number>()
   questions.value.forEach((q) => {
-    const sid = q.subject_id
+    const sid = questionSubjectId(q)
     countMap.set(sid, (countMap.get(sid) || 0) + 1)
   })
 
@@ -968,11 +982,11 @@ interface HeatmapRow {
 }
 
 const heatmapData = computed<HeatmapRow[]>(() => {
-  if (allCards.value.length === 0 || subjects.value.length === 0) return []
+  if (allCards.value.length === 0) return []
 
   // 建立 question_id → subject_id 映射
   const qToSubject = new Map<string, string>()
-  questions.value.forEach((q) => qToSubject.set(q.id, q.subject_id))
+  questions.value.forEach((q) => qToSubject.set(q.id, questionSubjectId(q)))
 
   // 建立 subject_id → name 映射
   const subjectNameMap = new Map<string, string>()
@@ -984,7 +998,7 @@ const heatmapData = computed<HeatmapRow[]>(() => {
 
   for (const card of allCards.value) {
     const subjectId = qToSubject.get(card.question_id)
-    if (!subjectId) continue
+    if (subjectId === undefined) continue
     validCards.push({ subjectId, difficulty: card.difficulty })
     difficulties.push(card.difficulty)
   }
@@ -1168,9 +1182,9 @@ async function loadData() {
       tagsRes,
       sourcesRes
     ] = await Promise.all([
-      legacyGetQuestionStats().catch(() => ({ total: 0 })),
-      legacyGetDueCount().catch(() => 0),
-      legacyGetSRSStatistics().catch(() => ({
+      getQuestionStats().catch(() => ({ total: 0 })),
+      getDueCount().catch(() => 0),
+      getSrsStatistics().catch(() => ({
         total: 0,
         due_count: 0,
         new_cards: 0,
@@ -1178,11 +1192,11 @@ async function loadData() {
         avg_difficulty: 0,
         total_reviews: 0
       })),
-      legacyGetSubjects().catch(() => [] as Subject[]),
-      legacyGetQuestions().catch(() => []),
-      legacyGetAllSRSStatus().catch(() => []),
-      legacyGetFullErrorTags().catch(() => [] as ErrorTags[]),
-      legacyGetSources().catch(() => [] as Source[])
+      getSubjects().catch(() => [] as Subject[]),
+      getQuestions().catch(() => []),
+      getAllSrs().catch(() => []),
+      getFullErrorTags().catch(() => [] as ErrorTags[]),
+      getSources().catch(() => [] as Source[])
     ])
 
     questionTotal.value = statsRes.total
@@ -1190,10 +1204,9 @@ async function loadData() {
     srsStats.value = srsRes
     subjects.value = subjRes
     allSources.value = sourcesRes
-    // 注意: 后端返回的字段名是 subjectid（非 subject_id）
-    questions.value = qsRes.map((q: any) => ({
+    questions.value = qsRes.map((q) => ({
       id: q.id,
-      subject_id: q.subjectid
+      source_id: q.source_id
     }))
     allCards.value = cardsRes.map((c: any) => ({
       question_id: c.question_id,
@@ -1298,7 +1311,7 @@ const handleSelectSubject = async (subject: Subject) => {
   showCascade.value = true
 
   try {
-    books.value = await legacyGetBooks(subject.id)
+    books.value = await getBooks(subject.id)
   } catch (error) {
     console.error('获取书籍失败:', error)
     books.value = []
@@ -1328,7 +1341,7 @@ const handleSelectBook = async (book: string) => {
   activeColumn.value = 2
 
   try {
-    chapters.value = await legacyGetChapters(book, selectedSubject.value?.id)
+    chapters.value = await getChapters(book, selectedSubject.value?.id)
   } catch (error) {
     console.error('获取章节失败:', error)
     chapters.value = []
@@ -1341,7 +1354,7 @@ const handleSelectChapter = async (chapter: string) => {
   activeColumn.value = 3
 
   try {
-    knowledges.value = await legacyGetKnowledges(
+    knowledges.value = await getKnowledges(
       selectedBook.value!,
       chapter,
       selectedSubject.value?.id
@@ -1521,7 +1534,7 @@ async function startEditSubject(subject: Subject, index: number) {
 
 async function saveEditSubject(subject: Subject, index: number) {
   try {
-    const updatedSubject = await legacyUpdateSubject({
+    const updatedSubject = await editSubject({
       ...subject,
       name: editingItemName.value,
       color: editingItemColor.value
@@ -1554,7 +1567,7 @@ async function saveEditBook(oldName: string, index: number) {
     )
 
     for (const source of bookSources) {
-      await legacyUpdateSource({
+      await editSource({
         id: source.id,
         book: editingItemName.value
       })
@@ -1604,7 +1617,7 @@ async function saveEditChapter(oldName: string, index: number) {
     )
 
     for (const source of chapterSources) {
-      await legacyUpdateSource({
+      await editSource({
         id: source.id,
         chapter: editingItemName.value
       })
@@ -1660,7 +1673,7 @@ async function saveEditKnowledge(oldName: string, index: number) {
     )
 
     for (const source of knowledgeSources) {
-      await legacyUpdateSource({
+      await editSource({
         id: source.id,
         knowledge: editingItemName.value
       })
@@ -1741,15 +1754,15 @@ async function executeDelete() {
     const { type, id, name, subjectId, book, chapter } = deleteItemInfo.value
 
     if (type === 'subject' && id) {
-      // 删除科目 - 递归删除所有相关来源
-      const subjectSources = allSources.value.filter((s) => s.subject_id === id)
-      for (const source of subjectSources) {
-        await legacyDeleteSource(source.id)
-      }
-      await legacyDeleteSubject(id)
+      // 应用层会在同一事务内删除科目，并清空相关来源的科目关联。
+      await removeSubject(id)
 
       // 更新本地数据
-      allSources.value = allSources.value.filter((s) => s.subject_id !== id)
+      allSources.value = allSources.value.map((source) =>
+        source.subject_id === id
+          ? { ...source, subject_id: undefined }
+          : source
+      )
       subjects.value = subjects.value.filter((s) => s.id !== id)
 
       if (selectedSubject.value?.id === id) {
@@ -1760,9 +1773,7 @@ async function executeDelete() {
       const bookSources = allSources.value.filter(
         (s) => s.subject_id === subjectId && s.book === name
       )
-      for (const source of bookSources) {
-        await legacyDeleteSource(source.id)
-      }
+      await deleteSources(bookSources.map((source) => source.id))
 
       // 更新本地数据
       allSources.value = allSources.value.filter(
@@ -1784,9 +1795,7 @@ async function executeDelete() {
         (s) =>
           s.subject_id === subjectId && s.book === book && s.chapter === name
       )
-      for (const source of chapterSources) {
-        await legacyDeleteSource(source.id)
-      }
+      await deleteSources(chapterSources.map((source) => source.id))
 
       // 更新本地数据
       allSources.value = allSources.value.filter(
@@ -1810,9 +1819,7 @@ async function executeDelete() {
           s.chapter === chapter &&
           s.knowledge === name
       )
-      for (const source of knowledgeSources) {
-        await legacyDeleteSource(source.id)
-      }
+      await deleteSources(knowledgeSources.map((source) => source.id))
 
       // 更新本地数据
       allSources.value = allSources.value.filter(
@@ -2002,11 +2009,7 @@ async function saveTagEdit(index: number) {
     )
 
     for (const tag of allSameNameTags) {
-      await invoke('legacy_update_error_tag_by_id', {
-        tagId: tag.id,
-        newTagName: newName,
-        newTagColor: newColor
-      })
+      await editTag(tag.id, newName, newColor)
     }
 
     // 更新本地数据
@@ -2055,11 +2058,7 @@ async function executeDeleteTag() {
       const tag = errorTags.value.find((t) => t.id === id)
       if (tag) {
         console.log('更新标签 ID:', id, '原名为:', tag.name, '新名为:', newName)
-        await invoke('legacy_update_error_tag_by_id', {
-          tagId: id,
-          newTagName: newName,
-          newTagColor: tag.color
-        })
+        await editTag(id, newName, tag.color)
       }
     }
 

@@ -111,8 +111,16 @@ impl<'c, C: ConnectionTrait> AttachmentRepository for SeaOrmAttachmentRepository
         Ok(())
     }
 
-    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Attachment>, RepositoryFindError> {
-        attachment::Entity::find_by_id(*id)
+    async fn find_by_id(
+        &self,
+        id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<Option<Attachment>, RepositoryFindError> {
+        let mut query = attachment::Entity::find_by_id(*id);
+        if !include_deleted {
+            query = query.filter(attachment::Column::DeletedAt.is_null());
+        }
+        query
             .one(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query attachment", error))?
@@ -127,6 +135,7 @@ impl<'c, C: ConnectionTrait> AttachmentRepository for SeaOrmAttachmentRepository
     async fn find_by_question_id(
         &self,
         question_id: &Uuid,
+        include_deleted: bool,
     ) -> Result<Vec<Attachment>, RepositoryFindError> {
         let ids = question_attachment_cross_ref::Entity::find()
             .filter(question_attachment_cross_ref::Column::QuestionId.eq(*question_id))
@@ -141,8 +150,11 @@ impl<'c, C: ConnectionTrait> AttachmentRepository for SeaOrmAttachmentRepository
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        attachment::Entity::find()
-            .filter(attachment::Column::Id.is_in(ids))
+        let mut query = attachment::Entity::find().filter(attachment::Column::Id.is_in(ids));
+        if !include_deleted {
+            query = query.filter(attachment::Column::DeletedAt.is_null());
+        }
+        query
             .all(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query attachments", error))?
@@ -153,6 +165,25 @@ impl<'c, C: ConnectionTrait> AttachmentRepository for SeaOrmAttachmentRepository
                     .map_err(|error| CorruptedData::new("attachment", id, error).into())
             })
             .collect()
+    }
+
+    async fn is_referenced_by_question(
+        &self,
+        attachment_id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<bool, RepositoryFindError> {
+        let mut query = question::Entity::find()
+            .join(
+                sea_orm::JoinType::InnerJoin,
+                question::Relation::QuestionAttachmentCrossRef.def(),
+            )
+            .filter(question_attachment_cross_ref::Column::AttachmentId.eq(*attachment_id));
+        if !include_deleted {
+            query = query.filter(question::Column::DeletedAt.is_null());
+        }
+        Ok(query.count(self.connection).await.map_err(|error| {
+            RepositoryInfrastructureError::new("count active attachment references", error)
+        })? != 0)
     }
 }
 

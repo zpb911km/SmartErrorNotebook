@@ -47,11 +47,11 @@ impl<'c, C: ConnectionTrait> SubjectRepository for SeaOrmSubjectRepository<'c, C
             }
             .into());
         }
-        let is_existing = subject::Entity::find_by_id(subject.id)
+        let existing_entity = subject::Entity::find_by_id(subject.id)
             .one(self.connection)
             .await
-            .map_err(|error| RepositoryInfrastructureError::new("query subject", error))?
-            .is_some();
+            .map_err(|error| RepositoryInfrastructureError::new("query subject", error))?;
+        let is_existing = existing_entity.is_some();
         let mut active_model = subject::ActiveModel {
             id: Set(subject.id),
             created_at: Set(subject.metadata.created_at),
@@ -102,7 +102,6 @@ impl<'c, C: ConnectionTrait> SubjectRepository for SeaOrmSubjectRepository<'c, C
             .map_err(|error| RepositoryInfrastructureError::new("delete subject", error))?;
         Ok(())
     }
-
     async fn find_all(&self, include_deleted: bool) -> Result<Vec<Subject>, RepositoryFindError> {
         let mut query = subject::Entity::find();
         if !include_deleted {
@@ -121,8 +120,16 @@ impl<'c, C: ConnectionTrait> SubjectRepository for SeaOrmSubjectRepository<'c, C
             .collect()
     }
 
-    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Subject>, RepositoryFindError> {
-        subject::Entity::find_by_id(*id)
+    async fn find_by_id(
+        &self,
+        id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<Option<Subject>, RepositoryFindError> {
+        let mut query = subject::Entity::find_by_id(*id);
+        if !include_deleted {
+            query = query.filter(subject::Column::DeletedAt.is_null());
+        }
+        query
             .one(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query subject", error))?

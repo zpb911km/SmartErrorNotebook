@@ -1,3 +1,15 @@
+mod attachment;
+mod question;
+mod review;
+mod source;
+mod subject;
+mod tag;
+
+mod request;
+mod response;
+
+mod error;
+
 pub mod legacy;
 
 pub trait CommandRegistry {
@@ -7,6 +19,34 @@ pub trait CommandRegistry {
 impl<R: tauri::Runtime> CommandRegistry for tauri::Builder<R> {
     fn register_command(self) -> Self {
         self.invoke_handler(tauri::generate_handler![
+            // Current application API
+            attachment::create_attachment,
+            attachment::delete_attachment,
+            attachment::get_attachment,
+            question::create_question,
+            question::update_question,
+            question::delete_question,
+            question::get_question,
+            question::list_questions,
+            review::submit_review,
+            review::reset_review_progress,
+            review::get_srs_data,
+            review::list_srs_data,
+            review::get_library_statistics,
+            source::create_source,
+            source::update_source,
+            source::delete_source,
+            source::delete_sources,
+            source::get_source,
+            source::list_sources,
+            subject::create_subject,
+            subject::update_subject,
+            subject::delete_subject,
+            subject::list_subjects,
+            tag::create_tag,
+            tag::update_tag,
+            tag::delete_tag,
+            tag::list_tags,
             // Sync
             legacy::legacy_get_all_pending_records,
             legacy::legacy_get_record_for_upload,

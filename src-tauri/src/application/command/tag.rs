@@ -1,11 +1,14 @@
 use uuid::Uuid;
 
-use crate::domain::model::Metadata;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CreateTagCommand {
+    pub name: String,
+    pub color: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SaveTagCommand {
+pub(crate) struct UpdateTagCommand {
     pub id: Uuid,
-    pub metadata: Metadata,
     pub name: String,
     pub color: String,
 }

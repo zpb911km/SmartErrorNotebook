@@ -1,336 +1,192 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import type { Source } from '../types/source'
 import {
-  legacyGetBooks,
-  legacyGetChapters,
-  legacyGetKnowledges,
-  legacyGetOrCreateSourceId,
-  legacyGetSource
-} from '../api/legacy'
-import { Source } from '../types/legacy'
-import { showError, showWarning } from '../utils/notification'
-
-const selectedSource = ref<Source | null>(null)
-const isExpanded = ref(false)
-const dropdownPosition = ref<'auto' | 'up' | 'down'>('auto')
-
-// 分层选择的数据
-const books = ref<string[]>([])
-const chapters = ref<string[]>([])
-const knowledges = ref<string[]>([])
-
-// 当前选择的层级
-const selectedBook = ref<string>('')
-const selectedChapter = ref<string>('')
-const selectedKnowledge = ref<string>('')
-
-// 添加新项的输入框
-const showAddBookInput = ref(false)
-const showAddChapterInput = ref(false)
-const showAddKnowledgeInput = ref(false)
-const newBook = ref<string>('')
-const newChapter = ref<string>('')
-const newKnowledge = ref<string>('')
+  selectSourceValues,
+  type SourceSelection
+} from '../services/sourceSelection'
+import { showWarning } from '../utils/notification'
 
 const props = defineProps<{
-  currentSourceId: string
+  modelValue: SourceSelection
+  sources: Source[]
   subjectId?: string
   disable?: boolean
 }>()
-
-// 添加一个监听器，监听subjectId，如果subjectId变化，则把信息设置为空
-watch(
-  () => props.subjectId,
-  (newVal, oldVal) => {
-    if (oldVal && newVal !== oldVal) {
-      resetSelection()
-      loadBooks()
-    }
-  }
-)
-
-// 添加一个监听器监听disable，如果disable为true，则收起
-watch(
-  () => props.disable,
-  (disable) => {
-    if (disable) {
-      isExpanded.value = false
-    }
-  }
-)
-
 const emit = defineEmits<{
-  (e: 'select', source_id: string): void
+  (e: 'update:modelValue', selection: SourceSelection): void
 }>()
 
-const atLeastOneSelected = () => {
-  return (
-    `${selectedBook.value || ''} ${selectedChapter.value || ''} ${selectedKnowledge.value || ''}`.trim()
-      .length > 0
+const isExpanded = ref(false)
+const dropdownPosition = ref<'auto' | 'up' | 'down'>('auto')
+const selectedBook = ref('')
+const selectedChapter = ref('')
+const selectedKnowledge = ref('')
+const showAddBookInput = ref(false)
+const showAddChapterInput = ref(false)
+const showAddKnowledgeInput = ref(false)
+const newBook = ref('')
+const newChapter = ref('')
+const newKnowledge = ref('')
+const addedBooks = ref<string[]>([])
+const addedChapters = ref<Array<{ book: string; chapter: string }>>([])
+const addedKnowledges = ref<
+  Array<{ book: string; chapter: string; knowledge: string }>
+>([])
+
+const uniqueSorted = (values: string[]) => [...new Set(values)].sort()
+const subjectSources = computed(() =>
+  props.sources.filter((source) => source.subjectId === props.subjectId)
+)
+const books = computed(() =>
+  uniqueSorted([
+    ...subjectSources.value.flatMap((source) => (source.book ? [source.book] : [])),
+    ...addedBooks.value
+  ])
+)
+const chapters = computed(() =>
+  uniqueSorted([
+    ...subjectSources.value.flatMap((source) =>
+      source.book === selectedBook.value && source.chapter ? [source.chapter] : []
+    ),
+    ...addedChapters.value.flatMap((item) =>
+      item.book === selectedBook.value ? [item.chapter] : []
+    )
+  ])
+)
+const knowledges = computed(() =>
+  uniqueSorted([
+    ...subjectSources.value.flatMap((source) =>
+      source.book === selectedBook.value &&
+      source.chapter === selectedChapter.value &&
+      source.knowledge
+        ? [source.knowledge]
+        : []
+    ),
+    ...addedKnowledges.value.flatMap((item) =>
+      item.book === selectedBook.value && item.chapter === selectedChapter.value
+        ? [item.knowledge]
+        : []
+    )
+  ])
+)
+
+const publishSelection = () => {
+  emit(
+    'update:modelValue',
+    selectSourceValues(
+      props.sources,
+      props.subjectId ?? '',
+      selectedBook.value || null,
+      selectedChapter.value || null,
+      selectedKnowledge.value || null,
+      props.modelValue.kind === 'existing' ? props.modelValue.sourceId : undefined
+    )
   )
 }
-
-const resetSelection = () => {
-  selectedBook.value = ''
+const selectBook = (book: string) => {
+  selectedBook.value = book
   selectedChapter.value = ''
   selectedKnowledge.value = ''
-  chapters.value = []
-  knowledges.value = []
-  showAddBookInput.value = false
   showAddChapterInput.value = false
   showAddKnowledgeInput.value = false
+  publishSelection()
 }
-
-const loadBooks = () => {
-  legacyGetBooks(props.subjectId)
-    .then((data) => {
-      books.value = data
-    })
-    .catch((error) => {
-      console.error('获取书名失败：', error)
-      books.value = []
-    })
+const selectChapter = (chapter: string) => {
+  selectedChapter.value = chapter
+  selectedKnowledge.value = ''
+  showAddKnowledgeInput.value = false
+  publishSelection()
 }
-
+const selectKnowledge = (knowledge: string) => {
+  selectedKnowledge.value = knowledge
+  publishSelection()
+}
 const handleAddBook = () => {
-  if (!newBook.value.trim()) return
-
-  books.value.push(newBook.value)
-  selectedBook.value = newBook.value
+  const book = newBook.value.trim()
+  if (!book) return
+  addedBooks.value.push(book)
   newBook.value = ''
   showAddBookInput.value = false
-  addAllToBackend()
+  selectBook(book)
 }
-
 const handleAddChapter = () => {
-  if (!newChapter.value.trim()) return
-
-  chapters.value.push(newChapter.value)
-  selectedChapter.value = newChapter.value
+  const chapter = newChapter.value.trim()
+  if (!chapter) return
+  addedChapters.value.push({ book: selectedBook.value, chapter })
   newChapter.value = ''
   showAddChapterInput.value = false
-  addAllToBackend()
+  selectChapter(chapter)
 }
-
 const handleAddKnowledge = () => {
-  if (!newKnowledge.value.trim()) return
-
-  knowledges.value.push(newKnowledge.value)
-  selectedKnowledge.value = newKnowledge.value
+  const knowledge = newKnowledge.value.trim()
+  if (!knowledge) return
+  addedKnowledges.value.push({
+    book: selectedBook.value,
+    chapter: selectedChapter.value,
+    knowledge
+  })
   newKnowledge.value = ''
   showAddKnowledgeInput.value = false
-  addAllToBackend()
-}
-
-const addAllToBackend = async () => {
-  if (props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
-    console.log(
-      'addAllToBackend:',
-      props.subjectId,
-      selectedBook.value,
-      selectedChapter.value,
-      selectedKnowledge.value
-    )
-    await legacyGetOrCreateSourceId({
-      subject_id: props.subjectId,
-      book: selectedBook.value,
-      chapter: selectedChapter.value === '' ? undefined : selectedChapter.value,
-      knowledge:
-        selectedKnowledge.value === '' ? undefined : selectedKnowledge.value
-    }).catch((error) => {
-      showError('添加失败', '添加来源失败' + error)
-    })
-  }
+  selectKnowledge(knowledge)
 }
 
 const selectedText = computed(() => {
-  if (atLeastOneSelected()) {
-    console.log(
-      'selected:',
-      selectedBook.value,
-      selectedChapter.value,
-      selectedKnowledge.value
-    )
-    return `${selectedBook.value || ''} ${selectedChapter.value ? '>' : ''} ${selectedChapter.value || ''} ${selectedKnowledge.value ? '>' : ''} ${selectedKnowledge.value || ''}`.trim()
+  if (!selectedBook.value && !selectedChapter.value && !selectedKnowledge.value) {
+    return '请选择来源'
   }
-  return '请选择来源'
-})
-
-const isInitializing = ref(false) // 标识是否在初始化阶段
-
-const loadSourceById = async (sourceId: string) => {
-  if (!sourceId) {
-    selectedSource.value = null
-    return
-  }
-
-  try {
-    const source = await legacyGetSource(sourceId)
-    // console.log("source:", source.book, source.chapter, source.knowledge)
-    // 在初始化模式下直接赋值，不触发 watcher 的级联清空逻辑
-    isInitializing.value = true
-
-    if (source.book) {
-      selectedBook.value = source.book
-      // console.log("selectedBook.value:", selectedBook.value)
-    }
-    if (source.chapter) {
-      selectedChapter.value = source.chapter
-      // console.log("selectedChapter.value:", selectedChapter.value)
-    }
-    if (source.knowledge) {
-      selectedKnowledge.value = source.knowledge
-      console.log('selectedKnowledge.value:', selectedKnowledge.value)
-    }
-
-    // 异步延迟1s秒, 重置isInitializing
-    setTimeout(() => {
-      isInitializing.value = false
-    }, 1000)
-
-    if (props.subjectId) {
-      books.value = await legacyGetBooks(props.subjectId)
-    }
-    console.log(
-      'data:',
-      selectedBook.value,
-      selectedChapter.value,
-      selectedKnowledge.value
-    )
-    // 预加载下一级数据
-    if (source.book) {
-      legacyGetChapters(source.book).then((data) => {
-        chapters.value = data
-        if (source.chapter && source.book) {
-          legacyGetKnowledges(source.book, source.chapter).then((data) => {
-            knowledges.value = data
-          })
-        }
-      })
-    }
-  } catch (error) {
-    console.error('获取来源失败：', error)
-  }
-}
-
-// 然后定义 watch
-// 当选择书名时,加载章节列表
-watch(selectedBook, (newBook) => {
-  if (newBook && !isInitializing.value) {
-    selectedChapter.value = ''
-    selectedKnowledge.value = ''
-    showAddChapterInput.value = false
-    showAddKnowledgeInput.value = false
-    legacyGetChapters(newBook)
-      .then((data) => {
-        chapters.value = data
-      })
-      .catch((error) => {
-        console.error('获取章节失败：', error)
-        chapters.value = []
-      })
-  }
-})
-
-// 当选择章节时,加载知识点列表
-watch(selectedChapter, (newChapter) => {
-  if (newChapter && selectedBook.value && !isInitializing.value) {
-    selectedKnowledge.value = ''
-    showAddKnowledgeInput.value = false
-    legacyGetKnowledges(selectedBook.value, newChapter)
-      .then((data) => {
-        knowledges.value = data
-      })
-      .catch((error) => {
-        console.error('获取知识点失败：', error)
-        knowledges.value = []
-      })
-  }
+  return `${selectedBook.value} ${selectedChapter.value ? '>' : ''} ${selectedChapter.value} ${selectedKnowledge.value ? '>' : ''} ${selectedKnowledge.value}`.trim()
 })
 
 watch(
-  () => props.currentSourceId,
-  (newVal) => {
-    console.log('currentSourceId changed:', newVal)
-    loadSourceById(newVal)
+  () => [props.subjectId, props.modelValue, props.sources] as const,
+  () => {
+    const sourceId =
+      props.modelValue.kind === 'existing' ? props.modelValue.sourceId : undefined
+    const source =
+      sourceId !== undefined
+        ? props.sources.find((item) => item.id === sourceId)
+        : undefined
+    const values = props.modelValue.kind === 'new' ? props.modelValue : source
+    selectedBook.value = values?.book ?? ''
+    selectedChapter.value = values?.chapter ?? ''
+    selectedKnowledge.value = values?.knowledge ?? ''
   },
-  { immediate: true }
+  { immediate: true, deep: true }
+)
+watch(
+  () => props.subjectId,
+  () => {
+    addedBooks.value = []
+    addedChapters.value = []
+    addedKnowledges.value = []
+  }
+)
+watch(
+  () => props.disable,
+  (disable) => {
+    if (disable) isExpanded.value = false
+  }
 )
 
-watch(isExpanded, async (newVal) => {
-  if (!props.subjectId && newVal) {
-    isExpanded.value = false
+const handleTriggerClick = (event: MouseEvent | TouchEvent) => {
+  if (props.disable) {
+    event.preventDefault()
+    return
+  }
+  if (!props.subjectId) {
     showWarning('请选择科目', '请选择科目后再选择来源。')
-  }
-  if (newVal) {
-    resetSelection()
-    loadBooks()
-  }
-  let sourceId = ''
-  if (
-    !newVal &&
-    props.subjectId &&
-    props.subjectId !== '' &&
-    atLeastOneSelected()
-  ) {
-    await legacyGetOrCreateSourceId({
-      subject_id: props.subjectId,
-      book: selectedBook.value,
-      chapter: selectedChapter.value === '' ? undefined : selectedChapter.value,
-      knowledge:
-        selectedKnowledge.value === '' ? undefined : selectedKnowledge.value
-    })
-      .then((id) => {
-        sourceId = id
-      })
-      .catch((error) => {
-        showError('添加失败', '添加来源失败' + error)
-      })
-  }
-  if (sourceId) {
-    emit('select', sourceId)
-  }
-})
-
-// 处理触发器点击：如果按钮在下半屏则向上弹出，否则向下弹出
-const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
-  // disable
-  if (props.disable && props.disable === true) {
-    e.preventDefault()
     return
   }
 
-  // 先切换展开状态
   isExpanded.value = !isExpanded.value
-
-  // 只在下半屏才设为向上弹出，默认向下
   if (isExpanded.value) {
-    // 获取正确的触发器元素（可能是事件冒泡后的子元素）
-    const triggerElement = (e.target as HTMLElement).closest(
+    const trigger = (event.target as HTMLElement).closest(
       '.selector-trigger'
-    ) as HTMLElement
-    if (triggerElement) {
-      const rect = triggerElement.getBoundingClientRect()
-      dropdownPosition.value = rect.top < window.innerHeight / 2 ? 'down' : 'up'
-    }
-    resetSelection()
-    loadBooks()
-  } else {
-    if (props.subjectId && props.subjectId !== '' && atLeastOneSelected()) {
-      await legacyGetOrCreateSourceId({
-        subject_id: props.subjectId,
-        book: selectedBook.value,
-        chapter:
-          selectedChapter.value === '' ? undefined : selectedChapter.value,
-        knowledge:
-          selectedKnowledge.value === '' ? undefined : selectedKnowledge.value
-      })
-        .then((id) => {
-          emit('select', id)
-        })
-        .catch((error) => {
-          showError('添加失败', '添加来源失败' + error)
-        })
+    ) as HTMLElement | null
+    if (trigger) {
+      dropdownPosition.value =
+        trigger.getBoundingClientRect().top < window.innerHeight / 2 ? 'down' : 'up'
     }
   }
 }
@@ -376,7 +232,7 @@ const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
                 :class="{ selected: selectedBook === book }"
                 v-for="book in books"
                 :key="book"
-                @click="selectedBook = book"
+                @click="selectBook(book)"
               >
                 {{ book }}
               </div>
@@ -410,7 +266,7 @@ const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
                 :class="{ selected: selectedChapter === chapter }"
                 v-for="chapter in chapters"
                 :key="chapter"
-                @click="selectedChapter = chapter"
+                @click="selectChapter(chapter)"
               >
                 {{ chapter }}
               </div>
@@ -444,7 +300,7 @@ const handleTriggerClick = async (e: MouseEvent | TouchEvent) => {
                 :class="{ selected: selectedKnowledge === knowledge }"
                 v-for="knowledge in knowledges"
                 :key="knowledge"
-                @click="selectedKnowledge = knowledge"
+                @click="selectKnowledge(knowledge)"
               >
                 {{ knowledge }}
               </div>

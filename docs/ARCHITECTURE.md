@@ -45,8 +45,8 @@ graph TB
         end
 
         subgraph S["Services / Utils"]
-            S1[api/legacy/ invoke 调用层]
-            S2[types/legacy.ts TS 接口定义]
+            S1[api/ 分领域 invoke 与 compat 适配层]
+            S2[types/ 分领域新版契约]
             S3[services/llm.ts AI 识别]
             S4[utils/export* 导出]
             S5[utils/import* 导入]
@@ -77,11 +77,14 @@ graph TB
     subgraph Backend["⚙️ Rust 业务逻辑层 (Tauri 2 + SeaORM)"]
         direction TB
 
-        subgraph Cmd["command/legacy（兼容 Tauri 命令）"]
-            CM1[subject.rs] --- CM2[error_question.rs]
-            CM3[error_tag.rs] --- CM4[source.rs]
-            CM5[attachment.rs] --- CM6[srs_data.rs]
-            CM7[sync.rs] --- CM8[file.rs]
+        subgraph Cmd["command（Tauri IPC）"]
+            CM0[新版 DTO 与薄适配命令]
+            CM1[legacy/ 兼容命令]
+        end
+
+        subgraph AppLayer["application（应用用例）"]
+            AP1[题目与 SRS 用例]
+            AP2[科目 / 来源 / 标签 / 附件]
         end
 
         subgraph Repo["domain/repository/ + data/repository/"]
@@ -103,7 +106,8 @@ graph TB
             R4[compute_next_interval 间隔]
         end
 
-        Cmd --> Repo
+        Cmd --> AppLayer
+        AppLayer --> Repo
         Repo --> DAL
         SRS --> Cmd
     end
@@ -138,7 +142,8 @@ sequenceDiagram
     participant User as 用户
     participant App as 前端界面
     participant LLM as LLM API
-    participant Rust as Rust 后端
+    participant IPC as 新版 IPC
+    participant Application as 应用用例
     participant DB as SQLite
 
     User->>App: ① 拍照/选图
@@ -146,16 +151,18 @@ sequenceDiagram
     LLM-->>App: ← JSON 响应（题干/答案/解析）
     User->>App: ③ 确认信息
     User->>App: ④ 点击保存
-    App->>Rust: invoke('legacy_create_question')
-    Rust->>DB: 生成 UUID + 写入
-    DB-->>Rust: 返回新记录
-    Rust-->>App: 返回结果
-    App->>Rust: invoke('legacy_create_attachments_for_question')
-    App->>Rust: invoke('legacy_create_srs_data')
-    App->>Rust: invoke('legacy_create_error_tags_for_question')
-    Rust->>DB: 批量写入
-    DB-->>Rust: 写入完成
-    Rust-->>App: 全部完成
+    App->>IPC: create_source / create_tag / create_attachment
+    IPC->>Application: 创建独立资源
+    Application->>DB: 写入来源、标签和附件
+    DB-->>Application: 持久化结果
+    Application-->>IPC: 返回资源
+    IPC-->>App: 返回资源 ID / DTO
+    App->>IPC: create_question（携带资源 ID）
+    IPC->>Application: 创建题目用例
+    Application->>DB: 同一事务写入 Question + 初始 SRS
+    DB-->>Application: 事务提交成功
+    Application-->>IPC: 返回 Question
+    IPC-->>App: 返回 Question DTO
     App->>User: ⑤ 页面跳转
 ```
 
@@ -163,16 +170,15 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[① 进入复习页] --> B{invoke legacy_get_due_questions}
-    B --> C[Rust 查询 SRS 数据]
-    C --> C1[next_review_at ≤ now]
-    C1 --> C2[deleted_at IS NULL]
-    C2 --> D[返回待复习列表]
+    A[① 进入复习页] --> B[新版 IPC：list_questions + list_srs_data]
+    B --> C[前端组合独立读取的题目与 SRS 状态]
+    C --> C1[next_review_at ≤ at]
+    C1 --> D[返回待复习列表]
     D --> E[② 逐题复习<br/>显示题目 → 回忆 → 显示答案]
     E --> F[③ 滑动评分<br/>反馈值 0.0 ~ 1.0]
-    F --> G[invoke legacy_submit_review_result]
-    G --> H{进入 srs/mod.rs}
-    H --> H1[predict_retrievability]
+    F --> G[新版 IPC：submit_review]
+    G --> H[应用层：update_srs_data]
+    H --> H1[领域层：review / predict_retrievability]
     H1 --> H2[更新稳定性 S]
     H2 --> H3[更新难度 D]
     H3 --> H4[计算下次复习间隔]
@@ -191,10 +197,11 @@ flowchart TD
 |------|------|----------|
 | `views/` | 页面组件，对应路由 | 每个 `.vue` 一个页面，命名 PascalCase |
 | `components/` | 可复用 UI 组件 | 无业务逻辑，通过 props/events 通信 |
-| `api/legacy/` | `invoke()` 封装层 | 每个 Rust 实体对应一个文件 |
+| `api/` | 分领域的新版 `invoke()` 封装和 `compat.ts` 迁移适配层 | 公共契约使用 camelCase；`index.ts` 提供统一导出 |
 | `services/` | 状态管理 + 业务服务 | LLM 服务为单例模式 |
 | `utils/` | 纯函数工具 | 不含副作用 |
-| `types/legacy.ts` | Legacy TypeScript 接口定义 | 前后端契约 |
+| `types/` | 分领域的新版 TypeScript 接口定义 | 与 Rust IPC DTO 对齐；`index.ts` 提供统一导出 |
+| `types/legacy.ts` | 迁移期页面视图类型 | 不作为新版 IPC 契约 |
 | `directives/` | Vue 自定义指令 | — |
 | `styles/` | 全局样式 + 主题变量 | 主题通过 CSS 变量切换 |
 
@@ -202,13 +209,18 @@ flowchart TD
 
 | 目录 | 职责 | 关键约定 |
 |------|------|----------|
-| `command/` | 命令注册及 legacy 兼容处理器 | 函数标注 `#[tauri::command]`，统一在 `command/mod.rs` 注册 |
-| `domain/repository/` | 仓储 traits 与 legacy 契约 | Command 通过事务中的 RepositoryFactory 访问持久化数据 |
-| `data/repository/` | SeaORM 仓储实现 | 所有命令写入由 RepositoryTransactionExecutor 包裹 |
+| `command/` | 新版 IPC DTO、薄适配命令及 legacy 兼容处理器 | 新版命令只转换传输数据并调用 Application 用例 |
+| `application/` | 新版应用用例 | 负责业务约束、跨模型事务、筛选和统计；IPC 命令层只编排响应 DTO |
+| `domain/repository/` | 仓储 traits 与 legacy 契约 | Application 通过 RepositoryFactory 访问持久化数据 |
+| `data/repository/` | SeaORM 仓储实现 | Application 写入由 RepositoryTransactionExecutor 包裹 |
 | `data/database/entity/` | 规范化 SeaORM 实体 | 使用 UUID、DateTime 和交叉引用实体 |
 | `domain/model/` | 内部领域模型 | 与 legacy IPC 请求/响应隔离 |
 | `crates/migration/` | 独立迁移 crate | 命名 `mYYYYMMDD_NNNNNN_desc.rs` |
 | `srs/` | 核心复习算法 | 纯函数，不依赖 Tauri/数据库 |
+
+跨模型业务一致性由应用用例负责：删除来源会在单个事务内解除题目来源关联并写入墓碑；删除科目仅清空来源的科目关联并写入科目墓碑。题目分页及统计也在单个只读事务快照中同时生成明细和汇总。
+
+Subject、Source、Tag、Attachment 和 Question 是具有独立生命周期的资源。Question 仅保存对其他资源的引用；Question 写入失败不意味着此前成功创建的资源也应被删除，删除 Question 也不会隐式删除 Attachment。`compat.ts` 只是旧 UI 迁移期间的多调用适配器，不是事务或聚合边界，不得通过具有级联业务语义的删除 API 模拟回滚。未来 UI 应按各资源生命周期直接调用新版 IPC，而不是在单次前端 API 调用中操作多个独立资源。
 
 ### 历史同步服务器 (`server/`)
 

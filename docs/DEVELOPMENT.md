@@ -158,16 +158,19 @@ SmartErrorNotebook/
 │   │   ├── Tag.vue             # 标签组件
 │   │   └── Icon.vue            # Lucide 图标封装
 │   │
-│   ├── api/legacy/             # 对 Rust 后端的 legacy API 调用
-│   │   ├── index.ts            # 统一导出
-│   │   ├── errorQuestions.ts   # 错题 CRUD
-│   │   ├── errorTags.ts        # 错因标签
-│   │   ├── subjects.ts         # 科目
-│   │   ├── sources.ts          # 来源
-│   │   ├── attachments.ts      # 附件
-│   │   ├── srs.ts              # SRS 复习
-│   │   ├── srsData.ts          # SRS 数据
-│   │   └── sync.ts             # 本地同步元数据维护
+│   ├── api/                    # 新版 IPC 封装、UI 适配及 legacy 维护 API
+│   │   ├── index.ts            # camelCase 新版契约
+│   │   ├── compat.ts           # 迁移期页面模型适配
+│   │   └── legacy/             # 维护、同步及文件兼容 API
+│   │       ├── index.ts            # 统一导出
+│   │       ├── errorQuestions.ts   # 错题 CRUD
+│   │       ├── errorTags.ts        # 错因标签
+│   │       ├── subjects.ts         # 科目
+│   │       ├── sources.ts          # 来源
+│   │       ├── attachments.ts      # 附件
+│   │       ├── srs.ts              # SRS 复习
+│   │       ├── srsData.ts          # SRS 数据
+│   │       └── sync.ts             # 本地同步元数据维护
 │   │
 │   ├── services/
 │   │   ├── index.ts            # 统一导出
@@ -188,8 +191,8 @@ SmartErrorNotebook/
 │   │   └── shareContent.ts     # 分享内容工具
 │   │
 │   ├── types/
-│   │   ├── index.ts            # 空占位文件
-│   │   └── legacy.ts           # Legacy TypeScript 类型定义
+│   │   ├── index.ts            # 新版 IPC TypeScript 类型
+│   │   └── legacy.ts           # 迁移期页面视图类型
 │   │
 │   ├── directives/
 │   │   ├── ripple.ts           # 水波纹点击效果
@@ -216,9 +219,14 @@ SmartErrorNotebook/
 │   └── src/
 │       ├── main.rs             # 入口
 │       ├── lib.rs              # Tauri Builder 与 AppState
-│       ├── command/            # 命令注册和 legacy IPC 兼容层
+│       ├── command/            # 新版命令注册和 legacy IPC 兼容层
 │       │   ├── mod.rs
+│       │   ├── question.rs     # 新版 camelCase DTO 与薄适配命令
+│       │   ├── source.rs       # 来源 IPC 适配
+│       │   ├── review.rs       # 复习 IPC 适配
+│       │   ├── error.rs        # 结构化 IPC 错误
 │       │   └── legacy/         # CRUD、SRS、同步和文件命令
+│       ├── application/        # 业务用例与跨模型事务
 │       ├── data/               # SeaORM 数据访问实现
 │       │   ├── database/
 │       │   │   ├── connection.rs
@@ -287,23 +295,24 @@ SmartErrorNotebook/
 
 ### 调用 Rust 后端
 
-前端通过 `@tauri-apps/api` 的 `invoke` 调用 Rust 命令：
+前端优先通过 `src/api/` 中的类型化封装调用新版 IPC：
 
 ```typescript
-import { invoke } from '@tauri-apps/api/core'
+import { createQuestion, listSubjects } from '../api'
 
 // 示例：获取所有科目
-const subjects = await invoke('legacy_get_subjects')
+const subjects = await listSubjects()
 
 // 示例：创建错题
-const newQuestion = await invoke('legacy_create_question', {
-  prompt: '题目内容',
-  type_: '多选题',
-  subject_id: 'xxx'
+const newQuestion = await createQuestion({
+  sourceId: null,
+  questionType: 'MULTIPLE_SELECT',
+  stem: '题目内容',
+  correctAnswer: '标准答案'
 })
 ```
 
-> Rust 命令的完整清单见 [API_REFERENCE.md](API_REFERENCE.md)
+> 新版 IPC 契约见 [IPC_API.md](IPC_API.md)；仅限维护的兼容命令见 [API_REFERENCE.md](API_REFERENCE.md)。
 
 ### LLM 服务
 
@@ -331,27 +340,24 @@ const response = await llm.call([
 
 ### 添加新命令
 
-1. 在 `src-tauri/src/command/legacy/` 下创建模块（或添加到已有模块）
-2. 在 `request/`、`response/` 中定义兼容 IPC 结构，并实现标注 `#[tauri::command]` 的处理器
-3. 从 `command/legacy/mod.rs` 导出处理器
-4. 在 `src-tauri/src/command/mod.rs` 的 `register_command()` 中注册
+1. 在 `application/` 中按业务操作实现用例，通过仓储在同一事务内完成需要保持一致的跨模型操作（例如创建题目及初始 SRS）；不要将它们拆成命令层调用的多个独立事务
+2. 在 `command/` 的对应模块中定义 IPC DTO，并实现只做格式转换和用例调用的处理器
+3. 在 `src-tauri/src/command/mod.rs` 的 `register_command()` 中注册
+4. legacy 兼容命令继续放在 `command/legacy/`，不作为新版命令的实现模板
 
 ```rust
 // 1. 实现命令
 #[tauri::command]
-pub async fn my_new_command(state: tauri::State<'_, AppState>) -> Result<String, String> {
-    state.repository_transaction_executor
-        .execute(|factory, _| Box::pin(async move {
-            // 通过 factory 获取仓储并完成同一事务内的操作
-            Ok("done".to_string())
-        }))
+pub async fn my_new_command(state: tauri::State<'_, AppState>) -> Result<String, crate::command::error::ApiError> {
+    application::example::run(&state.repository_transaction_executor)
         .await
+        .map_err(Into::into)
 }
 
 // 2. 注册命令（command/mod.rs）
 self.invoke_handler(tauri::generate_handler![
     // ... 已有命令
-    legacy::my_new_command,
+    example::my_new_command,
 ])
 ```
 

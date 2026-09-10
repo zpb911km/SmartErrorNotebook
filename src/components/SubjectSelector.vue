@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { legacyCreateSubject, legacyGetSubjects } from '../api/legacy'
+import { addSubject, getSubjects } from '../api/compat'
 import { Subject } from '../types/legacy'
 import { showInfo } from '../utils/notification'
 
@@ -82,7 +82,7 @@ const handleClick = (subject: Subject) => {
 }
 
 const handleAddSubject = () => {
-  legacyCreateSubject(newSubject.value)
+  addSubject(newSubject.value)
     .then((data) => {
       console.log(data)
       showInfo('添加成功', '科目添加成功')
@@ -104,7 +104,7 @@ const handleAddSubject = () => {
 
 watch(isExpanded, (newVal) => {
   if (newVal) {
-    legacyGetSubjects()
+    getSubjects()
       .then((data) => {
         subjects.value = data
         // 加载完科目列表后，根据modelValue重新设置选中状态
@@ -123,7 +123,7 @@ watch(isExpanded, (newVal) => {
 })
 
 onMounted(() => {
-  legacyGetSubjects()
+  getSubjects()
     .then((data) => {
       subjects.value = data
       // 初始化时根据modelValue设置选中状态

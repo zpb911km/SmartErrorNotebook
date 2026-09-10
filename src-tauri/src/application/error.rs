@@ -3,11 +3,15 @@ use crate::domain::repository::error::{
     RepositoryCountError, RepositoryDeleteError, RepositoryError, RepositoryFindError,
     RepositorySaveError,
 };
+use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub(crate) enum UseCaseError {
-    #[error("{0} was not found")]
-    NotFound(&'static str),
+    #[error("{entity} was not found")]
+    NotFound {
+        entity: &'static str,
+        id: Option<Uuid>,
+    },
     #[error(transparent)]
     Domain(#[from] DomainError),
     #[error(transparent)]

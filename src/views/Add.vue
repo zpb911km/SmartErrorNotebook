@@ -107,14 +107,9 @@
       <div class="form-group">
         <label>来源</label>
         <SourceSelector
-          :currentSourceId="form.source"
+          v-model="sourceSelection"
+          :sources="sources"
           :subjectId="form.subject"
-          @select="
-            (source_id) => {
-              form.source = source_id
-              console.log('source_id:', source_id)
-            }
-          "
         />
       </div>
 
@@ -193,14 +188,14 @@ import SubjectSelector from '../components/SubjectSelector.vue'
 import SourceSelector from '../components/SourceSelector.vue'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
 import { QuestionType } from '../types/legacy'
+import { blobUrlToBase64, addQuestion, getSubjects } from '../api/compat'
+import { listSources } from '../api/source'
+import type { Source } from '../types/source'
 import {
-  blobUrlToBase64,
-  legacyCreateAttachmentsForQuestion,
-  legacyCreateErrorQuestion,
-  legacyCreateErrorTagsForQuestion,
-  legacyCreateSRSData,
-  legacyGetSubjects
-} from '../api/legacy'
+  selectSourceValues,
+  type SourceSelection
+} from '../services/sourceSelection'
+import { materializeSourceSelection } from '../services/sourcePersistence'
 import { showInfo, showError, showSuccess } from '../utils/notification'
 import { inquiryAIAddInfo } from '../utils/inquiry'
 import { llm } from '../services/llm'
@@ -218,11 +213,9 @@ const answerLoading = ref(false)
 const analysisLoading = ref(false)
 const aiButtonLoading = ref(false)
 
-const selectedSource = ref<{
-  book: string
-  chapter: string | undefined
-  knowledge: string | undefined
-} | null>(null)
+const sources = ref<Source[]>([])
+const sourceSelection = ref<SourceSelection>({ kind: 'none' })
+let sourceLoadVersion = 0
 
 // 相机相关状态
 const showCamera = ref(false)
@@ -252,9 +245,7 @@ const form = ref({
   // source info
   source: '',
   // error tag info
-  error_tags: [] as Array<{ name: string; color: string }>,
-  // SRS info
-  difficulty: 5
+  error_tags: [] as Array<{ name: string; color: string }>
 })
 
 // 从社区分享预填数据
@@ -304,11 +295,11 @@ const inquiryAI = async () => {
       if (result[0]?.success) anySuccess = true
       const subjectName = result[0]?.parsedContent?.subject || ''
       if (subjectName) {
-        return legacyGetSubjects()
+        return getSubjects()
           .then((subjects) => {
             const subj = subjects.find((i) => i.name === subjectName)
             if (subj) {
-              form.value.subject = subj.id
+              handleSubjectSelect(subj.id)
             }
             return subjectName
           })
@@ -495,9 +486,53 @@ const handleEditConfirm = (imageData: string) => {
 
 // 处理科目选择
 const handleSubjectSelect = (subjectId: string) => {
-  console.log('handleSubjectSelect', subjectId)
+  if (form.value.subject === subjectId) return
+
   form.value.subject = subjectId
   form.value.source = ''
+  const version = ++sourceLoadVersion
+  sourceSelection.value = subjectId
+    ? {
+        kind: 'new',
+        subjectId,
+        book: null,
+        chapter: null,
+        knowledge: null
+      }
+    : { kind: 'none' }
+  sources.value = []
+  if (!subjectId) return
+
+  void listSources(subjectId)
+    .then((loaded) => {
+      if (version !== sourceLoadVersion || form.value.subject !== subjectId) return
+      // A save may have materialized and appended a source while this request was
+      // in flight. Keep such current-only rows instead of letting a stale catalog
+      // response hide them and turn the same draft back into a create operation.
+      const merged = [
+        ...loaded,
+        ...sources.value.filter(
+          (current) => !loaded.some((source) => source.id === current.id)
+        )
+      ]
+      sources.value = merged
+      const selection = sourceSelection.value
+      if (
+        selection.kind === 'new' &&
+        selection.subjectId === subjectId
+      ) {
+        sourceSelection.value = selectSourceValues(
+          merged,
+          subjectId,
+          selection.book,
+          selection.chapter,
+          selection.knowledge
+        )
+      }
+    })
+    .catch((error) => {
+      if (version === sourceLoadVersion) console.error('获取来源列表失败:', error)
+    })
 }
 
 // 重置表单
@@ -513,14 +548,14 @@ const resetForm = () => {
     // source info
     source: '',
     // error tag info
-    error_tags: [],
-    // SRS info
-    difficulty: 5
+    error_tags: []
   }
   imageUrls.value = []
   currentPresetId.value = ''
   selectedPreset.value = null
-  selectedSource.value = null
+  sourceSelection.value = { kind: 'none' }
+  sources.value = []
+  ++sourceLoadVersion
 }
 
 // 保存错题
@@ -545,69 +580,48 @@ const saveError = async () => {
   console.log('开始保存错题，图片数量:', imageUrls.value.length)
 
   try {
-    // 1. 创建错题
-    console.log('正在创建错题...')
-    const errorQuestion = await legacyCreateErrorQuestion({
-      user_id: 'current_user', // TODO: 从用户状态获取
-      subject_id: form.value.subject,
-      source_id: form.value.source || undefined,
-      prompt: form.value.prompt,
-      type: form.value.type as QuestionType,
-      answer: form.value.answer || undefined,
-      analysis: form.value.analysis || undefined,
-      error_note: form.value.error_note || undefined
-    })
-    console.log('错题创建成功, id:', errorQuestion.id)
-
-    // 2. 批量创建错因标签
-    if (form.value.error_tags.length > 0) {
-      await legacyCreateErrorTagsForQuestion(
-        errorQuestion.id,
-        form.value.error_tags
-      )
+    // SourceSelector only edits a synchronous draft. Persist it exactly once at
+    // the save boundary so closing/disabled UI state can never race this save.
+    const materializedSource = await materializeSourceSelection(
+      sourceSelection.value
+    )
+    sourceSelection.value = materializedSource.selection
+    form.value.source = materializedSource.sourceId ?? ''
+    if (
+      materializedSource.source &&
+      !sources.value.some((source) => source.id === materializedSource.source?.id)
+    ) {
+      sources.value.push(materializedSource.source)
     }
 
-    // 3. 创建SRS数据（失败不阻塞保存流程，可在复习时重新生成）
-    try {
-      await legacyCreateSRSData(errorQuestion.id, form.value.difficulty)
-      console.log('SRS数据创建成功')
-    } catch (srsErr) {
-      console.warn('SRS数据创建失败（不影响错题保存）:', srsErr)
-    }
+    const attachmentsData = await Promise.all(
+      imageUrls.value.map(async (url) => ({
+        question_id: '',
+        type_: 'original',
+        file_type: 'image',
+        base64_data: await blobUrlToBase64(url)
+      }))
+    )
 
-    // 4. 批量上传图片
-    if (imageUrls.value.length > 0) {
-      console.log('正在处理图片上传...')
-      const attachmentsData = await Promise.all(
-        imageUrls.value.map(async (url, index) => {
-          try {
-            const base64Data = await blobUrlToBase64(url)
-            console.log(
-              `图片 ${index + 1} 转换成功, 长度:`,
-              base64Data?.length || 0
-            )
-            return {
-              question_id: errorQuestion.id,
-              type_: 'original',
-              file_type: 'image',
-              base64_data: base64Data
-            }
-          } catch (error) {
-            console.error(`转换图片 ${index + 1} 失败:`, error)
-            throw error
-          }
-        })
-      )
-
-      console.log('正在调用后端保存图片...')
-      await legacyCreateAttachmentsForQuestion(
-        errorQuestion.id,
-        attachmentsData
-      )
-      console.log('图片保存完成')
-    } else {
-      console.log('没有图片需要保存')
-    }
+    // Compatibility bridge for the aggregate-shaped form. Source, tags and
+    // attachments have independent lifecycles; a future UI should call their
+    // Current APIs separately and expose per-resource saving/error/retry state.
+    // Only the question and its initial SRS state belong to one backend transaction.
+    const errorQuestion = await addQuestion(
+      {
+        user_id: 'current_user', // TODO: 从用户状态获取
+        subject_id: form.value.subject,
+        source_id: form.value.source || undefined,
+        prompt: form.value.prompt,
+        type: form.value.type as QuestionType,
+        answer: form.value.answer || undefined,
+        analysis: form.value.analysis || undefined,
+        error_note: form.value.error_note || undefined
+      },
+      form.value.error_tags,
+      attachmentsData
+    )
+    console.log('错题聚合保存成功, id:', errorQuestion.id)
     // 保存成功后重置表单
     const savedImgCount = imageUrls.value.length
     const savedTagCount = form.value.error_tags.length

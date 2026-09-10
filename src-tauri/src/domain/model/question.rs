@@ -137,4 +137,13 @@ mod tests {
         assert_eq!(question.attachment_ids(), &[attachment_id]);
         assert_eq!(question.tag_ids(), &[tag_id]);
     }
+
+    #[test]
+    fn question_type_parses_through_its_inherent_method() {
+        assert_eq!(
+            QuestionType::from_str("SHORT_ANSWER"),
+            Ok(QuestionType::ShortAnswer)
+        );
+        assert!(QuestionType::from_str("UNSUPPORTED").is_err());
+    }
 }

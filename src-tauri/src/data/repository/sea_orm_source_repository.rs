@@ -74,11 +74,11 @@ impl<'c, C: ConnectionTrait> SourceRepository for SeaOrmSourceRepository<'c, C> 
                 .into());
             }
         }
-        let is_existing = source::Entity::find_by_id(source.id)
+        let existing_entity = source::Entity::find_by_id(source.id)
             .one(self.connection)
             .await
-            .map_err(|error| RepositoryInfrastructureError::new("query source", error))?
-            .is_some();
+            .map_err(|error| RepositoryInfrastructureError::new("query source", error))?;
+        let is_existing = existing_entity.is_some();
         let mut active_model = source::ActiveModel {
             id: Set(source.id),
             created_at: Set(source.metadata.created_at),
@@ -130,8 +130,36 @@ impl<'c, C: ConnectionTrait> SourceRepository for SeaOrmSourceRepository<'c, C> 
         Ok(())
     }
 
-    async fn find_by_id(&self, id: &Uuid) -> Result<Option<Source>, RepositoryFindError> {
-        source::Entity::find_by_id(*id)
+    async fn find_all(&self, include_deleted: bool) -> Result<Vec<Source>, RepositoryFindError> {
+        let mut query = source::Entity::find();
+        if !include_deleted {
+            query = query.filter(source::Column::DeletedAt.is_null());
+        }
+        query
+            .all(self.connection)
+            .await
+            .map_err(|error| {
+                RepositoryFindError::from(RepositoryInfrastructureError::new("list sources", error))
+            })?
+            .into_iter()
+            .map(|model| {
+                let id = model.id;
+                Source::try_from(model)
+                    .map_err(|error| CorruptedData::new("source", id, error).into())
+            })
+            .collect()
+    }
+
+    async fn find_by_id(
+        &self,
+        id: &Uuid,
+        include_deleted: bool,
+    ) -> Result<Option<Source>, RepositoryFindError> {
+        let mut query = source::Entity::find_by_id(*id);
+        if !include_deleted {
+            query = query.filter(source::Column::DeletedAt.is_null());
+        }
+        query
             .one(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query source", error))?
@@ -146,9 +174,13 @@ impl<'c, C: ConnectionTrait> SourceRepository for SeaOrmSourceRepository<'c, C> 
     async fn find_by_subject_id(
         &self,
         subject_id: &Uuid,
+        include_deleted: bool,
     ) -> Result<Vec<Source>, RepositoryFindError> {
-        source::Entity::find()
-            .filter(source::Column::SubjectId.eq(*subject_id))
+        let mut query = source::Entity::find().filter(source::Column::SubjectId.eq(*subject_id));
+        if !include_deleted {
+            query = query.filter(source::Column::DeletedAt.is_null());
+        }
+        query
             .all(self.connection)
             .await
             .map_err(|error| RepositoryInfrastructureError::new("query sources", error))?
