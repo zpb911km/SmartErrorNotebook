@@ -1,5 +1,5 @@
 <template>
-  <div class="import-modal-overlay" @click.self="handleClose">
+  <div class="import-modal-overlay" :inert="saving" @click.self="handleClose">
     <div class="import-modal">
       <!-- 标题 -->
       <div class="modal-header">
@@ -211,7 +211,7 @@ import { ref, computed, onMounted } from 'vue'
 import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
 import ErrorTagSelector from './ErrorTagSelector.vue'
-import { QuestionType } from '../types/legacy'
+import { questionTypeLabels } from '../utils/questionDisplay'
 import {
   parseImportFile,
   importSingleQuestion,
@@ -302,10 +302,10 @@ const toggleAnalysis = () => {
 
 // 配置
 const reviewSubjectId = ref('')
-const reviewType = ref(QuestionType.ShortAnswer)
+const reviewType = ref('SHORT_ANSWER')
 const reviewTags = ref<Array<{ name: string; color: string }>>([])
 const applyToAll = ref(false)
-const questionTypes = Object.entries(QuestionType).map(([v, l]) => ({
+const questionTypes = Object.entries(questionTypeLabels).map(([v, l]) => ({
   value: v,
   label: l
 }))
@@ -356,12 +356,18 @@ const enterReviewMode = async (
   }))
 
   // 获取已有题目用于去重
-  existingPrompts.value = existingPromptsInput || (await getExistingPromptSet())
+  try {
+    existingPrompts.value =
+      existingPromptsInput || (await getExistingPromptSet())
+  } catch {
+    errorMsg.value = '无法读取已有题目进行去重，请重新选择文件重试。'
+    return
+  }
 
   // 进入审查
   currentIndex.value = 0
   reviewSubjectId.value = ''
-  reviewType.value = QuestionType.ShortAnswer
+  reviewType.value = 'SHORT_ANSWER'
   applyToAll.value = false
   showAnswer.value = false
   showAnalysis.value = false
@@ -418,14 +424,12 @@ const importCurrent = async () => {
   try {
     if (isDuplicate.value) {
       accumSkipped.value++
-      advanceToNext()
       return
     }
     const result = await importSingleQuestion(
       currentQuestion.value,
       reviewSubjectId.value,
       reviewType.value,
-      'default-user',
       reviewTags.value.length > 0 ? reviewTags.value : undefined
     )
     if (result.success) {
@@ -458,13 +462,13 @@ const importAllRemaining = async () => {
       continue
     }
     try {
-      await importSingleQuestion(
+      const result = await importSingleQuestion(
         q,
         reviewSubjectId.value,
         reviewType.value,
-        'default-user',
         reviewTags.value.length > 0 ? reviewTags.value : undefined
       )
+      if (!result.success) throw new Error(result.error || '导入失败')
       existingPrompts.value.add(q.prompt.trim())
       accumSuccess.value++
     } catch (e) {

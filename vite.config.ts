@@ -11,12 +11,36 @@ export default defineConfig(async () => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['vue', 'vue-router'],
-          markdown: ['marked', 'marked-highlight', 'marked-katex-extension'],
-          highlight: ['highlight.js'],
-          katex: ['katex'],
-          tauri: ['@tauri-apps/api', '@tauri-apps/plugin-fs', '@tauri-apps/plugin-opener']
+        manualChunks(id) {
+          const moduleId = id.replaceAll('\\', '/')
+          const isPackage = (name: string) =>
+            moduleId.includes(`/node_modules/${name}/`)
+
+          if (
+            ['marked', 'marked-highlight', 'marked-katex-extension'].some(
+              isPackage
+            )
+          ) {
+            return 'markdown'
+          }
+          if (isPackage('highlight.js')) return 'highlight'
+          if (isPackage('katex')) return 'katex'
+          if (
+            [
+              '@tauri-apps/api',
+              '@tauri-apps/plugin-fs',
+              '@tauri-apps/plugin-opener'
+            ].some(isPackage)
+          ) {
+            return 'tauri'
+          }
+          if (
+            isPackage('vue') ||
+            isPackage('vue-router') ||
+            moduleId.includes('/node_modules/@vue/')
+          ) {
+            return 'vendor'
+          }
         }
       }
     }

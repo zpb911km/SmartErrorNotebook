@@ -1,7 +1,7 @@
-import { getSubjects } from '../api/compat'
+import { listSubjects as getSubjects } from '../api'
 import { llm } from '../services'
 import { ImageContent, TextContent } from '../services'
-import { QuestionType } from '../types/legacy'
+import { questionTypeLabels } from '../utils/questionDisplay'
 import { format } from './formatter'
 
 // ==================== 提示词构造辅助函数 ====================
@@ -75,7 +75,7 @@ const DEFAULT_PROMPTS = {
 你无需照抄图片内容，只需要切中要害进行分析即可，或者给更高深而精悍的点拨
 以 Markdown 格式返回.`,
   question_type: `这是一些题目和答案的图片，请观察带有题干信息的图片 (一般是前一张或若干张图片).
-全部的题型有:${Object.values(QuestionType).join(', ')}
+全部的题型有:${Object.values(questionTypeLabels).join(', ')}
 请在以上题型中选择最适合的题型.`,
   answer: `这是一些题目和答案的图片，请观察全部图片，并区分题干，手写作答，答案的图片.
 如果存在答案的图片，请提取图片中的答案和解析内容，并以 Markdown 格式返回;

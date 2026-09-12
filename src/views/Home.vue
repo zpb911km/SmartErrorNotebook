@@ -154,8 +154,8 @@
 </template>
 
 <script setup lang="ts">
+import { getLibraryStatistics } from '../api'
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getDueCount } from '../api/compat'
 
 // 轮播组件逻辑
 const currentSlide = ref(0)
@@ -212,7 +212,7 @@ onMounted(() => {
   if (leftArrow) leftArrow.addEventListener('click', prevSlide)
   if (rightArrow) rightArrow.addEventListener('click', nextSlide)
 
-  getDueCount().then((count) => {
+  getLibraryStatistics(new Date().toISOString()).then(({ dueCount: count }) => {
     console.log('due count:', count)
     hasDue.value = count > 0
     // hasDue.value = true

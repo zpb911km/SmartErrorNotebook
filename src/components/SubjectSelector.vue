@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import {
+  createSubject as addSubject,
+  listSubjects as getSubjects
+} from '../api'
 import { onMounted, ref, watch } from 'vue'
-import { addSubject, getSubjects } from '../api/compat'
-import { Subject } from '../types/legacy'
+import { Subject } from '../types'
 import { showInfo } from '../utils/notification'
 
 const getRandomRGBColor = () => {
@@ -21,8 +24,7 @@ const subjects = ref<Subject[]>([])
 const selectedSubject = ref<Subject | null>(null)
 const isExpanded = ref(false)
 const showAddSubject = ref(false)
-const newSubject = ref<Subject>({
-  id: '',
+const newSubject = ref<Pick<Subject, 'name' | 'color'>>({
   name: '',
   color: getRandomRGBColor()
 })
@@ -33,7 +35,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', subject_id: string): void
+  (e: 'select', subjectId: string): void
 }>()
 // 添加一个监听器监听disable，如果disable为true，则收起
 watch(
@@ -68,7 +70,6 @@ watch(
   () => showAddSubject,
   () => {
     newSubject.value = {
-      id: '',
       name: '',
       color: getRandomRGBColor()
     }
@@ -91,7 +92,6 @@ const handleAddSubject = () => {
       showAddSubject.value = false
       isExpanded.value = false
       newSubject.value = {
-        id: '',
         name: '',
         color: getRandomRGBColor()
       }

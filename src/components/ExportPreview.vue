@@ -20,23 +20,23 @@
         <div class="preview-label">题目</div>
         <div
           class="preview-content markdown-body"
-          v-html="renderContent(question.prompt)"
+          v-html="renderContent(question.stem)"
         ></div>
       </div>
 
-      <div v-if="question.answer" class="preview-section">
+      <div v-if="question.correctAnswer" class="preview-section">
         <div class="preview-label answer-label">参考答案</div>
         <div
           class="preview-content markdown-body"
-          v-html="renderContent(question.answer)"
+          v-html="renderContent(question.correctAnswer)"
         ></div>
       </div>
 
-      <div v-if="question.analysis" class="preview-section">
+      <div v-if="question.explanation" class="preview-section">
         <div class="preview-label analysis-label">解析</div>
         <div
           class="preview-content markdown-body"
-          v-html="renderContent(question.analysis)"
+          v-html="renderContent(question.explanation)"
         ></div>
       </div>
     </div>
@@ -51,10 +51,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ErrorQuestion } from '../types/legacy'
+import type { QuestionContent } from '../types/questionView'
 
 interface Props {
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 }
 
 defineProps<Props>()

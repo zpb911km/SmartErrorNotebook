@@ -1,13 +1,11 @@
 // 社区分享暂存数据
 // Community 设置 -> Add 消费
 
-export interface SharedQuestionData {
-  prompt: string
-  type_: string
-  answer: string
-  analysis: string
-  error_note: string
-}
+import type { QuestionContent } from '../types/questionView'
+import type { Question } from '../types'
+
+export type SharedQuestionData = QuestionContent &
+  Pick<Question, 'questionType' | 'note'>
 
 let _sharedData: SharedQuestionData | null = null
 

@@ -1,5 +1,8 @@
 <template>
   <div class="preview-page">
+    <div v-if="loadError" role="alert">
+      {{ loadError }} <button @click="fetchData">重新加载</button>
+    </div>
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <div class="filter-select-wrapper">
@@ -27,7 +30,7 @@
             <div class="column-items">
               <div
                 class="cascade-item"
-                :class="{ active: !filters.subject_id }"
+                :class="{ active: !filters.subjectId }"
                 @click="selectSubject('')"
               >
                 全部
@@ -36,7 +39,7 @@
                 v-for="subj in subjects"
                 :key="subj.id"
                 class="cascade-item"
-                :class="{ active: filters.subject_id === subj.id }"
+                :class="{ active: filters.subjectId === subj.id }"
                 @click="handleSubjectClick(subj.id)"
               >
                 {{ subj.name }}
@@ -213,7 +216,7 @@
     </div>
 
     <div
-      v-if="!isLoading && allFiltered.length === 0"
+      v-if="!isLoading && !loadError && allFiltered.length === 0"
       class="empty-illustration"
     >
       <div class="empty-icon"></div>
@@ -231,21 +234,17 @@
 </template>
 
 <script setup lang="ts">
+import { loadQuestionLibrary } from '../services/questionQueries'
+import { createSourceCatalog } from '../services/sourceCatalog'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import type { QuestionView } from '../types/questionView'
+import type { SrsData, Source } from '../types'
+import { timestampSeconds } from '../utils/questionDisplay'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  getAllSrs,
-  getBooks,
-  getChapters,
-  getFullErrorTags,
-  getKnowledges,
-  getQuestions,
-  getSubjects,
-  getSources
-} from '../api/compat'
 import { setReviewQueue } from '../services/reviewStore'
 import type { ReviewCard } from '../services/reviewStore'
-import type { Subject } from '../types/legacy'
+import type { Subject } from '../types'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 
@@ -264,14 +263,18 @@ const router = useRouter()
 
 // ============ Data ============
 const subjects = ref<Subject[]>([])
-const questions = ref<any[]>([])
-const srsCards = ref<any[]>([])
+const questions = ref<QuestionView[]>([])
+const srsCards = ref<SrsData[]>([])
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
-const sourceInfoMap = ref<Map<string, any>>(new Map())
+const sourceInfoMap = ref<Map<string | null, Source>>(new Map())
+const { getBooks, getChapters, getKnowledges } = createSourceCatalog(() =>
+  Array.from(sourceInfoMap.value.values())
+)
 const isLoading = ref(true)
+const loadError = ref('')
 
 const filters = ref({
-  subject_id: '',
+  subjectId: '',
   book: '',
   chapter: '',
   knowledge: ''
@@ -289,16 +292,16 @@ const knowledges = ref<string[]>([])
 
 // ============ Computed ============
 const selectedSubjectName = computed(() => {
-  if (!filters.value.subject_id) return ''
-  const subj = subjects.value.find((s) => s.id === filters.value.subject_id)
+  if (!filters.value.subjectId) return ''
+  const subj = subjects.value.find((s) => s.id === filters.value.subjectId)
   return subj?.name || ''
 })
 
 const activeFilters = computed(() => {
   const list: { key: string; label: string }[] = []
-  if (filters.value.subject_id) {
-    const s = subjects.value.find((x) => x.id === filters.value.subject_id)
-    if (s) list.push({ key: 'subject_id', label: s.name })
+  if (filters.value.subjectId) {
+    const s = subjects.value.find((x) => x.id === filters.value.subjectId)
+    if (s) list.push({ key: 'subjectId', label: s.name })
   }
   if (filters.value.book)
     list.push({ key: 'book', label: `📖 ${filters.value.book}` })
@@ -321,7 +324,7 @@ interface MergedItem {
   book: string
   chapter: string
   knowledge: string
-  srs: any
+  srs: SrsData
   stability: number
   difficulty: number
   recallRate: number
@@ -338,9 +341,9 @@ interface MergedItem {
 }
 
 const mergedItems = computed(() => {
-  const srsByQId = new Map<string, any>()
+  const srsByQId = new Map<string, SrsData>()
   for (const srs of srsCards.value) {
-    srsByQId.set(srs.question_id, srs)
+    srsByQId.set(srs.questionId, srs)
   }
 
   const items: MergedItem[] = []
@@ -348,22 +351,20 @@ const mergedItems = computed(() => {
     const srs = srsByQId.get(q.id)
     if (!srs) continue
 
-    const subject = subjects.value.find(
-      (s) => s.id === (q.subjectid || q.subject_id)
-    )
-    const sourceId = q.sourceid || q.source_id
-    const sourceInfo = sourceInfoMap.value.get(sourceId) || {}
+    const subject = subjects.value.find((s) => s.id === q.subject?.id)
+    const sourceId = q.sourceId
+    const sourceInfo = sourceInfoMap.value.get(sourceId)
 
-    const recallRate = srs.recall_rate ?? 0
+    const recallRate = srs.retrievability ?? 0
     const recallPercent = Math.round(recallRate * 100)
     const n = now()
-    const lastAt = srs.last_review_at
+    const lastAt = srs.lastReviewAt ? timestampSeconds(srs.lastReviewAt) : null
     const daysSinceLast = lastAt
       ? Math.max(0, Math.floor((n - lastAt) / 86400))
       : -1
-    const nextAt = srs.next_review_at
+    const nextAt = srs.nextReviewAt ? timestampSeconds(srs.nextReviewAt) : null
     const daysUntilNext = nextAt ? Math.floor((nextAt - n) / 86400) : null
-    const isDue = srs.is_due
+    const isDue = srs.isDue
 
     console.log(srs, isDue, n)
 
@@ -399,19 +400,19 @@ const mergedItems = computed(() => {
     items.push({
       id: q.id,
       questionId: q.id,
-      subjectId: q.subjectid || q.subject_id,
+      subjectId: q.subject?.id ?? '',
       subjectName: subject?.name || '未知',
-      prompt: q.prompt || '',
-      book: sourceInfo.book || '',
-      chapter: sourceInfo.chapter || '',
-      knowledge: sourceInfo.knowledge || '',
+      prompt: q.stem || '',
+      book: sourceInfo?.book || '',
+      chapter: sourceInfo?.chapter || '',
+      knowledge: sourceInfo?.knowledge || '',
       srs,
       stability: stab,
       difficulty: srs.difficulty ?? 5,
       recallRate,
       nextReviewAt: nextAt,
       lastReviewAt: lastAt,
-      reviewCount: srs.review_count ?? 0,
+      reviewCount: srs.reviewCount ?? 0,
       recallPercent,
       urgencyLabel,
       lastReviewLabel,
@@ -425,7 +426,7 @@ const mergedItems = computed(() => {
 
 const filteredItems = computed(() => {
   return mergedItems.value.filter((item) => {
-    if (filters.value.subject_id && item.subjectId !== filters.value.subject_id)
+    if (filters.value.subjectId && item.subjectId !== filters.value.subjectId)
       return false
     if (filters.value.book && item.book !== filters.value.book) return false
     if (filters.value.chapter && item.chapter !== filters.value.chapter)
@@ -487,7 +488,7 @@ function toggleSubjectDropdown() {
 }
 
 function handleSubjectClick(id: string) {
-  filters.value.subject_id = id
+  filters.value.subjectId = id
   filters.value.book = ''
   filters.value.chapter = ''
   filters.value.knowledge = ''
@@ -498,13 +499,7 @@ function handleSubjectClick(id: string) {
   knowledges.value = []
   cascadeVisible.value = true
   if (id) {
-    getBooks(id)
-      .then((b) => {
-        books.value = b
-      })
-      .catch(() => {
-        books.value = []
-      })
+    books.value = getBooks(id)
   } else {
     books.value = []
   }
@@ -517,14 +512,8 @@ function handleBookClick(book: string) {
   currentBook.value = book || null
   currentChapter.value = null
   knowledges.value = []
-  if (filters.value.subject_id && book) {
-    getChapters(book, filters.value.subject_id)
-      .then((c) => {
-        chapters.value = c
-      })
-      .catch(() => {
-        chapters.value = []
-      })
+  if (filters.value.subjectId && book) {
+    chapters.value = getChapters(book, filters.value.subjectId)
   } else {
     chapters.value = []
   }
@@ -534,14 +523,12 @@ function handleChapterClick(ch: string) {
   filters.value.chapter = ch
   filters.value.knowledge = ''
   currentChapter.value = ch || null
-  if (filters.value.subject_id && filters.value.book && ch) {
-    getKnowledges(filters.value.book, ch, filters.value.subject_id)
-      .then((k) => {
-        knowledges.value = k
-      })
-      .catch(() => {
-        knowledges.value = []
-      })
+  if (filters.value.subjectId && filters.value.book && ch) {
+    knowledges.value = getKnowledges(
+      filters.value.book,
+      ch,
+      filters.value.subjectId
+    )
   } else {
     knowledges.value = []
   }
@@ -553,20 +540,14 @@ function selectKnowledge(k: string) {
 }
 
 function selectSubject(id: string) {
-  filters.value.subject_id = id
+  filters.value.subjectId = id
   filters.value.book = ''
   filters.value.chapter = ''
   filters.value.knowledge = ''
   if (id) {
     currentSubjectId.value = id
     cascadeVisible.value = true
-    getBooks(id)
-      .then((b) => {
-        books.value = b
-      })
-      .catch(() => {
-        books.value = []
-      })
+    books.value = getBooks(id)
   } else {
     closeCascadeWindow()
   }
@@ -578,8 +559,8 @@ function closeCascadeWindow() {
 }
 
 function removeFilter(key: string) {
-  if (key === 'subject_id') {
-    filters.value.subject_id = ''
+  if (key === 'subjectId') {
+    filters.value.subjectId = ''
     filters.value.book = ''
     filters.value.chapter = ''
     filters.value.knowledge = ''
@@ -596,7 +577,7 @@ function removeFilter(key: string) {
 }
 
 function clearAllFilters() {
-  filters.value.subject_id = ''
+  filters.value.subjectId = ''
   filters.value.book = ''
   filters.value.chapter = ''
   filters.value.knowledge = ''
@@ -606,7 +587,7 @@ function buildReviewCard(item: MergedItem): ReviewCard {
   return {
     questionId: item.questionId,
     srs: item.srs,
-    question: questions.value.find((q) => q.id === item.questionId) || {},
+    question: questions.value.find((q) => q.id === item.questionId)!,
     subjectName: item.subjectName
   }
 }
@@ -624,44 +605,35 @@ function startReview() {
 }
 
 // ============ Lifecycle ============
-onMounted(async () => {
+const beginLoad = useLatestRequest()
+const fetchData = async () => {
+  const isCurrent = beginLoad()
   isLoading.value = true
+  loadError.value = ''
   try {
-    const [subs, qs, srs, tags, srcs] = await Promise.all([
-      getSubjects(),
-      getQuestions(),
-      getAllSrs(),
-      getFullErrorTags(),
-      getSources()
-    ])
-    subjects.value = subs
-    questions.value = qs as any[]
-    srsCards.value = srs as any[]
-
-    const tagMap = new Map<string, string[]>()
-    ;(tags as any[]).forEach((tag: any) => {
-      // 过滤掉已删除的标签
-      if (tag.name.startsWith('[已删除]')) return
-      if (!tagMap.has(tag.question_id)) tagMap.set(tag.question_id, [])
-      tagMap.get(tag.question_id)!.push(tag.name)
-    })
-    questionTagsMap.value = tagMap
-
-    const sourceMap = new Map<string, any>()
-    ;(srcs as any[]).forEach((src: any) => {
-      sourceMap.set(src.id, {
-        book: src.book || '',
-        chapter: src.chapter || '',
-        knowledge: src.knowledge || ''
-      })
-    })
-    sourceInfoMap.value = sourceMap
-  } catch (e) {
-    console.error('Preview load failed:', e)
+    const library = await loadQuestionLibrary()
+    if (!isCurrent()) return
+    subjects.value = library.subjects
+    questions.value = library.items
+    srsCards.value = library.srs
+    questionTagsMap.value = new Map(
+      library.items.map((question) => [
+        question.id,
+        question.tags
+          .filter((tag) => !tag.name.startsWith('[已删除]'))
+          .map((tag) => tag.name)
+      ])
+    )
+    sourceInfoMap.value = new Map(
+      library.sources.map((source) => [source.id, source])
+    )
+  } catch (error) {
+    if (isCurrent()) loadError.value = '复习数据加载失败，请重试。'
   } finally {
-    isLoading.value = false
+    if (isCurrent()) isLoading.value = false
   }
-})
+}
+onMounted(fetchData)
 </script>
 
 <style scoped>

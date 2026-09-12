@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { listTags as getErrorTags } from '../api'
 import { onMounted, ref, watch, computed } from 'vue'
-import { getErrorTags } from '../api/compat'
-import { ErrorTags } from '../types/legacy'
+import { Tag } from '../types'
+import type { TagDraft } from '../services/questionEditor'
 import { showInfo } from '../utils/notification'
 
 // 定义选中的标签信息类型
@@ -23,7 +24,7 @@ const getRandomRGBColor = () => {
   return `#${r}${g}${b}`
 }
 
-const errorTags = ref<ErrorTags[]>([])
+const errorTags = ref<TagDraft[]>([])
 const selectedTags = ref<SelectedTagInfo[]>([])
 const isExpanded = ref(false)
 
@@ -32,7 +33,7 @@ const filteredErrorTags = computed(() => {
   return errorTags.value.filter((tag) => !tag.name.startsWith('[已删除]'))
 })
 const showAddErrorTag = ref(false)
-const newErrorTag = ref<Omit<ErrorTags, 'id' | 'question_id'>>({
+const newErrorTag = ref<Omit<Tag, 'id'>>({
   name: '',
   color: getRandomRGBColor()
 })
@@ -68,7 +69,7 @@ watch(
   { immediate: true }
 )
 
-const handleClick = (errorTag: ErrorTags, event: Event) => {
+const handleClick = (errorTag: TagDraft, event: Event) => {
   event.stopPropagation()
   const index = selectedTags.value.findIndex(
     (tag) => tag.name === errorTag.name && tag.color === errorTag.color
@@ -97,8 +98,6 @@ const handleAddErrorTag = () => {
     color: newErrorTag.value.color
   })
   errorTags.value.push({
-    id: '',
-    question_id: '',
     name: newErrorTag.value.name,
     color: newErrorTag.value.color
   })
@@ -114,7 +113,7 @@ const handleAddErrorTag = () => {
 }
 
 // 检查标签是否被选中
-const isTagSelected = (errorTag: ErrorTags) => {
+const isTagSelected = (errorTag: TagDraft) => {
   return selectedTags.value.some(
     (tag) => tag.name === errorTag.name && tag.color === errorTag.color
   )
@@ -189,7 +188,7 @@ onMounted(() => {
         <div
           class="error-tag-option"
           v-for="errorTag in filteredErrorTags"
-          :key="errorTag.id"
+          :key="errorTag.id ?? JSON.stringify([errorTag.name, errorTag.color])"
           @click="handleClick(errorTag, $event)"
           :class="{ selected: isTagSelected(errorTag) }"
         >

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { invoke } from '@tauri-apps/api/core'
+import { getOpenedUrls } from './api/platformExceptions'
 import { listen } from '@tauri-apps/api/event'
 import TopBar from './components/TopBar.vue'
 import BottomNav from './components/BottomNav.vue'
@@ -90,6 +90,8 @@ onMounted(async () => {
   const savedTheme = localStorage.getItem('theme') || 'system'
   applyTheme(savedTheme)
 
+  // TODO(out-of-scope): This anonymous theme listener survives unmount. A theme
+  // lifecycle follow-up should retain the handler and remove it in onUnmounted.
   // 监听系统主题变化
   if (window.matchMedia) {
     window
@@ -106,7 +108,7 @@ onMounted(async () => {
 
   // 1. 冷启动：检查 Rust State 中是否有通过文件关联传入的 URL
   try {
-    const initialUrls: string[] = await invoke('legacy_opened_urls')
+    const initialUrls: string[] = await getOpenedUrls()
     if (initialUrls.length > 0) {
       await handleOpenedUrl(initialUrls[0])
     }

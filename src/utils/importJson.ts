@@ -1,123 +1,108 @@
+import { loadQuestionLibrary } from '../services/questionQueries'
 import {
-  addQuestion,
-  addErrorTagsForQuestion,
-  ensureQuestionSrs,
-  getQuestions
-} from '../api/compat'
-import type { ExportJSONSchema, ErrorQuestion } from '../types/legacy'
+  createQuestionEditor,
+  type SaveState
+} from '../services/questionEditor'
+import { parseQuestionType } from './questionDisplay'
+import { errorMessage } from './errors'
+import type { ExportJSONSchema } from '../types/transfer'
 
-/** 解析并校验 JSON 文件，返回题目列表和错误信息 */
 export function parseImportFile(content: string): {
   questions: ExportJSONSchema['questions']
   version: string
   error?: string
 } {
-  let data: any
+  let data: unknown
   try {
     data = JSON.parse(content)
   } catch {
     return { questions: [], version: '', error: '文件不是有效的 JSON 格式' }
   }
-
-  if (!data || typeof data !== 'object') {
-    return { questions: [], version: '', error: 'JSON 数据必须是对象' }
-  }
-  if (!data.version) {
-    return { questions: [], version: '', error: '缺少必要的 "version" 字段' }
-  }
-  if (!Array.isArray(data.questions)) {
-    return { questions: [], version: '', error: '"questions" 必须是数组' }
-  }
-  if (data.questions.length === 0) {
-    return { questions: [], version: '', error: '"questions" 数组不能为空' }
-  }
-
-  const errs: string[] = []
-  data.questions.forEach((q: any, i: number) => {
-    if (!q || typeof q !== 'object') {
-      errs.push(`第 ${i + 1} 条记录不是有效对象`)
-      return
-    }
-    if (!q.prompt || typeof q.prompt !== 'string') {
-      errs.push(`第 ${i + 1} 条记录缺少 "prompt" 字段`)
-    }
-    if (q.answer !== undefined && typeof q.answer !== 'string') {
-      errs.push(`第 ${i + 1} 条记录的 "answer" 必须是字符串`)
-    }
-    if (q.analysis !== undefined && typeof q.analysis !== 'string') {
-      errs.push(`第 ${i + 1} 条记录的 "analysis" 必须是字符串`)
-    }
-  })
-
-  if (errs.length > 0) {
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !('version' in data) ||
+    typeof data.version !== 'string' ||
+    !data.version ||
+    !('questions' in data) ||
+    !Array.isArray(data.questions) ||
+    !data.questions.length
+  ) {
     return {
       questions: [],
       version: '',
-      error: `数据校验失败:\n${errs.join('\n')}`
+      error: '文件必须包含版本号和非空 questions 数组'
     }
   }
-
-  return { questions: data.questions, version: data.version }
+  const questions: ExportJSONSchema['questions'] = []
+  for (const [index, item] of data.questions.entries()) {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      typeof item.prompt !== 'string' ||
+      !item.prompt ||
+      (item.answer !== undefined && typeof item.answer !== 'string') ||
+      (item.analysis !== undefined && typeof item.analysis !== 'string')
+    ) {
+      return {
+        questions: [],
+        version: '',
+        error: `第 ${index + 1} 条记录的题干、答案或解析无效`
+      }
+    }
+    questions.push({
+      prompt: item.prompt,
+      answer: item.answer ?? '',
+      analysis: item.analysis ?? ''
+    })
+  }
+  return { questions, version: data.version }
 }
 
-/**
- * 导入单道题，包含 SRS 数据和错因标签的创建
- * @returns 是否成功
- */
+/** Each imported row owns its resource checkpoints for retries in this session. */
+const sessions = new WeakMap<
+  object,
+  { editor: ReturnType<typeof createQuestionEditor>; state: SaveState }
+>()
 export async function importSingleQuestion(
   question: ExportJSONSchema['questions'][0],
   subjectId: string,
   typeName: string,
-  userId: string,
-  tags?: Array<{ name: string; color: string }>
+  tags: Array<{ name: string; color: string }> = []
 ): Promise<{ success: boolean; error?: string }> {
+  let session = sessions.get(question)
+  if (!session) {
+    const state: SaveState = {
+      stage: 'idle',
+      committed: null,
+      cleanupIds: [],
+      error: null
+    }
+    session = { editor: createQuestionEditor(state), state }
+    sessions.set(question, session)
+  }
+  if (session.state.committed) return { success: true }
   try {
-    // 1. 创建错题
-    const created = await addQuestion({
-      user_id: userId,
-      subject_id: subjectId,
-      source_id: undefined,
-      prompt: question.prompt,
-      type: typeName as any,
-      answer: question.answer || '',
-      analysis: question.analysis || '',
-      error_note: ''
+    await session.editor.save({
+      source: subjectId
+        ? { kind: 'new', subjectId, book: null, chapter: null, knowledge: null }
+        : { kind: 'none' },
+      questionType: parseQuestionType(typeName),
+      stem: question.prompt,
+      correctAnswer: question.answer || '',
+      explanation: question.analysis || null,
+      note: null,
+      tags: tags.map((tag) => ({ ...tag })),
+      attachments: []
     })
-
-    // 2. 自动创建 SRS 数据（使用 FSRS-5 默认初始难度）
-    try {
-      await ensureQuestionSrs(created.id)
-    } catch (srsError) {
-      console.warn('创建 SRS 数据失败（不影响导入）:', srsError)
-    }
-
-    // 3. 创建错因标签（如果有选）
-    if (tags && tags.length > 0) {
-      try {
-        await addErrorTagsForQuestion(created.id, tags)
-      } catch (tagError) {
-        console.warn('创建错因标签失败（不影响导入）:', tagError)
-      }
-    }
-
     return { success: true }
   } catch (error) {
-    return { success: false, error: String(error) }
+    return { success: false, error: errorMessage(error) }
   }
 }
 
-/**
- * 获取已有题目的 prompt 集合，用于去重判断
- */
 export async function getExistingPromptSet(): Promise<Set<string>> {
-  const set = new Set<string>()
-  try {
-    const existing: ErrorQuestion[] = await getQuestions()
-    existing.forEach((q) => {
-      if (q.prompt) set.add(q.prompt.trim())
-    })
-  } catch {
-    console.warn('获取本地题目列表失败，跳过去重检查')
-  }
-  return set
+  // Failure must reach the importer: an empty fallback silently bypasses deduplication.
+  const library = await loadQuestionLibrary()
+  return new Set(library.items.map((question) => question.stem.trim()))
 }

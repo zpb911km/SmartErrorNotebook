@@ -1,3 +1,5 @@
 allowBuilds:
   core-js: false
   esbuild: true
+patchedDependencies:
+  marked-katex-extension@5.1.12: patches/marked-katex-extension@5.1.12.patch

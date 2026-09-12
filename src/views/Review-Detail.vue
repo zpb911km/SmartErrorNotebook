@@ -161,32 +161,32 @@
               ><span>{{ currentCard.srs.difficulty }}</span>
             </div>
             <div class="debug-row">
-              <span>recall_rate</span
-              ><span>{{ currentCard.srs.recall_rate }}</span>
+              <span>retrievability</span
+              ><span>{{ currentCard.srs.retrievability }}</span>
             </div>
             <div class="debug-row">
-              <span>review_count</span
-              ><span>{{ currentCard.srs.review_count }}</span>
+              <span>reviewCount</span
+              ><span>{{ currentCard.srs.reviewCount }}</span>
             </div>
             <div class="debug-row">
-              <span>next_review_at</span
-              ><span>{{ formatTs(currentCard.srs.next_review_at) }}</span>
+              <span>nextReviewAt</span
+              ><span>{{ formatTs(currentCard.srs.nextReviewAt) }}</span>
             </div>
             <div class="debug-row">
-              <span>last_review_at</span
-              ><span>{{ formatTs(currentCard.srs.last_review_at) }}</span>
+              <span>lastReviewAt</span
+              ><span>{{ formatTs(currentCard.srs.lastReviewAt) }}</span>
             </div>
             <div class="debug-row" v-if="lastResult">
               <span>→ new_stability</span
-              ><span>{{ lastResult.new_stability?.toFixed(2) }}</span>
+              ><span>{{ lastResult.srs.stability?.toFixed(2) }}</span>
             </div>
             <div class="debug-row" v-if="lastResult">
               <span>→ new_difficulty</span
-              ><span>{{ lastResult.new_difficulty?.toFixed(2) }}</span>
+              ><span>{{ lastResult.srs.difficulty?.toFixed(2) }}</span>
             </div>
             <div class="debug-row" v-if="lastResult">
               <span>→ next_interval</span
-              ><span>{{ lastResult.next_interval_days?.toFixed(1) }} 天</span>
+              ><span>{{ lastResult.nextIntervalDays?.toFixed(1) }} 天</span>
             </div>
           </div>
         </div>
@@ -212,9 +212,12 @@
 </template>
 
 <script setup lang="ts">
+import { submitReview as submitReviewRequest } from '../api'
+import type { SubmitReviewResponse } from '../types'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import { formatTimestamp as formatTs } from '../utils/questionDisplay'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { submitReviewResult, type ReviewOutput } from '../api/compat'
 import { getReviewQueue, clearReviewQueue } from '../services/reviewStore'
 
 const router = useRouter()
@@ -226,7 +229,8 @@ const showAnswer = ref(false)
 const feedbackValue = ref(0.5)
 const showDebug = ref(false)
 const submitting = ref(false)
-const lastResult = ref<ReviewOutput | null>(null)
+const lastResult = ref<SubmitReviewResponse | null>(null)
+const beginSubmit = useLatestRequest()
 
 // ============ 滑动条交互状态 ============
 const MAX_OVERFLOW = 50
@@ -344,9 +348,9 @@ watch(
   currentCard,
   (card) => {
     if (card) {
-      promptText.value = card.question?.prompt || ''
-      answerText.value = card.question?.answer || ''
-      analysisText.value = card.question?.analysis || ''
+      promptText.value = card.question?.stem || ''
+      answerText.value = card.question?.correctAnswer || ''
+      analysisText.value = card.question?.explanation || ''
     }
   },
   { immediate: true }
@@ -375,27 +379,27 @@ const feedbackLabel = computed(() => {
 })
 
 // ============ Methods ============
-function getSubjectStyle(_question: any) {
+function getSubjectStyle(_question: unknown) {
   return { backgroundColor: '#e3f2fd', color: '#1976d2' }
-}
-
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return '-'
-  return new Date(ts * 1000).toLocaleString('zh-CN')
 }
 
 async function submitReview() {
   if (submitting.value || !currentCard.value) return
+  const isCurrent = beginSubmit()
   submitting.value = true
   try {
-    const result = await submitReviewResult({
-      question_id: currentCard.value.questionId,
-      feedback: feedbackValue.value
+    const result = await submitReviewRequest({
+      questionId: currentCard.value.questionId,
+      feedback: feedbackValue.value,
+      reviewedAt: new Date().toISOString()
     })
+    if (!isCurrent()) return
     lastResult.value = result
+    currentCard.value.srs = result.srs
 
     // 延迟后进入下一题
     await new Promise((r) => setTimeout(r, 400))
+    if (!isCurrent()) return
 
     if (currentIndex.value < queue.length - 1) {
       currentIndex.value++
@@ -408,10 +412,11 @@ async function submitReview() {
       router.replace({ name: 'Preview' })
     }
   } catch (e) {
+    if (!isCurrent()) return
     console.error('提交复习结果失败:', e)
     alert('提交失败: ' + e)
   } finally {
-    submitting.value = false
+    if (isCurrent()) submitting.value = false
   }
 }
 

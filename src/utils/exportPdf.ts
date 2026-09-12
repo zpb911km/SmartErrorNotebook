@@ -1,5 +1,5 @@
 import { showError } from './notification'
-import type { ErrorQuestion } from '../types/legacy'
+import type { QuestionContent } from '../types/questionView'
 import { jsPDF } from 'jspdf'
 import { exportFile } from './exportFile'
 import { Marked } from 'marked'
@@ -41,7 +41,7 @@ function renderHtml(t: string | undefined | null): string {
 }
 
 export async function exportQuestionsToPDF(
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 ): Promise<boolean> {
   if (!questions.length) {
     showError('导出失败', '没有可导出的错题')
@@ -140,14 +140,14 @@ export async function exportQuestionsToPDF(
   }
 }
 
-function buildCardHtml(q: ErrorQuestion, i: number): string {
+function buildCardHtml(q: QuestionContent, i: number): string {
   return `<div style="padding:14px 18px;margin-bottom:14px;border:1px solid #ccc;border-radius:6px;background:#fff">
   <div style="font-size:16px;font-weight:700;color:#1565c0;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e0e0e0">第 ${i + 1} 题</div>
   <div style="margin-bottom:8px">
     <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">题目</div>
-    <div style="color:#333;white-space:pre-wrap;word-wrap:break-word;line-height:1.7">${renderHtml(q.prompt)}</div>
+    <div style="color:#333;white-space:pre-wrap;word-wrap:break-word;line-height:1.7">${renderHtml(q.stem)}</div>
   </div>
-  ${q.answer ? `<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#2e7d32;margin-bottom:3px">参考答案</div><div style="color:#333;white-space:pre-wrap;word-wrap:break-word;line-height:1.7">${renderHtml(q.answer)}</div></div>` : ''}
-  ${q.analysis ? `<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#c62828;margin-bottom:3px">解析</div><div style="color:#333;white-space:pre-wrap;word-wrap:break-word;line-height:1.7">${renderHtml(q.analysis)}</div></div>` : ''}
+  ${q.correctAnswer ? `<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#2e7d32;margin-bottom:3px">参考答案</div><div style="color:#333;white-space:pre-wrap;word-wrap:break-word;line-height:1.7">${renderHtml(q.correctAnswer)}</div></div>` : ''}
+  ${q.explanation ? `<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:#c62828;margin-bottom:3px">解析</div><div style="color:#333;white-space:pre-wrap;word-wrap:break-word;line-height:1.7">${renderHtml(q.explanation)}</div></div>` : ''}
 </div>`
 }

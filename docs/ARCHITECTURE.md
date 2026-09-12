@@ -45,7 +45,7 @@ graph TB
         end
 
         subgraph S["Services / Utils"]
-            S1[api/ 分领域 invoke 与 compat 适配层]
+            S1[api/ 分领域 invoke 与明确的平台例外]
             S2[types/ 分领域新版契约]
             S3[services/llm.ts AI 识别]
             S4[utils/export* 导出]
@@ -197,11 +197,11 @@ flowchart TD
 |------|------|----------|
 | `views/` | 页面组件，对应路由 | 每个 `.vue` 一个页面，命名 PascalCase |
 | `components/` | 可复用 UI 组件 | 无业务逻辑，通过 props/events 通信 |
-| `api/` | 分领域的新版 `invoke()` 封装和 `compat.ts` 迁移适配层 | 公共契约使用 camelCase；`index.ts` 提供统一导出 |
+| `api/` | 分领域的新版 `invoke()` 封装及明确的平台例外 | 公共契约使用 camelCase；`index.ts` 提供统一导出 |
 | `services/` | 状态管理 + 业务服务 | LLM 服务为单例模式 |
 | `utils/` | 纯函数工具 | 不含副作用 |
 | `types/` | 分领域的新版 TypeScript 接口定义 | 与 Rust IPC DTO 对齐；`index.ts` 提供统一导出 |
-| `types/legacy.ts` | 迁移期页面视图类型 | 不作为新版 IPC 契约 |
+| `types/legacy.ts` | 仅供历史 API 使用的旧类型 | 业务 UI 不再依赖 |
 | `directives/` | Vue 自定义指令 | — |
 | `styles/` | 全局样式 + 主题变量 | 主题通过 CSS 变量切换 |
 
@@ -220,7 +220,7 @@ flowchart TD
 
 跨模型业务一致性由应用用例负责：删除来源会在单个事务内解除题目来源关联并写入墓碑；删除科目仅清空来源的科目关联并写入科目墓碑。题目分页及统计也在单个只读事务快照中同时生成明细和汇总。
 
-Subject、Source、Tag、Attachment 和 Question 是具有独立生命周期的资源。Question 仅保存对其他资源的引用；Question 写入失败不意味着此前成功创建的资源也应被删除，删除 Question 也不会隐式删除 Attachment。`compat.ts` 只是旧 UI 迁移期间的多调用适配器，不是事务或聚合边界，不得通过具有级联业务语义的删除 API 模拟回滚。未来 UI 应按各资源生命周期直接调用新版 IPC，而不是在单次前端 API 调用中操作多个独立资源。
+Subject、Source、Tag、Attachment 和 Question 是具有独立生命周期的资源。Question 仅保存对其他资源的引用；Question 写入失败不意味着此前成功创建的资源也应被删除，删除 Question 也不会隐式删除 Attachment。业务 UI 已移除兼容适配层，使用共享查询服务和编辑会话逐步调用各资源 API，并保留成功检查点与独立清理重试。前端编排不构成跨资源事务，详见[前端架构与验证](FRONTEND_ARCHITECTURE.md)。
 
 ### 历史同步服务器 (`server/`)
 

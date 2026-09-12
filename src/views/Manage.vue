@@ -1,5 +1,8 @@
 <template>
   <div class="manage-page">
+    <div v-if="loadError" role="alert">
+      {{ loadError }} <button @click="fetchData">重新加载</button>
+    </div>
     <!-- 搜索栏 -->
     <div class="search-bar">
       <div class="search-box" :class="{ blinking: isSearchBlinking }">
@@ -41,7 +44,7 @@
                 v-for="subj in subjects"
                 :key="subj.id"
                 class="cascade-item"
-                :class="{ active: filters.subject_id === subj.id }"
+                :class="{ active: filters.subjectId === subj.id }"
                 @click="handleSubjectClick(subj.id)"
               >
                 {{ subj.name }}
@@ -326,7 +329,7 @@
           <div class="header-left">
             <span
               class="subject-tag"
-              :style="getSubjectStyle(error.subject_id)"
+              :style="getSubjectStyle(error.subjectId)"
               >{{ error.subjectName }}</span
             >
             <span v-if="error.book" class="source-tag book-tag">{{
@@ -377,7 +380,7 @@
     </div>
 
     <div
-      v-if="!isLoading && filteredErrors.length === 0"
+      v-if="!isLoading && !loadError && filteredErrors.length === 0"
       class="empty-illustration"
     >
       <div class="empty-icon"></div>
@@ -388,7 +391,7 @@
     <!-- 导出弹窗 -->
     <ExportModal
       v-if="showExportModal"
-      :questions="filteredErrors as any"
+      :questions="filteredErrors"
       @close="showExportModal = false"
     />
 
@@ -403,23 +406,18 @@
 </template>
 
 <script setup lang="ts">
+import { loadQuestionLibrary } from '../services/questionQueries'
+import { createSourceCatalog } from '../services/sourceCatalog'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import type { QuestionView } from '../types/questionView'
+import type { Source, SrsData } from '../types'
+import { timestampSeconds } from '../utils/questionDisplay'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import {
-  ensureQuestionSrs,
-  getAllSrs,
-  getBooks,
-  getChapters,
-  getFullErrorTags,
-  getKnowledges,
-  getQuestions,
-  getSubjects,
-  getSources
-} from '../api/compat'
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
 import { importStore, clearPendingImport } from '../stores/importStore'
-import type { Subject } from '../types/legacy'
+import type { Subject } from '../types'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 
@@ -439,7 +437,7 @@ const route = useRoute()
 
 // 本地筛选状态
 const filters = ref({
-  subject_id: '',
+  subjectId: '',
   book: '',
   chapter: '',
   knowledge: '',
@@ -452,17 +450,21 @@ const filters = ref({
 const isSearchBlinking = ref(false)
 let blinkTimer: number | null = null
 
-// 数据列表 - 使用 any 类型以兼容后端返回的额外字段
-const errors = ref<any[]>([])
+// Current API fields plus explicitly loaded display relationships.
+const errors = ref<QuestionView[]>([])
 const subjects = ref<Subject[]>([])
 const availableTags = ref<string[]>([])
 const isLoading = ref(true)
+const loadError = ref('')
 
-// 错题和标签的映射关系（question_id -> 标签名称数组）
+// 错题和标签的映射关系（questionId -> 标签名称数组）
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
 
-// 错题和来源的映射关系（source_id -> 来源信息）
-const sourceInfoMap = ref<Map<string, any>>(new Map())
+// 错题和来源的映射关系（sourceId -> 来源信息）
+const sourceInfoMap = ref<Map<string | null, Source>>(new Map())
+const { getBooks, getChapters, getKnowledges } = createSourceCatalog(() =>
+  Array.from(sourceInfoMap.value.values())
+)
 
 // 筛选器引用
 
@@ -488,7 +490,7 @@ const dateRangeDropdownVisible = ref(false)
 const tagDropdownVisible = ref(false)
 
 // SRS 数据缓存
-const srsDataMap = ref<Map<string, any>>(new Map())
+const srsDataMap = ref<Map<string, SrsData>>(new Map())
 
 // 排序状态
 const difficultySort = ref<'asc' | 'desc' | 'none'>('none')
@@ -522,8 +524,8 @@ const checkPendingImport = () => {
 
 // 计算选中的科目名称
 const selectedSubjectName = computed(() => {
-  if (!filters.value.subject_id) return ''
-  const subject = subjects.value.find((s) => s.id === filters.value.subject_id)
+  if (!filters.value.subjectId) return ''
+  const subject = subjects.value.find((s) => s.id === filters.value.subjectId)
   return subject?.name || ''
 })
 
@@ -541,8 +543,8 @@ const dateRangeText = computed(() => {
 /** 从已有数据中提取某科目所有的书 */
 const booksOf = (subjectId: string): string[] => {
   const sourceIds = errors.value
-    .filter((q: any) => q.subjectid === subjectId && q.sourceid)
-    .map((q: any) => q.sourceid)
+    .filter((q) => q.subject?.id === subjectId && q.sourceId)
+    .map((q) => q.sourceId)
   const names = new Set<string>()
   for (const sid of sourceIds) {
     const info = sourceInfoMap.value.get(sid)
@@ -554,11 +556,11 @@ const booksOf = (subjectId: string): string[] => {
 /** 从已有数据中提取某书名下所有章节 */
 const chaptersOf = (book: string): string[] => {
   const sourceIds = errors.value
-    .filter((q: any) => {
-      const info = sourceInfoMap.value.get(q.sourceid)
+    .filter((q) => {
+      const info = sourceInfoMap.value.get(q.sourceId)
       return info?.book === book
     })
-    .map((q: any) => q.sourceid)
+    .map((q) => q.sourceId)
   const names = new Set<string>()
   for (const sid of sourceIds) {
     const info = sourceInfoMap.value.get(sid)
@@ -654,7 +656,7 @@ const clearTags = () => {
 
 // 选择科目
 const selectSubject = (subjectId: string) => {
-  filters.value.subject_id = subjectId
+  filters.value.subjectId = subjectId
   filters.value.book = ''
   filters.value.chapter = ''
   filters.value.knowledge = ''
@@ -686,9 +688,9 @@ const handleBookClick = async (book: string) => {
   knowledges.value = []
 
   // 加载该书名的章节
-  if (filters.value.subject_id && book) {
+  if (filters.value.subjectId && book) {
     try {
-      chapters.value = await getChapters(book, filters.value.subject_id)
+      chapters.value = getChapters(book, filters.value.subjectId)
     } catch (error) {
       console.error('获取章节失败:', error)
       chapters.value = []
@@ -702,7 +704,7 @@ const handleBookClick = async (book: string) => {
 const handleChapterClick = async (chapter: string) => {
   console.log('=== 点击章节 ===')
   console.log('章节名称:', chapter)
-  console.log('当前科目ID:', filters.value.subject_id)
+  console.log('当前科目ID:', filters.value.subjectId)
   console.log('当前书名:', currentBook.value)
 
   hasChapterClicked.value = true
@@ -713,13 +715,13 @@ const handleChapterClick = async (chapter: string) => {
   filters.value.knowledge = ''
 
   // 加载该章节的知识点
-  if (filters.value.subject_id && currentBook.value && chapter) {
+  if (filters.value.subjectId && currentBook.value && chapter) {
     try {
       console.log('开始获取知识点...')
-      knowledges.value = await getKnowledges(
+      knowledges.value = getKnowledges(
         currentBook.value,
         chapter,
-        filters.value.subject_id
+        filters.value.subjectId
       )
       console.log('加载知识点成功:', knowledges.value)
       console.log('知识点数量:', knowledges.value.length)
@@ -752,7 +754,7 @@ const showCascadeMenuForSubject = async (subjectId: string) => {
 
   // 加载当前科目的书名
   try {
-    books.value = await getBooks(subjectId)
+    books.value = getBooks(subjectId)
   } catch (error) {
     console.error('获取书名失败:', error)
     books.value = []
@@ -856,124 +858,44 @@ const handleTriggerBlink = () => {
 }
 
 // 从数据库获取数据
+const beginLoad = useLatestRequest()
 const fetchData = async () => {
+  const isCurrent = beginLoad()
   isLoading.value = true
+  loadError.value = ''
   try {
-    // 并行获取科目、错题、标签和来源数据
-    const [subjectsData, questionsData, tagsData, sourcesData] =
-      await Promise.all([
-        getSubjects(),
-        getQuestions(),
-        getFullErrorTags(),
-        getSources()
+    const library = await loadQuestionLibrary()
+    if (!isCurrent()) return
+    subjects.value = library.subjects
+    errors.value = library.items
+    availableTags.value = [
+      ...new Set(
+        library.tags
+          .filter((tag) => !tag.name.startsWith('[已删除]'))
+          .map((tag) => tag.name)
+      )
+    ]
+    questionTagsMap.value = new Map(
+      library.items.map((question) => [
+        question.id,
+        question.tags
+          .filter((tag) => !tag.name.startsWith('[已删除]'))
+          .map((tag) => tag.name)
       ])
-
-    subjects.value = subjectsData
-    // 后端返回的数据包含 created_at 和 updated_at 等额外字段
-    errors.value = questionsData as any[]
-
-    // 批量获取 SRS 数据（一次查询取代 N+1）
-    console.log('开始获取 SRS 数据...')
-    const srsMap = new Map<string, any>()
-    const questionsWithoutSRS: any[] = []
-
-    const allSRS = await getAllSrs()
-    for (const srs of allSRS) {
-      srsMap.set(srs.question_id, srs)
-      srs.question_id &&
-        console.log(`题目 ${srs.question_id} 的 SRS 数据:`, {
-          difficulty: srs.difficulty,
-          stability: srs.stability,
-          recall_rate: srs.recall_rate,
-          review_count: srs.review_count
-        })
-    }
-
-    // 找出缺少 SRS 数据的题目
-    for (const question of questionsData) {
-      if (!srsMap.has(question.id)) {
-        console.warn(`题目 ${question.id} 没有 SRS 数据，将自动创建`)
-        questionsWithoutSRS.push(question)
-      }
-    }
-
-    // 为没有 SRS 数据的题目创建 SRS 数据
-    if (questionsWithoutSRS.length > 0) {
-      console.log(`开始为 ${questionsWithoutSRS.length} 个题目创建 SRS 数据...`)
-      const createPromises = questionsWithoutSRS.map(async (question: any) => {
-        try {
-          // 使用 FSRS-5 默认初始难度
-          const srsData = await ensureQuestionSrs(question.id)
-          srsMap.set(question.id, srsData)
-          console.log(`为题目 ${question.id} 创建 SRS 数据成功:`, srsData)
-        } catch (error) {
-          console.error(`为题目 ${question.id} 创建 SRS 数据失败:`, error)
-        }
-      })
-
-      await Promise.all(createPromises)
-      console.log('SRS 数据创建完成')
-    }
-
-    srsDataMap.value = srsMap
-    console.log('SRS 数据获取完成，总数:', srsMap.size)
-    console.log('SRS 数据详情:', Array.from(srsMap.entries()))
-
-    // 提取所有唯一的标签名称（过滤掉已删除的）
-    const allTags = tagsData as any[]
-    const activeTags = allTags.filter((tag) => !tag.name.startsWith('[已删除]'))
-    const uniqueTags = [...new Set(activeTags.map((tag) => tag.name))]
-    availableTags.value = uniqueTags
-
-    // 构建错题和标签的映射关系（过滤掉已删除的）
-    console.log(allTags)
-    const tagMap = new Map<string, string[]>()
-    activeTags.forEach((tag: any) => {
-      const questionId = tag.question_id
-      const tagName = tag.name
-
-      if (!tagMap.has(questionId)) {
-        tagMap.set(questionId, [])
-      }
-      tagMap.get(questionId)!.push(tagName)
-    })
-    questionTagsMap.value = tagMap
-    console.log('tagMap:', tagMap)
-
-    // 构建来源映射（source_id -> 来源信息）
-    const sourceMap = new Map<string, any>()
-    const allSources = sourcesData as any[]
-
-    console.log('=== 来源数据调试 ===')
-    console.log('所有来源数量:', allSources.length)
-    console.log('所有来源:', allSources)
-
-    // 按来源 ID 映射（不是 question_id）
-    allSources.forEach((source: any) => {
-      const sourceId = source.id // 来源表的主键 ID
-      sourceMap.set(sourceId, {
-        book: source.book || '',
-        chapter: source.chapter || '',
-        knowledge: source.knowledge || ''
-      })
-      console.log(`来源 ${sourceId} 的信息:`, {
-        book: source.book,
-        chapter: source.chapter,
-        knowledge: source.knowledge
-      })
-    })
-
-    console.log('来源映射数量:', sourceMap.size)
-    console.log('====================')
-
-    sourceInfoMap.value = sourceMap
+    )
+    sourceInfoMap.value = new Map(
+      library.sources.map((source) => [source.id, source])
+    )
+    srsDataMap.value = new Map(library.srs.map((srs) => [srs.questionId, srs]))
   } catch (error) {
+    if (!isCurrent()) return
+    loadError.value = '题目加载失败，请重试。'
     console.error('获取数据失败:', error)
     errors.value = []
     subjects.value = []
     availableTags.value = []
   } finally {
-    isLoading.value = false
+    if (isCurrent()) isLoading.value = false
   }
 }
 
@@ -1053,12 +975,10 @@ const activeFilters = computed(() => {
   const filters_list = []
 
   // 科目
-  if (filters.value.subject_id) {
-    const subject = subjects.value.find(
-      (s) => s.id === filters.value.subject_id
-    )
+  if (filters.value.subjectId) {
+    const subject = subjects.value.find((s) => s.id === filters.value.subjectId)
     if (subject) {
-      filters_list.push({ key: 'subject_id', label: subject.name })
+      filters_list.push({ key: 'subjectId', label: subject.name })
     }
   }
 
@@ -1119,8 +1039,8 @@ const activeFilters = computed(() => {
 // 移除单个筛选条件
 const removeFilter = (key: string) => {
   switch (key) {
-    case 'subject_id':
-      filters.value.subject_id = ''
+    case 'subjectId':
+      filters.value.subjectId = ''
       filters.value.book = ''
       filters.value.chapter = ''
       filters.value.knowledge = ''
@@ -1152,7 +1072,7 @@ const removeFilter = (key: string) => {
 
 // 清除所有筛选条件
 const clearAllFilters = () => {
-  filters.value.subject_id = ''
+  filters.value.subjectId = ''
   filters.value.book = ''
   filters.value.chapter = ''
   filters.value.knowledge = ''
@@ -1202,13 +1122,13 @@ const onSearchFocus = () => {
 // 过滤后的错题列表
 const filteredErrors = computed(() => {
   let filtered = errors.value
-    .map((question: any) => {
-      const subject = subjects.value.find((s) => s.id === question.subjectid)
+    .map((question) => {
+      const subject = subjects.value.find((s) => s.id === question.subject?.id)
       const difficulty = getDifficultyLevel(question.id)
 
-      // 通过错题的 source_id 获取来源信息
-      // question.sourceid 是来源表的主键 ID
-      const sourceId = question.sourceid
+      // 通过错题的 sourceId 获取来源信息
+      // question.sourceId 是来源表的主键 ID
+      const sourceId = question.sourceId
       const sourceInfo = sourceInfoMap.value.get(sourceId) || {
         book: '',
         chapter: '',
@@ -1217,19 +1137,21 @@ const filteredErrors = computed(() => {
 
       return {
         id: question.id,
-        subject_id: question.subjectid,
-        source_id: question.sourceid,
+        subjectId: question.subject?.id ?? '',
+        sourceId: question.sourceId,
         subjectName: subject?.name || '未知科目',
         difficulty,
         difficultyName: getDifficultyName(difficulty),
-        content: question.prompt || '',
+        content: question.stem || '',
         // 保留原始字段供导出使用
-        prompt: question.prompt || '',
-        answer: question.answer || '',
-        analysis: question.analysis || '',
+        stem: question.stem || '',
+        correctAnswer: question.correctAnswer || '',
+        explanation: question.explanation || '',
         // 后端返回的是秒级时间戳
-        date: formatDate(question.updated_at || question.created_at || 0),
-        timestamp: question.updated_at || question.created_at || 0,
+        date: formatDate(
+          timestampSeconds(question.updatedAt || question.createdAt)
+        ),
+        timestamp: timestampSeconds(question.updatedAt || question.createdAt),
         // 来源信息
         book: sourceInfo.book,
         chapter: sourceInfo.chapter,
@@ -1257,8 +1179,8 @@ const filteredErrors = computed(() => {
 
       // 科目筛选
       if (
-        filters.value.subject_id &&
-        error.subject_id !== filters.value.subject_id
+        filters.value.subjectId &&
+        error.subjectId !== filters.value.subjectId
       ) {
         return false
       }
@@ -1354,7 +1276,7 @@ const filteredErrors = computed(() => {
 
   // 排序：难度筛选时按难度排序
   if (difficultySort.value !== 'none') {
-    filtered.sort((a: any, b: any) => {
+    filtered.sort((a, b) => {
       const srsA = srsDataMap.value.get(a.id)
       const srsB = srsDataMap.value.get(b.id)
       const diffA = srsA?.difficulty || 5.0
@@ -1382,9 +1304,9 @@ const filteredErrors = computed(() => {
       const srsData = srsDataMap.value.get(questionId)
       if (!srsData) return 50 // 默认值
 
-      const reviewCount = srsData.review_count || 0
+      const reviewCount = srsData.reviewCount || 0
       const stability = srsData.stability || 0
-      const recallRate = srsData.recall_rate || 0
+      const recallRate = srsData.retrievability || 0
 
       // 综合计算掌握程度（0-100%）
       const reviewScore = Math.min(reviewCount / 10, 1) * 100
@@ -1394,7 +1316,7 @@ const filteredErrors = computed(() => {
       return reviewScore * 0.3 + stabilityScore * 0.3 + recallScore * 0.4
     }
 
-    filtered.sort((a: any, b: any) => {
+    filtered.sort((a, b) => {
       const masteryA = calculateMastery(a.id)
       const masteryB = calculateMastery(b.id)
       return masterySort.value === 'desc'
@@ -1426,7 +1348,7 @@ const getRevealDelay = (index: number) => {
 }
 
 // 查看错题详情
-const viewError = (error: any) => {
+const viewError = (error: { id: string }) => {
   router.push({
     name: 'ManageDetail',
     params: { id: error.id }

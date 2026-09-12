@@ -99,7 +99,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import Icon from './Icon.vue'
-import type { ErrorQuestion } from '../types/legacy'
+import type { QuestionContent } from '../types/questionView'
 import { exportQuestionsToJSON } from '../utils/exportJson'
 import { exportQuestionsToHTML } from '../utils/exportHtml'
 import {
@@ -109,7 +109,7 @@ import {
 import { showError } from '../utils/notification'
 
 const props = defineProps<{
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 }>()
 
 const emit = defineEmits<{

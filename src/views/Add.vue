@@ -1,5 +1,5 @@
 <template>
-  <div class="add-page">
+  <div class="add-page" :inert="isSaving">
     <!-- 相机模态框组件 -->
     <CameraModal
       :visible="showCamera"
@@ -164,7 +164,7 @@
       <div class="form-group">
         <label>错题小记</label>
         <MarkdownTextarea
-          v-model="form.error_note"
+          v-model="form.note"
           placeholder="请输入错题小记..."
           rows="3"
         ></MarkdownTextarea>
@@ -181,14 +181,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { listSubjects as getSubjects } from '../api'
+import { blobUrlToBase64 } from '../utils/attachments'
+import { useQuestionEditor } from '../composables/useQuestionEditor'
+import type { QuestionDraft } from '../services/questionEditor'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import CameraModal from '../components/CameraModal.vue'
 import ImageEditor from '../components/ImageEditor.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import SourceSelector from '../components/SourceSelector.vue'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
-import { QuestionType } from '../types/legacy'
-import { blobUrlToBase64, addQuestion, getSubjects } from '../api/compat'
+import {
+  questionTypeLabels,
+  questionTypeLabel,
+  parseQuestionType
+} from '../utils/questionDisplay'
 import { listSources } from '../api/source'
 import type { Source } from '../types/source'
 import {
@@ -216,6 +223,9 @@ const aiButtonLoading = ref(false)
 const sources = ref<Source[]>([])
 const sourceSelection = ref<SourceSelection>({ kind: 'none' })
 let sourceLoadVersion = 0
+onUnmounted(() => {
+  ++sourceLoadVersion
+})
 
 // 相机相关状态
 const showCamera = ref(false)
@@ -232,7 +242,7 @@ const currentPresetId = ref('')
 const selectedPreset = ref(null)
 
 // 题型
-const everyQuestionType = Object.values(QuestionType)
+const everyQuestionType = Object.values(questionTypeLabels)
 
 const form = ref({
   // base info
@@ -241,7 +251,7 @@ const form = ref({
   type: '',
   answer: '',
   analysis: '',
-  error_note: '',
+  note: '',
   // source info
   source: '',
   // error tag info
@@ -252,11 +262,11 @@ const form = ref({
 onMounted(() => {
   const sharedData = getSharedData()
   if (sharedData) {
-    form.value.prompt = sharedData.prompt
-    form.value.type = sharedData.type_
-    form.value.answer = sharedData.answer
-    form.value.analysis = sharedData.analysis
-    form.value.error_note = sharedData.error_note
+    form.value.prompt = sharedData.stem
+    form.value.type = questionTypeLabel(sharedData.questionType)
+    form.value.answer = sharedData.correctAnswer
+    form.value.analysis = sharedData.explanation ?? ''
+    form.value.note = sharedData.note ?? ''
     clearSharedData()
   }
 })
@@ -505,7 +515,8 @@ const handleSubjectSelect = (subjectId: string) => {
 
   void listSources(subjectId)
     .then((loaded) => {
-      if (version !== sourceLoadVersion || form.value.subject !== subjectId) return
+      if (version !== sourceLoadVersion || form.value.subject !== subjectId)
+        return
       // A save may have materialized and appended a source while this request was
       // in flight. Keep such current-only rows instead of letting a stale catalog
       // response hide them and turn the same draft back into a create operation.
@@ -517,10 +528,7 @@ const handleSubjectSelect = (subjectId: string) => {
       ]
       sources.value = merged
       const selection = sourceSelection.value
-      if (
-        selection.kind === 'new' &&
-        selection.subjectId === subjectId
-      ) {
+      if (selection.kind === 'new' && selection.subjectId === subjectId) {
         sourceSelection.value = selectSourceValues(
           merged,
           subjectId,
@@ -531,12 +539,15 @@ const handleSubjectSelect = (subjectId: string) => {
       }
     })
     .catch((error) => {
-      if (version === sourceLoadVersion) console.error('获取来源列表失败:', error)
+      if (version === sourceLoadVersion)
+        console.error('获取来源列表失败:', error)
     })
 }
 
 // 重置表单
+const editor = useQuestionEditor()
 const resetForm = () => {
+  editor.reset()
   form.value = {
     // base info
     subject: '',
@@ -544,7 +555,7 @@ const resetForm = () => {
     type: '',
     answer: '',
     analysis: '',
-    error_note: '',
+    note: '',
     // source info
     source: '',
     // error tag info
@@ -589,39 +600,32 @@ const saveError = async () => {
     form.value.source = materializedSource.sourceId ?? ''
     if (
       materializedSource.source &&
-      !sources.value.some((source) => source.id === materializedSource.source?.id)
+      !sources.value.some(
+        (source) => source.id === materializedSource.source?.id
+      )
     ) {
       sources.value.push(materializedSource.source)
     }
 
-    const attachmentsData = await Promise.all(
-      imageUrls.value.map(async (url) => ({
-        question_id: '',
-        type_: 'original',
-        file_type: 'image',
-        base64_data: await blobUrlToBase64(url)
-      }))
-    )
-
-    // Compatibility bridge for the aggregate-shaped form. Source, tags and
-    // attachments have independent lifecycles; a future UI should call their
-    // Current APIs separately and expose per-resource saving/error/retry state.
-    // Only the question and its initial SRS state belong to one backend transaction.
-    const errorQuestion = await addQuestion(
-      {
-        user_id: 'current_user', // TODO: 从用户状态获取
-        subject_id: form.value.subject,
-        source_id: form.value.source || undefined,
-        prompt: form.value.prompt,
-        type: form.value.type as QuestionType,
-        answer: form.value.answer || undefined,
-        analysis: form.value.analysis || undefined,
-        error_note: form.value.error_note || undefined
-      },
-      form.value.error_tags,
-      attachmentsData
-    )
-    console.log('错题聚合保存成功, id:', errorQuestion.id)
+    const draft: QuestionDraft = {
+      source: sourceSelection.value,
+      questionType: parseQuestionType(form.value.type),
+      stem: form.value.prompt,
+      correctAnswer: form.value.answer,
+      explanation: form.value.analysis || null,
+      note: form.value.note || null,
+      tags: form.value.error_tags.map((tag) => ({ ...tag })),
+      attachments: await Promise.all(
+        imageUrls.value.map(async (url) => ({
+          base64Data: await blobUrlToBase64(url)
+        }))
+      )
+    }
+    try {
+      await editor.save(draft)
+    } finally {
+      sourceSelection.value = draft.source
+    }
     // 保存成功后重置表单
     const savedImgCount = imageUrls.value.length
     const savedTagCount = form.value.error_tags.length
@@ -632,7 +636,10 @@ const saveError = async () => {
     )
   } catch (e) {
     console.error('保存错题失败:', e)
-    showError('保存失败', '请检查网络连接后重试')
+    showError(
+      '保存失败',
+      editor.state.error ? editor.failureMessage() : String(e)
+    )
   } finally {
     isSaving.value = false
   }

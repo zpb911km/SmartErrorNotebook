@@ -57,17 +57,19 @@
         <div v-scroll-reveal="{ delay: 100 }" class="stat-item">
           <div class="stat-label">平均记忆强度</div>
           <div class="stat-value">
-            {{ srsStats.avg_stability.toFixed(1) }} 天
+            {{ srsStats.averageStability.toFixed(1) }} 天
           </div>
         </div>
         <div v-scroll-reveal="{ delay: 180 }" class="stat-item">
           <div class="stat-label">平均难度</div>
-          <div class="stat-value">{{ srsStats.avg_difficulty.toFixed(2) }}</div>
+          <div class="stat-value">
+            {{ srsStats.averageDifficulty.toFixed(2) }}
+          </div>
           <div class="stat-sub">范围 [1, 10]，越高越难</div>
         </div>
         <div v-scroll-reveal="{ delay: 260 }" class="stat-item">
           <div class="stat-label">累计复习</div>
-          <div class="stat-value">{{ srsStats.total_reviews }} 次</div>
+          <div class="stat-value">{{ srsStats.totalReviews }} 次</div>
         </div>
         <div v-scroll-reveal="{ delay: 340 }" class="stat-item">
           <div class="stat-label">SRS 卡片</div>
@@ -789,26 +791,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
-  removeSubject,
-  getAllSrs,
-  getBooks,
-  getChapters,
-  getDueCount,
-  getFullErrorTags,
-  getKnowledges,
-  getQuestions,
-  getQuestionStats,
-  getSources,
-  getSubjects,
-  getSrsStatistics,
-  editSource,
-  editSubject,
-  editTag
-} from '../api/compat'
+  deleteSubject as removeSubject,
+  updateSubject as editSubject,
+  updateSource,
+  updateTag,
+  deleteTag,
+  getLibraryStatistics
+} from '../api'
+import { loadQuestionLibrary } from '../services/questionQueries'
+import { createSourceCatalog } from '../services/sourceCatalog'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import { timestampSeconds } from '../utils/questionDisplay'
+import type { Question, SrsData } from '../types'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { deleteSources } from '../api'
-import type { Subject, Source, ErrorTags } from '../types/legacy'
+import type { Subject, Source, Tag } from '../types'
 import { useCountUp } from '../composables/useCountUp'
 
 // ==================== 状态 ====================
@@ -832,23 +830,16 @@ const questionTotal = ref(0)
 const dueCount = ref(0)
 const srsStats = ref({
   total: 0,
-  due_count: 0,
-  new_cards: 0,
-  avg_stability: 0,
-  avg_difficulty: 0,
-  total_reviews: 0
+  dueCount: 0,
+  newCardCount: 0,
+  averageStability: 0,
+  averageDifficulty: 0,
+  totalReviews: 0
 })
 const subjects = ref<Subject[]>([])
-const questions = ref<{ id: string; source_id?: string }[]>([])
-const allCards = ref<
-  {
-    question_id: string
-    difficulty: number
-    next_review_at: number | null
-    review_count: number
-  }[]
->([])
-const errorTags = ref<ErrorTags[]>([])
+const questions = ref<Question[]>([])
+const allCards = ref<SrsData[]>([])
+const errorTags = ref<Tag[]>([])
 const hoveredIndex = ref(-1)
 
 // 错因管理相关状态
@@ -870,6 +861,9 @@ const deleteTagName = ref('')
 
 // 科目/来源管理相关状态
 const allSources = ref<Source[]>([])
+const { getBooks, getChapters, getKnowledges } = createSourceCatalog(
+  () => allSources.value
+)
 const activeItemType = ref<'subject' | 'book' | 'chapter' | 'knowledge' | null>(
   null
 )
@@ -901,18 +895,18 @@ interface SubjectDistItem {
   color: string
 }
 
-// Question only owns source_id. Its subject is always projected from the
+// Question only owns sourceId. Its subject is always projected from the
 // current Source collection so hierarchy mutations cannot leave stale stats.
 const sourceSubjectById = computed(
   () =>
     new Map(
-      allSources.value.map((source) => [source.id, source.subject_id ?? ''])
+      allSources.value.map((source) => [source.id, source.subjectId ?? ''])
     )
 )
 
-const questionSubjectId = (question: { source_id?: string }) =>
-  question.source_id
-    ? (sourceSubjectById.value.get(question.source_id) ?? '')
+const questionSubjectId = (question: Pick<Question, 'sourceId'>) =>
+  question.sourceId
+    ? (sourceSubjectById.value.get(question.sourceId) ?? '')
     : ''
 
 const subjectDistribution = computed<SubjectDistItem[]>(() => {
@@ -951,7 +945,7 @@ const overview = computed(() => ({
   total: questionTotal.value,
   dueCount: dueCount.value,
   currentMemory: Math.max(0, questionTotal.value - dueCount.value),
-  newCards: srsStats.value.new_cards
+  newCards: srsStats.value.newCardCount
 }))
 
 // 数字滚动计数
@@ -984,11 +978,11 @@ interface HeatmapRow {
 const heatmapData = computed<HeatmapRow[]>(() => {
   if (allCards.value.length === 0) return []
 
-  // 建立 question_id → subject_id 映射
+  // 建立 questionId → subjectId 映射
   const qToSubject = new Map<string, string>()
   questions.value.forEach((q) => qToSubject.set(q.id, questionSubjectId(q)))
 
-  // 建立 subject_id → name 映射
+  // 建立 subjectId → name 映射
   const subjectNameMap = new Map<string, string>()
   subjects.value.forEach((s) => subjectNameMap.set(s.id, s.name))
 
@@ -997,7 +991,7 @@ const heatmapData = computed<HeatmapRow[]>(() => {
   const difficulties: number[] = []
 
   for (const card of allCards.value) {
-    const subjectId = qToSubject.get(card.question_id)
+    const subjectId = qToSubject.get(card.questionId)
     if (subjectId === undefined) continue
     validCards.push({ subjectId, difficulty: card.difficulty })
     difficulties.push(card.difficulty)
@@ -1143,11 +1137,11 @@ const intervalBuckets = computed<IntervalBucket[]>(() => {
   ]
 
   for (const card of allCards.value) {
-    if (card.review_count <= 1 || card.next_review_at === null) {
-      buckets[0].count++ // 新卡片（FSRS-5 初始 review_count=1）
+    if (card.reviewCount <= 1 || card.nextReviewAt === null) {
+      buckets[0].count++ // 新卡片（FSRS-5 初始 reviewCount=1）
       continue
     }
-    const daysUntil = (card.next_review_at - now) / 86400
+    const daysUntil = (timestampSeconds(card.nextReviewAt) - now) / 86400
     if (daysUntil <= 0) buckets[1].count++
     else if (daysUntil <= 3) buckets[2].count++
     else if (daysUntil <= 7) buckets[3].count++
@@ -1167,81 +1161,30 @@ const getIntervalBarHeight = (count: number) =>
   (count / intervalMaxCount.value) * 100
 
 // ==================== 数据加载 ====================
+const beginLoad = useLatestRequest()
 async function loadData() {
+  const isCurrent = beginLoad()
   loading.value = true
   loadError.value = ''
-
   try {
-    const [
-      statsRes,
-      dueRes,
-      srsRes,
-      subjRes,
-      qsRes,
-      cardsRes,
-      tagsRes,
-      sourcesRes
-    ] = await Promise.all([
-      getQuestionStats().catch(() => ({ total: 0 })),
-      getDueCount().catch(() => 0),
-      getSrsStatistics().catch(() => ({
-        total: 0,
-        due_count: 0,
-        new_cards: 0,
-        avg_stability: 0,
-        avg_difficulty: 0,
-        total_reviews: 0
-      })),
-      getSubjects().catch(() => [] as Subject[]),
-      getQuestions().catch(() => []),
-      getAllSrs().catch(() => []),
-      getFullErrorTags().catch(() => [] as ErrorTags[]),
-      getSources().catch(() => [] as Source[])
+    const [library, statistics] = await Promise.all([
+      loadQuestionLibrary(),
+      getLibraryStatistics(new Date().toISOString())
     ])
-
-    questionTotal.value = statsRes.total
-    dueCount.value = dueRes
-    srsStats.value = srsRes
-    subjects.value = subjRes
-    allSources.value = sourcesRes
-    questions.value = qsRes.map((q) => ({
-      id: q.id,
-      source_id: q.source_id
-    }))
-    allCards.value = cardsRes.map((c: any) => ({
-      question_id: c.question_id,
-      difficulty: c.difficulty,
-      next_review_at: c.next_review_at,
-      review_count: c.review_count
-    }))
-    errorTags.value = tagsRes
-
-    // 调试: SRS 难度分布
-    if (cardsRes.length > 0) {
-      const difficulties = cardsRes.map((c: any) => c.difficulty)
-      console.log('[Profile] SRS 难度原始值:', difficulties.slice(0, 20))
-      console.log('[Profile] SRS 难度去重:', [...new Set(difficulties)])
-      const unique: any[] = [...new Set(difficulties)]
-      console.log('[Profile] SRS 难度 min/max:', {
-        min: Math.min(...unique),
-        max: Math.max(...unique)
-      })
-    }
-
-    // 调试: 科目映射是否正确
-    if (subjRes.length > 0 && qsRes.length > 0) {
-      const sample: any = qsRes[0]
-      console.log('[Profile] 字段检查:', {
-        subjectid: sample.subjectid,
-        subject_id: sample.subject_id,
-        id: sample.id
-      })
-      console.log('[Profile] 科目列表:', subjRes)
-    }
-  } catch (e: any) {
-    loadError.value = e?.toString() || '加载失败'
+    if (!isCurrent()) return
+    questionTotal.value = statistics.questionTotal
+    dueCount.value = statistics.dueCount
+    srsStats.value = { ...statistics, total: statistics.cardTotal }
+    subjects.value = library.subjects
+    allSources.value = library.sources
+    questions.value = library.items
+    allCards.value = library.srs
+    // Distribution counts relationships, while editing targets reusable Tag IDs.
+    errorTags.value = library.items.flatMap((question) => question.tags)
+  } catch (error) {
+    if (isCurrent()) loadError.value = String(error)
   } finally {
-    loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 
@@ -1311,7 +1254,7 @@ const handleSelectSubject = async (subject: Subject) => {
   showCascade.value = true
 
   try {
-    books.value = await getBooks(subject.id)
+    books.value = getBooks(subject.id)
   } catch (error) {
     console.error('获取书籍失败:', error)
     books.value = []
@@ -1341,7 +1284,7 @@ const handleSelectBook = async (book: string) => {
   activeColumn.value = 2
 
   try {
-    chapters.value = await getChapters(book, selectedSubject.value?.id)
+    chapters.value = getChapters(book, selectedSubject.value?.id)
   } catch (error) {
     console.error('获取章节失败:', error)
     chapters.value = []
@@ -1354,7 +1297,7 @@ const handleSelectChapter = async (chapter: string) => {
   activeColumn.value = 3
 
   try {
-    knowledges.value = await getKnowledges(
+    knowledges.value = getKnowledges(
       selectedBook.value!,
       chapter,
       selectedSubject.value?.id
@@ -1563,19 +1506,19 @@ async function saveEditBook(oldName: string, index: number) {
     if (!subjectId) return
 
     const bookSources = allSources.value.filter(
-      (s) => s.subject_id === subjectId && s.book === oldName
+      (s) => s.subjectId === subjectId && s.book === oldName
     )
 
     for (const source of bookSources) {
-      await editSource({
-        id: source.id,
+      await updateSource({
+        ...source,
         book: editingItemName.value
       })
     }
 
     // 更新本地数据
     allSources.value = allSources.value.map((s) => {
-      if (s.subject_id === subjectId && s.book === oldName) {
+      if (s.subjectId === subjectId && s.book === oldName) {
         return { ...s, book: editingItemName.value }
       }
       return s
@@ -1611,14 +1554,14 @@ async function saveEditChapter(oldName: string, index: number) {
 
     const chapterSources = allSources.value.filter(
       (s) =>
-        s.subject_id === subjectId &&
+        s.subjectId === subjectId &&
         s.book === bookName &&
         s.chapter === oldName
     )
 
     for (const source of chapterSources) {
-      await editSource({
-        id: source.id,
+      await updateSource({
+        ...source,
         chapter: editingItemName.value
       })
     }
@@ -1626,7 +1569,7 @@ async function saveEditChapter(oldName: string, index: number) {
     // 更新本地数据
     allSources.value = allSources.value.map((s) => {
       if (
-        s.subject_id === subjectId &&
+        s.subjectId === subjectId &&
         s.book === bookName &&
         s.chapter === oldName
       ) {
@@ -1666,15 +1609,15 @@ async function saveEditKnowledge(oldName: string, index: number) {
 
     const knowledgeSources = allSources.value.filter(
       (s) =>
-        s.subject_id === subjectId &&
+        s.subjectId === subjectId &&
         s.book === bookName &&
         s.chapter === chapterName &&
         s.knowledge === oldName
     )
 
     for (const source of knowledgeSources) {
-      await editSource({
-        id: source.id,
+      await updateSource({
+        ...source,
         knowledge: editingItemName.value
       })
     }
@@ -1682,7 +1625,7 @@ async function saveEditKnowledge(oldName: string, index: number) {
     // 更新本地数据
     allSources.value = allSources.value.map((s) => {
       if (
-        s.subject_id === subjectId &&
+        s.subjectId === subjectId &&
         s.book === bookName &&
         s.chapter === chapterName &&
         s.knowledge === oldName
@@ -1759,9 +1702,7 @@ async function executeDelete() {
 
       // 更新本地数据
       allSources.value = allSources.value.map((source) =>
-        source.subject_id === id
-          ? { ...source, subject_id: undefined }
-          : source
+        source.subjectId === id ? { ...source, subjectId: null } : source
       )
       subjects.value = subjects.value.filter((s) => s.id !== id)
 
@@ -1771,13 +1712,13 @@ async function executeDelete() {
     } else if (type === 'book' && subjectId) {
       // 删除书籍 - 递归删除所有相关章节和知识点
       const bookSources = allSources.value.filter(
-        (s) => s.subject_id === subjectId && s.book === name
+        (s) => s.subjectId === subjectId && s.book === name
       )
       await deleteSources(bookSources.map((source) => source.id))
 
       // 更新本地数据
       allSources.value = allSources.value.filter(
-        (s) => !(s.subject_id === subjectId && s.book === name)
+        (s) => !(s.subjectId === subjectId && s.book === name)
       )
       books.value = books.value.filter((b) => b !== name)
 
@@ -1793,14 +1734,14 @@ async function executeDelete() {
       // 删除章节 - 递归删除所有相关知识点
       const chapterSources = allSources.value.filter(
         (s) =>
-          s.subject_id === subjectId && s.book === book && s.chapter === name
+          s.subjectId === subjectId && s.book === book && s.chapter === name
       )
       await deleteSources(chapterSources.map((source) => source.id))
 
       // 更新本地数据
       allSources.value = allSources.value.filter(
         (s) =>
-          !(s.subject_id === subjectId && s.book === book && s.chapter === name)
+          !(s.subjectId === subjectId && s.book === book && s.chapter === name)
       )
       chapters.value = chapters.value.filter((c) => c !== name)
 
@@ -1814,7 +1755,7 @@ async function executeDelete() {
       // 删除知识点
       const knowledgeSources = allSources.value.filter(
         (s) =>
-          s.subject_id === subjectId &&
+          s.subjectId === subjectId &&
           s.book === book &&
           s.chapter === chapter &&
           s.knowledge === name
@@ -1825,7 +1766,7 @@ async function executeDelete() {
       allSources.value = allSources.value.filter(
         (s) =>
           !(
-            s.subject_id === subjectId &&
+            s.subjectId === subjectId &&
             s.book === book &&
             s.chapter === chapter &&
             s.knowledge === name
@@ -1966,7 +1907,8 @@ function openManageModal() {
         ids: []
       })
     }
-    tagMap.get(key)?.ids.push(tag.id)
+    if (!tagMap.get(key)?.ids.includes(tag.id))
+      tagMap.get(key)?.ids.push(tag.id)
   })
 
   const result = Array.from(tagMap.values())
@@ -2008,8 +1950,10 @@ async function saveTagEdit(index: number) {
       (t) => t.name === oldTag.name
     )
 
-    for (const tag of allSameNameTags) {
-      await editTag(tag.id, newName, newColor)
+    for (const tag of new Map(
+      allSameNameTags.map((tag) => [tag.id, tag])
+    ).values()) {
+      await updateTag({ id: tag.id, name: newName, color: newColor })
     }
 
     // 更新本地数据
@@ -2033,71 +1977,21 @@ function confirmDeleteTag(tag: UniqueErrorTag) {
 }
 
 async function executeDeleteTag() {
+  const tag = manageErrorTags.value.find(
+    (item) => item.name === deleteTagName.value
+  )
+  if (!tag) return
   try {
-    console.log('=== 执行删除 ===')
-    console.log('要删除的标签名:', deleteTagName.value)
-    console.log('manageErrorTags:', manageErrorTags.value)
-
-    const tagToDelete = manageErrorTags.value.find(
-      (t) => t.name === deleteTagName.value
-    )
-
-    console.log('找到的要删除的标签:', tagToDelete)
-
-    if (!tagToDelete) {
-      showTagDeleteConfirm.value = false
-      return
+    for (const id of new Set(tag.ids)) {
+      await deleteTag(id)
+      // Publish each successful deletion; a later failure must not hide it.
+      errorTags.value = errorTags.value.filter((item) => item.id !== id)
+      tag.ids = tag.ids.filter((value) => value !== id)
     }
-
-    // 软删除：给标签名称加上 [已删除] 前缀
-    const newName = `[已删除]${tagToDelete.name}`
-    console.log('新标签名:', newName)
-
-    // 批量更新所有相同name的标签
-    for (const id of tagToDelete.ids) {
-      const tag = errorTags.value.find((t) => t.id === id)
-      if (tag) {
-        console.log('更新标签 ID:', id, '原名为:', tag.name, '新名为:', newName)
-        await editTag(id, newName, tag.color)
-      }
-    }
-
-    // 更新本地数据 - 更新所有相同name的标签
-    errorTags.value = errorTags.value.map((t) =>
-      t.name === tagToDelete.name ? { ...t, name: newName } : t
-    )
-
-    console.log('更新后的 errorTags:', errorTags.value)
-
-    // 重新计算过滤后的标签列表
-    const tagMap = new Map<
-      string,
-      { name: string; color: string; ids: string[] }
-    >()
-    errorTags.value.forEach((tag) => {
-      const isDeleted = tag.name.startsWith('[已删除]')
-      if (isDeleted) {
-        return
-      }
-      const key = tag.name
-      if (!tagMap.has(key)) {
-        tagMap.set(key, {
-          name: tag.name,
-          color: tag.color,
-          ids: []
-        })
-      }
-      tagMap.get(key)?.ids.push(tag.id)
-    })
-
-    manageErrorTags.value = Array.from(tagMap.values())
-
-    console.log('重新计算过滤后的 manageErrorTags:', manageErrorTags.value)
-
+    manageErrorTags.value = manageErrorTags.value.filter((item) => item !== tag)
     showTagDeleteConfirm.value = false
   } catch (error) {
-    console.error('软删除错因标签失败:', error)
-    alert('删除失败: ' + (error as Error)?.message)
+    alert('部分标签未能删除，可重试剩余项：' + String(error))
   }
 }
 </script>

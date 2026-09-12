@@ -2,9 +2,13 @@ import { createSource, listSources } from '../api/source'
 import type { Source } from '../types/source'
 import { selectSourceValues, type SourceSelection } from './sourceSelection'
 
-export const materializeSourceSelection = async (
+const resolveSelection = async (
   selection: SourceSelection
-): Promise<{ selection: SourceSelection; sourceId: string | null; source?: Source }> => {
+): Promise<{
+  selection: SourceSelection
+  sourceId: string | null
+  source?: Source
+}> => {
   if (selection.kind === 'none') return { selection, sourceId: null }
   if (selection.kind === 'existing') {
     return { selection, sourceId: selection.sourceId }
@@ -37,4 +41,27 @@ export const materializeSourceSelection = async (
     sourceId: source.id,
     source
   }
+}
+
+type MaterializedSource = Awaited<ReturnType<typeof resolveSelection>>
+const pending = new Map<string, Promise<MaterializedSource>>()
+
+/** Coalesce only concurrent identical drafts; never cache completed resources. */
+export const materializeSourceSelection = (
+  selection: SourceSelection
+): Promise<MaterializedSource> => {
+  if (selection.kind !== 'new') return resolveSelection(selection)
+  const key = JSON.stringify([
+    selection.subjectId,
+    selection.book,
+    selection.chapter,
+    selection.knowledge
+  ])
+  const existing = pending.get(key)
+  if (existing) return existing
+  const request = resolveSelection(selection).finally(() => {
+    pending.delete(key)
+  })
+  pending.set(key, request)
+  return request
 }

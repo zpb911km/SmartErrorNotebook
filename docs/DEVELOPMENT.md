@@ -158,9 +158,9 @@ SmartErrorNotebook/
 │   │   ├── Tag.vue             # 标签组件
 │   │   └── Icon.vue            # Lucide 图标封装
 │   │
-│   ├── api/                    # 新版 IPC 封装、UI 适配及 legacy 维护 API
+│   ├── api/                    # 新版 IPC 封装、平台例外及历史 API
 │   │   ├── index.ts            # camelCase 新版契约
-│   │   ├── compat.ts           # 迁移期页面模型适配
+│   │   ├── platformExceptions.ts # 文件关联及维护操作的明确例外
 │   │   └── legacy/             # 维护、同步及文件兼容 API
 │   │       ├── index.ts            # 统一导出
 │   │       ├── errorQuestions.ts   # 错题 CRUD

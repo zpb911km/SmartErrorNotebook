@@ -1,9 +1,10 @@
-import type { ErrorQuestion, ExportJSONSchema } from '../types/legacy'
+import type { QuestionContent } from '../types/questionView'
+import type { ExportJSONSchema } from '../types/transfer'
 import { showError } from './notification'
 import { exportFile } from './exportFile'
 
 export async function exportQuestionsToJSON(
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 ): Promise<boolean> {
   try {
     if (questions.length === 0) {
@@ -16,9 +17,9 @@ export async function exportQuestionsToJSON(
       exportedAt: new Date().toISOString(),
       count: questions.length,
       questions: questions.map((q) => ({
-        prompt: q.prompt || '',
-        answer: q.answer || '',
-        analysis: q.analysis || ''
+        prompt: q.stem || '',
+        answer: q.correctAnswer || '',
+        analysis: q.explanation || ''
       }))
     }
 

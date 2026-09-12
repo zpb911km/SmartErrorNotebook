@@ -49,11 +49,11 @@ interface IpcError {
 
 来源和标签命令采用相同的、针对具体操作的请求/响应模式。来源的创建、获取和更新返回 `{ source }`，列表返回 `{ sources }`，删除返回 `{ id }`。批量删除接收 `{ ids }` 并返回规范化后的 `{ ids }`。即使值为 `null`，来源更新也要求提供 `subjectId`、`book`、`chapter` 和 `knowledge`，因为更新会替换完整的可编辑状态。删除来源会保留其题目，并在同一事务内将这些题目的 `sourceId` 设为 `null`。删除科目会保留其来源和题目，以原子方式清除这些来源的 `subjectId`，并且仅为科目写入墓碑。标签创建和更新返回 `{ tag }`，列表返回 `{ tags }`，删除返回 `{ id }`。即使另一个未删除的来源具有相同属性，`create_source` 也始终创建新记录。
 
-迁移适配器会在单个前端实例内合并属性相同且正在进行的来源解析。完成的结果不会缓存；后续调用会再次查询当前资源。这不会为新版 IPC 强制施加属性唯一性，也不会对跨窗口请求进行去重。
+前端来源解析服务会在单个前端实例内合并属性相同且正在进行的来源解析。完成的结果不会缓存；后续调用会再次查询当前资源。这不会为新版 IPC 强制施加属性唯一性，也不会对跨窗口请求进行去重。
 
 附件创建和读取独立于题目写入。`create_attachment` 校验并存储图像，然后返回 `{ id }`；`get_attachment` 返回包含 MIME 类型、Base64 数据和 SHA-256 的 `{ attachment }`；删除返回 `{ id }`。图像解码后限制为 10 MiB，且声明的MIME 类型必须与检测到的内容一致。
 
-规范的 TypeScript 请求和响应定义按领域组织在 `src/types/` 下，类型化命令封装也按相同的领域划分组织在 `src/api/` 下。两个目录都通过 `index.ts` 汇总导出文件提供稳定的公共导入。仅用于迁移的 UI 适配器明确命名为 `src/api/compat.ts`。
+规范的 TypeScript 请求和响应定义按领域组织在 `src/types/` 下，类型化命令封装也按相同的领域划分组织在 `src/api/` 下。两个目录都通过 `index.ts` 汇总导出文件提供稳定的公共导入。业务 UI 使用新版类型和独立的查询、编辑服务，详见[前端架构](FRONTEND_ARCHITECTURE.md)。
 
 ## 题目及相关输出
 
@@ -85,13 +85,13 @@ const question = created.question
 
 题目更新要求提供 `sourceId`、`questionType`、`stem`、`correctAnswer`、`explanation`、`note`、`tagIds` 和 `attachmentIds`。调用方必须发送完整的可编辑状态；省略字段表示请求格式错误，而不是保持该字段不变。
 
-题目的创建、更新、获取、删除和列表命令都接收 `request` 对象。题目不接收 `subjectId`；其科目由来源推导。旧版调用方只提供科目时，TypeScript UI适配器会创建或复用仅含科目的来源。未分类题目的 `sourceId` 可以为 `null`。包括 `stem` 在内的题目文本字段会按输入原样存储。
+题目的创建、更新、获取、删除和列表命令都接收 `request` 对象。题目不接收 `subjectId`；其科目由来源推导。UI 只选择科目时，来源解析服务会创建或复用仅含科目的来源。未分类题目的 `sourceId` 可以为 `null`。包括 `stem` 在内的题目文本字段会按输入原样存储。
 
 创建、更新和获取返回 `{ question }`；删除返回 `{ id }`。`QuestionData` 包含 `sourceId`、`tagIds` 和 `attachmentIds`，而不是展开后的关联对象。删除命令会保留内部墓碑；删除题目还会为其 SRS 记录写入墓碑并移除关系，而 Attachment和可复用 Tag 保持独立的生命周期。
 
 ## 读取与复习
 
-`list_questions` 返回 `{ items, total }`。其可选过滤器支持 `search`、`book`、`chapter`、`knowledge`、`tagIds`（任一匹配）、`updatedSince`（`updatedAt >= updatedSince`）和 `reviewState`。排序支持 `UPDATED_AT_ASC`、`UPDATED_AT_DESC`、`MASTERY_ASC`、`MASTERY_DESC`、`ID_ASC` 和 `ID_DESC`；分页为可选。提供 `sort` 时会按声明顺序应用，例如 `['MASTERY_ASC', 'UPDATED_AT_DESC', 'ID_ASC']`。省略它或提供空数组表示不要求任何顺序保证。仅用于迁移的兼容层会将旧版的单一排序意图包装为数组。调用方只提供主排序时，不隐含任何次级排序。旧版科目过滤由 TypeScript UI适配器在应用分页前完成。
+`list_questions` 返回 `{ items, total }`。其可选过滤器支持 `search`、`book`、`chapter`、`knowledge`、`tagIds`（任一匹配）、`updatedSince`（`updatedAt >= updatedSince`）和 `reviewState`。排序支持 `UPDATED_AT_ASC`、`UPDATED_AT_DESC`、`MASTERY_ASC`、`MASTERY_DESC`、`ID_ASC` 和 `ID_DESC`；分页为可选。提供 `sort` 时会按声明顺序应用，例如 `['MASTERY_ASC', 'UPDATED_AT_DESC', 'ID_ASC']`。省略它或提供空数组表示不要求任何顺序保证。调用方只提供主排序时，不隐含任何次级排序。科目过滤由前端查询服务在应用客户端分页前完成。
 
 分页条目和总数在同一个仓储事务中读取。资料库统计同样会在一个事务中读取题目和 SRS 总数，因此每个响应都表示同一个一致的数据库快照。
 
@@ -103,6 +103,6 @@ const question = created.question
 
 ## 兼容性
 
-Subject、Source、Tag、Attachment 和 Question 具有独立的生命周期。后续 Question 写入失败时，先前成功创建的资源仍保持提交状态；删除 Question 也不会隐式删除其 Attachment。仅用于迁移的 UI 适配器只是为了支持现有 UI 而组合多个新版 IPC 调用；它不是事务或聚合边界，不得使用具有级联效果的删除命令模拟回滚。未来 UI 代码应显式操作每种资源的生命周期。如果 Question 写入已提交，但随后单独请求的过期 Attachment 删除失败，适配器会报告明确的“已提交但部分清理失败”错误，使 UI 能够刷新，而不是盲目重试 Question 写入。写入后的数据补全始终是单独的读取操作。
+Subject、Source、Tag、Attachment 和 Question 具有独立的生命周期。后续 Question 写入失败时，先前成功创建的资源仍保持提交状态；删除 Question 也不会隐式删除其 Attachment。前端编辑会话显式组合各资源操作并保留已成功资源的 ID；它不是事务或聚合边界，不使用具有级联效果的删除命令模拟回滚。如果 Question 写入已提交，但随后请求的过期 Attachment 删除失败，UI 保留已提交结果，并提供单独的附件清理重试。写入后的数据补全始终是单独的读取操作。
 
 新版和旧版命令会同时注册，并操作同一个规范化数据库。本地清理、同步协议维护和文件打开关联命令在迁移期间有意仅由旧版接口提供。

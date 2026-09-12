@@ -1,4 +1,4 @@
-import type { ErrorQuestion } from '../types/legacy'
+import type { QuestionContent } from '../types/questionView'
 import { Marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import { showError } from './notification'
@@ -48,7 +48,7 @@ function renderHtml(t: string | undefined | null): string {
  * @returns HTML 字符串
  */
 export function buildQuestionsHTML(
-  questions: ErrorQuestion[],
+  questions: QuestionContent[],
   includeAnswer?: boolean
 ): string {
   // 读取是否包含答案和解析的设置（默认 false）
@@ -212,7 +212,7 @@ export function buildQuestionsHTML(
  * 默认只导出题目（prompt），可在设置页修改。
  */
 export async function exportQuestionsToHTML(
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 ): Promise<boolean> {
   if (questions.length === 0) {
     showError('导出失败', '当前筛选条件下没有可导出的错题')
@@ -231,26 +231,26 @@ export async function exportQuestionsToHTML(
 }
 
 function buildCardHtml(
-  q: ErrorQuestion,
+  q: QuestionContent,
   i: number,
   includeAnswer: boolean
 ): string {
   let sections = `
     <div class="section-label">题目</div>
-    <div class="content">${renderHtml(q.prompt)}</div>
+    <div class="content">${renderHtml(q.stem)}</div>
   `
 
   if (includeAnswer) {
-    if (q.answer) {
+    if (q.correctAnswer) {
       sections += `
     <div class="section-label answer">参考答案</div>
-    <div class="content">${renderHtml(q.answer)}</div>
+    <div class="content">${renderHtml(q.correctAnswer)}</div>
       `
     }
-    if (q.analysis) {
+    if (q.explanation) {
       sections += `
     <div class="section-label analysis">解析</div>
-    <div class="content">${renderHtml(q.analysis)}</div>
+    <div class="content">${renderHtml(q.explanation)}</div>
       `
     }
   }

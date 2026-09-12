@@ -1,5 +1,16 @@
 <template>
-  <div class="manage-detail-page">
+  <div class="manage-detail-page" :inert="saving">
+    <div v-if="detailLoadState === 'error'" role="alert">
+      详情加载失败，请重试。
+      <button @click="fetchErrorDetail">重新加载</button>
+    </div>
+    <button
+      v-if="editor.state.cleanupIds.length"
+      :disabled="editor.busy.value || saving"
+      @click="retryAttachmentCleanup"
+    >
+      题目已保存，重试清理旧附件
+    </button>
     <!-- 顶部导航栏 -->
     <div class="detail-header" ref="detailHeaderRef">
       <button class="back-btn" v-ripple @click="goBack">
@@ -47,7 +58,7 @@
         <div class="form-group">
           <label>科目</label>
           <SubjectSelector
-            :modelValue="editForm.subject_id"
+            :modelValue="editForm.subjectId"
             :disabled="!isEditing"
             @select="handleSubjectSelect"
           />
@@ -58,9 +69,9 @@
           <label>来源信息</label>
           <SourceSelector
             v-model="sourceSelection"
-            :disable="!isEditing || sourceSelectorDisabled"
+            :disable="!isEditing || saving"
             :sources="sources"
-            :subjectId="editForm.subject_id"
+            :subjectId="editForm.subjectId"
           />
         </div>
 
@@ -248,14 +259,14 @@
           <!-- <label>笔记内容</label> -->
           <MarkdownTextarea
             v-if="isEditing"
-            v-model="editForm.error_note"
+            v-model="editForm.note"
             :show-preview="true"
             :default-view-mode="'edit'"
             preview-title="笔记预览"
           />
           <MarkdownTextarea
             v-else
-            :model-value="editForm.error_note"
+            :model-value="editForm.note"
             :show-preview="true"
             :default-view-mode="'preview'"
             preview-title=""
@@ -280,12 +291,12 @@
           </div>
           <div class="stat-item">
             <span class="stat-label">复习次数</span>
-            <span class="stat-value">{{ srsData.review_count }}</span>
+            <span class="stat-value">{{ srsData.reviewCount }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">最后复习</span>
             <span class="stat-value">{{
-              formatTimestamp(srsData.last_review_at)
+              formatTimestamp(srsData.lastReviewAt)
             }}</span>
           </div>
           <div class="stat-item">
@@ -297,7 +308,7 @@
           <div class="stat-item">
             <span class="stat-label">召回率</span>
             <span class="stat-value"
-              >{{ (srsData.recall_rate * 100).toFixed(1) }}%</span
+              >{{ (srsData.retrievability * 100).toFixed(1) }}%</span
             >
           </div>
         </div>
@@ -313,13 +324,13 @@
           <div class="time-item">
             <span class="time-label">创建时间：</span>
             <span class="time-value">{{
-              formatTimestamp(errorDetail.created_at)
+              formatTimestamp(errorDetail.createdAt)
             }}</span>
           </div>
           <div class="time-item">
             <span class="time-label">更新时间：</span>
             <span class="time-value">{{
-              formatTimestamp(errorDetail.updated_at)
+              formatTimestamp(errorDetail.updatedAt)
             }}</span>
           </div>
         </div>
@@ -327,7 +338,7 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-else class="loading-state">
+    <div v-else-if="detailLoadState === 'loading'" class="loading-state">
       <div class="loading-spinner"></div>
       <p>加载中...</p>
     </div>
@@ -389,6 +400,18 @@
 </template>
 
 <script setup lang="ts">
+import { deleteQuestion as removeQuestion, getAttachment } from '../api'
+import { loadQuestionDetail } from '../services/questionQueries'
+import { buildDataUrl, fileToBase64 } from '../utils/attachments'
+import {
+  questionTypeLabel,
+  parseQuestionType,
+  formatTimestamp as formatDateTime
+} from '../utils/questionDisplay'
+import { useQuestionEditor } from '../composables/useQuestionEditor'
+import type { QuestionDraft } from '../services/questionEditor'
+import type { QuestionView } from '../types/questionView'
+import type { SrsData } from '../types'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
@@ -404,31 +427,13 @@ marked.use(
   })
 )
 
-import {
-  buildDataUrl,
-  fileToBase64,
-  removeQuestion,
-  getAttachmentsForQuestion,
-  getErrorTagsForQuestion,
-  getQuestionForUi,
-  getQuestionSrs,
-  getSubjects,
-  saveQuestionAggregate,
-  CompatibilityOperationError
-} from '../api/compat'
-import { listSources } from '../api/source'
 import type { Source } from '../types/source'
 import {
   selectSourceValues,
   type SourceSelection
 } from '../services/sourceSelection'
 import { materializeSourceSelection } from '../services/sourcePersistence'
-import type {
-  ErrorQuestion,
-  Subject,
-  ErrorTags as ErrorTagType,
-  Attachment
-} from '../types/legacy'
+import type { Subject, Tag as ErrorTagType, Attachment } from '../types'
 import SourceSelector from '../components/SourceSelector.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import MarkdownTextarea from '../components/MarkdownTextarea.vue'
@@ -443,14 +448,11 @@ const route = useRoute()
 const errorId = computed(() => route.params.id as string)
 
 // 数据状态
-const errorDetail = ref<
-  (ErrorQuestion & { created_at?: number; updated_at?: number }) | null
->(null)
+const errorDetail = ref<QuestionView | null>(null)
 const subjects = ref<Subject[]>([])
 const errorTags = ref<ErrorTagType[]>([])
-const srsData = ref<any>(null)
+const srsData = ref<SrsData | null>(null)
 const questionImages = ref<Attachment[]>([])
-const answerImages = ref<Attachment[]>([])
 const sources = ref<Source[]>([])
 const sourceSelection = ref<SourceSelection>({ kind: 'none' })
 
@@ -459,8 +461,6 @@ const imageInput = ref<HTMLInputElement | null>(null)
 
 // 临时图片列表（用于编辑时的暂存）
 const tempQuestionImages = ref<Attachment[]>([])
-const imagesToDelete = ref<string[]>([]) // 待删除的图片ID列表
-const imagesToAdd = ref<File[]>([]) // 待添加的文件列表
 
 // 临时标签列表（用于编辑时的暂存）
 const tempErrorTags = ref<Array<{ name: string; color: string }>>([])
@@ -473,7 +473,6 @@ const filteredErrorTags = computed(() => {
 // 编辑状态
 const isEditing = ref(false)
 const saving = ref(false)
-const sourceSelectorDisabled = ref(false) // 控制SourceSelector的启用状态
 
 // 按钮自适应：空间不足时折叠文字只留图标
 const headerActionsRef = ref<HTMLElement | null>(null)
@@ -484,13 +483,13 @@ const backBtnWidth = ref(0) // 挂载时测量的返回按钮宽度
 const titleMinWidth = ref(0) // 挂载时测量的标题最小宽度
 let actionsObserver: ResizeObserver | null = null
 const editForm = ref({
-  subject_id: '',
-  source_id: '',
+  subjectId: '',
+  sourceId: '',
   prompt: '',
   type: '',
   answer: '',
   analysis: '',
-  error_note: ''
+  note: ''
 })
 
 // 弹窗状态
@@ -504,33 +503,40 @@ const fetchErrorDetail = async () => {
   const version = ++detailLoadVersion
   detailLoadState.value = 'loading'
   try {
-    const [question, tags, attachments, srs, loadedSources] = await Promise.all([
-      getQuestionForUi(errorId.value),
-      getErrorTagsForQuestion(errorId.value),
-      getAttachmentsForQuestion(errorId.value),
-      getQuestionSrs(errorId.value).catch(() => null),
-      listSources()
-    ])
+    const {
+      question,
+      sources: loadedSources,
+      subjects: loadedSubjects
+    } = await loadQuestionDetail(errorId.value)
+    const attachments = await Promise.all(
+      question.attachmentIds.map(getAttachment)
+    )
     if (version !== detailLoadVersion) return false
 
     errorDetail.value = question
+    subjects.value = loadedSubjects
     sources.value = loadedSources
-    sourceSelection.value = question.source_id
-      ? { kind: 'existing', sourceId: question.source_id }
-      : selectSourceValues(loadedSources, question.subject_id, null, null, null)
+    sourceSelection.value = question.sourceId
+      ? { kind: 'existing', sourceId: question.sourceId }
+      : selectSourceValues(
+          loadedSources,
+          question.subject?.id ?? '',
+          null,
+          null,
+          null
+        )
     editForm.value = {
-      subject_id: question.subject_id,
-      source_id: question.source_id ?? '',
-      prompt: question.prompt,
-      type: question.type,
-      answer: question.answer ?? '',
-      analysis: question.analysis ?? '',
-      error_note: question.error_note ?? ''
+      subjectId: question.subject?.id ?? '',
+      sourceId: question.sourceId ?? '',
+      prompt: question.stem,
+      type: questionTypeLabel(question.questionType),
+      answer: question.correctAnswer ?? '',
+      analysis: question.explanation ?? '',
+      note: question.note ?? ''
     }
-    errorTags.value = tags
-    questionImages.value = attachments.filter((item) => item.type_ === 'original')
-    answerImages.value = attachments.filter((item) => item.type_ === 'answer')
-    srsData.value = srs
+    errorTags.value = question.tags
+    questionImages.value = attachments
+    srsData.value = question.srs
     detailLoadState.value = 'ready'
     return true
   } catch (error) {
@@ -540,37 +546,29 @@ const fetchErrorDetail = async () => {
   }
 }
 
-// 获取科目列表
-const fetchSubjects = async () => {
-  try {
-    subjects.value = await getSubjects()
-  } catch (error) {
-    console.error('获取科目列表失败:', error)
-  }
-}
-
 // 切换编辑模式
 const toggleEditMode = () => {
   if (saving.value || detailLoadState.value !== 'ready') return
+  editor.reset()
   if (isEditing.value) {
     // 取消编辑，恢复原值
     console.log('取消编辑，恢复原始状态...')
 
     if (errorDetail.value) {
       editForm.value = {
-        subject_id: errorDetail.value.subject_id,
-        source_id: errorDetail.value.source_id || '',
-        prompt: errorDetail.value.prompt,
-        type: (errorDetail.value as any).type_ || errorDetail.value.type,
-        answer: errorDetail.value.answer || '',
-        analysis: errorDetail.value.analysis || '',
-        error_note: errorDetail.value.error_note || ''
+        subjectId: errorDetail.value.subject?.id ?? '',
+        sourceId: errorDetail.value.sourceId || '',
+        prompt: errorDetail.value.stem,
+        type: questionTypeLabel(errorDetail.value.questionType),
+        answer: errorDetail.value.correctAnswer || '',
+        analysis: errorDetail.value.explanation || '',
+        note: errorDetail.value.note || ''
       }
-      sourceSelection.value = errorDetail.value.source_id
-        ? { kind: 'existing', sourceId: errorDetail.value.source_id }
+      sourceSelection.value = errorDetail.value.sourceId
+        ? { kind: 'existing', sourceId: errorDetail.value.sourceId }
         : selectSourceValues(
             sources.value,
-            errorDetail.value.subject_id,
+            errorDetail.value.subject?.id ?? '',
             null,
             null,
             null
@@ -579,16 +577,12 @@ const toggleEditMode = () => {
 
     // 清空临时数据（不需要重新加载，因为原始数据还在）
     tempQuestionImages.value = []
-    imagesToDelete.value = []
-    imagesToAdd.value = []
     tempErrorTags.value = []
 
     console.log('已恢复原始状态')
   } else {
     // 进入编辑模式，初始化临时列表（使用深拷贝避免引用污染）
     tempQuestionImages.value = questionImages.value.map((img) => ({ ...img }))
-    imagesToDelete.value = []
-    imagesToAdd.value = []
     // 初始化临时标签列表
     tempErrorTags.value = errorTags.value.map((tag) => ({
       name: tag.name,
@@ -599,11 +593,25 @@ const toggleEditMode = () => {
 }
 
 // 保存修改
+const editor = useQuestionEditor()
+const retryAttachmentCleanup = async () => {
+  await editor.retryCleanup()
+  alert(
+    editor.state.cleanupIds.length
+      ? '部分附件仍未能清理，请重试。'
+      : '附件清理完成。'
+  )
+}
 const saveChanges = async () => {
-  if (!errorDetail.value || saving.value || detailLoadState.value !== 'ready') return
+  if (
+    !errorDetail.value ||
+    saving.value ||
+    editor.busy.value ||
+    detailLoadState.value !== 'ready'
+  )
+    return
 
   saving.value = true
-  sourceSelectorDisabled.value = true
 
   try {
     // Persist the synchronous selector draft before updating the question. Once
@@ -613,48 +621,58 @@ const saveChanges = async () => {
       sourceSelection.value
     )
     sourceSelection.value = materializedSource.selection
-    editForm.value.source_id = materializedSource.sourceId ?? ''
+    editForm.value.sourceId = materializedSource.sourceId ?? ''
     if (
       materializedSource.source &&
-      !sources.value.some((source) => source.id === materializedSource.source?.id)
+      !sources.value.some(
+        (source) => source.id === materializedSource.source?.id
+      )
     ) {
       sources.value.push(materializedSource.source)
     }
 
-    // Compatibility bridge for the current aggregate-shaped UI only. Questions,
-    // tags and attachments have independent lifecycles and this sequence is not
-    // transactional. A future UI should call the Current APIs per resource and
-    // expose separate saving/error/retry state instead of one aggregate request.
-    await saveQuestionAggregate(
-      { id: errorId.value, ...editForm.value },
-      tempErrorTags.value,
-      tempQuestionImages.value,
-      questionImages.value
-    )
-
+    const draft: QuestionDraft = {
+      id: errorId.value,
+      source: sourceSelection.value,
+      questionType: parseQuestionType(editForm.value.type),
+      stem: editForm.value.prompt,
+      correctAnswer: editForm.value.answer,
+      explanation: editForm.value.analysis || null,
+      note: editForm.value.note || null,
+      tags: tempErrorTags.value.map((tag) => ({ ...tag })),
+      attachments: tempQuestionImages.value.map((image) => {
+        const original = questionImages.value.find(
+          (item) => item.id === image.id
+        )
+        return {
+          id: original?.base64Data === image.base64Data ? image.id : undefined,
+          base64Data: image.base64Data
+        }
+      })
+    }
+    try {
+      await editor.save(
+        draft,
+        questionImages.value.map((image) => image.id)
+      )
+    } finally {
+      sourceSelection.value = draft.source
+    }
     const refreshed = await fetchErrorDetail()
     isEditing.value = false
     tempQuestionImages.value = []
-    imagesToDelete.value = []
-    imagesToAdd.value = []
-    alert(refreshed ? '保存成功！' : '题目已保存，但详情刷新失败，请稍后刷新页面。')
+    alert(
+      editor.state.cleanupIds.length
+        ? '题目已保存，部分旧附件清理失败，可单独重试清理。'
+        : refreshed
+          ? '保存成功！'
+          : '题目已保存，但详情刷新失败，请重试加载。'
+    )
   } catch (error) {
     console.error('保存失败:', error)
-    if (error instanceof CompatibilityOperationError && error.committed) {
-      const refreshed = await fetchErrorDetail()
-      isEditing.value = false
-      tempQuestionImages.value = []
-      imagesToDelete.value = []
-      imagesToAdd.value = []
-      alert(refreshed
-        ? '题目已保存，但部分旧附件未能清理。'
-        : '题目已保存，但部分旧附件未能清理，详情刷新也失败。请重试加载。')
-    } else {
-      alert('保存失败，请重试')
-    }
+    alert(editor.state.error ? editor.failureMessage() : String(error))
   } finally {
     saving.value = false
-    sourceSelectorDisabled.value = false
   }
 }
 
@@ -664,12 +682,12 @@ const confirmDelete = () => {
 }
 
 // 计算掌握程度
-const calculateMastery = (srs: any): number => {
+const calculateMastery = (srs: SrsData | null): number => {
   if (!srs) return 0
 
-  const reviewCount = srs.review_count || 0
+  const reviewCount = srs.reviewCount || 0
   const stability = srs.stability || 0
-  const recallRate = srs.recall_rate || 0
+  const recallRate = srs.retrievability || 0
 
   // 综合计算掌握程度（0-100%）
   const reviewScore = Math.min(reviewCount / 10, 1) * 100
@@ -695,11 +713,8 @@ const deleteError = async () => {
 }
 
 // 格式化时间戳
-const formatTimestamp = (timestamp?: number) => {
-  if (!timestamp) return '未知'
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleString('zh-CN')
-}
+const formatTimestamp = (timestamp?: string | null) =>
+  formatDateTime(timestamp, '未知')
 
 // 返回上一页
 const goBack = () => {
@@ -708,9 +723,9 @@ const goBack = () => {
 
 // 处理科目选择
 const handleSubjectSelect = (subjectId: string) => {
-  if (editForm.value.subject_id === subjectId) return
-  editForm.value.subject_id = subjectId
-  editForm.value.source_id = ''
+  if (editForm.value.subjectId === subjectId) return
+  editForm.value.subjectId = subjectId
+  editForm.value.sourceId = ''
   sourceSelection.value = selectSourceValues(
     sources.value,
     subjectId,
@@ -721,48 +736,9 @@ const handleSubjectSelect = (subjectId: string) => {
 }
 
 // 构建图片src
-const buildImageSrc = (attachment: any) => {
-  console.log('构建图片URL:', attachment)
-  try {
-    // 如果有 base64_data，优先使用（可能是编辑后的数据）
-    if (attachment.base64_data && attachment.base64_data.length > 0) {
-      // 根据文件类型确定MIME类型
-      let mimeType = 'image/png'
-      if (attachment.file_type === 'jpeg' || attachment.file_type === 'jpg') {
-        mimeType = 'image/jpeg'
-      } else if (attachment.file_type === 'webp') {
-        mimeType = 'image/webp'
-      } else if (attachment.file_type === 'gif') {
-        mimeType = 'image/gif'
-      }
+const buildImageSrc = (attachment: Attachment) =>
+  buildDataUrl(attachment.base64Data, attachment.mimeType)
 
-      return buildDataUrl(attachment.base64_data, mimeType)
-    }
-
-    // 如果没有 base64_data，但有原始文件引用（仅用于未编辑的临时图片）
-    if (attachment._file) {
-      return URL.createObjectURL(attachment._file)
-    }
-
-    // 根据文件类型确定MIME类型
-    let mimeType = 'image/png'
-    if (attachment.file_type === 'jpeg' || attachment.file_type === 'jpg') {
-      mimeType = 'image/jpeg'
-    } else if (attachment.file_type === 'webp') {
-      mimeType = 'image/webp'
-    } else if (attachment.file_type === 'gif') {
-      mimeType = 'image/gif'
-    }
-
-    // 使用 base64ToBlobUrl 或构建 data URL
-    return buildDataUrl(attachment.base64_data, mimeType)
-  } catch (error) {
-    console.error('构建图片URL失败:', error)
-    return ''
-  }
-}
-
-// 图片预览状态
 const showImagePreview = ref(false)
 const previewImageUrl = ref('')
 const editingImageId = ref<string | null>(null) // 当前正在编辑的图片ID
@@ -803,33 +779,32 @@ const handlePreviewConfirm = (imageData: string) => {
   if (imageIndex !== -1) {
     console.log('找到对应的图片，索引:', imageIndex)
     console.log(
-      '原始 base64_data 长度:',
-      tempQuestionImages.value[imageIndex].base64_data?.length || 0
+      '原始 base64Data 长度:',
+      tempQuestionImages.value[imageIndex].base64Data?.length || 0
     )
-    console.log(
-      '原始 file_type:',
-      tempQuestionImages.value[imageIndex].file_type
-    )
+    console.log('原始 mimeType:', tempQuestionImages.value[imageIndex].mimeType)
 
     // 将 base64 数据转换为纯 base64 字符串（去掉 data:image/jpeg;base64, 前缀）
     const base64Data = imageData.split(',')[1] || imageData
 
-    console.log('新的 base64_data 长度:', base64Data.length)
+    console.log('新的 base64Data 长度:', base64Data.length)
     console.log('新数据前缀:', imageData.substring(0, 30))
 
-    // 更新图片的 base64_data
-    tempQuestionImages.value[imageIndex].base64_data = base64Data
+    // 更新图片的 base64Data
+    tempQuestionImages.value[imageIndex].base64Data = base64Data
+    tempQuestionImages.value[imageIndex].mimeType =
+      imageData.match(/^data:([^;]+);/)?.[1] ?? 'image/jpeg'
 
     console.log('✅ 更新成功！')
     console.log(
-      '更新后 base64_data 长度:',
-      tempQuestionImages.value[imageIndex].base64_data.length
+      '更新后 base64Data 长度:',
+      tempQuestionImages.value[imageIndex].base64Data.length
     )
     console.log('更新后的图片对象:', {
       id: tempQuestionImages.value[imageIndex].id,
       base64_data_length:
-        tempQuestionImages.value[imageIndex].base64_data.length,
-      file_type: tempQuestionImages.value[imageIndex].file_type
+        tempQuestionImages.value[imageIndex].base64Data.length,
+      mimeType: tempQuestionImages.value[imageIndex].mimeType
     })
   } else {
     console.error('❌ 未找到对应的图片ID:', editingImageId.value)
@@ -844,7 +819,7 @@ const handlePreviewConfirm = (imageData: string) => {
 }
 
 // 预览图片 - 使用 ImageEditor 组件
-const previewImage = (attachment: any) => {
+const previewImage = (attachment: Attachment) => {
   console.log('预览图片:', attachment)
   const imageUrl = buildImageSrc(attachment)
 
@@ -880,12 +855,6 @@ const handleImageSelect = async (event: Event) => {
   console.log('选择了', files.length, '个文件')
 
   try {
-    // 将文件添加到待添加列表
-    for (let i = 0; i < files.length; i++) {
-      imagesToAdd.value.push(files[i])
-      console.log(`添加文件到临时列表:`, files[i].name)
-    }
-
     // 创建临时的 Attachment 对象用于显示
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
@@ -893,14 +862,11 @@ const handleImageSelect = async (event: Event) => {
       // 将文件转换为 base64
       const base64Data = await fileToBase64(file)
 
-      const tempAttachment: any = {
+      const tempAttachment: Attachment = {
         id: `temp-${Date.now()}-${i}`,
-        question_id: errorId.value,
-        type_: 'original',
-        file_type: file.type.split('/')[1] || 'png',
-        base64_data: base64Data, // 保存 base64 数据
-        name: file.name,
-        _file: file // 保存原始文件引用
+        mimeType: file.type || 'image/png',
+        base64Data: base64Data, // 保存 base64 数据
+        sha256: ''
       }
       tempQuestionImages.value.push(tempAttachment)
 
@@ -925,14 +891,8 @@ const handleImageSelect = async (event: Event) => {
 }
 
 // 删除临时图片
-const deleteTempImage = (image: any) => {
+const deleteTempImage = (image: Attachment) => {
   console.log('删除临时图片:', image.id)
-
-  // 如果是已有图片（有真实ID），加入待删除列表
-  if (image.id && !image.id.startsWith('temp-')) {
-    imagesToDelete.value.push(image.id)
-    console.log('标记为待删除:', image.id)
-  }
 
   // 从临时列表中移除
   tempQuestionImages.value = tempQuestionImages.value.filter(
@@ -942,8 +902,6 @@ const deleteTempImage = (image: any) => {
 }
 
 onMounted(() => {
-  fetchSubjects()
-
   // 按钮自适应：等数据加载完成后再测量并启动观察
   const setupAdaptive = () => {
     nextTick(() => {
@@ -986,10 +944,13 @@ onMounted(() => {
   }
 
   // 等异步数据全部到位后再测量
-  fetchErrorDetail().then(setupAdaptive)
+  fetchErrorDetail().then((loaded) => {
+    if (loaded) setupAdaptive()
+  })
 })
 
 onUnmounted(() => {
+  ++detailLoadVersion
   actionsObserver?.disconnect()
 })
 </script>

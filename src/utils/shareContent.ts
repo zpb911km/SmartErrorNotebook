@@ -2,7 +2,7 @@ import { appCacheDir, join } from '@tauri-apps/api/path'
 import { writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs'
 import { shareFile } from 'tauri-plugin-share'
 import { showError } from './notification'
-import type { ErrorQuestion } from '../types/legacy'
+import type { QuestionContent } from '../types/questionView'
 import { buildQuestionsHTML } from './exportHtml'
 
 /**
@@ -45,7 +45,7 @@ export async function shareContent(
  * 分享为 JSON 格式
  */
 export async function shareQuestionsToJSON(
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 ): Promise<boolean> {
   if (questions.length === 0) {
     showError('分享失败', '当前筛选条件下没有可分享的错题')
@@ -57,9 +57,9 @@ export async function shareQuestionsToJSON(
     exportedAt: new Date().toISOString(),
     count: questions.length,
     questions: questions.map((q) => ({
-      prompt: q.prompt || '',
-      answer: q.answer || '',
-      analysis: q.analysis || ''
+      prompt: q.stem || '',
+      answer: q.correctAnswer || '',
+      analysis: q.explanation || ''
     }))
   }
 
@@ -73,7 +73,7 @@ export async function shareQuestionsToJSON(
  * 分享为 HTML 格式（复用 exportHtml 中的构建逻辑）
  */
 export async function shareQuestionsToHTML(
-  questions: ErrorQuestion[]
+  questions: QuestionContent[]
 ): Promise<boolean> {
   if (questions.length === 0) {
     showError('分享失败', '当前筛选条件下没有可分享的错题')
