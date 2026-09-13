@@ -1,9 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
+
 import {
   ErrorQuestion,
   QuestionFilter,
-  UpdateQuestionInput,
-  QuestionStats
+  QuestionStats,
+  UpdateQuestionInput
 } from '../../types/legacy'
 
 // ==================== API 接口 ====================

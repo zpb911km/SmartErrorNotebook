@@ -5,19 +5,46 @@
       <p class="desc">用于验证输入、预览渲染、属性透传与双向绑定是否正常。</p>
 
       <div class="toolbar">
-        <button class="btn" @click="fillSample">填充示例</button>
-        <button class="btn" @click="fillComplexSample">填充复杂示例</button>
-        <button class="btn" @click="clearAll">清空</button>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="btn"
+          @click="fillSample"
+        >
+          填充示例
+        </q-btn>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="btn"
+          @click="fillComplexSample"
+        >
+          填充复杂示例
+        </q-btn>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="btn"
+          @click="clearAll"
+        >
+          清空
+        </q-btn>
         <label class="switch-row">
-          <input type="checkbox" v-model="showPreview" />
+          <q-checkbox v-model="showPreview" color="primary" aria-label="选择" />
           <span>显示预览</span>
         </label>
       </div>
 
       <MarkdownTextarea
         v-model="content"
-        :showPreview="showPreview"
-        :previewTitle="previewTitle"
+        :show-preview="showPreview"
+        :preview-title="previewTitle"
         placeholder="在这里输入 Markdown..."
         rows="10"
       />
@@ -32,8 +59,8 @@
       <h3>透传属性测试（只读）</h3>
       <MarkdownTextarea
         v-model="readonlyDemo"
-        :showPreview="true"
-        previewTitle="只读预览"
+        :show-preview="true"
+        preview-title="只读预览"
         rows="5"
         readonly
       />

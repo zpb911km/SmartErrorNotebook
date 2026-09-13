@@ -2,63 +2,87 @@
   <div class="manage-detail-page" :inert="saving">
     <div v-if="detailLoadState === 'error'" role="alert">
       详情加载失败，请重试。
-      <button @click="fetchErrorDetail">重新加载</button>
+      <q-btn no-caps unelevated type="button" flat @click="fetchErrorDetail">
+        重新加载
+      </q-btn>
     </div>
-    <button
+    <q-btn
       v-if="editor.state.cleanupIds.length"
-      :disabled="editor.busy.value || saving"
+      no-caps
+      unelevated
+      type="button"
+      flat
+      :disable="editor.busy.value || saving"
       @click="retryAttachmentCleanup"
     >
       题目已保存，重试清理旧附件
-    </button>
+    </q-btn>
     <!-- 顶部导航栏 -->
-    <div class="detail-header" ref="detailHeaderRef">
-      <button class="back-btn" v-ripple @click="goBack">
+    <div class="detail-header">
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        class="back-btn"
+        @click="goBack"
+      >
         <Icon name="arrow-left" :size="16" class="back-icon" />
         <span>返回</span>
-      </button>
+      </q-btn>
       <h2>错题详情管理</h2>
-      <div
-        class="header-actions"
-        ref="headerActionsRef"
-        :class="{ collapsed: actionsCollapsed }"
-      >
-        <button
-          v-ripple
+      <div class="header-actions">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
           class="action-btn edit-btn glare-btn"
+          :disable="saving || detailLoadState !== 'ready'"
           @click="toggleEditMode"
-          :disabled="saving || detailLoadState !== 'ready'"
         >
           <Icon name="square-pen" :size="16" class="btn-icon" />
           <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
-        </button>
-        <button
-          v-ripple
+        </q-btn>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          color="negative"
           class="action-btn delete-btn glare-btn"
           @click="confirmDelete"
         >
           <Icon name="trash-2" :size="16" class="btn-icon" />
           <span class="btn-label">删除</span>
-        </button>
+        </q-btn>
       </div>
     </div>
 
     <p v-if="detailLoadState === 'loading'" role="status">正在加载详情…</p>
     <div v-else-if="detailLoadState === 'error'" role="alert">
       详情未完整加载，暂时无法编辑。
-      <button :disabled="saving" @click="fetchErrorDetail">重试加载</button>
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        :disable="saving"
+        @click="fetchErrorDetail"
+      >
+        重试加载
+      </q-btn>
     </div>
 
     <div v-if="errorDetail" class="detail-content">
       <!-- 基本信息区域 -->
-      <div class="info-section">
+      <q-card flat bordered class="info-section">
         <div class="section-title">基本信息</div>
 
         <!-- 科目选择 -->
         <div class="form-group">
           <label>科目</label>
           <SubjectSelector
-            :modelValue="editForm.subjectId"
+            :model-value="editForm.subjectId"
             :disabled="!isEditing"
             @select="handleSubjectSelect"
           />
@@ -71,32 +95,38 @@
             v-model="sourceSelection"
             :disable="!isEditing || saving"
             :sources="sources"
-            :subjectId="editForm.subjectId"
+            :subject-id="editForm.subjectId"
           />
         </div>
 
         <!-- 题型 -->
         <div class="form-group">
           <label>题型</label>
-          <select
+          <q-select
             v-model="editForm.type"
-            :disabled="!isEditing"
+            outlined
+            dense
+            emit-value
+            map-options
+            :options="[
+              { label: '单选题', value: '单选题' },
+              { label: '多选题', value: '多选题' },
+              { label: '填空题', value: '填空题' },
+              { label: '简答题', value: '简答题' },
+              { label: '论述题', value: '论述题' },
+              { label: '计算题', value: '计算题' },
+              { label: '判断题', value: '判断题' },
+              { label: '其他', value: '' }
+            ]"
+            aria-label="选择选项"
+            :disable="!isEditing"
             class="form-select"
-          >
-            <option value="单选题">单选题</option>
-            <option value="多选题">多选题</option>
-            <option value="填空题">填空题</option>
-            <option value="简答题">简答题</option>
-            <option value="论述题">论述题</option>
-            <option value="计算题">计算题</option>
-            <option value="判断题">判断题</option>
-            <option value="">其他</option>
-          </select>
+          />
         </div>
-      </div>
+      </q-card>
 
       <!-- 题目内容区域 -->
-      <div class="content-section">
+      <q-card flat bordered class="content-section">
         <div class="section-title">题目内容</div>
 
         <!-- 题目图片展示 -->
@@ -121,23 +151,35 @@
                 :alt="'题目图片'"
                 class="question-image"
               />
-              <button
+              <q-btn
                 v-if="isEditing"
+                no-caps
+                unelevated
+                type="button"
+                color="negative"
+                aria-label="删除图片"
                 class="delete-image-btn"
-                @click.stop="deleteTempImage(image)"
                 title="删除图片"
+                @click.stop="deleteTempImage(image)"
               >
                 <Icon name="x" :size="16" />
-              </button>
+              </q-btn>
             </div>
           </div>
         </div>
 
         <!-- 添加图片按钮（仅编辑模式） -->
         <div v-if="isEditing" class="upload-section">
-          <button class="btn-add-images" @click="triggerImageUpload">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="btn-add-images"
+            @click="triggerImageUpload"
+          >
             <Icon name="camera" :size="16" /> 添加图片
-          </button>
+          </q-btn>
           <input
             ref="imageInput"
             type="file"
@@ -167,10 +209,10 @@
             readonly
           />
         </div>
-      </div>
+      </q-card>
 
       <!-- 答案区域 -->
-      <div class="answer-section">
+      <q-card flat bordered class="answer-section">
         <div class="section-title">参考答案</div>
 
         <div class="form-group">
@@ -192,10 +234,10 @@
             readonly
           />
         </div>
-      </div>
+      </q-card>
 
       <!-- 解析区域 -->
-      <div class="analysis-section">
+      <q-card flat bordered class="analysis-section">
         <div class="section-title">解析</div>
 
         <div class="form-group">
@@ -217,10 +259,10 @@
             readonly
           />
         </div>
-      </div>
+      </q-card>
 
       <!-- 错因标签区域 -->
-      <div class="tags-section">
+      <q-card flat bordered class="tags-section">
         <div class="section-title">错因标签</div>
 
         <!-- 非编辑模式：只显示标签 -->
@@ -241,7 +283,7 @@
         <!-- 编辑模式：使用标签选择器 -->
         <div v-else class="tags-edit">
           <ErrorTagSelector
-            :currentTags="tempErrorTags"
+            :current-tags="tempErrorTags"
             @select="
               (tags) => {
                 tempErrorTags = tags
@@ -249,10 +291,10 @@
             "
           />
         </div>
-      </div>
+      </q-card>
 
       <!-- 错题笔记区域 -->
-      <div class="note-section">
+      <q-card flat bordered class="note-section">
         <div class="section-title">错题笔记</div>
 
         <div class="form-group">
@@ -274,10 +316,10 @@
             readonly
           />
         </div>
-      </div>
+      </q-card>
 
       <!-- SRS 数据展示 -->
-      <div class="srs-section">
+      <q-card flat bordered class="srs-section">
         <div class="section-title">学习数据</div>
 
         <div v-if="srsData" class="srs-stats">
@@ -315,10 +357,10 @@
         <div v-else class="no-srs-data">
           <p>暂无学习数据</p>
         </div>
-      </div>
+      </q-card>
 
       <!-- 时间信息 -->
-      <div class="time-section">
+      <q-card flat bordered class="time-section">
         <div class="section-title">时间信息</div>
         <div class="time-info">
           <div class="time-item">
@@ -334,17 +376,21 @@
             }}</span>
           </div>
         </div>
-      </div>
+      </q-card>
     </div>
 
     <!-- 加载状态 -->
     <div v-else-if="detailLoadState === 'loading'" class="loading-state">
-      <div class="loading-spinner"></div>
+      <q-spinner color="primary" size="28px" />
       <p>加载中...</p>
     </div>
 
     <!-- 确认删除弹窗 -->
-    <div v-if="showDeleteConfirm" class="modal-overlay">
+    <q-dialog
+      class="notebook-dialog"
+      persistent
+      :model-value="showDeleteConfirm"
+    >
       <div class="modal-content confirm-modal">
         <div class="modal-header">
           <h3>确认删除</h3>
@@ -353,37 +399,50 @@
           <p>确定要删除这道错题吗？此操作不可恢复。</p>
         </div>
         <div class="modal-footer">
-          <button
-            v-ripple
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
             class="btn-cancel"
             @click="showDeleteConfirm = false"
           >
             取消
-          </button>
-          <button v-ripple class="btn-confirm" @click="deleteError">
+          </q-btn>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            color="primary"
+            class="btn-confirm"
+            @click="deleteError"
+          >
             确认删除
-          </button>
+          </q-btn>
         </div>
       </div>
-    </div>
+    </q-dialog>
 
     <!-- 保存按钮 -->
     <div v-if="isEditing" class="save-bar">
-      <button
-        v-ripple
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        color="primary"
         class="save-btn glare-btn"
+        :disable="saving || detailLoadState !== 'ready'"
         @click="saveChanges"
-        :disabled="saving || detailLoadState !== 'ready'"
       >
         {{ saving ? '保存中...' : '保存修改' }}
-      </button>
+      </q-btn>
     </div>
 
     <!-- 非编辑模式：简单图片预览 -->
     <ImagePreview
       v-if="!isEditing"
       :visible="showImagePreview"
-      :imageUrl="previewImageUrl"
+      :image-url="previewImageUrl"
       @close="closeImagePreview"
     />
 
@@ -391,8 +450,8 @@
     <ImageEditor
       v-if="isEditing"
       :visible="showImagePreview"
-      :imageData="previewImageUrl"
-      :autoDetect="false"
+      :image-data="previewImageUrl"
+      :auto-detect="false"
       @close="closeImagePreview"
       @confirm="handlePreviewConfirm"
     />
@@ -400,46 +459,35 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
 import { deleteQuestion as removeQuestion, getAttachment } from '../api'
-import { loadQuestionDetail } from '../services/questionQueries'
-import { buildDataUrl, fileToBase64 } from '../utils/attachments'
-import {
-  questionTypeLabel,
-  parseQuestionType,
-  formatTimestamp as formatDateTime
-} from '../utils/questionDisplay'
+import ErrorTagSelector from '../components/ErrorTagSelector.vue'
+import ImageEditor from '../components/ImageEditor.vue'
+import ImagePreview from '../components/ImagePreview.vue'
+import MarkdownTextarea from '../components/MarkdownTextarea.vue'
+import SourceSelector from '../components/SourceSelector.vue'
+import SubjectSelector from '../components/SubjectSelector.vue'
 import { useQuestionEditor } from '../composables/useQuestionEditor'
 import type { QuestionDraft } from '../services/questionEditor'
-import type { QuestionView } from '../types/questionView'
-import type { SrsData } from '../types'
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
-import 'katex/dist/katex.min.css'
-
-// 配置 marked 支持 KaTeX
-marked.use(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true
-  })
-)
-
-import type { Source } from '../types/source'
+import { loadQuestionDetail } from '../services/questionQueries'
+import { materializeSourceSelection } from '../services/sourcePersistence'
 import {
   selectSourceValues,
   type SourceSelection
 } from '../services/sourceSelection'
-import { materializeSourceSelection } from '../services/sourcePersistence'
-import type { Subject, Tag as ErrorTagType, Attachment } from '../types'
-import SourceSelector from '../components/SourceSelector.vue'
-import SubjectSelector from '../components/SubjectSelector.vue'
-import MarkdownTextarea from '../components/MarkdownTextarea.vue'
-import ImageEditor from '../components/ImageEditor.vue'
-import ImagePreview from '../components/ImagePreview.vue'
-import ErrorTagSelector from '../components/ErrorTagSelector.vue'
+import type { SrsData } from '../types'
+import type { Attachment, Subject, Tag as ErrorTagType } from '../types'
+import type { QuestionView } from '../types/questionView'
+import type { Source } from '../types/source'
+import { buildDataUrl, fileToBase64 } from '../utils/attachments'
+import { showAlert } from '../utils/dialog'
+import {
+  formatTimestamp as formatDateTime,
+  parseQuestionType,
+  questionTypeLabel
+} from '../utils/questionDisplay'
 
 const router = useRouter()
 const route = useRoute()
@@ -474,14 +522,6 @@ const filteredErrorTags = computed(() => {
 const isEditing = ref(false)
 const saving = ref(false)
 
-// 按钮自适应：空间不足时折叠文字只留图标
-const headerActionsRef = ref<HTMLElement | null>(null)
-const detailHeaderRef = ref<HTMLElement | null>(null)
-const actionsCollapsed = ref(false)
-const fullButtonsWidth = ref(0) // 挂载时测量的按钮全宽（含文字）
-const backBtnWidth = ref(0) // 挂载时测量的返回按钮宽度
-const titleMinWidth = ref(0) // 挂载时测量的标题最小宽度
-let actionsObserver: ResizeObserver | null = null
 const editForm = ref({
   subjectId: '',
   sourceId: '',
@@ -552,7 +592,6 @@ const toggleEditMode = () => {
   editor.reset()
   if (isEditing.value) {
     // 取消编辑，恢复原值
-    console.log('取消编辑，恢复原始状态...')
 
     if (errorDetail.value) {
       editForm.value = {
@@ -578,8 +617,6 @@ const toggleEditMode = () => {
     // 清空临时数据（不需要重新加载，因为原始数据还在）
     tempQuestionImages.value = []
     tempErrorTags.value = []
-
-    console.log('已恢复原始状态')
   } else {
     // 进入编辑模式，初始化临时列表（使用深拷贝避免引用污染）
     tempQuestionImages.value = questionImages.value.map((img) => ({ ...img }))
@@ -596,7 +633,7 @@ const toggleEditMode = () => {
 const editor = useQuestionEditor()
 const retryAttachmentCleanup = async () => {
   await editor.retryCleanup()
-  alert(
+  showAlert(
     editor.state.cleanupIds.length
       ? '部分附件仍未能清理，请重试。'
       : '附件清理完成。'
@@ -661,7 +698,7 @@ const saveChanges = async () => {
     const refreshed = await fetchErrorDetail()
     isEditing.value = false
     tempQuestionImages.value = []
-    alert(
+    showAlert(
       editor.state.cleanupIds.length
         ? '题目已保存，部分旧附件清理失败，可单独重试清理。'
         : refreshed
@@ -670,7 +707,7 @@ const saveChanges = async () => {
     )
   } catch (error) {
     console.error('保存失败:', error)
-    alert(editor.state.error ? editor.failureMessage() : String(error))
+    showAlert(editor.state.error ? editor.failureMessage() : String(error))
   } finally {
     saving.value = false
   }
@@ -708,7 +745,7 @@ const deleteError = async () => {
     router.push('/manage')
   } catch (error) {
     console.error('删除失败:', error)
-    alert('删除失败，请重试')
+    showAlert('删除失败，请重试')
   }
 }
 
@@ -752,17 +789,6 @@ const closeImagePreview = () => {
 
 // 处理预览确认（保存编辑后的图片）
 const handlePreviewConfirm = (imageData: string) => {
-  console.log('========== 图片编辑确认 ==========')
-  console.log('editingImageId:', editingImageId.value)
-  console.log('imageData 类型:', typeof imageData)
-  console.log('imageData 前100字符:', imageData.substring(0, 100))
-  console.log('imageData 长度:', imageData.length)
-  console.log('tempQuestionImages 数量:', tempQuestionImages.value.length)
-  console.log(
-    'tempQuestionImages IDs:',
-    tempQuestionImages.value.map((img) => img.id)
-  )
-
   if (!editingImageId.value) {
     console.error('没有正在编辑的图片ID')
     closeImagePreview()
@@ -774,38 +800,14 @@ const handlePreviewConfirm = (imageData: string) => {
     (img) => img.id === editingImageId.value
   )
 
-  console.log('找到的索引:', imageIndex)
-
   if (imageIndex !== -1) {
-    console.log('找到对应的图片，索引:', imageIndex)
-    console.log(
-      '原始 base64Data 长度:',
-      tempQuestionImages.value[imageIndex].base64Data?.length || 0
-    )
-    console.log('原始 mimeType:', tempQuestionImages.value[imageIndex].mimeType)
-
     // 将 base64 数据转换为纯 base64 字符串（去掉 data:image/jpeg;base64, 前缀）
     const base64Data = imageData.split(',')[1] || imageData
-
-    console.log('新的 base64Data 长度:', base64Data.length)
-    console.log('新数据前缀:', imageData.substring(0, 30))
 
     // 更新图片的 base64Data
     tempQuestionImages.value[imageIndex].base64Data = base64Data
     tempQuestionImages.value[imageIndex].mimeType =
       imageData.match(/^data:([^;]+);/)?.[1] ?? 'image/jpeg'
-
-    console.log('✅ 更新成功！')
-    console.log(
-      '更新后 base64Data 长度:',
-      tempQuestionImages.value[imageIndex].base64Data.length
-    )
-    console.log('更新后的图片对象:', {
-      id: tempQuestionImages.value[imageIndex].id,
-      base64_data_length:
-        tempQuestionImages.value[imageIndex].base64Data.length,
-      mimeType: tempQuestionImages.value[imageIndex].mimeType
-    })
   } else {
     console.error('❌ 未找到对应的图片ID:', editingImageId.value)
     console.error(
@@ -820,7 +822,6 @@ const handlePreviewConfirm = (imageData: string) => {
 
 // 预览图片 - 使用 ImageEditor 组件
 const previewImage = (attachment: Attachment) => {
-  console.log('预览图片:', attachment)
   const imageUrl = buildImageSrc(attachment)
 
   if (!imageUrl) {
@@ -828,7 +829,6 @@ const previewImage = (attachment: Attachment) => {
     return
   }
 
-  console.log('预览图片URL:', imageUrl.substring(0, 50) + '...')
   previewImageUrl.value = imageUrl
   editingImageId.value = attachment.id // 记录当前编辑的图片ID
   showImagePreview.value = true
@@ -836,7 +836,6 @@ const previewImage = (attachment: Attachment) => {
 
 // 触发图片选择
 const triggerImageUpload = () => {
-  console.log('触发图片选择')
   if (imageInput.value) {
     imageInput.value.click()
   }
@@ -848,11 +847,8 @@ const handleImageSelect = async (event: Event) => {
   const files = target.files
 
   if (!files || files.length === 0) {
-    console.log('未选择文件')
     return
   }
-
-  console.log('选择了', files.length, '个文件')
 
   try {
     // 创建临时的 Attachment 对象用于显示
@@ -872,14 +868,11 @@ const handleImageSelect = async (event: Event) => {
 
       // 如果是第一张图片，自动打开编辑器
       if (i === 0) {
-        console.log('自动打开图片编辑器')
         previewImageUrl.value = `data:${file.type};base64,${base64Data}`
         editingImageId.value = tempAttachment.id
         showImagePreview.value = true
       }
     }
-
-    console.log('临时图片列表:', tempQuestionImages.value.length, '个')
   } catch (error) {
     console.error('处理图片失败:', error)
   } finally {
@@ -892,936 +885,15 @@ const handleImageSelect = async (event: Event) => {
 
 // 删除临时图片
 const deleteTempImage = (image: Attachment) => {
-  console.log('删除临时图片:', image.id)
-
   // 从临时列表中移除
   tempQuestionImages.value = tempQuestionImages.value.filter(
     (img) => img.id !== image.id
   )
-  console.log('删除成功，剩余图片:', tempQuestionImages.value.length, '个')
 }
 
-onMounted(() => {
-  // 按钮自适应：等数据加载完成后再测量并启动观察
-  const setupAdaptive = () => {
-    nextTick(() => {
-      if (headerActionsRef.value) {
-        fullButtonsWidth.value = headerActionsRef.value.scrollWidth
-      }
-      if (detailHeaderRef.value) {
-        const back = detailHeaderRef.value.querySelector('.back-btn')
-        if (back) backBtnWidth.value = (back as HTMLElement).offsetWidth
-        const title = detailHeaderRef.value.querySelector('h2')
-        if (title) titleMinWidth.value = (title as HTMLElement).scrollWidth
-      }
-
-      actionsObserver = new ResizeObserver(([entry]) => {
-        const totalWidth = entry.target.clientWidth
-        const totalNeeded =
-          backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
-
-        if (actionsCollapsed.value) {
-          if (totalWidth >= totalNeeded + 30) {
-            actionsCollapsed.value = false
-          }
-        } else {
-          if (totalWidth < totalNeeded - 2) {
-            actionsCollapsed.value = true
-          }
-        }
-      })
-      if (detailHeaderRef.value) {
-        actionsObserver.observe(detailHeaderRef.value)
-        // 初始检测：页面加载完立即判断，不等 resize
-        const initWidth = detailHeaderRef.value.clientWidth
-        const initNeeded =
-          backBtnWidth.value + fullButtonsWidth.value + titleMinWidth.value + 16
-        if (initWidth < initNeeded - 2) {
-          actionsCollapsed.value = true
-        }
-      }
-    })
-  }
-
-  // 等异步数据全部到位后再测量
-  fetchErrorDetail().then((loaded) => {
-    if (loaded) setupAdaptive()
-  })
-})
-
+onMounted(fetchErrorDetail)
+watch(errorId, fetchErrorDetail)
 onUnmounted(() => {
   ++detailLoadVersion
-  actionsObserver?.disconnect()
 })
 </script>
-
-<style scoped>
-.manage-detail-page {
-  padding: 20px;
-  padding-bottom: 200px;
-  background: var(--bg-primary);
-  min-height: 100vh;
-  width: 100%;
-}
-
-/* 桌面端优化 - 全屏显示 */
-@media (min-width: 769px) {
-  .manage-detail-page {
-    max-width: none;
-    margin: 0;
-    padding: 40px;
-    padding-bottom: 200px;
-  }
-}
-
-/* 顶部导航 */
-.detail-header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
-  gap: 8px;
-}
-
-.detail-header h2 {
-  grid-column: 2;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin: 0;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-
-.back-btn {
-  grid-column: 1;
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.back-icon {
-  width: 16px;
-  height: 16px;
-  transition: transform 0.2s ease;
-}
-
-.back-btn:hover .back-icon {
-  transform: translateX(-3px);
-}
-
-.back-btn:hover {
-  background: var(--primary-light);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  transform: translateX(-2px);
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.15);
-}
-
-.back-btn:active {
-  transform: translateX(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.header-actions {
-  grid-column: 3;
-  justify-self: end;
-  display: flex;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-  flex-wrap: nowrap;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  white-space: nowrap;
-  gap: 4px;
-}
-
-.btn-icon {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-}
-
-.btn-label {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  flex: 0 1 auto;
-  min-width: 0;
-  margin-left: 6px;
-}
-
-/* 空间不足时隐藏文字，只留图标 */
-.header-actions.collapsed .action-btn {
-  padding: 8px 6px;
-}
-
-.header-actions.collapsed .btn-label {
-  display: none;
-}
-
-.edit-btn {
-  background: var(--primary-color);
-  color: white;
-}
-
-.edit-btn:hover {
-  background: #1565c0;
-}
-
-.delete-btn {
-  background: #f44336;
-  color: white;
-}
-
-.delete-btn:hover {
-  background: #d32f2f;
-}
-
-/* 内容区域 */
-.detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.info-section,
-.content-section,
-.answer-section,
-.analysis-section,
-.tags-section,
-.note-section,
-.srs-section,
-.time-section {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.info-section:hover,
-.content-section:hover,
-.answer-section:hover,
-.analysis-section:hover,
-.tags-section:hover,
-.note-section:hover,
-.srs-section:hover,
-.time-section:hover {
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid var(--primary-light);
-}
-
-/* 表单元素 */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.form-select,
-.form-textarea {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-}
-
-.form-select:focus,
-.form-textarea:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-.form-select:disabled,
-.form-textarea:disabled {
-  background: var(--bg-secondary);
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-/* Markdown 预览样式 */
-.markdown-preview {
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  line-height: 1.6;
-  word-break: break-word;
-  min-height: 100px;
-}
-
-.markdown-preview :deep(h1),
-.markdown-preview :deep(h2),
-.markdown-preview :deep(h3),
-.markdown-preview :deep(h4),
-.markdown-preview :deep(h5),
-.markdown-preview :deep(h6) {
-  margin: 0.8em 0 0.4em;
-  font-weight: 600;
-}
-
-.markdown-preview :deep(p) {
-  margin: 0.5em 0;
-}
-
-.markdown-preview :deep(code) {
-  background: rgba(25, 118, 210, 0.12);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.markdown-preview :deep(pre) {
-  background: var(--code-bg, #0f172a);
-  padding: 10px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin: 0.5em 0;
-}
-
-.markdown-preview :deep(pre code) {
-  background: transparent;
-  padding: 0;
-  color: var(--code-text, #e2e8f0);
-}
-
-.markdown-preview :deep(pre code.hljs) {
-  background: transparent;
-  color: var(--code-text, #e2e8f0);
-}
-
-.markdown-preview :deep(ul),
-.markdown-preview :deep(ol) {
-  padding-left: 20px;
-  margin: 0.5em 0;
-}
-
-.markdown-preview :deep(blockquote) {
-  margin: 0.5em 0;
-  padding-left: 10px;
-  border-left: 3px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
-.markdown-preview :deep(a) {
-  color: var(--primary-color);
-  text-decoration: underline;
-}
-
-.markdown-preview :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.5em 0;
-}
-
-.markdown-preview :deep(th),
-.markdown-preview :deep(td) {
-  border: 1px solid var(--border-color);
-  padding: 6px 8px;
-}
-
-.form-textarea {
-  resize: vertical;
-  line-height: 1.6;
-}
-
-/* 图片展示区域 */
-.images-gallery {
-  margin-bottom: 20px;
-}
-
-.gallery-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
-
-.upload-section {
-  margin-top: 16px;
-  text-align: center;
-}
-
-.btn-add-images {
-  width: 100%;
-  padding: 12px 20px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-add-images:hover {
-  background: #1565c0;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
-}
-
-.image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.image-item {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  background: var(--bg-secondary);
-  aspect-ratio: 3/2;
-  border: 2px solid transparent;
-}
-
-.image-item:hover {
-  transform: scale(1.03);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  border-color: var(--primary-color);
-}
-
-/* 删除图片按钮 */
-.delete-image-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  background: rgba(244, 67, 54, 0.9);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 20px;
-  font-weight: bold;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: all 0.2s;
-  z-index: 10;
-  padding: 0;
-}
-
-.image-item:hover .delete-image-btn {
-  opacity: 1;
-}
-
-.delete-image-btn:hover {
-  background: rgba(244, 67, 54, 1);
-  transform: scale(1.1);
-}
-
-.question-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  background: white;
-}
-
-.image-item::after {
-  content: ' 点击预览';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 8px;
-  text-align: center;
-  font-size: 12px;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.image-item:hover::after {
-  opacity: 1;
-}
-
-/* 来源信息 */
-.source-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  background: var(--input-bg);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.source-display {
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-/* 标签区域 */
-.tags-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.tag-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.no-tags {
-  color: var(--text-disabled);
-  font-size: 13px;
-  font-style: italic;
-  padding: 8px 0;
-  display: block;
-}
-
-.tags-edit {
-  margin-top: 8px;
-}
-
-/* SRS 统计 */
-.no-srs-data {
-  text-align: center;
-  padding: 24px;
-}
-
-.no-srs-data p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text-disabled);
-  font-style: italic;
-}
-
-.srs-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px;
-  background: var(--input-bg);
-  border-radius: 8px;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* 时间信息 */
-.time-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.time-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--input-bg);
-  border-radius: 6px;
-}
-
-.time-label {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.time-value {
-  font-size: 14px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-/* 小按钮 */
-.btn-small {
-  padding: 6px 12px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-small:hover {
-  background: #1565c0;
-}
-
-/* 加载状态 */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.source-modal-overlay {
-  z-index: 1002;
-}
-
-.modal-content {
-  background: var(--card-bg);
-  border-radius: 12px;
-  max-width: 800px;
-  width: 95%;
-  max-height: 85vh;
-  overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.source-modal-content {
-  min-height: 700px;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: var(--text-primary);
-}
-
-.modal-body {
-  padding: 20px;
-}
-/*
-.source-modal-body {
-  min-height: 40px;
-  padding: 24px;
-} */
-
-.confirm-modal .modal-body p {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 16px 20px;
-  border-top: 1px solid var(--border-color);
-}
-
-.btn-cancel,
-.btn-confirm {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.btn-cancel:hover {
-  background: var(--border-color);
-}
-
-.btn-confirm {
-  background: #f44336;
-  color: white;
-}
-
-.btn-confirm:hover {
-  background: #d32f2f;
-}
-
-/* 保存按钮栏 */
-.save-bar {
-  position: fixed;
-  bottom: 60px;
-  left: 0;
-  right: 0;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  padding: 16px 20px;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: center;
-  z-index: 1001;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-/* 暗色主题适配 */
-body.dark-theme .save-bar {
-  background: rgba(47, 47, 47, 0.8);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.save-btn {
-  padding: 12px 32px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #1565c0;
-}
-
-.save-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .manage-detail-page {
-    padding: 16px;
-    padding-bottom: 100px;
-  }
-
-  .detail-header h2 {
-    font-size: 18px;
-  }
-
-  .back-btn {
-    padding: 6px 10px;
-    font-size: 13px;
-  }
-
-  .back-icon {
-    width: 14px;
-    height: 14px;
-  }
-
-  .header-actions {
-    gap: 8px;
-  }
-
-  .action-btn {
-    padding: 6px 10px;
-    font-size: 13px;
-  }
-
-  /* 移动端 - 双列布局（无表格线） */
-  .srs-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 16px;
-    background: var(--input-bg);
-    border-radius: 8px;
-    padding: 12px;
-  }
-
-  .stat-item {
-    display: contents;
-  }
-
-  .stat-label {
-    padding: 8px 0;
-    font-size: 12px;
-    color: var(--text-secondary);
-    text-align: left;
-  }
-
-  .stat-value {
-    padding: 8px 0;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    text-align: right;
-  }
-
-  /* 移动端 - 删除弹窗适配 */
-  .modal-overlay {
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modal-content.confirm-modal {
-    width: 100%;
-    max-width: unset;
-    max-height: 90vh;
-    overflow-y: auto;
-    border-radius: 12px;
-  }
-
-  .confirm-modal .modal-header h3 {
-    font-size: 16px;
-  }
-
-  .confirm-modal .modal-body p {
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .modal-footer {
-    gap: 10px;
-    padding: 12px 16px;
-  }
-
-  .btn-cancel,
-  .btn-confirm {
-    flex: 1;
-    padding: 12px 16px;
-    font-size: 14px;
-  }
-}
-
-/* 桌面端优化 - 全屏显示 */
-@media (min-width: 769px) {
-  /* 图片网格优化 */
-  .image-grid {
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
-  }
-
-  /* 表单元素优化 */
-  .form-select,
-  .form-textarea {
-    font-size: 15px;
-  }
-
-  /* 弹窗宽度优化 */
-  .modal-content {
-    max-width: 900px;
-  }
-}
-</style>
-
-<!-- 全局覆盖 highlight.js 颜色（模板中无 .markdown-preview 类，所以 scoped 样式无效，必须用非 scoped） -->
-<style>
-.detail-content pre code.hljs {
-  background: transparent !important;
-  color: var(--code-text, #e2e8f0) !important;
-}
-.detail-content pre {
-  background: var(--code-bg, #0f172a) !important;
-}
-</style>

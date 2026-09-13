@@ -1,641 +1,158 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+
+import { getLibraryStatistics } from '../api'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import type { LibraryStatisticsData } from '../types/review'
+
+const statistics = ref<LibraryStatisticsData | null>(null)
+const loading = ref(true)
+const error = ref('')
+const begin = useLatestRequest()
+async function load() {
+  const current = begin()
+  loading.value = true
+  error.value = ''
+  try {
+    const result = await getLibraryStatistics(new Date().toISOString())
+    if (current()) statistics.value = result
+  } catch {
+    if (current()) error.value = '暂时无法读取学习数据，请重试。'
+  } finally {
+    if (current()) loading.value = false
+  }
+}
+onMounted(load)
+const actions = [
+  {
+    title: '添加错题',
+    caption: '拍照、选图或手动记录',
+    icon: 'add_photo_alternate',
+    path: '/add'
+  },
+  {
+    title: '整理错题',
+    caption: '按科目、来源和错因查找',
+    icon: 'inventory_2',
+    path: '/manage'
+  },
+  {
+    title: '学习分析',
+    caption: '了解自己的薄弱环节',
+    icon: 'insights',
+    path: '/stats'
+  }
+]
+</script>
+
 <template>
   <div class="home-page">
-    <div class="header">
-      <h1>智能错题本</h1>
-      <p class="subtitle">让每一次错误，都成为进步的阶梯</p>
+    <div class="page-heading">
+      <div class="eyebrow">温故 · 知新</div>
+      <h1>让每一次错误，成为进步的阶梯</h1>
+      <p>记录、整理、回顾。按自己的节奏，积累每一天的收获。</p>
     </div>
-
-    <!-- 轮播组件 -->
-    <div class="carousel-section">
-      <div
-        class="arco-carousel arco-carousel-indicator-position-bottom"
-        style="width: 100%; height: 200px; margin-bottom: 30px"
+    <q-banner v-if="error" rounded class="error-banner q-mb-lg" role="alert">
+      {{ error
+      }}<template #action>
+        <q-btn flat label="重新加载" @click="load" />
+      </template>
+    </q-banner>
+    <div class="overview-grid overview-summary">
+      <q-card
+        v-for="item in [
+          {
+            label: '收录错题',
+            value: statistics?.questionTotal,
+            icon: 'library_books'
+          },
+          { label: '待复习', value: statistics?.dueCount, icon: 'schedule' },
+          {
+            label: '累计复习',
+            value: statistics?.totalReviews,
+            icon: 'task_alt'
+          }
+        ]"
+        :key="item.label"
+        flat
+        bordered
+        class="overview-card"
       >
-        <div class="arco-carousel-slide arco-carousel-horizontal">
-          <div
-            class="arco-carousel-item"
-            :class="{
-              'arco-carousel-item-current': currentSlide === 0,
-              'arco-carousel-item-next': currentSlide === 2,
-              'arco-carousel-item-prev': currentSlide === 1
-            }"
-            style="
-              transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
-              transition-duration: 500ms;
-              animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
-              animation-duration: 500ms;
-              background: rgb(54, 77, 121);
-              color: white;
-              text-align: center;
-              line-height: 200px;
-              font-size: 30px;
-            "
-          >
-            欢迎使用智能错题本
+        <q-icon :name="item.icon" color="primary" size="24px" />
+        <div>
+          <div class="text-caption text-muted">
+            {{ item.label }}
           </div>
-          <div
-            class="arco-carousel-item"
-            :class="{
-              'arco-carousel-item-current': currentSlide === 1,
-              'arco-carousel-item-next': currentSlide === 0,
-              'arco-carousel-item-prev': currentSlide === 2
-            }"
-            style="
-              transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
-              transition-duration: 500ms;
-              animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
-              animation-duration: 500ms;
-              background: rgb(0, 168, 84);
-              color: white;
-              text-align: center;
-              line-height: 200px;
-              font-size: 30px;
-            "
-          >
-            好好学习，天天向上！
-          </div>
-          <div
-            class="arco-carousel-item"
-            :class="{
-              'arco-carousel-item-current': currentSlide === 2,
-              'arco-carousel-item-next': currentSlide === 1,
-              'arco-carousel-item-prev': currentSlide === 0
-            }"
-            style="
-              transition-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
-              transition-duration: 500ms;
-              animation-timing-function: cubic-bezier(0.34, 0.69, 0.1, 1);
-              animation-duration: 500ms;
-              background: rgb(245, 34, 45);
-              color: white;
-              text-align: center;
-              line-height: 200px;
-              font-size: 30px;
-            "
-          >
-            不要把梦想埋没！
+          <q-skeleton v-if="loading" width="64px" height="38px" />
+          <div v-else class="stat-number">
+            {{ item.value ?? '—' }}
           </div>
         </div>
-        <div
-          class="swiper-pagination swiper-pagination-clickable swiper-pagination-bullets"
-        >
-          <span
-            data-index="0"
-            class="swiper-pagination-bullet"
-            :class="{ 'swiper-pagination-bullet-active': currentSlide === 0 }"
-            tabindex="0"
-            role="button"
-            aria-label="Go to slide 1"
-          ></span>
-          <span
-            data-index="1"
-            class="swiper-pagination-bullet"
-            :class="{ 'swiper-pagination-bullet-active': currentSlide === 1 }"
-            tabindex="0"
-            role="button"
-            aria-label="Go to slide 2"
-          ></span>
-          <span
-            data-index="2"
-            class="swiper-pagination-bullet"
-            :class="{ 'swiper-pagination-bullet-active': currentSlide === 2 }"
-            tabindex="0"
-            role="button"
-            aria-label="Go to slide 3"
-          ></span>
-        </div>
-        <div class="arco-carousel-arrow">
-          <div class="arco-carousel-arrow-left">
-            <Icon name="chevron-left" :size="24" />
-          </div>
-          <div class="arco-carousel-arrow-right">
-            <Icon name="chevron-right" :size="24" />
-          </div>
-        </div>
-      </div>
+      </q-card>
     </div>
-
-    <div class="quick-actions">
-      <h2>快捷操作</h2>
-      <div class="action-grid">
-        <button v-ripple class="action-btn" @click="$router.push('/add')">
-          <Icon name="plus" :size="24" class="btn-icon" />
-          <span>添加错题</span>
-        </button>
-        <button
-          v-if="hasDue"
-          v-ripple
-          class="action-btn has-review"
-          @click="$router.push('/review')"
-        >
-          <Icon name="book-open" :size="24" class="btn-icon" />
-          <span>开始复习</span>
-        </button>
-        <button
-          v-else
-          v-ripple
-          class="action-btn"
-          @click="$router.push('/review')"
-        >
-          <Icon name="book-open" :size="24" class="btn-icon" />
-          <span>开始复习</span>
-        </button>
-        <button v-ripple class="action-btn" @click="$router.push('/manage')">
-          <Icon name="clipboard-list" :size="24" class="btn-icon" />
-          <span>错题管理</span>
-        </button>
-        <button v-ripple class="action-btn" @click="$router.push('/stats')">
-          <Icon name="chart-column" :size="24" class="btn-icon" />
-          <span>数据分析</span>
-        </button>
-      </div>
+    <q-card flat class="review-hero">
+      <q-card-section>
+        <q-chip dense color="white" text-color="primary" icon="auto_stories">
+          今日复习
+        </q-chip>
+        <h2>
+          {{
+            statistics?.dueCount
+              ? '趁记忆还在，把知识再巩固一次'
+              : '回顾旧题，发现新的理解'
+          }}
+        </h2>
+        <p>
+          {{
+            statistics
+              ? statistics.dueCount
+                ? '有 ' +
+                  statistics.dueCount +
+                  ' 道错题等待复习。现在开始一轮吧。'
+                : '当前没有到期题目，也可以自由回顾已有错题。'
+              : '前往复习计划，查看你的学习安排。'
+          }}
+        </p>
+        <q-btn
+          unelevated
+          color="white"
+          text-color="primary"
+          icon-right="arrow_forward"
+          label="查看复习计划"
+          to="/review"
+        />
+      </q-card-section>
+      <q-icon name="auto_stories" size="140px" class="hero-icon" />
+    </q-card>
+    <h2 class="q-mt-xl q-mb-md">从这里开始</h2>
+    <div class="overview-grid">
+      <q-card
+        v-for="action in actions"
+        :key="action.path"
+        flat
+        bordered
+        class="quick-card"
+      >
+        <q-card-section>
+          <q-avatar
+            color="blue-1"
+            text-color="primary"
+            :icon="action.icon"
+            rounded
+          />
+          <h3>{{ action.title }}</h3>
+          <p>{{ action.caption }}</p>
+        </q-card-section>
+        <q-card-actions>
+          <q-btn
+            flat
+            color="primary"
+            :to="action.path"
+            :label="action.title"
+            icon-right="arrow_forward"
+          />
+        </q-card-actions>
+      </q-card>
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { getLibraryStatistics } from '../api'
-import { ref, onMounted, onUnmounted } from 'vue'
-
-// 轮播组件逻辑
-const currentSlide = ref(0)
-const slideCount = 3
-let carouselInterval: number | null = null
-let hasDue = ref(false)
-
-const nextSlide = () => {
-  currentSlide.value = (currentSlide.value + 1) % slideCount
-  updateSlideClasses()
-}
-
-const prevSlide = () => {
-  currentSlide.value = (currentSlide.value - 1 + slideCount) % slideCount
-  updateSlideClasses()
-}
-
-const goToSlide = (index: number) => {
-  currentSlide.value = index
-  updateSlideClasses()
-}
-
-const updateSlideClasses = () => {
-  const slides = document.querySelectorAll('.arco-carousel-item')
-  slides.forEach((slide, index) => {
-    slide.classList.remove(
-      'arco-carousel-item-current',
-      'arco-carousel-item-next',
-      'arco-carousel-item-prev'
-    )
-    if (index === currentSlide.value) {
-      slide.classList.add('arco-carousel-item-current')
-    } else if (index === (currentSlide.value + 1) % slideCount) {
-      slide.classList.add('arco-carousel-item-next')
-    } else if (index === (currentSlide.value - 1 + slideCount) % slideCount) {
-      slide.classList.add('arco-carousel-item-prev')
-    }
-  })
-}
-
-onMounted(() => {
-  // 启动自动轮播
-  carouselInterval = window.setInterval(nextSlide, 3000)
-
-  // 添加指示器点击事件
-  const indicators = document.querySelectorAll('.swiper-pagination-bullet')
-  indicators.forEach((indicator, index) => {
-    indicator.addEventListener('click', () => goToSlide(index))
-  })
-
-  // 添加箭头点击事件
-  const leftArrow = document.querySelector('.arco-carousel-arrow-left')
-  const rightArrow = document.querySelector('.arco-carousel-arrow-right')
-  if (leftArrow) leftArrow.addEventListener('click', prevSlide)
-  if (rightArrow) rightArrow.addEventListener('click', nextSlide)
-
-  getLibraryStatistics(new Date().toISOString()).then(({ dueCount: count }) => {
-    console.log('due count:', count)
-    hasDue.value = count > 0
-    // hasDue.value = true
-  })
-})
-
-onUnmounted(() => {
-  // 清除轮播定时器
-  if (carouselInterval) {
-    clearInterval(carouselInterval)
-  }
-})
-</script>
-
-<style scoped>
-.home-page {
-  padding: 20px;
-  padding-bottom: 80px;
-  background: var(--bg-primary);
-  min-height: 100vh;
-  margin: 0 auto;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.header h1 {
-  font-size: 28px;
-  color: var(--primary-color);
-  margin: 0 0 8px 0;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 30px;
-}
-
-.stat-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.stat-icon {
-  font-size: 32px;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--primary-color);
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-.quick-actions {
-  margin-bottom: 30px;
-}
-
-.quick-actions h2 {
-  font-size: 18px;
-  margin: 0 0 16px 0;
-  color: var(--text-primary);
-}
-
-.action-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-@media (max-width: 640px) {
-  .action-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 380px) {
-  .action-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.action-btn {
-  background: var(--card-bg);
-  color: var(--text-primary);
-  border: none;
-  border-radius: 12px;
-  padding: 20px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.action-btn.primary {
-  background: var(--primary-color);
-  color: white;
-}
-
-.action-btn:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.action-btn.has-review {
-  background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
-  color: white;
-  box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
-  animation: pulse-glow 0.8s ease-in-out infinite;
-}
-
-.action-btn.has-review .btn-icon {
-  filter: brightness(1.1);
-  transform: scale(1.1);
-}
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    box-shadow: 0 4px 20px rgba(255, 87, 34, 0.4);
-    transform: scale(1);
-  }
-  20% {
-    box-shadow: 0 8px 40px rgba(255, 107, 62, 0.6);
-    transform: scale(1.02);
-  }
-}
-
-.btn-icon {
-  font-size: 32px;
-}
-
-.action-btn span:last-child {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* 轮播组件样式 */
-.carousel-section {
-  margin-bottom: 30px;
-}
-
-.arco-carousel {
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.arco-carousel-slide {
-  position: relative;
-  display: flex;
-  height: 100%;
-}
-
-.arco-carousel-item {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  transition: all 0.6s cubic-bezier(0.34, 0.69, 0.1, 1);
-  pointer-events: none;
-  /* 非当前 slide：右侧预备 + 缩小 + 模糊（默认去向） */
-  transform: translateX(40px) scale(0.92);
-  filter: brightness(0.6) blur(3px);
-}
-
-/* 当前 slide：居中完全可见 */
-.arco-carousel-item.arco-carousel-item-current {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0) scale(1);
-  filter: brightness(1) blur(0);
-}
-
-/* 下一张（右侧预备进入） */
-.arco-carousel-item.arco-carousel-item-next {
-  transform: translateX(40px) scale(0.92);
-  opacity: 0;
-  filter: brightness(0.6) blur(3px);
-}
-
-/* 上一张（左侧预备进入） */
-.arco-carousel-item.arco-carousel-item-prev {
-  transform: translateX(-40px) scale(0.92);
-  opacity: 0;
-  filter: brightness(0.6) blur(3px);
-}
-
-/* ===== 光影效果：移动光斑 ===== */
-.arco-carousel-item::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      ellipse 80% 60% at 30% 0%,
-      rgba(255, 255, 255, 0.18) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse 60% 50% at 70% 100%,
-      rgba(255, 255, 255, 0.08) 0%,
-      transparent 50%
-    );
-  animation: lightOrbit 5s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 1;
-  transition: opacity 0.6s ease;
-}
-
-@keyframes lightOrbit {
-  0% {
-    background:
-      radial-gradient(
-        ellipse 80% 60% at 20% 10%,
-        rgba(255, 255, 255, 0.2) 0%,
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 60% 50% at 80% 90%,
-        rgba(255, 255, 255, 0.06) 0%,
-        transparent 50%
-      );
-  }
-  50% {
-    background:
-      radial-gradient(
-        ellipse 80% 60% at 70% 5%,
-        rgba(255, 255, 255, 0.14) 0%,
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 60% 50% at 30% 95%,
-        rgba(255, 255, 255, 0.12) 0%,
-        transparent 50%
-      );
-  }
-  100% {
-    background:
-      radial-gradient(
-        ellipse 80% 60% at 50% 15%,
-        rgba(255, 255, 255, 0.18) 0%,
-        transparent 60%
-      ),
-      radial-gradient(
-        ellipse 60% 50% at 60% 85%,
-        rgba(255, 255, 255, 0.08) 0%,
-        transparent 50%
-      );
-  }
-}
-
-/* ===== 光影效果：边缘辉光呼吸 ===== */
-.arco-carousel-item::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 12px;
-  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.04);
-  animation: edgeGlow 3s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 1;
-}
-
-@keyframes edgeGlow {
-  0% {
-    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
-  }
-  100% {
-    box-shadow: inset 0 0 50px rgba(255, 255, 255, 0.08);
-  }
-}
-
-/* Swiper Pagination */
-.swiper-pagination {
-  position: absolute;
-  bottom: 16px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  z-index: 10;
-}
-
-.swiper-pagination-bullet {
-  width: 36px;
-  height: 36px;
-  background: url('../assets/carousel-indicator-inactive.png') no-repeat center;
-  background-size: 100%;
-  transition: all 0.5s cubic-bezier(0.34, 0.69, 0.1, 1);
-  opacity: 0.5;
-  transform: scale(0.85);
-  border: none;
-  outline: none;
-  cursor: pointer;
-  filter: grayscale(0.3);
-}
-
-.swiper-pagination-bullet:hover {
-  opacity: 0.8;
-  transform: scale(0.95);
-}
-
-.swiper-pagination-bullet-active {
-  background: url('../assets/carousel-indicator.png') no-repeat center;
-  background-size: 100%;
-  opacity: 1;
-  transform: scale(1);
-  filter: grayscale(0);
-  animation: indicatorPulse 2s ease-in-out infinite;
-}
-
-@keyframes indicatorPulse {
-  0%,
-  100% {
-    filter: grayscale(0) drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
-  }
-  50% {
-    filter: grayscale(0) drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
-  }
-}
-
-.arco-carousel-arrow {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: space-between;
-  padding: 0 16px;
-  z-index: 10;
-}
-
-.arco-carousel-arrow-left,
-.arco-carousel-arrow-right {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 0.69, 0.1, 1);
-  color: white;
-  backdrop-filter: blur(4px);
-  position: relative;
-  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-}
-
-.arco-carousel-arrow-left::after,
-.arco-carousel-arrow-right::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  opacity: 0;
-  transition: all 0.3s cubic-bezier(0.34, 0.69, 0.1, 1);
-  transform: scale(0.8);
-}
-
-.arco-carousel-arrow-left:hover,
-.arco-carousel-arrow-right:hover {
-  background: rgba(0, 0, 0, 0.55);
-  transform: scale(1.15);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
-}
-
-.arco-carousel-arrow-left:hover::after,
-.arco-carousel-arrow-right:hover::after {
-  opacity: 1;
-  transform: scale(1);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.arco-carousel-arrow-left:active,
-.arco-carousel-arrow-right:active {
-  transform: scale(0.95);
-}
-
-.arco-icon {
-  width: 20px;
-  height: 20px;
-}
-</style>

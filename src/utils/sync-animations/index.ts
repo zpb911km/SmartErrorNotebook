@@ -13,25 +13,25 @@
  *   anim.draw(ctx)
  */
 
-import type { AnimationMode, ModeConstructor } from './types'
+import { BubbleSwirl } from './modes/bubble-swirl'
+import { FractalRotation } from './modes/fractal-rotation'
+import { GravityParticles } from './modes/gravity-particles'
+import { MorphingShapes } from './modes/morphing-shapes'
+import { OrbitRings } from './modes/orbit-rings'
 import { ParticleFlowField } from './modes/particle-flow'
 import { WaveInterference } from './modes/wave-interference'
-import { GravityParticles } from './modes/gravity-particles'
-import { FractalRotation } from './modes/fractal-rotation'
-import { OrbitRings } from './modes/orbit-rings'
-import { MorphingShapes } from './modes/morphing-shapes'
-import { BubbleSwirl } from './modes/bubble-swirl'
+import type { AnimationMode, ModeConstructor } from './types'
 
-export type { AnimationMode, AnimationConfig } from './types'
+export type { AnimationConfig, AnimationMode } from './types'
 
 export {
-  ParticleFlowField,
-  WaveInterference,
-  GravityParticles,
+  BubbleSwirl,
   FractalRotation,
-  OrbitRings,
+  GravityParticles,
   MorphingShapes,
-  BubbleSwirl
+  OrbitRings,
+  ParticleFlowField,
+  WaveInterference
 }
 
 /** 所有已注册的模式 */

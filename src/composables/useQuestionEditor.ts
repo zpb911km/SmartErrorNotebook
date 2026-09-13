@@ -1,8 +1,9 @@
 import { reactive, ref } from 'vue'
+
 import {
   createQuestionEditor,
-  type SaveState,
-  type QuestionDraft
+  type QuestionDraft,
+  type SaveState
 } from '../services/questionEditor'
 import { errorMessage } from '../utils/errors'
 

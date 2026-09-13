@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import { listen } from '@tauri-apps/api/event'
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
 import { getOpenedUrls } from './api/platformExceptions'
-import { listen } from '@tauri-apps/api/event'
-import TopBar from './components/TopBar.vue'
-import BottomNav from './components/BottomNav.vue'
-import Notification from './components/Notification.vue'
-import { parseImportFile } from './utils/importJson'
+import AppNavigation from './components/AppNavigation.vue'
+import { initializeTheme } from './composables/useTheme'
 import { importStore } from './stores/importStore'
+import { parseImportFile } from './utils/importJson'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,13 +16,22 @@ const pageTitle = computed(() => {
   return (route.meta.title as string) || '智能错题本'
 })
 
-const showTopBar = computed(() => {
-  return route.path !== '/'
-})
-
-const showBottomNav = computed(() => {
-  return route.path !== '/'
-})
+const parentPath = computed(() =>
+  route.path.startsWith('/manage-detail')
+    ? '/manage'
+    : route.path === '/review-detail'
+      ? '/review'
+      : '/home'
+)
+const showBack = computed(() =>
+  /detail|settings|sync|markdown-test/.test(route.path)
+)
+function search() {
+  if (route.path === '/manage')
+    window.dispatchEvent(new CustomEvent('focus-library-search'))
+  else router.push({ path: '/manage', query: { focus: 'search' } })
+}
+const themeLifecycle = initializeTheme()
 
 /** 统一处理文件关联传入的 URL */
 const handleOpenedUrl = async (url: string) => {
@@ -62,48 +71,9 @@ const handleOpenedUrl = async (url: string) => {
 
 /** 取消文件关联事件监听 */
 let unlistenOpened: (() => void) | null = null
+let disposed = false
 
-// 应用主题
-const applyTheme = (themeValue: string) => {
-  // 移除所有主题类
-  document.body.classList.remove('light-theme', 'dark-theme')
-
-  if (themeValue === 'light') {
-    document.body.classList.add('light-theme')
-  } else if (themeValue === 'dark') {
-    document.body.classList.add('dark-theme')
-  } else if (themeValue === 'system') {
-    // 跟随系统
-    if (
-      window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-    ) {
-      document.body.classList.add('dark-theme')
-    } else {
-      document.body.classList.add('light-theme')
-    }
-  }
-}
-
-// 初始化
 onMounted(async () => {
-  const savedTheme = localStorage.getItem('theme') || 'system'
-  applyTheme(savedTheme)
-
-  // TODO(out-of-scope): This anonymous theme listener survives unmount. A theme
-  // lifecycle follow-up should retain the handler and remove it in onUnmounted.
-  // 监听系统主题变化
-  if (window.matchMedia) {
-    window
-      .matchMedia('(prefers-color-scheme: dark)')
-      .addEventListener('change', () => {
-        const currentTheme = localStorage.getItem('theme') || 'system'
-        if (currentTheme === 'system') {
-          applyTheme('system')
-        }
-      })
-  }
-
   // === 文件关联处理（全局，与页面无关） ===
 
   // 1. 冷启动：检查 Rust State 中是否有通过文件关联传入的 URL
@@ -123,13 +93,16 @@ onMounted(async () => {
         await handleOpenedUrl(event.payload[0])
       }
     })
-    unlistenOpened = unlisten
+    if (disposed) unlisten()
+    else unlistenOpened = unlisten
   } catch {
     // 桌面端不支持，静默忽略
   }
 })
 
 onUnmounted(() => {
+  disposed = true
+  themeLifecycle.dispose()
   // 清理文件关联监听
   if (unlistenOpened) {
     unlistenOpened()
@@ -139,39 +112,33 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="app">
-    <TopBar v-if="showTopBar" :title="pageTitle" />
-    <main
-      class="main-content"
-      :class="{ 'with-top-bar': showTopBar, 'with-bottom-nav': showBottomNav }"
-    >
-      <router-view v-slot="{ Component, route: r }">
-        <transition name="page-fade" mode="out-in">
-          <component :is="Component" :key="r.path" />
-        </transition>
-      </router-view>
-    </main>
-    <BottomNav v-if="showBottomNav" />
-    <Notification />
-  </div>
+  <q-layout view="hHh Lpr lFf" class="notebook-layout">
+    <q-header bordered class="app-header">
+      <q-toolbar class="app-toolbar">
+        <q-btn
+          v-if="showBack"
+          flat
+          round
+          icon="arrow_back"
+          :to="parentPath"
+          aria-label="返回"
+        />
+        <q-toolbar-title class="text-weight-bold">
+          {{ pageTitle }}
+        </q-toolbar-title>
+        <q-btn flat round icon="search" aria-label="搜索错题" @click="search">
+          <q-tooltip>搜索错题</q-tooltip>
+        </q-btn>
+        <q-btn flat round icon="settings" to="/settings" aria-label="设置">
+          <q-tooltip>设置</q-tooltip>
+        </q-btn>
+      </q-toolbar>
+    </q-header>
+    <AppNavigation />
+    <q-page-container>
+      <q-page class="app-page">
+        <router-view />
+      </q-page>
+    </q-page-container>
+  </q-layout>
 </template>
-
-<style scoped>
-#app {
-  min-height: 100vh;
-  background-color: var(--bg-secondary);
-}
-
-.main-content {
-  min-height: 100vh;
-  transition: all 0.3s;
-}
-
-.main-content.with-top-bar {
-  padding-top: calc(56px + env(safe-area-inset-top));
-}
-
-.main-content.with-bottom-nav {
-  padding-bottom: calc(60px + env(safe-area-inset-bottom));
-}
-</style>

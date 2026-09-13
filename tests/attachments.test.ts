@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { prepareAttachment, buildDataUrl } from '../src/utils/attachments'
+
+import { buildDataUrl, prepareAttachment } from '../src/utils/attachments'
 import { compressImageIfTooLarge } from '../src/utils/imageCompression'
 
 vi.mock('../src/utils/imageCompression', () => ({

@@ -1,7 +1,9 @@
 <template>
   <div class="settings-page">
-    <div class="settings-section">
-      <h3>设置选项</h3>
+    <q-card flat bordered class="settings-section">
+      <h1>设置</h1>
+      <p class="text-muted">按你的习惯，调整学习体验。</p>
+      <h2 class="settings-group-title">外观</h2>
 
       <!-- 主题设置 -->
       <div class="setting-item">
@@ -10,18 +12,25 @@
           <div class="setting-name">主题设置</div>
         </div>
         <div class="setting-action">
-          <select
+          <q-select
             v-model="theme"
+            outlined
+            dense
+            emit-value
+            map-options
+            :options="[
+              { label: '浅色主题', value: 'light' },
+              { label: '深色主题', value: 'dark' },
+              { label: '跟随系统', value: 'system' }
+            ]"
+            aria-label="主题设置"
             class="theme-select"
-            @change="handleThemeChange"
-          >
-            <option value="light">浅色主题</option>
-            <option value="dark">深色主题</option>
-            <option value="system">跟随系统</option>
-          </select>
+            @update:model-value="handleThemeChange"
+          />
         </div>
       </div>
 
+      <h2 class="settings-group-title">AI 辅助与模型</h2>
       <!-- AI 选项 -->
       <div class="setting-item">
         <div class="setting-info">
@@ -30,13 +39,13 @@
         </div>
         <div class="setting-action">
           <div class="toggle-switch">
-            <input
-              type="checkbox"
-              v-model="aiEnabled"
+            <q-toggle
               id="aiToggle"
-              @change="handleAiToggle"
+              v-model="aiEnabled"
+              color="primary"
+              aria-label="AI 辅助"
+              @update:model-value="handleAiToggle"
             />
-            <label for="aiToggle" class="toggle-label"></label>
           </div>
         </div>
       </div>
@@ -48,39 +57,19 @@
           <div class="setting-name">LLM 配置</div>
         </div>
         <div class="setting-action">
-          <button class="config-btn" @click="openLLMConfig">配置</button>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="config-btn"
+            @click="openLLMConfig"
+          >
+            配置
+          </q-btn>
+          <q-btn flat label="测试" @click="openLLMTest" />
         </div>
       </div>
-
-      <!-- 导出设置 -->
-      <div class="setting-item">
-        <div class="setting-info">
-          <Icon name="file-text" :size="22" class="setting-icon" />
-          <div class="setting-name">HTML 导出包含答案和解析</div>
-        </div>
-        <div class="setting-action">
-          <div class="toggle-switch">
-            <input
-              type="checkbox"
-              v-model="exportIncludeAnswer"
-              id="exportAnswerToggle"
-              @change="handleExportAnswerToggle"
-            />
-            <label for="exportAnswerToggle" class="toggle-label"></label>
-          </div>
-        </div>
-      </div>
-
-      <!-- LLM 测试 -->
-      <!-- <div class="setting-item">
-        <div class="setting-info">
-          <Icon name="flask-conical" :size="22" class="setting-icon" />
-          <div class="setting-name">LLM 测试</div>
-        </div>
-        <div class="setting-action">
-          <button class="config-btn" @click="openLLMTest">测试</button>
-        </div>
-      </div> -->
 
       <!-- AI 提示词设置 -->
       <div class="setting-item">
@@ -89,36 +78,40 @@
           <div class="setting-name">AI 提示词设置</div>
         </div>
         <div class="setting-action">
-          <button class="config-btn" @click="showPromptEditor = true">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="config-btn"
+            @click="showPromptEditor = true"
+          >
             编辑
-          </button>
+          </q-btn>
         </div>
       </div>
 
-      <!--- Markdown 渲染测试-->
-      <!-- <div class="setting-item">
+      <h2 class="settings-group-title">导出偏好</h2>
+      <!-- 导出设置 -->
+      <div class="setting-item">
         <div class="setting-info">
           <Icon name="file-text" :size="22" class="setting-icon" />
-          <div class="setting-name">Markdown 渲染测试</div>
+          <div class="setting-name">HTML 导出包含答案和解析</div>
         </div>
         <div class="setting-action">
-          <button class="config-btn" @click="$router.push('/markdown-test')">
-            测试
-          </button>
+          <div class="toggle-switch">
+            <q-toggle
+              id="exportAnswerToggle"
+              v-model="exportIncludeAnswer"
+              color="primary"
+              aria-label="HTML 导出包含答案和解析"
+              @update:model-value="handleExportAnswerToggle"
+            />
+          </div>
         </div>
-      </div> -->
+      </div>
 
-      <!-- 同步动画测试 -->
-      <!-- <div class="setting-item">
-        <div class="setting-info">
-          <Icon name="sparkles" :size="22" class="setting-icon" />
-          <div class="setting-name">同步等待动画测试</div>
-        </div>
-        <div class="setting-action">
-          <button class="config-btn" @click="openSyncAnimTest">测试</button>
-        </div>
-      </div> -->
-
+      <h2 class="settings-group-title">数据维护</h2>
       <!-- 数据清理 -->
       <div class="setting-item">
         <div class="setting-info">
@@ -126,24 +119,48 @@
           <div class="setting-name">清理已同步的软删除数据</div>
         </div>
         <div class="setting-action">
-          <button class="config-btn danger" @click="confirmPurge">清理</button>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            color="negative"
+            class="config-btn danger"
+            :loading="purging"
+            @click="confirmPurge"
+          >
+            清理
+          </q-btn>
         </div>
       </div>
 
       <!-- LLM 配置对话框 -->
-      <div v-if="showLLMConfig" class="modal-overlay" @click="closeLLMConfig">
+      <q-dialog
+        class="notebook-dialog"
+        :model-value="showLLMConfig"
+        @hide="closeLLMConfig"
+      >
         <div class="modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 配置</h3>
-            <button class="close-btn" @click="closeLLMConfig">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="close-btn"
+              @click="closeLLMConfig"
+            >
               <Icon name="x" :size="18" />
-            </button>
+            </q-btn>
           </div>
           <div class="modal-body">
             <div class="form-group">
               <label>Base URL</label>
-              <input
+              <q-input
                 v-model="llmConfig.baseUrl"
+                outlined
+                dense
+                aria-label="https://api.openai.com"
                 type="text"
                 placeholder="https://api.openai.com"
                 class="form-input"
@@ -151,8 +168,11 @@
             </div>
             <div class="form-group">
               <label>API Key</label>
-              <input
+              <q-input
                 v-model="llmConfig.apiKey"
+                outlined
+                dense
+                aria-label="sk-..."
                 type="password"
                 placeholder="sk-..."
                 class="form-input"
@@ -160,8 +180,11 @@
             </div>
             <div class="form-group">
               <label>Model</label>
-              <input
+              <q-input
                 v-model="llmConfig.model"
+                outlined
+                dense
+                aria-label="gpt-3.5-turbo"
                 type="text"
                 placeholder="gpt-3.5-turbo"
                 class="form-input"
@@ -170,89 +193,140 @@
             <div class="form-group">
               <label>启用 LLM</label>
               <div class="toggle-switch">
-                <input
-                  type="checkbox"
-                  v-model="llmConfig.enabled"
+                <q-toggle
                   id="llmEnabledToggle"
+                  v-model="llmConfig.enabled"
+                  color="primary"
+                  aria-label="启用 LLM"
                 />
-                <label for="llmEnabledToggle" class="toggle-label"></label>
+                <label for="llmEnabledToggle" class="toggle-label" />
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeLLMConfig">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="btn btn-secondary"
+              @click="closeLLMConfig"
+            >
               取消
-            </button>
-            <button class="btn btn-primary" @click="saveLLMConfig">保存</button>
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              color="primary"
+              class="btn btn-primary"
+              @click="saveLLMConfig"
+            >
+              保存
+            </q-btn>
           </div>
         </div>
-      </div>
+      </q-dialog>
 
       <!-- LLM 测试对话框 -->
-      <div v-if="showLLMTest" class="modal-overlay" @click="closeLLMTest">
+      <q-dialog
+        class="notebook-dialog"
+        :model-value="showLLMTest"
+        @hide="closeLLMTest"
+      >
         <div class="modal test-modal" @click.stop>
           <div class="modal-header">
             <h3>LLM 测试</h3>
-            <button class="close-btn" @click="closeLLMTest">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="close-btn"
+              @click="closeLLMTest"
+            >
               <Icon name="x" :size="18" />
-            </button>
+            </q-btn>
           </div>
           <div class="modal-body test-body">
             <div class="test-status">
-              <span :class="['status-dot', testStatus]"></span>
+              <span :class="['status-dot', testStatus]" />
               <span class="status-text">{{ getStatusText() }}</span>
             </div>
             <div class="chat-container">
-              <div class="chat-messages" ref="chatMessages">
+              <div ref="chatMessages" class="chat-messages">
                 <div
                   v-for="(msg, index) in testMessages"
                   :key="index"
                   :class="['message', msg.role]"
                 >
-                  <div class="message-content">{{ msg.content }}</div>
+                  <div class="message-content">
+                    {{ msg.content }}
+                  </div>
                 </div>
                 <div v-if="isSending" class="message assistant">
                   <div class="message-content loading">
-                    <span></span><span></span><span></span>
+                    <span /><span /><span />
                   </div>
                 </div>
               </div>
               <div class="chat-input">
-                <input
+                <q-input
                   v-model="testInput"
+                  outlined
+                  dense
+                  aria-label="输入测试消息..."
                   type="text"
                   placeholder="输入测试消息..."
+                  :disable="isSending"
                   @keypress.enter="sendTestMessage"
-                  :disabled="isSending"
                 />
-                <button
-                  @click="sendTestMessage"
-                  :disabled="isSending || !testInput.trim()"
+                <q-btn
+                  no-caps
+                  unelevated
+                  type="button"
+                  flat
+                  :disable="isSending || !testInput.trim()"
                   class="send-btn"
+                  @click="sendTestMessage"
                 >
                   发送
-                </button>
+                </q-btn>
               </div>
             </div>
-            <button class="clear-chat-btn" @click="clearTestChat">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="clear-chat-btn"
+              @click="clearTestChat"
+            >
               清空对话
-            </button>
+            </q-btn>
           </div>
         </div>
-      </div>
+      </q-dialog>
 
       <!-- 提示词编辑器对话框 -->
-      <div
-        v-if="showPromptEditor"
-        class="modal-overlay"
-        @click="closePromptEditor"
+      <q-dialog
+        class="notebook-dialog"
+        :model-value="showPromptEditor"
+        @hide="closePromptEditor"
       >
         <div class="modal large-modal" @click.stop>
           <div class="modal-header">
             <h3>AI 提示词设置</h3>
-            <button class="close-btn" @click="closePromptEditor">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="close-btn"
+              @click="closePromptEditor"
+            >
               <Icon name="x" :size="18" />
-            </button>
+            </q-btn>
           </div>
           <div class="modal-body">
             <p class="prompt-description">
@@ -261,82 +335,35 @@
             <PromptEditor />
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closePromptEditor">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="btn btn-secondary"
+              @click="closePromptEditor"
+            >
               关闭
-            </button>
+            </q-btn>
           </div>
         </div>
-      </div>
-
-      <!-- 同步动画测试对话框 -->
-      <div
-        v-if="showSyncAnimTest"
-        class="modal-overlay"
-        @click="closeSyncAnimTest"
-      >
-        <div class="modal sync-anim-modal" @click.stop>
-          <div class="modal-header">
-            <h3>同步等待动画测试</h3>
-            <button class="close-btn" @click="closeSyncAnimTest">
-              <Icon name="x" :size="18" />
-            </button>
-          </div>
-          <div class="modal-body">
-            <p class="anim-test-desc">
-              每次同步会随机选择一种动画，共 7 种模式：
-            </p>
-            <div class="anim-grid">
-              <div
-                v-for="(mode, idx) in animTestModes"
-                :key="mode.name"
-                class="anim-cell"
-              >
-                <div class="anim-cell__label">{{ mode.label }}</div>
-                <div class="anim-cell__canvas-wrap">
-                  <canvas
-                    :ref="
-                      (el) =>
-                        setAnimCanvasRef(idx, el as HTMLCanvasElement | null)
-                    "
-                    :width="animCanvasSize"
-                    :height="animCanvasSize"
-                    class="anim-cell__canvas"
-                  />
-                  <div class="anim-cell__progress-tag">{{ mode.status }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeSyncAnimTest">
-              关闭
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      </q-dialog>
+    </q-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import {
-  ParticleFlowField,
-  WaveInterference,
-  GravityParticles,
-  FractalRotation,
-  OrbitRings,
-  MorphingShapes,
-  BubbleSwirl
-} from '../utils/sync-animations'
-import type { AnimationMode } from '../utils/sync-animations'
-import { isDarkTheme } from '../utils/sync-animations/utils'
-import { llm } from '../services'
-import PromptEditor from '../components/PromptEditor.vue'
+import { nextTick, onMounted, ref } from 'vue'
+
 import {
   checkAndDeleteOrphans,
   purgeSyncedDeletions
 } from '../api/platformExceptions'
+import PromptEditor from '../components/PromptEditor.vue'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import { setTheme, theme } from '../composables/useTheme'
+import { llm } from '../services'
+import { confirmAction, showAlert } from '../utils/dialog'
 import { showInfo, showSuccess } from '../utils/notification'
 
 // AI 选项
@@ -364,6 +391,7 @@ const llmConfig = ref({
 
 // LLM 测试对话框
 const showLLMTest = ref(false)
+const beginTestRequest = useLatestRequest()
 const testStatus = ref<'idle' | 'success' | 'error'>('idle')
 const testMessages = ref<
   Array<{ role: 'user' | 'assistant'; content: string }>
@@ -379,68 +407,11 @@ const closePromptEditor = () => {
   showPromptEditor.value = false
 }
 
-// 主题切换
-const handleThemeChange = () => {
-  console.log('主题切换为:', theme.value)
-  applyTheme(theme.value)
-  // 保存主题设置到localStorage
-  localStorage.setItem('theme', theme.value)
-}
-const theme = ref(localStorage.getItem('theme') || 'system')
-console.log(
-  '初始化 theme 值:',
-  theme.value,
-  'localStorage 中的值:',
-  localStorage.getItem('theme')
-)
-
-// 应用主题
-const applyTheme = (themeValue: string) => {
-  // 移除所有主题类
-  document.body.classList.remove('light-theme', 'dark-theme')
-
-  if (themeValue === 'light') {
-    document.body.classList.add('light-theme')
-  } else if (themeValue === 'dark') {
-    document.body.classList.add('dark-theme')
-  } else if (themeValue === 'system') {
-    // 跟随系统
-    if (
-      window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-    ) {
-      document.body.classList.add('dark-theme')
-    } else {
-      document.body.classList.add('light-theme')
-    }
-  }
-}
-
-// 系统主题变化处理
-const handleSystemThemeChange = () => {
-  console.log(
-    '系统主题变化事件触发，当前 theme.value:',
-    theme.value,
-    'localStorage 中的值:',
-    localStorage.getItem('theme')
-  )
-  if (theme.value === 'system') {
-    console.log('执行跟随系统主题更新')
-    applyTheme('system')
-  } else {
-    console.log(
-      '当前主题不是 system，不执行跟随系统主题更新，当前主题:',
-      theme.value
-    )
-    // 确保应用当前设置的主题
-    applyTheme(theme.value)
-  }
-}
+const handleThemeChange = () => setTheme(theme.value)
 
 // AI 选项切换
 const handleAiToggle = () => {
   llm.updateConfig({ enabled: aiEnabled.value })
-  console.log('AI', aiEnabled.value ? '开启' : '关闭')
 }
 
 // 打开 LLM 配置
@@ -476,15 +447,17 @@ const saveLLMConfig = () => {
 // 打开 LLM 测试
 const openLLMTest = () => {
   if (!llm.config.enabled || !llm.isConfigured()) {
-    alert('请先启用并配置 LLM')
+    showAlert('请先启用并配置 LLM')
     return
   }
   showLLMTest.value = true
-  testStatus.value = 'success'
+  testStatus.value = 'idle'
 }
 
 // 关闭 LLM 测试
 const closeLLMTest = () => {
+  beginTestRequest()
+  isSending.value = false
   showLLMTest.value = false
 }
 
@@ -503,6 +476,8 @@ const getStatusText = () => {
 // 发送测试消息
 const sendTestMessage = async () => {
   if (!testInput.value.trim() || isSending.value) return
+  const isCurrent = beginTestRequest()
+  isSending.value = true
 
   const userMessage = testInput.value.trim()
   testInput.value = ''
@@ -513,17 +488,17 @@ const sendTestMessage = async () => {
   // 滚动到底部
   await scrollToBottom()
 
-  isSending.value = true
-
   try {
     // 构建对话历史
-    const history = testMessages.value
+    const history = testMessages.value.map((message) => ({ ...message }))
 
     const response = await llm.chat(history)
+    if (!isCurrent()) return
 
     testMessages.value.push({ role: 'assistant', content: response })
     testStatus.value = 'success'
   } catch (error) {
+    if (!isCurrent()) return
     console.error('LLM 测试失败:', error)
     testMessages.value.push({
       role: 'assistant',
@@ -531,8 +506,10 @@ const sendTestMessage = async () => {
     })
     testStatus.value = 'error'
   } finally {
-    isSending.value = false
-    await scrollToBottom()
+    if (isCurrent()) {
+      isSending.value = false
+      await scrollToBottom()
+    }
   }
 }
 
@@ -546,255 +523,24 @@ const scrollToBottom = async () => {
 
 // 清空测试对话
 const clearTestChat = () => {
+  beginTestRequest()
+  isSending.value = false
   testMessages.value = []
   testStatus.value = 'idle'
 }
 
-/* ── 同步动画测试 ── */
-
-interface AnimTestItem {
-  name: string
-  label: string
-  status: string
-  instance: AnimationMode | null
-  canvas: HTMLCanvasElement | null
-  rafId: number | null
-  seed: number
-}
-
-const showSyncAnimTest = ref(false)
-const animCanvasSize = 160
-const animTestModes: AnimTestItem[] = [
-  {
-    name: 'particle-flow',
-    label: '粒子流场 🌊',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  },
-  {
-    name: 'wave-interference',
-    label: '波形干扰 🌈',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  },
-  {
-    name: 'gravity-particles',
-    label: '引力粒子 ✨',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  },
-  {
-    name: 'fractal-rotation',
-    label: '几何分形 🔷',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  },
-  {
-    name: 'orbit-rings',
-    label: '轨道环 🪐',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  },
-  {
-    name: 'morphing-shapes',
-    label: '形态变形 🎨',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  },
-  {
-    name: 'bubble-swirl',
-    label: '气泡漩涡 🫧',
-    status: '...',
-    instance: null,
-    canvas: null,
-    rafId: null,
-    seed: 0
-  }
-]
-
-const MODE_CLASSES: Record<string, new () => AnimationMode> = {
-  'particle-flow': ParticleFlowField,
-  'wave-interference': WaveInterference,
-  'gravity-particles': GravityParticles,
-  'fractal-rotation': FractalRotation,
-  'orbit-rings': OrbitRings,
-  'morphing-shapes': MorphingShapes,
-  'bubble-swirl': BubbleSwirl
-}
-
-function setAnimCanvasRef(idx: number, el: HTMLCanvasElement | null) {
-  if (!el) return
-  animTestModes[idx].canvas = el
-}
-
-function openSyncAnimTest() {
-  showSyncAnimTest.value = true
-  nextTick(() => {
-    startAllAnimations()
-  })
-}
-
-function closeSyncAnimTest() {
-  stopAllAnimations()
-  showSyncAnimTest.value = false
-}
-
-function startAllAnimations() {
-  for (let i = 0; i < animTestModes.length; i++) {
-    const item = animTestModes[i]
-    const canvas = item.canvas
-    if (!canvas) {
-      item.status = '❌ Canvas 未挂载'
-      continue
-    }
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      item.status = '❌ 无法获取 2D 上下文'
-      continue
-    }
-
-    // 停止之前的动画
-    stopOneAnimation(i)
-
-    const Constructor = MODE_CLASSES[item.name]
-    if (!Constructor) {
-      item.status = '❌ 未找到模式类'
-      continue
-    }
-
-    const instance = new Constructor()
-    const seed = Date.now() ^ (i * 999991) ^ Math.floor(Math.random() * 1000000)
-    item.seed = seed
-    item.instance = instance
-    item.status = '▶ 运行中'
-
-    try {
-      instance.init(ctx, animCanvasSize, animCanvasSize, seed)
-
-      let frameCount = 0
-      const loop = () => {
-        if (!item.instance || !item.canvas) return
-        const ctx2 = item.canvas.getContext('2d')
-        if (!ctx2) return
-
-        // 模拟进度：3 秒内从 0 到 1
-        const progress = Math.min(frameCount / 180, 1)
-        const dark = isDarkTheme()
-
-        item.instance.update(progress, dark)
-        item.instance.draw(ctx2)
-
-        frameCount++
-        if (frameCount < 360) {
-          // 最多跑 ~6 秒
-          item.rafId = requestAnimationFrame(loop)
-        } else {
-          item.status = '✅ 完成'
-          // 循环重新开始
-          restartOneAnimation(i)
-        }
-      }
-
-      item.rafId = requestAnimationFrame(loop)
-    } catch (err) {
-      item.status = `❌ ${err instanceof Error ? err.message : '未知错误'}`
-      console.error(`动画 ${item.name} 启动失败:`, err)
-    }
-  }
-}
-
-function restartOneAnimation(idx: number) {
-  const item = animTestModes[idx]
-  if (!item.canvas) return
-
-  const ctx = item.canvas.getContext('2d')
-  if (!ctx) return
-
-  const Constructor = MODE_CLASSES[item.name]
-  if (!Constructor) return
-
-  // 清理旧实例
-  if (item.instance) {
-    item.instance.destroy()
-  }
-
-  const instance = new Constructor()
-  const seed = Date.now() ^ (idx * 999991) ^ Math.floor(Math.random() * 1000000)
-  item.seed = seed
-  item.instance = instance
-  item.status = '▶ 运行中'
-
-  try {
-    instance.init(ctx, animCanvasSize, animCanvasSize, seed)
-
-    let frameCount = 0
-    const loop = () => {
-      if (!item.instance || !item.canvas) return
-      const ctx2 = item.canvas.getContext('2d')
-      if (!ctx2) return
-
-      const progress = Math.min(frameCount / 180, 1)
-      const dark = isDarkTheme()
-
-      item.instance.update(progress, dark)
-      item.instance.draw(ctx2)
-
-      frameCount++
-      if (frameCount < 360) {
-        item.rafId = requestAnimationFrame(loop)
-      } else {
-        item.status = '✅ 完成'
-        restartOneAnimation(idx)
-      }
-    }
-
-    item.rafId = requestAnimationFrame(loop)
-  } catch (err) {
-    item.status = `❌ ${err instanceof Error ? err.message : '未知错误'}`
-    console.error(`动画 ${item.name} 重启动失败:`, err)
-  }
-}
-
-function stopOneAnimation(idx: number) {
-  const item = animTestModes[idx]
-  if (item.rafId !== null) {
-    cancelAnimationFrame(item.rafId)
-    item.rafId = null
-  }
-  if (item.instance) {
-    item.instance.destroy()
-    item.instance = null
-  }
-}
-
-function stopAllAnimations() {
-  for (let i = 0; i < animTestModes.length; i++) {
-    stopOneAnimation(i)
-  }
-}
-
 // 确认并执行清理
+const purging = ref(false)
 const confirmPurge = async () => {
-  const ok = confirm('确定要清理所有已同步且已软删除的记录吗？此操作不可恢复！')
-  if (!ok) return
+  if (purging.value) return
+  purging.value = true
+  const ok = await confirmAction(
+    '确定要清理所有已同步且已软删除的记录吗？此操作不可恢复！'
+  )
+  if (!ok) {
+    purging.value = false
+    return
+  }
 
   try {
     const result = await purgeSyncedDeletions()
@@ -815,682 +561,21 @@ const confirmPurge = async () => {
     } else {
       showInfo('没有需要清理的记录', '')
     }
-    checkAndDeleteOrphans().then((orphans) => {
-      console.log('checkAndDeleteOrphans result:', orphans)
-      showSuccess(
-        '自动检查完成',
-        `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`,
-        5000
-      )
-    })
+    const orphans = await checkAndDeleteOrphans()
+    showSuccess(
+      '自动检查完成',
+      `共检查了${orphans.total_checked}条记录\n已删除${orphans.orphan_records_soft_deleted.length}条无效记录`,
+      5000
+    )
   } catch (e) {
-    alert(`清理失败：${e}`)
+    await showAlert(`清理失败：${e}`)
+  } finally {
+    purging.value = false
   }
 }
 
-// 初始化主题
+// 初始化 AI 开关；主题由应用壳统一管理。
 onMounted(() => {
-  // 应用主题
-  console.log('初始化主题:', theme.value)
-  applyTheme(theme.value)
-
-  // 监听系统主题变化
-  if (window.matchMedia) {
-    console.log('添加系统主题变化监听器')
-    window
-      .matchMedia('(prefers-color-scheme: dark)')
-      .addEventListener('change', handleSystemThemeChange)
-  }
-
-  // 加载 AI 配置
   aiEnabled.value = llm.config.enabled
 })
-
-// 组件卸载时移除监听器
-onUnmounted(() => {
-  if (window.matchMedia) {
-    console.log('移除系统主题变化监听器')
-    window
-      .matchMedia('(prefers-color-scheme: dark)')
-      .removeEventListener('change', handleSystemThemeChange)
-  }
-})
-// 保留测试副入口（未在模板中直接引用，但作为手动调试入口保留）
-void openLLMTest
-void openSyncAnimTest
 </script>
-
-<style scoped>
-.settings-page {
-  padding: 40px 20px;
-  padding-bottom: 100px;
-  background: var(--bg-primary);
-  min-height: 100vh;
-  margin: 0 auto;
-}
-
-.settings-section {
-  background: var(--card-bg);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.settings-section h3 {
-  font-size: 18px;
-  margin: 0 0 16px 0;
-  color: var(--text-primary);
-}
-
-.setting-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border-color);
-  transition: background 0.2s;
-}
-
-.setting-item:last-child {
-  border-bottom: none;
-}
-
-.setting-item:hover {
-  background: var(--input-bg);
-  border-radius: 8px;
-  padding: 16px;
-  margin: 0 -16px;
-}
-
-.setting-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.setting-icon {
-  font-size: 20px;
-}
-
-.setting-name {
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.setting-action {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 配置按钮 */
-.config-btn {
-  padding: 8px 16px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.config-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.config-btn.danger {
-  background: #ef4444;
-}
-
-.config-btn.danger:hover {
-  background: #dc2626;
-}
-
-/* 主题选择器 */
-.theme-select {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.theme-select:hover {
-  border-color: var(--primary-color);
-}
-
-/* 开关按钮 */
-.toggle-switch {
-  position: relative;
-  width: 48px;
-  height: 26px;
-  flex-shrink: 0;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-  position: absolute;
-}
-
-.toggle-label {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--gray-400);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 26px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
-.toggle-label:before {
-  position: absolute;
-  content: '';
-  height: 20px;
-  width: 20px;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: white;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-label:hover:before {
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
-}
-
-input:checked + .toggle-label {
-  background-color: var(--primary-color);
-  box-shadow:
-    inset 0 1px 3px rgba(0, 0, 0, 0.1),
-    0 0 0 1px var(--primary-dark);
-}
-
-input:checked + .toggle-label:before {
-  left: calc(100% - 24px);
-  transform: translateY(-50%);
-  box-shadow: 0 1px 4px rgba(25, 118, 210, 0.3);
-}
-
-input:focus-visible + .toggle-label {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
-input:active + .toggle-label:before {
-  width: 22px;
-}
-
-/* AI 嵌套选项 */
-.ai-options {
-  margin-left: 32px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-left: 2px solid var(--border-color);
-}
-
-.setting-item.nested {
-  padding: 12px 0;
-  margin-left: 16px;
-}
-
-.setting-item.nested:hover {
-  margin: 0 -16px 0 0;
-  padding: 12px 16px;
-}
-
-/* 箭头图标 */
-.arrow-icon {
-  font-size: 18px;
-  color: var(--text-secondary);
-}
-
-/* 模态框 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--card-bg);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: var(--text-primary);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.3s;
-}
-
-.close-btn:hover {
-  background: var(--input-bg);
-  color: var(--text-primary);
-}
-
-.modal-body {
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 20px;
-  border-top: 1px solid var(--border-color);
-}
-
-/* 表单样式 */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-input::placeholder {
-  color: var(--text-secondary);
-}
-
-/* 按钮 */
-.btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-primary {
-  background: var(--primary-color);
-  color: white;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background: var(--input-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover {
-  background: var(--border-color);
-}
-
-/* 测试对话框 */
-.test-modal {
-  max-width: 600px;
-}
-
-.test-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.test-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  background: var(--input-bg);
-  border-radius: 8px;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--border-color);
-}
-
-.status-dot.success {
-  background: #10b981;
-}
-
-.status-dot.error {
-  background: #ef4444;
-}
-
-.status-text {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-/* 聊天界面 */
-.chat-container {
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--input-bg);
-}
-
-.chat-messages {
-  height: 300px;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.message {
-  display: flex;
-  max-width: 80%;
-}
-
-.message.user {
-  align-self: flex-end;
-}
-
-.message.assistant {
-  align-self: flex-start;
-}
-
-.message-content {
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.5;
-  word-wrap: break-word;
-}
-
-.message.user .message-content {
-  background: var(--primary-color);
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.message.assistant .message-content {
-  background: var(--card-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-bottom-left-radius: 4px;
-}
-
-.message-content.loading {
-  display: flex;
-  gap: 4px;
-  padding: 16px;
-}
-
-.message-content.loading span {
-  width: 8px;
-  height: 8px;
-  background: var(--text-secondary);
-  border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
-}
-
-.message-content.loading span:nth-child(1) {
-  animation-delay: -0.32s;
-}
-
-.message-content.loading span:nth-child(2) {
-  animation-delay: -0.16s;
-}
-
-@keyframes bounce {
-  0%,
-  80%,
-  100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1);
-  }
-}
-
-.chat-input {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid var(--border-color);
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 10px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.chat-input input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-.chat-input input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.chat-input input::placeholder {
-  color: var(--text-secondary);
-}
-
-.send-btn {
-  padding: 10px 20px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-
-.send-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.clear-chat-btn {
-  padding: 8px 16px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s;
-  align-self: flex-end;
-}
-
-.clear-chat-btn:hover {
-  background: var(--border-color);
-}
-
-/* 提示词编辑器对话框 */
-.large-modal {
-  width: 95%;
-  max-width: 800px;
-  max-height: 90vh;
-}
-
-.prompt-description {
-  margin-bottom: 20px;
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-/* ── 同步动画测试 ── */
-
-.sync-anim-modal {
-  width: 95%;
-  max-width: 620px;
-  max-height: 90vh;
-}
-
-.anim-test-desc {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0 0 16px 0;
-  line-height: 1.6;
-}
-
-.anim-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
-  justify-items: center;
-}
-
-.anim-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.anim-cell__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-.anim-cell__canvas-wrap {
-  position: relative;
-  width: 160px;
-  height: 160px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-}
-
-.anim-cell__canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.anim-cell__progress-tag {
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(0, 0, 0, 0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-  pointer-events: none;
-  line-height: 1.3;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .setting-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .setting-action {
-    align-self: stretch;
-  }
-
-  .theme-select {
-    width: 100%;
-  }
-
-  .modal {
-    width: 95%;
-    max-height: 95vh;
-  }
-
-  .chat-messages {
-    height: 250px;
-  }
-}
-</style>

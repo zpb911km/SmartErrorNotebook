@@ -7,7 +7,7 @@
  */
 
 import type { AnimationMode } from '../types'
-import { SeededRandom, fbm, isDarkTheme, hslToString } from '../utils'
+import { fbm, hslToString, isDarkTheme, SeededRandom } from '../utils'
 
 interface Particle {
   x: number

@@ -1,5 +1,6 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import { resolve, relative } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
+
 import { expect, it } from 'vitest'
 
 const root = resolve('src')

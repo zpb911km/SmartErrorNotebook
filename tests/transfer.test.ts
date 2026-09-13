@@ -1,14 +1,16 @@
+// @vitest-environment happy-dom
 import { beforeEach, expect, it, vi } from 'vitest'
-import {
-  parseImportFile,
-  importSingleQuestion,
-  getExistingPromptSet
-} from '../src/utils/importJson'
-import { exportQuestionsToJSON } from '../src/utils/exportJson'
-import { exportFile } from '../src/utils/exportFile'
-import { loadQuestionLibrary } from '../src/services/questionQueries'
+
 import { createQuestionEditor } from '../src/services/questionEditor'
+import { loadQuestionLibrary } from '../src/services/questionQueries'
+import { exportFile } from '../src/utils/exportFile'
 import { buildQuestionsHTML } from '../src/utils/exportHtml'
+import { exportQuestionsToJSON } from '../src/utils/exportJson'
+import {
+  getExistingPromptSet,
+  importSingleQuestion,
+  parseImportFile
+} from '../src/utils/importJson'
 import { parseQuestionType } from '../src/utils/questionDisplay'
 
 vi.mock('../src/utils/exportFile', () => ({

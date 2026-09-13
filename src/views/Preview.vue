@@ -1,140 +1,46 @@
 <template>
   <div class="preview-page">
     <div v-if="loadError" role="alert">
-      {{ loadError }} <button @click="fetchData">重新加载</button>
+      {{ loadError }}
+      <q-btn no-caps unelevated type="button" flat @click="fetchData">
+        重新加载
+      </q-btn>
     </div>
-    <!-- 筛选栏 -->
-    <div class="filter-bar">
-      <div class="filter-select-wrapper">
-        <div class="custom-select" @click="toggleSubjectDropdown">
-          <div class="custom-select-value">
-            {{ selectedSubjectName || '全部科目' }}
-          </div>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: subjectDropdownVisible }"
-            >▼</span
-          >
-        </div>
-
-        <div
-          v-if="subjectDropdownVisible || cascadeVisible"
-          class="cascade-popup"
-        >
-          <button class="cascade-close-btn" @click="closeCascadeWindow">
-            <Icon name="x" :size="16" />
-          </button>
-
-          <div class="cascade-column">
-            <div class="column-title">科目</div>
-            <div class="column-items">
-              <div
-                class="cascade-item"
-                :class="{ active: !filters.subjectId }"
-                @click="selectSubject('')"
-              >
-                全部
-              </div>
-              <div
-                v-for="subj in subjects"
-                :key="subj.id"
-                class="cascade-item"
-                :class="{ active: filters.subjectId === subj.id }"
-                @click="handleSubjectClick(subj.id)"
-              >
-                {{ subj.name }}
-                <span class="arrow-indicator">›</span>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="currentSubjectId && books.length > 0"
-            class="cascade-column"
-          >
-            <div class="column-title">书名</div>
-            <div class="column-items">
-              <div
-                class="cascade-item"
-                :class="{ active: !filters.book }"
-                @click="handleBookClick('')"
-              >
-                全部
-              </div>
-              <div
-                v-for="b in books"
-                :key="b"
-                class="cascade-item"
-                :class="{ active: filters.book === b }"
-                @click="handleBookClick(b)"
-              >
-                {{ b || '未分类' }}
-                <span class="arrow-indicator">›</span>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="currentBook && chapters.length > 0" class="cascade-column">
-            <div class="column-title">章节</div>
-            <div class="column-items">
-              <div
-                class="cascade-item"
-                :class="{ active: !filters.chapter }"
-                @click="handleChapterClick('')"
-              >
-                全部
-              </div>
-              <div
-                v-for="ch in chapters"
-                :key="ch"
-                class="cascade-item"
-                :class="{ active: filters.chapter === ch }"
-                @click="handleChapterClick(ch)"
-              >
-                {{ ch || '未分类' }}
-                <span class="arrow-indicator">›</span>
-              </div>
-            </div>
-          </div>
-
-          <div
-            v-if="currentChapter && knowledges.length > 0"
-            class="cascade-column"
-          >
-            <div class="column-title">知识点</div>
-            <div class="column-items">
-              <div
-                class="cascade-item"
-                :class="{ active: !filters.knowledge }"
-                @click="selectKnowledge('')"
-              >
-                全部
-              </div>
-              <div
-                v-for="k in knowledges"
-                :key="k"
-                class="cascade-item"
-                :class="{ active: filters.knowledge === k }"
-                @click="selectKnowledge(k)"
-              >
-                {{ k || '未分类' }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="page-heading">
+      <h1>给记忆一点温习的时间</h1>
+      <p>根据掌握情况安排复习，也可以选择任意错题自由回顾。</p>
     </div>
-
+    <LibraryFilters
+      v-model="filters"
+      :subjects="subjects"
+      :sources="Array.from(sourceInfoMap.values())"
+    />
     <!-- 已选筛选条件 -->
     <div v-if="activeFilters.length > 0" class="active-filters">
       <span class="active-filters-label">已选：</span>
       <span v-for="f in activeFilters" :key="f.key" class="filter-tag">
         {{ f.label }}
-        <button @click="removeFilter(f.key)" class="filter-tag-close">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="filter-tag-close"
+          @click="removeFilter(f.key)"
+        >
           <Icon name="x" :size="14" />
-        </button>
+        </q-btn>
       </span>
-      <button @click="clearAllFilters" class="clear-all-btn">清除</button>
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        class="clear-all-btn"
+        @click="clearAllFilters"
+      >
+        清除
+      </q-btn>
     </div>
 
     <!-- 待复习列表 -->
@@ -144,10 +50,16 @@
     </div>
 
     <div v-if="dueList.length > 0" class="card-list">
-      <div
+      <q-card
         v-for="item in dueList"
         :key="item.id"
+        flat
+        bordered
+        tabindex="0"
+        role="button"
         class="error-card"
+        @keydown.enter="reviewCard(item)"
+        @keydown.space.prevent="reviewCard(item)"
         @click="reviewCard(item)"
       >
         <div class="error-header">
@@ -162,7 +74,7 @@
         <div
           class="error-content markdown-body"
           v-html="renderMarkdown(item.prompt)"
-        ></div>
+        />
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
           <span class="meta-item"
@@ -170,7 +82,7 @@
             {{ item.recallPercent }}%</span
           >
         </div>
-      </div>
+      </q-card>
     </div>
 
     <!-- 分割线 -->
@@ -180,10 +92,16 @@
 
     <!-- 无需复习列表 -->
     <div v-if="notDueList.length > 0" class="card-list">
-      <div
+      <q-card
         v-for="item in notDueList"
         :key="item.id"
+        flat
+        bordered
+        tabindex="0"
+        role="button"
         class="error-card"
+        @keydown.enter="reviewCard(item)"
+        @keydown.space.prevent="reviewCard(item)"
         @click="reviewCard(item)"
       >
         <div class="error-header">
@@ -198,7 +116,7 @@
         <div
           class="error-content markdown-body"
           v-html="renderMarkdown(item.prompt)"
-        ></div>
+        />
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
           <span class="meta-item"
@@ -206,12 +124,12 @@
             {{ item.stabilityText }}</span
           >
         </div>
-      </div>
+      </q-card>
     </div>
 
     <!-- 空状态 -->
     <div v-if="isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
+      <q-spinner color="primary" size="28px" />
       <div>加载中...</div>
     </div>
 
@@ -219,45 +137,42 @@
       v-if="!isLoading && !loadError && allFiltered.length === 0"
       class="empty-illustration"
     >
-      <div class="empty-icon"></div>
+      <div class="empty-icon" />
       <div class="empty-title">没有符合条件的错题</div>
       <div class="empty-desc">调整筛选条件，或添加更多错题吧</div>
     </div>
 
     <!-- FAB -->
-    <button v-if="dueList.length > 0" class="fab" @click="startReview">
+    <q-btn
+      v-if="dueList.length > 0"
+      no-caps
+      unelevated
+      type="button"
+      color="primary"
+      class="fab"
+      @click="startReview"
+    >
       <span class="fab-icon">▶</span>
       <span class="fab-text">开始复习</span>
       <span class="fab-badge">{{ dueList.length }}</span>
-    </button>
+    </q-btn>
   </div>
 </template>
 
 <script setup lang="ts">
-import { loadQuestionLibrary } from '../services/questionQueries'
-import { createSourceCatalog } from '../services/sourceCatalog'
-import { useLatestRequest } from '../composables/useLatestRequest'
-import type { QuestionView } from '../types/questionView'
-import type { SrsData, Source } from '../types'
-import { timestampSeconds } from '../utils/questionDisplay'
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { setReviewQueue } from '../services/reviewStore'
+
+import LibraryFilters from '../components/LibraryFilters.vue'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import { loadQuestionLibrary } from '../services/questionQueries'
 import type { ReviewCard } from '../services/reviewStore'
+import { setReviewQueue } from '../services/reviewStore'
+import type { Source, SrsData } from '../types'
 import type { Subject } from '../types'
-import { marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
-
-marked.use(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true
-  })
-)
-
-const renderer = new marked.Renderer()
-marked.use({ renderer })
+import type { QuestionView } from '../types/questionView'
+import { renderMarkdown } from '../utils/markdown'
+import { timestampSeconds } from '../utils/questionDisplay'
 
 const router = useRouter()
 
@@ -267,9 +182,6 @@ const questions = ref<QuestionView[]>([])
 const srsCards = ref<SrsData[]>([])
 const questionTagsMap = ref<Map<string, string[]>>(new Map())
 const sourceInfoMap = ref<Map<string | null, Source>>(new Map())
-const { getBooks, getChapters, getKnowledges } = createSourceCatalog(() =>
-  Array.from(sourceInfoMap.value.values())
-)
 const isLoading = ref(true)
 const loadError = ref('')
 
@@ -278,23 +190,6 @@ const filters = ref({
   book: '',
   chapter: '',
   knowledge: ''
-})
-
-// Cascade state
-const subjectDropdownVisible = ref(false)
-const cascadeVisible = ref(false)
-const currentSubjectId = ref<string | null>(null)
-const currentBook = ref<string | null>(null)
-const currentChapter = ref<string | null>(null)
-const books = ref<string[]>([])
-const chapters = ref<string[]>([])
-const knowledges = ref<string[]>([])
-
-// ============ Computed ============
-const selectedSubjectName = computed(() => {
-  if (!filters.value.subjectId) return ''
-  const subj = subjects.value.find((s) => s.id === filters.value.subjectId)
-  return subj?.name || ''
 })
 
 const activeFilters = computed(() => {
@@ -464,100 +359,6 @@ function getSubjectStyle(subjectId: string) {
   return { backgroundColor: '#e3f2fd', color: '#1976d2' }
 }
 
-const normalizeMarkdown = (value: string) => {
-  return (value || '')
-    .replace(/\\\[/g, '$$$$')
-    .replace(/\\\]/g, '$$$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-}
-
-const renderMarkdown = (content: string) => {
-  if (!content) return ''
-  const normalized = normalizeMarkdown(content)
-  return marked.parse(normalized, {
-    breaks: true,
-    gfm: true
-  }) as unknown as string
-}
-
-// Cascade filter handlers
-function toggleSubjectDropdown() {
-  subjectDropdownVisible.value = !subjectDropdownVisible.value
-  if (!subjectDropdownVisible.value) closeCascadeWindow()
-}
-
-function handleSubjectClick(id: string) {
-  filters.value.subjectId = id
-  filters.value.book = ''
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-  currentSubjectId.value = id
-  currentBook.value = null
-  currentChapter.value = null
-  chapters.value = []
-  knowledges.value = []
-  cascadeVisible.value = true
-  if (id) {
-    books.value = getBooks(id)
-  } else {
-    books.value = []
-  }
-}
-
-function handleBookClick(book: string) {
-  filters.value.book = book
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-  currentBook.value = book || null
-  currentChapter.value = null
-  knowledges.value = []
-  if (filters.value.subjectId && book) {
-    chapters.value = getChapters(book, filters.value.subjectId)
-  } else {
-    chapters.value = []
-  }
-}
-
-function handleChapterClick(ch: string) {
-  filters.value.chapter = ch
-  filters.value.knowledge = ''
-  currentChapter.value = ch || null
-  if (filters.value.subjectId && filters.value.book && ch) {
-    knowledges.value = getKnowledges(
-      filters.value.book,
-      ch,
-      filters.value.subjectId
-    )
-  } else {
-    knowledges.value = []
-  }
-}
-
-function selectKnowledge(k: string) {
-  filters.value.knowledge = k
-  closeCascadeWindow()
-}
-
-function selectSubject(id: string) {
-  filters.value.subjectId = id
-  filters.value.book = ''
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-  if (id) {
-    currentSubjectId.value = id
-    cascadeVisible.value = true
-    books.value = getBooks(id)
-  } else {
-    closeCascadeWindow()
-  }
-}
-
-function closeCascadeWindow() {
-  subjectDropdownVisible.value = false
-  cascadeVisible.value = false
-}
-
 function removeFilter(key: string) {
   if (key === 'subjectId') {
     filters.value.subjectId = ''
@@ -627,7 +428,7 @@ const fetchData = async () => {
     sourceInfoMap.value = new Map(
       library.sources.map((source) => [source.id, source])
     )
-  } catch (error) {
+  } catch {
     if (isCurrent()) loadError.value = '复习数据加载失败，请重试。'
   } finally {
     if (isCurrent()) isLoading.value = false
@@ -635,474 +436,3 @@ const fetchData = async () => {
 }
 onMounted(fetchData)
 </script>
-
-<style scoped>
-.preview-page {
-  padding: 20px;
-  padding-bottom: 100px;
-  background: var(--bg-primary);
-  min-height: 100vh;
-}
-
-/* ===== Filter Bar ===== */
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.filter-select-wrapper {
-  position: relative;
-  flex: 1;
-  min-width: 120px;
-  z-index: 100;
-}
-
-.custom-select {
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: border-color 0.2s;
-}
-.custom-select:hover {
-  border-color: var(--primary-color);
-}
-.custom-select-value {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.custom-select-arrow {
-  font-size: 10px;
-  color: var(--text-secondary);
-  margin-left: 8px;
-  transition: transform 0.2s;
-}
-.custom-select-arrow.rotated {
-  transform: rotate(180deg);
-}
-
-/* ===== Cascade Popup ===== */
-.cascade-popup {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 4px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  display: flex;
-  gap: 0;
-  z-index: 1001;
-  width: fit-content;
-  max-height: 500px;
-  animation: cascadeSlideDown 0.2s ease-out;
-  overflow: hidden;
-}
-
-.cascade-close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  padding: 0;
-}
-.cascade-close-btn:hover {
-  background: #ff4d4f;
-  color: white;
-}
-
-@keyframes cascadeSlideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.cascade-column {
-  flex: 0 0 160px;
-  width: 160px;
-  border-right: 1px solid var(--border-color);
-  padding: 8px 0;
-  max-height: 500px;
-  overflow-y: auto;
-}
-.cascade-column:first-child {
-  padding-left: 8px;
-}
-.cascade-column:last-child {
-  border-right: none;
-  padding-right: 40px;
-}
-
-.column-title {
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 4px;
-}
-
-.cascade-item {
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.cascade-item:hover,
-.cascade-item.active {
-  background: var(--primary-color);
-  color: white;
-}
-.arrow-indicator {
-  margin-left: 8px;
-  color: var(--text-secondary);
-  font-size: 18px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.cascade-item:hover .arrow-indicator,
-.cascade-item.active .arrow-indicator {
-  color: white;
-}
-
-/* ===== Active Filters ===== */
-.active-filters {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  background: var(--card-bg);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-.active-filters-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-.filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--primary-color);
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
-}
-.filter-tag-close {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  opacity: 0.8;
-}
-.filter-tag-close:hover {
-  opacity: 1;
-}
-.clear-all-btn {
-  padding: 4px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  margin-left: auto;
-}
-.clear-all-btn:hover {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-/* ===== Section Header ===== */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.section-header h3 {
-  font-size: 16px;
-  margin: 0;
-  color: var(--text-primary);
-}
-.section-count {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-/* ===== Card List ===== */
-.card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.error-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.error-card:active {
-  transform: scale(0.98);
-}
-
-.error-header {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.subject-tag {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.source-tag {
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.knowledge-tag {
-  background: #e0f2f1;
-  color: #00796b;
-}
-
-.urgency-badge {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.error-content {
-  font-size: 14px;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-  line-height: 1.5;
-}
-
-.error-content.markdown-body {
-  overflow: hidden;
-  max-height: 100%;
-}
-
-.error-content.markdown-body :deep(h1),
-.error-content.markdown-body :deep(h2),
-.error-content.markdown-body :deep(h3),
-.error-content.markdown-body :deep(h4),
-.error-content.markdown-body :deep(h5),
-.error-content.markdown-body :deep(h6) {
-  margin: 0.8em 0 0.4em;
-  font-weight: 600;
-  font-size: 1em;
-}
-
-.error-content.markdown-body :deep(p) {
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(code) {
-  background: rgba(25, 118, 210, 0.12);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.9em;
-}
-
-.error-content.markdown-body :deep(pre) {
-  background: #0f172a;
-  padding: 10px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(pre code) {
-  background: transparent;
-  padding: 0;
-  color: #e2e8f0;
-}
-
-.error-content.markdown-body :deep(ul),
-.error-content.markdown-body :deep(ol) {
-  padding-left: 20px;
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(blockquote) {
-  margin: 0.5em 0;
-  padding-left: 10px;
-  border-left: 3px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
-.error-content.markdown-body :deep(a) {
-  color: var(--primary-color);
-  text-decoration: underline;
-}
-
-.error-content.markdown-body :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(th),
-.error-content.markdown-body :deep(td) {
-  border: 1px solid var(--border-color);
-  padding: 6px 8px;
-}
-
-.error-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-}
-.meta-item {
-  color: var(--text-secondary);
-}
-
-/* ===== Section Divider ===== */
-.section-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 20px 0 16px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-.section-divider::before,
-.section-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-color);
-}
-
-/* ===== Empty State ===== */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-}
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
-
-/* ===== Loading ===== */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 16px;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* ===== FAB ===== */
-.fab {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 24px;
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 28px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.4);
-  transition: all 0.2s;
-  z-index: 50;
-}
-.fab:active {
-  transform: scale(0.95);
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
-}
-.fab-icon {
-  font-size: 18px;
-}
-.fab-badge {
-  background: rgba(255, 255, 255, 0.25);
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 14px;
-}
-</style>

@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest'
+
 import { createSourceCatalog } from '../src/services/sourceCatalog'
 import type { Source } from '../src/types'
 

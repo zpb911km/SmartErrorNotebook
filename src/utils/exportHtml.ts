@@ -1,44 +1,10 @@
 import type { QuestionContent } from '../types/questionView'
-import { Marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
-import { showError } from './notification'
 import { exportFile } from './exportFile'
-
-const _marked = new Marked(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true,
-    strict: 'ignore'
-  }),
-  {
-    renderer: {
-      code({ text, lang }) {
-        const e = text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-        return `<pre><code class="hljs ${lang ? `language-${lang}` : ''}">${e}</code></pre>`
-      }
-    }
-  }
-)
-
-function renderHtml(t: string | undefined | null): string {
-  if (!t) return ''
-  const c = (t || '').replace(/[①-⑳]/g, (m) => `(${m.charCodeAt(0) - 0x245f})`)
-  return _marked.parse(
-    c
-      .replace(/\\\[/g, '$$$$')
-      .replace(/\\\]/g, '$$$$')
-      .replace(/\\\(/g, '$')
-      .replace(/\\\)/g, '$'),
-    { breaks: true, gfm: true }
-  ) as string
-}
+import { renderMarkdown as renderHtml } from './markdown'
+import { showError } from './notification'
 
 /**
- * 构建独立 HTML 字符串（纯函数，不涉及 IO）
+ * 在浏览器/WebView 中构建 HTML 字符串；DOMPurify 需要真实 DOM。
  *
  * 根据 localStorage 中 export_include_answer 的值决定是否包含答案和解析。
  * 默认只导出题目（prompt），可在设置页修改。

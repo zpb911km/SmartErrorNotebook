@@ -8,7 +8,7 @@
  */
 
 import type { AnimationMode } from '../types'
-import { SeededRandom, hslToString } from '../utils'
+import { hslToString, SeededRandom } from '../utils'
 
 /** 获取正 N 边形的顶点 */
 function getPolygonVertices(

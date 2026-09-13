@@ -2,14 +2,18 @@
   <Teleport to="body">
     <div v-show="isSyncing" class="sync-overlay">
       <!-- 背景遮罩 -->
-      <div class="sync-overlay__mask"></div>
+      <div class="sync-overlay__mask" />
 
       <!-- 主卡片 -->
       <div class="sync-card">
         <!-- 标题和状态 -->
         <div class="sync-card__header">
-          <h2 class="sync-card__title">{{ title }}</h2>
-          <p class="sync-card__status">{{ statusText }}</p>
+          <h2 class="sync-card__title">
+            {{ title }}
+          </h2>
+          <p class="sync-card__status">
+            {{ statusText }}
+          </p>
         </div>
 
         <!-- Canvas 动画区域 -->
@@ -51,35 +55,40 @@
               >{{ details.pulled + details.pushed }}/{{ total }}</span
             >
           </div>
-          <div class="stat-item" v-if="details.conflicts_resolved > 0">
+          <div v-if="details.conflicts_resolved > 0" class="stat-item">
             <span class="stat-label">冲突解决</span>
             <span class="stat-value highlight">{{
               details.conflicts_resolved
             }}</span>
           </div>
-          <div class="stat-item" v-if="details.failed > 0">
+          <div v-if="details.failed > 0" class="stat-item">
             <span class="stat-label">失败</span>
             <span class="stat-value error">{{ details.failed }}</span>
           </div>
         </div>
 
         <!-- 取消按钮 -->
-        <button
+        <q-btn
           v-if="showCancelButton"
+          no-caps
+          unelevated
+          type="button"
+          flat
           class="btn btn--outline btn--sm"
           @click="handleCancel"
         >
           取消
-        </button>
+        </q-btn>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { createAnimation } from '../utils/sync-animations'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
 import type { AnimationMode } from '../utils/sync-animations'
+import { createAnimation } from '../utils/sync-animations'
 import { isDarkTheme } from '../utils/sync-animations/utils'
 
 interface Props {

@@ -1,55 +1,91 @@
 <template>
-  <div class="camera-modal" v-if="visible">
-    <div class="camera-container">
-      <!-- 顶部操作栏 -->
-      <div class="camera-header">
-        <button class="header-btn" @click="handleClose">
-          <Icon name="x" :size="18" />
-        </button>
-        <span class="camera-title">拍照</span>
-        <button
-          class="header-btn"
-          @click="handleSwitchCamera"
-          v-if="hasMultipleCameras"
-        >
-          <Icon name="refresh-cw" :size="18" />
-        </button>
-        <div class="header-placeholder" v-else></div>
-      </div>
+  <q-dialog
+    :model-value="visible"
+    maximized
+    @update:model-value="handleClose"
+    @show="startCamera"
+    @hide="stopCamera"
+  >
+    <div class="camera-modal">
+      <div class="camera-container">
+        <!-- 顶部操作栏 -->
+        <q-toolbar class="camera-header">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="header-btn"
+            @click="handleClose"
+          >
+            <Icon name="x" :size="18" />
+          </q-btn>
+          <span class="camera-title">拍照</span>
+          <q-btn
+            v-if="hasMultipleCameras"
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="header-btn"
+            @click="handleSwitchCamera"
+          >
+            <Icon name="refresh-cw" :size="18" />
+          </q-btn>
+          <div v-else class="header-placeholder" />
+        </q-toolbar>
 
-      <!-- 预览区 -->
-      <div class="camera-preview">
-        <video ref="videoRef" autoplay playsinline></video>
-        <canvas ref="canvasRef" style="display: none"></canvas>
+        <!-- 预览区 -->
+        <div class="camera-preview">
+          <video ref="videoRef" autoplay playsinline />
+          <canvas ref="canvasRef" style="display: none" />
 
-        <!-- 取景框装饰 -->
-        <div class="viewfinder">
-          <div class="vf-corner tl"></div>
-          <div class="vf-corner tr"></div>
-          <div class="vf-corner bl"></div>
-          <div class="vf-corner br"></div>
+          <!-- 取景框装饰 -->
+          <div class="viewfinder">
+            <div class="vf-corner tl" />
+            <div class="vf-corner tr" />
+            <div class="vf-corner bl" />
+            <div class="vf-corner br" />
+          </div>
+
+          <!-- 错误提示 -->
+          <div v-if="error" class="camera-error">
+            <Icon name="triangle-alert" :size="32" class="error-icon" />
+            <p>{{ error }}</p>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="retry-btn"
+              @click="startCamera"
+            >
+              重试
+            </q-btn>
+          </div>
         </div>
 
-        <!-- 错误提示 -->
-        <div class="camera-error" v-if="error">
-          <Icon name="triangle-alert" :size="32" class="error-icon" />
-          <p>{{ error }}</p>
-          <button class="retry-btn" @click="startCamera">重试</button>
+        <!-- 底部拍摄按钮 -->
+        <div class="camera-controls">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="capture-btn"
+            :disable="!!error"
+            @click="handleCapture"
+          >
+            <div class="capture-inner" />
+          </q-btn>
         </div>
-      </div>
-
-      <!-- 底部拍摄按钮 -->
-      <div class="camera-controls">
-        <button class="capture-btn" @click="handleCapture" :disabled="!!error">
-          <div class="capture-inner"></div>
-        </button>
       </div>
     </div>
-  </div>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 
 interface Props {
   visible: boolean
@@ -70,16 +106,17 @@ const error = ref('')
 const mediaStream = ref<MediaStream | null>(null)
 const currentCamera = ref<'user' | 'environment'>('environment')
 const hasMultipleCameras = ref(false)
+let cameraVersion = 0
 
 watch(
   () => props.visible,
   async (newVal) => {
-    if (newVal) await startCamera()
-    else stopCamera()
+    if (!newVal) stopCamera()
   }
 )
 
 const startCamera = async () => {
+  const version = ++cameraVersion
   error.value = ''
   try {
     if (mediaStream.value) {
@@ -94,23 +131,29 @@ const startCamera = async () => {
       audio: false
     }
     const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    if (version !== cameraVersion || !props.visible) {
+      stream.getTracks().forEach((track) => track.stop())
+      return
+    }
     mediaStream.value = stream
     if (videoRef.value) videoRef.value.srcObject = stream
     const devices = await navigator.mediaDevices.enumerateDevices()
     hasMultipleCameras.value =
       devices.filter((d) => d.kind === 'videoinput').length > 1
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (version !== cameraVersion || !props.visible) return
     console.error('相机启动失败:', err)
-    if (err.name === 'NotAllowedError') error.value = '请允许访问摄像头权限'
-    else if (err.name === 'NotFoundError') error.value = '未找到摄像头设备'
-    else if (err.name === 'NotReadableError')
-      error.value = '摄像头被其他应用占用'
+    const name = err instanceof Error ? err.name : ''
+    if (name === 'NotAllowedError') error.value = '请允许访问摄像头权限'
+    else if (name === 'NotFoundError') error.value = '未找到摄像头设备'
+    else if (name === 'NotReadableError') error.value = '摄像头被其他应用占用'
     else error.value = '相机启动失败，请检查设备'
     emit('error')
   }
 }
 
 const stopCamera = () => {
+  ++cameraVersion
   if (mediaStream.value) {
     mediaStream.value.getTracks().forEach((track) => track.stop())
     mediaStream.value = null
@@ -144,7 +187,9 @@ onBeforeUnmount(() => stopCamera())
 
 <style scoped>
 .camera-modal {
-  position: fixed;
+  position: relative;
+  width: 100%;
+  height: 100%;
   top: 0;
   left: 0;
   right: 0;

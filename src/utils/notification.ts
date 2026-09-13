@@ -1,96 +1,42 @@
-import { createApp, type App } from 'vue'
-import Notification from '../components/Notification.vue'
+import { Notify } from 'quasar'
 
-// 通知类型接口
 export interface NotificationOptions {
   title: string
   message: string
   duration?: number
 }
-
-// 创建通知实例
-let notificationInstance: any = null
-let app: App | null = null
-
-// 定义通知类型
-type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'debug'
-
-// 初始化通知组件
-const initNotification = () => {
-  if (!notificationInstance) {
-    // 创建容器元素
-    const container = document.createElement('div')
-    container.id = 'notification-container'
-    document.body.appendChild(container)
-
-    // 创建并挂载通知组件
-    app = createApp(Notification)
-    notificationInstance = app.mount(container)
-  }
+const dismissals = new Set<() => void>()
+function notify(type: string, title: string, message: string, duration = 4000) {
+  const dismiss = Notify.create({
+    type,
+    message: title,
+    caption: message,
+    timeout: duration,
+    actions: [{ icon: 'close', 'aria-label': '关闭通知' }],
+    onDismiss: () => dismissals.delete(dismiss)
+  })
+  dismissals.add(dismiss)
 }
-
-// 通用通知方法
-const showNotification = (
-  type: NotificationType,
-  title: string,
-  message: string,
-  duration?: number
-) => {
-  initNotification()
-  console.log(`[${type.toUpperCase()}] ${title}: ${message}`)
-  notificationInstance.addNotification(type, title, message, duration)
-}
-
-// 显示信息通知
-export const showInfo = (title: string, message: string, duration?: number) => {
-  showNotification('info', title, message, duration)
-}
-
-// 显示成功通知
+export const showInfo = (title: string, message: string, duration?: number) =>
+  notify('info', title, message, duration)
 export const showSuccess = (
   title: string,
   message: string,
   duration?: number
-) => {
-  showNotification('success', title, message, duration)
-}
-
-// 显示警告通知
+) => notify('positive', title, message, duration)
 export const showWarning = (
   title: string,
   message: string,
   duration?: number
-) => {
-  showNotification('warning', title, message, duration)
-}
-
-// 显示错误通知
-export const showError = (
-  title: string,
-  message: string,
-  duration?: number
-) => {
-  showNotification('error', title, message, duration)
-}
-
-// 显示调试通知
+) => notify('warning', title, message, duration)
+export const showError = (title: string, message: string, duration?: number) =>
+  notify('negative', title, message, duration)
 export const showDebug = (
   title: string,
-  message: string | Object,
+  message: string | object,
   duration?: number
-) => {
-  showNotification('debug', title, JSON.stringify(message), duration)
-}
-
-// 销毁通知实例（可选）
-export const destroyNotification = () => {
-  if (app && notificationInstance) {
-    app.unmount()
-    const container = document.getElementById('notification-container')
-    if (container) {
-      document.body.removeChild(container)
-    }
-    app = null
-    notificationInstance = null
-  }
+) => notify('info', title, JSON.stringify(message), duration)
+export function destroyNotification() {
+  dismissals.forEach((dismiss) => dismiss())
+  dismissals.clear()
 }

@@ -1,9 +1,9 @@
 <template>
   <div class="prompt-editor">
     <div
-      class="editor-section"
       v-for="(section, index) in promptSections"
       :key="section.tag"
+      class="editor-section"
       :class="{ first: index === 0 }"
     >
       <div class="section-header">
@@ -12,21 +12,30 @@
           <span class="title">{{ section.title }}</span>
         </div>
         <div class="header-actions">
-          <button
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            aria-label="恢复默认提示词"
             class="btn-restore"
-            @click="restoreDefault(section.tag)"
             title="恢复默认提示词"
-            :disabled="isRestoring"
+            :disable="isRestoring"
+            @click="restoreDefault(section.tag)"
           >
             恢复默认
-          </button>
-          <button
+          </q-btn>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            color="primary"
             class="btn-save"
+            :disable="isSaving || !hasChanges(section.tag)"
             @click="savePrompt(section.tag)"
-            :disabled="isSaving || !hasChanges(section.tag)"
           >
             保存
-          </button>
+          </q-btn>
         </div>
       </div>
 
@@ -54,8 +63,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
+
+import { confirmAction, showAlert } from '../utils/dialog'
 import MarkdownTextarea from './MarkdownTextarea.vue'
+let successTimer: ReturnType<typeof setTimeout> | undefined
+onUnmounted(() => clearTimeout(successTimer))
 
 // ==================== 提示词配置 ====================
 
@@ -178,12 +191,13 @@ const savePrompt = async (tag: string) => {
 
     // 显示成功提示
     saveSuccess.value = true
-    setTimeout(() => {
+    clearTimeout(successTimer)
+    successTimer = setTimeout(() => {
       saveSuccess.value = false
     }, 2000)
   } catch (error) {
     console.error('保存提示词失败:', error)
-    alert('保存失败，请重试')
+    showAlert('保存失败，请重试')
   } finally {
     isSaving.value = false
   }
@@ -193,7 +207,7 @@ const savePrompt = async (tag: string) => {
  * 恢复默认提示词
  */
 const restoreDefault = async (tag: string) => {
-  if (!confirm(`确定要恢复"${tag}"的默认提示词吗？`)) {
+  if (!(await confirmAction(`确定要恢复"${tag}"的默认提示词吗？`))) {
     return
   }
 
@@ -207,7 +221,7 @@ const restoreDefault = async (tag: string) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customPrompts.value))
   } catch (error) {
     console.error('恢复默认提示词失败:', error)
-    alert('恢复失败，请重试')
+    showAlert('恢复失败，请重试')
   } finally {
     isRestoring.value = false
   }

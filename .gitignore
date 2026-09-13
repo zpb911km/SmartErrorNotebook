@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
 
 # Editor directories and files
 .vscode/*
@@ -38,3 +42,5 @@ openspec/*
 pyrightconfig.json
 */__pycache__/*
 .fp/*
+test-results/
+playwright-report/

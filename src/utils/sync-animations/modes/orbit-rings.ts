@@ -7,7 +7,7 @@
  */
 
 import type { AnimationMode } from '../types'
-import { SeededRandom, hslToString } from '../utils'
+import { hslToString, SeededRandom } from '../utils'
 
 interface RingParticle {
   angle: number

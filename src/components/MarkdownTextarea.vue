@@ -3,9 +3,17 @@
     class="markdown-textarea"
     :class="{ 'is-previewing': viewMode === 'preview' }"
   >
-    <div class="markdown-textarea__toolbar">
-      <div class="markdown-textarea__hint"></div>
-    </div>
+    <q-tabs
+      v-if="!props.readonly && showPreview"
+      :model-value="viewMode"
+      dense
+      align="left"
+      active-color="primary"
+      @update:model-value="toggleViewMode"
+    >
+      <q-tab name="edit" label="编辑" icon="edit_note" />
+      <q-tab name="preview" label="预览" icon="visibility" />
+    </q-tabs>
 
     <div v-if="viewMode === 'edit'" class="markdown-textarea__stage">
       <textarea
@@ -16,19 +24,16 @@
         :readonly="props.readonly"
         @input="handleInput"
         @keydown="handleKeydown"
-      ></textarea>
+      />
 
-      <div v-if="showPreview" class="markdown-textarea__preview-pane">
+      <div
+        v-if="showPreview && $q.screen.width >= 1024"
+        class="markdown-textarea__preview-pane"
+      >
         <div class="markdown-textarea__preview-header">
-          <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-          <button
-            v-if="!props.readonly"
-            type="button"
-            class="markdown-textarea__mode-switch"
-            @click="toggleViewMode"
-          >
-            {{ viewMode === 'edit' ? '专注预览' : '编辑' }}
-          </button>
+          <div class="markdown-textarea__preview-title">
+            {{ previewTitle }}
+          </div>
         </div>
         <div class="markdown-textarea__preview-segment" :class="previewClass">
           <div
@@ -43,24 +48,19 @@
             class="markdown-textarea__preview-body markdown-body"
             :class="{ 'is-active': segment.id === activeSegmentId }"
             v-html="segment.html"
-          ></div>
+          />
         </div>
       </div>
     </div>
 
     <div v-else-if="showPreview" class="markdown-textarea__preview-only">
       <div
+        v-if="previewTitle"
         class="markdown-textarea__preview-header markdown-textarea__preview-header--single"
       >
-        <div class="markdown-textarea__preview-title">{{ previewTitle }}</div>
-        <button
-          v-if="!props.readonly"
-          type="button"
-          class="markdown-textarea__mode-switch"
-          @click="toggleViewMode"
-        >
-          编辑
-        </button>
+        <div class="markdown-textarea__preview-title">
+          {{ previewTitle }}
+        </div>
       </div>
       <div class="markdown-textarea__preview-segment" :class="previewClass">
         <div
@@ -74,7 +74,7 @@
           :key="segment.id"
           class="markdown-textarea__preview-body markdown-body"
           v-html="segment.html"
-        ></div>
+        />
       </div>
     </div>
   </div>
@@ -82,73 +82,8 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { Marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
-import hljs from 'highlight.js/lib/core'
-import javascript from 'highlight.js/lib/languages/javascript'
-import typescript from 'highlight.js/lib/languages/typescript'
-import python from 'highlight.js/lib/languages/python'
-import bash from 'highlight.js/lib/languages/bash'
-import json from 'highlight.js/lib/languages/json'
-import css from 'highlight.js/lib/languages/css'
-import sql from 'highlight.js/lib/languages/sql'
-import java from 'highlight.js/lib/languages/java'
-import cpp from 'highlight.js/lib/languages/cpp'
-import rust from 'highlight.js/lib/languages/rust'
-import xml from 'highlight.js/lib/languages/xml'
-import yaml from 'highlight.js/lib/languages/yaml'
-import markdown from 'highlight.js/lib/languages/markdown'
 
-hljs.registerLanguage('javascript', javascript)
-hljs.registerLanguage('typescript', typescript)
-hljs.registerLanguage('python', python)
-hljs.registerLanguage('bash', bash)
-hljs.registerLanguage('json', json)
-hljs.registerLanguage('css', css)
-hljs.registerLanguage('sql', sql)
-hljs.registerLanguage('java', java)
-hljs.registerLanguage('cpp', cpp)
-hljs.registerLanguage('rust', rust)
-hljs.registerLanguage('xml', xml)
-hljs.registerLanguage('yaml', yaml)
-hljs.registerLanguage('markdown', markdown)
-// plaintext is built-in, no registration needed
-import 'highlight.js/styles/github-dark.css'
-import 'katex/dist/katex.min.css'
-
-// 防止 ```markdown 嵌套递归渲染的深度计数器
-let _renderDepth = 0
-
-// 创建独立的 marked 实例，避免污染全局 marked
-const _marked: Marked = new Marked(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true
-  }),
-  {
-    renderer: {
-      code({ text, lang }): string {
-        // AI 经常用 ```markdown ... ``` 包裹返回内容，此时应渲染为 markdown 而非代码高亮
-        if (lang?.toLowerCase() === 'markdown' && _renderDepth < 3) {
-          _renderDepth++
-          try {
-            return _marked.parse(text, { breaks: true, gfm: true }) as string
-          } finally {
-            _renderDepth--
-          }
-        }
-        const language = lang ?? ''
-        const highlighted =
-          language && hljs.getLanguage(language)
-            ? hljs.highlight(text, { language }).value
-            : text // 无语言标签时不染色，直接展示原文，避免 highlightAuto 猜错
-        const langClass = language ? `language-${language}` : ''
-        return `<pre><code class="hljs ${langClass}">${highlighted}</code></pre>`
-      }
-    }
-  }
-)
+import { renderMarkdown } from '../utils/markdown'
 
 defineOptions({ inheritAttrs: false })
 
@@ -185,51 +120,6 @@ watch(
     viewMode.value = value
   }
 )
-
-const normalizeMarkdown = (value: string) => {
-  return (
-    (value || '')
-      .replace(/\\\[/g, '$$')
-      .replace(/\\\]/g, '$$')
-      .replace(/\\\(/g, '$')
-      .replace(/\\\)/g, '$')
-      // 修正公式定界符与标记之间的空格：** $ → **$，$ ** → $**
-      // 防止 ** $expr$ ** 只渲染公式而加粗失效
-      // 使用 [ \t] 而非 \s，避免跨行吞掉换行符
-      .replace(/\*\*[ \t]+(?=\$)/g, '**')
-      .replace(/(?<=\$)[ \t]+\*\*/g, '**')
-      .replace(/\*[ \t]+(?=\$)/g, '*')
-      .replace(/(?<=\$)[ \t]+\*/g, '*')
-  )
-}
-
-const renderMarkdown = (value: string) => {
-  const normalized = normalizeMarkdown(value)
-  // AI 生成的 markdown 常用缩进做视觉对齐，但 marked GFM 会把
-  // ≥4空格的缩进行整行误判为 <pre><code> 代码块，导致 KaTeX 无法处理其中的公式。
-  // 解决方案：只去掉前面是空行时的 4 空格缩进（此时 marked 才会解析为代码块），
-  // 而跟在列表项后面的缩进（列表嵌套）则保留不动。
-  let inFence = false
-  let prevLineBlank = true // 文档开头视作"前面是空行"
-  const deindented = normalized
-    .split('\n')
-    .map((line) => {
-      const trimmed = line.trim()
-      if (/^```/.test(trimmed)) {
-        inFence = !inFence
-        prevLineBlank = false
-        return line
-      }
-      if (!inFence && prevLineBlank && /^[ ]{4,}(.+)$/.test(line)) {
-        prevLineBlank = false
-        return line.replace(/^[ ]{4,}/, '')
-      }
-      prevLineBlank = trimmed === ''
-      return line
-    })
-    .join('\n')
-  return _marked.parse(deindented, { breaks: true, gfm: true }) as string
-}
 
 const autoResize = () => {
   const el = textareaRef.value

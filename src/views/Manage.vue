@@ -1,303 +1,80 @@
 <template>
   <div class="manage-page">
+    <div class="page-heading">
+      <h1>把错题整理成自己的知识库</h1>
+      <p>找到薄弱环节，留住每一次思考。</p>
+    </div>
     <div v-if="loadError" role="alert">
-      {{ loadError }} <button @click="fetchData">重新加载</button>
+      {{ loadError }}
+      <q-btn no-caps unelevated type="button" flat @click="fetchData">
+        重新加载
+      </q-btn>
     </div>
     <!-- 搜索栏 -->
     <div class="search-bar">
-      <div class="search-box" :class="{ blinking: isSearchBlinking }">
-        <input
-          type="text"
+      <div class="search-box">
+        <q-input
+          ref="searchInput"
           v-model="filters.keyword"
+          outlined
+          dense
+          aria-label="搜索题干、科目、书名、知识点...（模糊搜索）"
+          type="text"
           placeholder="搜索题干、科目、书名、知识点...（模糊搜索）"
-          @focus="onSearchFocus"
         />
       </div>
     </div>
 
-    <!-- 筛选栏 -->
-    <div class="filter-bar">
-      <!-- 科目级联菜单 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': cascadeVisible }"
-      >
-        <div class="custom-select" @click="toggleSubjectDropdown">
-          <span class="custom-select-value">{{
-            selectedSubjectName || '选择科目'
-          }}</span>
-          <span class="custom-select-arrow" :class="{ rotated: cascadeVisible }"
-            >▼</span
-          >
-        </div>
-        <!-- 级联弹窗 -->
-        <div
-          v-if="cascadeVisible"
-          class="cascade-popup"
-          @mouseenter="clearHideTimer"
-          @mouseleave="hideAllMenus"
-        >
-          <div class="cascade-column">
-            <div class="column-title">科目</div>
-            <div class="cascade-items">
-              <div
-                v-for="subj in subjects"
-                :key="subj.id"
-                class="cascade-item"
-                :class="{ active: filters.subjectId === subj.id }"
-                @click="handleSubjectClick(subj.id)"
-              >
-                {{ subj.name }}
-                <span v-if="booksOf(subj.id).length" class="arrow-indicator"
-                  >›</span
-                >
-              </div>
-            </div>
-          </div>
-          <div v-if="currentSubjectId && books.length" class="cascade-column">
-            <div class="column-title">书名</div>
-            <div class="cascade-items">
-              <div
-                v-for="book in books"
-                :key="book"
-                class="cascade-item"
-                :class="{ active: filters.book === book }"
-                @click="handleBookClick(book)"
-              >
-                {{ book || '未分类' }}
-                <span v-if="chaptersOf(book).length" class="arrow-indicator"
-                  >›</span
-                >
-              </div>
-            </div>
-          </div>
-          <div v-if="currentBook && chapters.length" class="cascade-column">
-            <div class="column-title">章节</div>
-            <div class="cascade-items">
-              <div
-                v-for="ch in chapters"
-                :key="ch"
-                class="cascade-item"
-                :class="{ active: filters.chapter === ch }"
-                @click="handleChapterClick(ch)"
-              >
-                {{ ch || '未分类' }}
-                <span v-if="knowledges.length" class="arrow-indicator">›</span>
-              </div>
-            </div>
-          </div>
-          <div
-            v-if="currentChapter && knowledges.length"
-            class="cascade-column"
-          >
-            <div class="column-title">知识点</div>
-            <div class="cascade-items">
-              <div
-                v-for="kw in knowledges"
-                :key="kw"
-                class="cascade-item"
-                :class="{ active: filters.knowledge === kw }"
-                @click="selectKnowledge(kw)"
-              >
-                {{ kw || '未分类' }}
-              </div>
-            </div>
-          </div>
-          <button class="cascade-close-btn" @click="closeCascadeWindow">
-            ×
-          </button>
-        </div>
-      </div>
-
-      <!-- 标签下拉 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': tagDropdownVisible }"
-      >
-        <div class="custom-select" @click="toggleTagDropdown">
-          <span class="custom-select-value">{{
-            selectedTagsText || '选择标签'
-          }}</span>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: tagDropdownVisible }"
-            >▼</span
-          >
-        </div>
-        <div v-if="tagDropdownVisible" class="dropdown-popup tag-dropdown">
-          <div
-            v-for="tag in availableTags"
-            :key="tag"
-            class="dropdown-item"
-            :class="{ active: filters.tags.includes(tag) }"
-            @click="toggleTag(tag)"
-          >
-            <span class="checkbox">{{
-              filters.tags.includes(tag) ? '✓' : ''
-            }}</span>
-            {{ tag }}
-          </div>
-          <div
-            v-if="filters.tags.length > 0"
-            class="dropdown-item"
-            style="
-              border-top: 1px solid var(--border-color);
-              color: var(--primary-color);
-              font-weight: 500;
-            "
-            @click="clearTags"
-          >
-            清除选择
-          </div>
-        </div>
-      </div>
-
-      <!-- 难度排序 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': difficultyDropdownVisible }"
-      >
-        <div class="custom-select" @click="toggleDifficultyDropdown">
-          <span class="custom-select-value">{{
-            difficultySort === 'none'
-              ? '难度排序'
-              : difficultySort === 'asc'
-                ? '难度 ↑'
-                : '难度 ↓'
-          }}</span>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: difficultyDropdownVisible }"
-            >▼</span
-          >
-        </div>
-        <div v-if="difficultyDropdownVisible" class="dropdown-popup">
-          <div
-            class="dropdown-item"
-            :class="{ active: difficultySort === 'none' }"
-            @click="setDifficultySort('none')"
-          >
-            无排序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: difficultySort === 'asc' }"
-            @click="setDifficultySort('asc')"
-          >
-            ↑ 正序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: difficultySort === 'desc' }"
-            @click="setDifficultySort('desc')"
-          >
-            ↓ 倒序
-          </div>
-        </div>
-      </div>
-
-      <!-- 掌握程度排序 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': masteryDropdownVisible }"
-      >
-        <div class="custom-select" @click="toggleMasteryDropdown">
-          <span class="custom-select-value">{{
-            masterySort === 'none'
-              ? '掌握程度'
-              : masterySort === 'asc'
-                ? '掌握 ↑'
-                : '掌握 ↓'
-          }}</span>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: masteryDropdownVisible }"
-            >▼</span
-          >
-        </div>
-        <div v-if="masteryDropdownVisible" class="dropdown-popup">
-          <div
-            class="dropdown-item"
-            :class="{ active: masterySort === 'none' }"
-            @click="setMasterySort('none')"
-          >
-            无排序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: masterySort === 'asc' }"
-            @click="setMasterySort('asc')"
-          >
-            ↑ 正序
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: masterySort === 'desc' }"
-            @click="setMasterySort('desc')"
-          >
-            ↓ 倒序
-          </div>
-        </div>
-      </div>
-
-      <!-- 时间范围筛选 -->
-      <div
-        class="filter-select-wrapper"
-        :class="{ 'dropdown-open': dateRangeDropdownVisible }"
-      >
-        <div class="custom-select" @click="toggleDateRangeDropdown">
-          <span class="custom-select-value">{{
-            dateRangeText || '时间范围'
-          }}</span>
-          <span
-            class="custom-select-arrow"
-            :class="{ rotated: dateRangeDropdownVisible }"
-            >▼</span
-          >
-        </div>
-        <div v-if="dateRangeDropdownVisible" class="dropdown-popup">
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === 'all' }"
-            @click="selectDateRange('all')"
-          >
-            全部时间
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === '7days' }"
-            @click="selectDateRange('7days')"
-          >
-            最近7天
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === '30days' }"
-            @click="selectDateRange('30days')"
-          >
-            最近30天
-          </div>
-          <div
-            class="dropdown-item"
-            :class="{ active: filters.date_range === '90days' }"
-            @click="selectDateRange('90days')"
-          >
-            最近90天
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <LibraryFilters
+      v-model="filters"
+      v-model:difficulty-sort="difficultySort"
+      v-model:mastery-sort="masterySort"
+      :subjects="subjects"
+      :sources="Array.from(sourceInfoMap.values())"
+      :tags="availableTags"
+    />
     <!-- 操作栏：导入/导出 -->
     <div class="action-bar">
-      <button class="action-btn import-btn" @click="showImportModal = true">
+      <span class="text-grey-7">{{ filteredErrors.length }} 道错题</span>
+      <q-space />
+      <q-btn
+        flat
+        color="primary"
+        :label="selecting ? '退出选择' : '批量选择'"
+        @click="toggleSelectionMode"
+      />
+      <q-btn
+        v-if="selecting"
+        flat
+        label="全选当前结果"
+        @click="selectedIds = filteredErrors.map((item) => item.id)"
+      />
+      <q-chip v-if="selecting" color="primary" text-color="white">
+        已选 {{ selectedIds.length }} 题
+      </q-chip>
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        class="action-btn import-btn"
+        @click="showImportModal = true"
+      >
         <Icon name="plus" :size="16" />
         <span>导入</span>
-      </button>
-      <button class="action-btn export-btn" @click="showExportModal = true">
+      </q-btn>
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        class="action-btn export-btn"
+        :disable="selecting && !selectedIds.length"
+        @click="showExportModal = true"
+      >
         <Icon name="file-text" :size="16" />
         <span>导出</span>
-      </button>
+      </q-btn>
     </div>
 
     <!-- 已选筛选条件 -->
@@ -309,21 +86,50 @@
         class="filter-tag"
       >
         {{ filter.label }}
-        <button @click="removeFilter(filter.key)" class="filter-tag-close">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="filter-tag-close"
+          @click="removeFilter(filter.key)"
+        >
           <Icon name="x" :size="14" />
-        </button>
+        </q-btn>
       </span>
-      <button @click="clearAllFilters" class="clear-all-btn">清除所有</button>
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        class="clear-all-btn"
+        @click="clearAllFilters"
+      >
+        清除所有
+      </q-btn>
     </div>
 
     <div class="error-list">
-      <div
-        v-for="(error, index) in filteredErrors"
+      <q-card
+        v-for="error in filteredErrors"
         :key="error.id"
-        v-scroll-reveal="{ delay: getRevealDelay(index), duration: 350 }"
+        flat
+        bordered
+        tabindex="0"
+        role="button"
         class="error-card"
-        @click="viewError(error)"
+        @keydown.enter="activateQuestion(error)"
+        @keydown.space.prevent="activateQuestion(error)"
+        @click="activateQuestion(error)"
       >
+        <q-checkbox
+          v-if="selecting"
+          v-model="selectedIds"
+          :val="error.id"
+          label="选择此题"
+          @click.stop
+          @keydown.stop
+        />
         <!-- 上层：左边信息，右边标签 -->
         <div class="error-header">
           <div class="header-left">
@@ -366,16 +172,16 @@
           <div
             class="error-content markdown-body"
             v-html="renderMarkdown(error.content)"
-          ></div>
+          />
           <div class="error-footer">
             <span class="error-date">{{ error.date }}</span>
           </div>
         </div>
-      </div>
+      </q-card>
     </div>
 
     <div v-if="isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
+      <q-spinner color="primary" size="28px" />
       <div>加载中...</div>
     </div>
 
@@ -383,7 +189,7 @@
       v-if="!isLoading && !loadError && filteredErrors.length === 0"
       class="empty-illustration"
     >
-      <div class="empty-icon"></div>
+      <div class="empty-icon" />
       <div class="empty-title">暂无错题</div>
       <div class="empty-desc">添加你的第一道错题，开始高效复习吧</div>
     </div>
@@ -391,7 +197,7 @@
     <!-- 导出弹窗 -->
     <ExportModal
       v-if="showExportModal"
-      :questions="filteredErrors"
+      :questions="exportQuestions"
       @close="showExportModal = false"
     />
 
@@ -406,34 +212,45 @@
 </template>
 
 <script setup lang="ts">
-import { loadQuestionLibrary } from '../services/questionQueries'
-import { createSourceCatalog } from '../services/sourceCatalog'
-import { useLatestRequest } from '../composables/useLatestRequest'
-import type { QuestionView } from '../types/questionView'
-import type { Source, SrsData } from '../types'
-import { timestampSeconds } from '../utils/questionDisplay'
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import type { QInput } from 'quasar'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
 import ExportModal from '../components/ExportModal.vue'
 import ImportModal from '../components/ImportModal.vue'
-import { importStore, clearPendingImport } from '../stores/importStore'
+import LibraryFilters from '../components/LibraryFilters.vue'
+import { useLatestRequest } from '../composables/useLatestRequest'
+import { loadQuestionLibrary } from '../services/questionQueries'
+import { clearPendingImport, importStore } from '../stores/importStore'
+import type { Source, SrsData } from '../types'
 import type { Subject } from '../types'
-import { marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
-
-marked.use(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true
-  })
-)
-
-const renderer = new marked.Renderer()
-marked.use({ renderer })
+import type { QuestionView } from '../types/questionView'
+import { renderMarkdown } from '../utils/markdown'
+import { timestampSeconds } from '../utils/questionDisplay'
 
 const router = useRouter()
 const route = useRoute()
+const searchInput = ref<QInput | null>(null)
+const selecting = ref(false)
+const selectedIds = ref<string[]>([])
+function toggleSelectionMode() {
+  selecting.value = !selecting.value
+  selectedIds.value = []
+}
+function activateQuestion(question: { id: string }) {
+  if (!selecting.value) {
+    viewError(question)
+    return
+  }
+  selectedIds.value = selectedIds.value.includes(question.id)
+    ? selectedIds.value.filter((id) => id !== question.id)
+    : [...selectedIds.value, question.id]
+}
+const exportQuestions = computed(() =>
+  selecting.value
+    ? filteredErrors.value.filter((item) => selectedIds.value.includes(item.id))
+    : filteredErrors.value
+)
 
 // 本地筛选状态
 const filters = ref({
@@ -446,9 +263,14 @@ const filters = ref({
   tags: [] as string[] // 标签名称数组（多选）
 })
 
-// 搜索框闪烁状态
-const isSearchBlinking = ref(false)
-let blinkTimer: number | null = null
+// Changing filters clears the batch selection.
+watch(
+  () => filters.value,
+  () => {
+    selectedIds.value = []
+  },
+  { deep: true }
+)
 
 // Current API fields plus explicitly loaded display relationships.
 const errors = ref<QuestionView[]>([])
@@ -462,32 +284,6 @@ const questionTagsMap = ref<Map<string, string[]>>(new Map())
 
 // 错题和来源的映射关系（sourceId -> 来源信息）
 const sourceInfoMap = ref<Map<string | null, Source>>(new Map())
-const { getBooks, getChapters, getKnowledges } = createSourceCatalog(() =>
-  Array.from(sourceInfoMap.value.values())
-)
-
-// 筛选器引用
-
-// 级联菜单状态
-const cascadeVisible = ref(false)
-const currentSubjectId = ref<string | null>(null)
-const currentBook = ref<string | null>(null)
-const currentChapter = ref<string | null>(null)
-const books = ref<string[]>([])
-const chapters = ref<string[]>([])
-const knowledges = ref<string[]>([])
-let hideTimer: number | null = null
-
-// 点击状态标记 - 记录用户是否已经点击过某项
-const hasClicked = ref(false)
-const hasBookClicked = ref(false)
-const hasChapterClicked = ref(false)
-
-// 其他筛选器下拉框状态
-const difficultyDropdownVisible = ref(false)
-const masteryDropdownVisible = ref(false)
-const dateRangeDropdownVisible = ref(false)
-const tagDropdownVisible = ref(false)
 
 // SRS 数据缓存
 const srsDataMap = ref<Map<string, SrsData>>(new Map())
@@ -522,339 +318,8 @@ const checkPendingImport = () => {
   }
 }
 
-// 计算选中的科目名称
-const selectedSubjectName = computed(() => {
-  if (!filters.value.subjectId) return ''
-  const subject = subjects.value.find((s) => s.id === filters.value.subjectId)
-  return subject?.name || ''
-})
-
-// 计算时间范围文本
-const dateRangeText = computed(() => {
-  if (!filters.value.date_range || filters.value.date_range === 'all') return ''
-  const dateRangeMap: Record<string, string> = {
-    '7days': '最近7天',
-    '30days': '最近30天',
-    '90days': '最近90天'
-  }
-  return dateRangeMap[filters.value.date_range] || ''
-})
-
-/** 从已有数据中提取某科目所有的书 */
-const booksOf = (subjectId: string): string[] => {
-  const sourceIds = errors.value
-    .filter((q) => q.subject?.id === subjectId && q.sourceId)
-    .map((q) => q.sourceId)
-  const names = new Set<string>()
-  for (const sid of sourceIds) {
-    const info = sourceInfoMap.value.get(sid)
-    if (info?.book) names.add(info.book)
-  }
-  return [...names]
-}
-
-/** 从已有数据中提取某书名下所有章节 */
-const chaptersOf = (book: string): string[] => {
-  const sourceIds = errors.value
-    .filter((q) => {
-      const info = sourceInfoMap.value.get(q.sourceId)
-      return info?.book === book
-    })
-    .map((q) => q.sourceId)
-  const names = new Set<string>()
-  for (const sid of sourceIds) {
-    const info = sourceInfoMap.value.get(sid)
-    if (info?.chapter) names.add(info.chapter)
-  }
-  return [...names]
-}
-
-// 停止闪烁
-// 切换科目下拉框
-const toggleSubjectDropdown = () => {
-  cascadeVisible.value = !cascadeVisible.value
-  // 如果关闭下拉框，也隐藏级联菜单
-  if (!cascadeVisible.value) {
-    hideAllMenus()
-  }
-  // 关闭其他下拉框
-  closeOtherDropdowns('subject')
-}
-
-// 切换难度下拉框
-const toggleDifficultyDropdown = () => {
-  difficultyDropdownVisible.value = !difficultyDropdownVisible.value
-  closeOtherDropdowns('difficulty')
-}
-
-// 切换掌握程度下拉框
-const toggleMasteryDropdown = () => {
-  masteryDropdownVisible.value = !masteryDropdownVisible.value
-  closeOtherDropdowns('mastery')
-}
-
-// 切换时间范围下拉框
-const toggleDateRangeDropdown = () => {
-  dateRangeDropdownVisible.value = !dateRangeDropdownVisible.value
-  closeOtherDropdowns('dateRange')
-}
-
-// 切换标签下拉框
-const toggleTagDropdown = () => {
-  tagDropdownVisible.value = !tagDropdownVisible.value
-  closeOtherDropdowns('tag')
-}
-
-// 关闭其他下拉框
-const closeOtherDropdowns = (current: string) => {
-  if (current !== 'subject') cascadeVisible.value = false
-  if (current !== 'difficulty') difficultyDropdownVisible.value = false
-  if (current !== 'mastery') masteryDropdownVisible.value = false
-  if (current !== 'dateRange') dateRangeDropdownVisible.value = false
-  if (current !== 'tag') tagDropdownVisible.value = false
-}
-
-// 设置难度排序
-const setDifficultySort = (sort: 'asc' | 'desc' | 'none') => {
-  difficultySort.value = sort
-  difficultyDropdownVisible.value = false
-}
-
-// 设置掌握程度排序
-const setMasterySort = (sort: 'asc' | 'desc' | 'none') => {
-  masterySort.value = sort
-  masteryDropdownVisible.value = false
-}
-
-// 选择时间范围
-const selectDateRange = (dateRange: string) => {
-  filters.value.date_range = dateRange
-  dateRangeDropdownVisible.value = false
-}
-
-// 计算选中的标签文本
-const selectedTagsText = computed(() => {
-  if (filters.value.tags.length === 0) return ''
-  if (filters.value.tags.length === 1) return filters.value.tags[0]
-  return `${filters.value.tags[0]} +${filters.value.tags.length - 1}`
-})
-
-// 切换标签选择
-const toggleTag = (tag: string) => {
-  const index = filters.value.tags.indexOf(tag)
-  if (index > -1) {
-    filters.value.tags.splice(index, 1)
-  } else {
-    filters.value.tags.push(tag)
-  }
-}
-
-// 清空所有标签选择
-const clearTags = () => {
-  filters.value.tags = []
-}
-
-// 选择科目
-const selectSubject = (subjectId: string) => {
-  filters.value.subjectId = subjectId
-  filters.value.book = ''
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-
-  if (subjectId) {
-    showCascadeMenuForSubject(subjectId)
-  } else {
-    hideAllMenus()
-  }
-}
-
-// 处理科目点击 - 设置点击状态并选择科目
-const handleSubjectClick = (subjectId: string) => {
-  hasClicked.value = true
-  hasBookClicked.value = false
-  hasChapterClicked.value = false
-  selectSubject(subjectId)
-}
-
-// 处理书名点击 - 设置点击状态并选择书名
-const handleBookClick = async (book: string) => {
-  hasBookClicked.value = true
-  hasChapterClicked.value = false
-
-  // 直接更新书名列数据和下级数据
-  currentBook.value = book
-  currentChapter.value = null
-  chapters.value = []
-  knowledges.value = []
-
-  // 加载该书名的章节
-  if (filters.value.subjectId && book) {
-    try {
-      chapters.value = getChapters(book, filters.value.subjectId)
-    } catch (error) {
-      console.error('获取章节失败:', error)
-      chapters.value = []
-    }
-  }
-
-  selectBook(book)
-}
-
-// 处理章节点击 - 设置点击状态并显示知识点
-const handleChapterClick = async (chapter: string) => {
-  console.log('=== 点击章节 ===')
-  console.log('章节名称:', chapter)
-  console.log('当前科目ID:', filters.value.subjectId)
-  console.log('当前书名:', currentBook.value)
-
-  hasChapterClicked.value = true
-
-  // 更新当前章节
-  currentChapter.value = chapter
-  filters.value.chapter = chapter
-  filters.value.knowledge = ''
-
-  // 加载该章节的知识点
-  if (filters.value.subjectId && currentBook.value && chapter) {
-    try {
-      console.log('开始获取知识点...')
-      knowledges.value = getKnowledges(
-        currentBook.value,
-        chapter,
-        filters.value.subjectId
-      )
-      console.log('加载知识点成功:', knowledges.value)
-      console.log('知识点数量:', knowledges.value.length)
-    } catch (error) {
-      console.error('获取知识点失败:', error)
-      knowledges.value = []
-    }
-  } else {
-    console.log('缺少必要参数，无法获取知识点')
-    knowledges.value = []
-  }
-
-  // 重新加载数据以应用章节筛选
-  console.log('重新加载数据...')
-  fetchData()
-}
-
-// 为指定科目显示级联菜单
-const showCascadeMenuForSubject = async (subjectId: string) => {
-  if (hideTimer) {
-    clearTimeout(hideTimer)
-    hideTimer = null
-  }
-  cascadeVisible.value = true
-  currentSubjectId.value = subjectId
-  currentBook.value = null
-  currentChapter.value = null
-  chapters.value = []
-  knowledges.value = []
-
-  // 加载当前科目的书名
-  try {
-    books.value = getBooks(subjectId)
-  } catch (error) {
-    console.error('获取书名失败:', error)
-    books.value = []
-  }
-}
-
-// 隐藏所有菜单
-const hideAllMenus = () => {
-  hideTimer = window.setTimeout(() => {
-    cascadeVisible.value = false
-    currentSubjectId.value = null
-    currentBook.value = null
-    currentChapter.value = null
-    chapters.value = []
-    knowledges.value = []
-    // 重置点击状态
-    hasClicked.value = false
-    hasBookClicked.value = false
-    hasChapterClicked.value = false
-  }, 200)
-}
-
-// 清除隐藏定时器（鼠标进入级联弹窗时调用）
-const clearHideTimer = () => {
-  if (hideTimer) {
-    clearTimeout(hideTimer)
-    hideTimer = null
-  }
-}
-
-// 手动关闭级联窗口
-const closeCascadeWindow = () => {
-  if (hideTimer) {
-    clearTimeout(hideTimer)
-    hideTimer = null
-  }
-  cascadeVisible.value = false
-  currentSubjectId.value = null
-  currentBook.value = null
-  currentChapter.value = null
-  books.value = []
-  chapters.value = []
-  knowledges.value = []
-  // 重置点击状态
-  hasClicked.value = false
-  hasBookClicked.value = false
-  hasChapterClicked.value = false
-}
-
-// 选择书名
-const selectBook = (book: string) => {
-  filters.value.book = book
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-  // 重新加载数据以应用筛选
-  fetchData()
-}
-
-// 选择知识点
-const selectKnowledge = (knowledge: string) => {
-  filters.value.knowledge = knowledge
-  // 关闭所有菜单
-  cascadeVisible.value = false
-  currentSubjectId.value = null
-  currentBook.value = null
-  currentChapter.value = null
-  books.value = []
-  chapters.value = []
-  knowledges.value = []
-  // 重置点击状态
-  hasClicked.value = false
-  hasBookClicked.value = false
-  hasChapterClicked.value = false
-  // 重新加载数据
-  fetchData()
-}
-
-const stopBlinking = () => {
-  isSearchBlinking.value = false
-  if (blinkTimer) {
-    clearTimeout(blinkTimer)
-    blinkTimer = null
-  }
-}
-
-// 开始闪烁
-const startBlinking = () => {
-  isSearchBlinking.value = true
-  // 3秒后自动停止闪烁
-  if (blinkTimer) {
-    clearTimeout(blinkTimer)
-  }
-  blinkTimer = window.setTimeout(() => {
-    stopBlinking()
-  }, 3000)
-}
-
-// 监听自定义事件（当用户已在当前页面时触发）
-const handleTriggerBlink = () => {
-  startBlinking()
+const focusSearch = () => {
+  nextTick(() => searchInput.value?.focus())
 }
 
 // 从数据库获取数据
@@ -905,17 +370,6 @@ const formatDate = (timestamp: number) => {
   // 后端返回的是秒级时间戳，需要转换为毫秒
   const date = new Date(timestamp * 1000)
   return date.toLocaleDateString('zh-CN')
-}
-
-// 渲染 Markdown
-const renderMarkdown = (content: string) => {
-  if (!content) return ''
-  const normalized = content
-    .replace(/\\\[/g, '$$$$')
-    .replace(/\\\]/g, '$$$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-  return marked.parse(normalized, { breaks: true, gfm: true }) as string
 }
 
 // 获取难度等级（基于 SRS 数据）
@@ -1053,6 +507,8 @@ const removeFilter = (key: string) => {
       break
     case 'book':
       filters.value.book = ''
+      filters.value.chapter = ''
+      filters.value.knowledge = ''
       break
     case 'chapter':
       filters.value.chapter = ''
@@ -1072,6 +528,8 @@ const removeFilter = (key: string) => {
 
 // 清除所有筛选条件
 const clearAllFilters = () => {
+  difficultySort.value = 'none'
+  masterySort.value = 'none'
   filters.value.subjectId = ''
   filters.value.book = ''
   filters.value.chapter = ''
@@ -1082,12 +540,12 @@ const clearAllFilters = () => {
 }
 
 onMounted(() => {
-  // 从其他页面跳转过来时检查是否需要闪烁
+  // 从其他页面跳转过来时聚焦搜索框
   if (route.query.focus === 'search') {
-    startBlinking()
+    focusSearch()
   }
   // 监听自定义事件
-  window.addEventListener('trigger-search-blink', handleTriggerBlink)
+  window.addEventListener('focus-library-search', focusSearch)
   // 加载数据
   fetchData()
 
@@ -1108,20 +566,12 @@ watch(
 )
 
 onUnmounted(() => {
-  if (blinkTimer) {
-    clearTimeout(blinkTimer)
-  }
-  window.removeEventListener('trigger-search-blink', handleTriggerBlink)
+  window.removeEventListener('focus-library-search', focusSearch)
 })
-
-// 点击搜索框时停止闪烁
-const onSearchFocus = () => {
-  stopBlinking()
-}
 
 // 过滤后的错题列表
 const filteredErrors = computed(() => {
-  let filtered = errors.value
+  const filtered = errors.value
     .map((question) => {
       const subject = subjects.value.find((s) => s.id === question.subject?.id)
       const difficulty = getDifficultyLevel(question.id)
@@ -1167,14 +617,6 @@ const filteredErrors = computed(() => {
         filters.value.chapter ||
         filters.value.knowledge
       ) {
-        console.log(`错题 ${error.id} 筛选检查:`, {
-          errorBook: error.book,
-          errorChapter: error.chapter,
-          errorKnowledge: error.knowledge,
-          filterBook: filters.value.book,
-          filterChapter: filters.value.chapter,
-          filterKnowledge: filters.value.knowledge
-        })
       }
 
       // 科目筛选
@@ -1225,36 +667,28 @@ const filteredErrors = computed(() => {
       if (filters.value.keyword) {
         const keyword = filters.value.keyword.toLowerCase().trim()
         if (keyword) {
-          console.log('=== 搜索关键词 ===', keyword)
-
           // 匹配错题内容
           const contentMatch = error.content.toLowerCase().includes(keyword)
-          console.log('内容匹配:', contentMatch)
 
           // 匹配科目名称
           const subjectMatch = error.subjectName.toLowerCase().includes(keyword)
-          console.log('科目匹配:', subjectMatch, error.subjectName)
 
           // 匹配书名
           const bookMatch = error.book?.toLowerCase().includes(keyword) || false
-          console.log('书名匹配:', bookMatch, error.book)
 
           // 匹配章节
           const chapterMatch =
             error.chapter?.toLowerCase().includes(keyword) || false
-          console.log('章节匹配:', chapterMatch, error.chapter)
 
           // 匹配知识点
           const knowledgeMatch =
             error.knowledge?.toLowerCase().includes(keyword) || false
-          console.log('知识点匹配:', knowledgeMatch, error.knowledge)
 
           // 匹配标签
           const tags = error.tags || []
           const tagMatch = tags.some((tag) =>
             tag.toLowerCase().includes(keyword)
           )
-          console.log('标签匹配:', tagMatch, tags)
 
           // 只要任意一个维度匹配即可
           const isMatch =
@@ -1264,7 +698,6 @@ const filteredErrors = computed(() => {
             chapterMatch ||
             knowledgeMatch ||
             tagMatch
-          console.log('最终匹配结果:', isMatch)
 
           if (!isMatch) {
             return false
@@ -1283,18 +716,6 @@ const filteredErrors = computed(() => {
       const diffB = srsB?.difficulty || 5.0
       return difficultySort.value === 'desc' ? diffB - diffA : diffA - diffB
     })
-
-    // 输出排序结果日志
-    if (filtered.length > 0) {
-      const firstSRS = srsDataMap.value.get(filtered[0].id)
-      const lastSRS = srsDataMap.value.get(filtered[filtered.length - 1].id)
-      const firstDiff = firstSRS?.difficulty || 5.0
-      const lastDiff = lastSRS?.difficulty || 5.0
-      const sortType = difficultySort.value === 'asc' ? '正序' : '倒序'
-      console.log(
-        `难度排序完成 (${sortType}): ${firstDiff.toFixed(2)} ~ ${lastDiff.toFixed(2)}`
-      )
-    }
   }
 
   // 排序：掌握程度筛选时按掌握程度排序
@@ -1323,16 +744,6 @@ const filteredErrors = computed(() => {
         ? masteryB - masteryA
         : masteryA - masteryB
     })
-
-    // 输出排序结果日志
-    if (filtered.length > 0) {
-      const firstMastery = calculateMastery(filtered[0].id)
-      const lastMastery = calculateMastery(filtered[filtered.length - 1].id)
-      const sortType = masterySort.value === 'asc' ? '正序' : '倒序'
-      console.log(
-        `掌握程度排序完成 (${sortType}): ${firstMastery.toFixed(1)}% ~ ${lastMastery.toFixed(1)}%`
-      )
-    }
   }
 
   return filtered
@@ -1342,10 +753,6 @@ const filteredErrors = computed(() => {
  * 获取滚动淡入延迟：前 10 张逐张 20ms，之后统一 200ms
  * 避免大量卡片时排队动画造成的卡顿感
  */
-const getRevealDelay = (index: number) => {
-  if (index < 10) return index * 20
-  return 200
-}
 
 // 查看错题详情
 const viewError = (error: { id: string }) => {
@@ -1355,782 +762,3 @@ const viewError = (error: { id: string }) => {
   })
 }
 </script>
-
-<style scoped>
-.manage-page {
-  padding: 40px 20px;
-  padding-bottom: 100px;
-  background: var(--bg-primary);
-  min-height: 100vh;
-  margin: 0 auto;
-}
-
-/* 搜索栏 - 第一行 */
-.search-bar {
-  margin-bottom: 12px;
-}
-
-.search-bar .search-box {
-  width: 100%;
-  margin: 0;
-}
-
-.search-bar .search-box input {
-  width: 100%;
-  height: 44px;
-  font-size: 15px;
-}
-
-/* 筛选栏 - 第二行 */
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  position: relative;
-}
-
-/* 已选筛选条件 */
-.active-filters {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  background: var(--card-bg);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.active-filters-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--primary-color);
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.filter-tag-close {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 2px;
-  opacity: 0.8;
-}
-
-.filter-tag-close:hover {
-  opacity: 1;
-}
-
-.clear-all-btn {
-  padding: 4px 12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  margin-left: auto;
-}
-
-.clear-all-btn:hover {
-  background: var(--primary-color);
-  color: white;
-  border-color: var(--primary-color);
-}
-
-/* 操作栏 */
-.action-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  justify-content: flex-end;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  border-color: var(--primary-color);
-  background: var(--primary-light);
-  color: var(--primary-color);
-}
-
-.import-btn:hover {
-  border-color: var(--success-color);
-  background: var(--success-light);
-  color: var(--success-color);
-}
-
-.export-btn:hover {
-  border-color: var(--primary-color);
-  background: var(--primary-light);
-  color: var(--primary-color);
-}
-
-.filter-select {
-  flex: 1;
-  min-width: 100px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-/* 级联筛选器容器 */
-.filter-select-wrapper {
-  position: relative;
-  flex: 1;
-  min-width: 100px;
-  z-index: 1;
-}
-
-/* 当下拉框打开时，提升层级 */
-.filter-select-wrapper.dropdown-open {
-  z-index: 1002;
-}
-
-/* 向下展开的级联弹窗 — 宽度占满应用内容区，内部列使用 container query */
-.cascade-popup {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 4px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  display: flex;
-  gap: 0;
-  z-index: 1001;
-  box-sizing: border-box;
-  width: calc(100vw - 40px);
-  max-width: calc(100vw - 40px);
-  padding-right: 40px;
-  max-height: 500px;
-  animation: cascadeSlideDown 0.2s ease-out;
-  overflow-x: auto;
-  container-type: inline-size;
-}
-
-/* 关闭按钮 */
-.cascade-close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  padding: 0;
-  z-index: 10;
-}
-
-.cascade-close-btn:hover {
-  background: #ff4d4f;
-  color: white;
-}
-
-@keyframes cascadeSlideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.custom-select {
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: all 0.2s;
-}
-
-.custom-select:hover {
-  border-color: var(--primary-color);
-}
-
-.custom-select-value {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.custom-select-arrow {
-  font-size: 10px;
-  color: var(--text-secondary);
-  margin-left: 8px;
-  transition: transform 0.2s;
-}
-
-.custom-select-arrow.rotated {
-  transform: rotate(180deg);
-}
-
-/* 下拉弹窗 */
-.dropdown-popup {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: auto;
-  min-width: 150px;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 1001;
-  max-height: 300px;
-  overflow-y: auto;
-  animation: dropdownFadeIn 0.2s ease-out;
-}
-
-/* 标签下拉框特殊样式 */
-.tag-dropdown {
-  max-height: 250px;
-}
-
-/* 复选框样式 */
-.checkbox {
-  display: inline-block;
-  width: 16px;
-  margin-right: 8px;
-  color: var(--primary-color);
-  font-weight: bold;
-  text-align: center;
-}
-
-@keyframes dropdownFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 下拉项 */
-.dropdown-item {
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dropdown-item:hover {
-  background: var(--primary-color);
-  color: white;
-}
-
-.dropdown-item.active {
-  background: var(--primary-color);
-  color: white;
-  font-weight: 500;
-}
-
-.dropdown-item:active {
-  transform: scale(0.98);
-}
-
-.sort-indicator {
-  margin-left: 4px;
-  font-size: 12px;
-}
-
-/* 级联列 — 列宽随容器平滑变化 80~220px */
-.cascade-column {
-  flex: 0 0 clamp(80px, 20cqi, 220px);
-  width: clamp(80px, 20cqi, 220px);
-  border-right: 1px solid var(--border-color);
-  padding: 8px 0;
-  max-height: 500px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.cascade-column:first-child {
-  padding-left: 8px;
-}
-
-.cascade-column:last-child {
-  border-right: none;
-}
-
-/* 列标题 */
-.column-title {
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border-color);
-  margin-bottom: 4px;
-  background: rgba(0, 0, 0, 0.02);
-}
-
-/* 级联项目列表 */
-.cascade-items {
-  max-height: 460px;
-  overflow-y: auto;
-}
-
-/* 级联项目 */
-.cascade-item {
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.cascade-item:hover {
-  background: var(--primary-color);
-  color: white;
-}
-
-.cascade-item.active {
-  background: var(--primary-color);
-  color: white;
-  font-weight: 500;
-}
-
-.cascade-item:active {
-  transform: scale(0.98);
-}
-
-/* 箭头指示符 */
-.arrow-indicator {
-  margin-left: 8px;
-  color: var(--text-secondary);
-  font-size: 18px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.cascade-item:hover .arrow-indicator,
-.cascade-item.active .arrow-indicator {
-  color: white;
-}
-
-/* 动画 */
-@keyframes cascadeFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.search-box {
-  flex: 2;
-  min-width: 150px;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--card-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.search-box input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-/* 搜索框闪烁动画 */
-.search-box.blinking input {
-  animation: searchBlink 0.6s ease-in-out infinite;
-}
-
-@keyframes searchBlink {
-  0%,
-  100% {
-    border-color: var(--border-color);
-    box-shadow: 0 0 0 0 transparent;
-  }
-  50% {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 8px rgba(25, 118, 210, 0.5);
-  }
-}
-
-.error-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.error-card {
-  background: var(--card-bg);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.06),
-    0 1px 2px rgba(0, 0, 0, 0.04);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 200px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.error-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.error-card:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.error-header {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-left {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  flex: 1;
-}
-
-.subject-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.difficulty-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.difficulty-tag.easy {
-  background: #e8f5e9;
-  color: #43a047;
-}
-
-.difficulty-tag.medium {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.difficulty-tag.hard {
-  background: #ffebee;
-  color: #c62828;
-}
-
-.source-tag {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.book-tag {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.chapter-tag {
-  background: #e8f5e9;
-  color: #43a047;
-}
-
-.knowledge-tag {
-  background: #e0f2f1;
-  color: #00796b;
-}
-
-.error-tags-inline {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-
-.tag-item-inline {
-  padding: 3px 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-/* 下层布局 */
-.error-body {
-  display: flex;
-  flex: 1;
-  gap: 12px;
-  min-height: 0;
-}
-
-.error-content {
-  font-size: 14px;
-  color: var(--text-primary);
-  line-height: 1.5;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-.error-footer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  font-size: 12px;
-  padding-bottom: 0;
-  flex-shrink: 0;
-}
-
-.error-date {
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-/* Markdown 渲染内容溢出处理 */
-.error-content.markdown-body {
-  overflow: hidden;
-  max-height: 100%;
-}
-
-/* Markdown 渲染样式 */
-.error-content.markdown-body :deep(h1),
-.error-content.markdown-body :deep(h2),
-.error-content.markdown-body :deep(h3),
-.error-content.markdown-body :deep(h4),
-.error-content.markdown-body :deep(h5),
-.error-content.markdown-body :deep(h6) {
-  margin: 0.8em 0 0.4em;
-  font-weight: 600;
-  font-size: 1em;
-}
-
-.error-content.markdown-body :deep(p) {
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(code) {
-  background: rgba(25, 118, 210, 0.12);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.9em;
-}
-
-.error-content.markdown-body :deep(pre) {
-  background: var(--code-bg, #0f172a);
-  padding: 10px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(pre code) {
-  background: transparent;
-  padding: 0;
-  color: var(--code-text, #e2e8f0);
-}
-
-.error-content.markdown-body :deep(pre code.hljs) {
-  background: transparent;
-  color: var(--code-text, #e2e8f0);
-}
-
-.error-content.markdown-body :deep(ul),
-.error-content.markdown-body :deep(ol) {
-  padding-left: 20px;
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(blockquote) {
-  margin: 0.5em 0;
-  padding-left: 10px;
-  border-left: 3px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
-.error-content.markdown-body :deep(a) {
-  color: var(--primary-color);
-  text-decoration: underline;
-}
-
-.error-content.markdown-body :deep(table) {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 0.5em 0;
-}
-
-.error-content.markdown-body :deep(th),
-.error-content.markdown-body :deep(td) {
-  border: 1px solid var(--border-color);
-  padding: 6px 8px;
-}
-
-/* 旧的 footer 样式保留但不再使用 */
-.error-footer-old {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  font-size: 12px;
-}
-
-.error-status {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.error-status.pending {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.error-status.reviewed {
-  background: #e3f2fd;
-  color: #1976d2;
-}
-
-.error-status.mastered {
-  background: #e8f5e9;
-  color: #43a047;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text-secondary);
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-
-.empty-state p {
-  font-size: 16px;
-  margin: 0;
-}
-
-/* ========== 加载状态 ========== */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  gap: 16px;
-  color: var(--text-secondary);
-  font-size: 14px;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-</style>
-
-<!-- 全局覆盖 highlight.js 在浅色模式下的颜色 -->
-<style>
-.error-list pre code.hljs {
-  background: transparent !important;
-  color: var(--code-text, #e2e8f0) !important;
-}
-.error-list pre {
-  background: var(--code-bg, #0f172a) !important;
-}
-</style>

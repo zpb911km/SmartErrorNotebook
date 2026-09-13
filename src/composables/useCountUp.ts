@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted, type Ref } from 'vue'
+import { onUnmounted, type Ref, ref, watch } from 'vue'
 
 /**
  * 数字滚动计数动画

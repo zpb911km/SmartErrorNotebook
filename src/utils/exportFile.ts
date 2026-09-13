@@ -1,5 +1,5 @@
 import { save } from '@tauri-apps/plugin-dialog'
-import { writeTextFile, writeFile } from '@tauri-apps/plugin-fs'
+import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs'
 
 /**
  * 检测当前是否为 Tauri 移动端

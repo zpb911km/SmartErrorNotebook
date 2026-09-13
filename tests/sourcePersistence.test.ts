@@ -1,8 +1,9 @@
 import { beforeEach, expect, it, vi } from 'vitest'
+
 import { createSource, listSources } from '../src/api/source'
 import { materializeSourceSelection } from '../src/services/sourcePersistence'
-import type { Source, CreateSourceRequest } from '../src/types'
 import type { SourceSelection } from '../src/services/sourceSelection'
+import type { Source } from '../src/types'
 
 vi.mock('../src/api/source', () => ({
   createSource: vi.fn(),
@@ -39,9 +40,7 @@ it('reuses a matching source and creates no source for unclassified questions', 
 
 it('coalesces concurrent matching drafts but queries again after completion', async () => {
   vi.mocked(listSources).mockResolvedValue([])
-  vi.mocked(createSource).mockImplementation(
-    async (_request: CreateSourceRequest) => source
-  )
+  vi.mocked(createSource).mockResolvedValue(source)
   const [first, second] = await Promise.all([
     materializeSourceSelection(selection),
     materializeSourceSelection({ ...selection })

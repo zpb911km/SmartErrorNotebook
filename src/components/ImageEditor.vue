@@ -1,181 +1,336 @@
 <template>
-  <div class="edit-modal" v-if="visible">
-    <div class="edit-header">
-      <button class="header-btn close-btn" @click="handleCancel">
-        <Icon name="x" :size="18" />
-      </button>
-      <span class="edit-title">图片编辑</span>
-      <button class="header-btn confirm-btn" @click="handleConfirm">✓</button>
-    </div>
+  <q-dialog
+    :model-value="visible"
+    maximized
+    persistent
+    @show="loadImage"
+    @hide="disposeInteraction"
+  >
+    <div class="edit-modal">
+      <q-toolbar class="edit-header">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          aria-label="取消图片编辑"
+          class="header-btn close-btn"
+          @click="handleCancel"
+        >
+          <Icon name="x" :size="18" />
+        </q-btn>
+        <span class="edit-title">图片编辑</span>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          color="primary"
+          aria-label="保存图片编辑"
+          class="header-btn confirm-btn"
+          @click="handleConfirm"
+        >
+          ✓
+        </q-btn>
+      </q-toolbar>
 
-    <!-- 工具栏 -->
-    <div class="toolbar">
-      <button
-        v-for="tool in tools"
-        :key="tool.id"
-        class="tool-btn"
-        :class="{ active: currentTool === tool.id }"
-        @click="selectTool(tool.id)"
-        :title="tool.name"
-      >
-        {{ tool.icon }}
-      </button>
+      <!-- 工具栏 -->
+      <q-toolbar class="toolbar">
+        <q-btn
+          v-for="tool in tools"
+          :key="tool.id"
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="tool-btn"
+          :class="{ active: currentTool === tool.id }"
+          :title="tool.name"
+          :aria-label="tool.name"
+          @click="selectTool(tool.id)"
+        >
+          {{ tool.icon }}
+        </q-btn>
 
-      <div class="toolbar-divider"></div>
+        <div class="toolbar-divider" />
 
-      <button
-        class="tool-btn"
-        @click="undo"
-        :disabled="historyIndex <= 0"
-        title="撤销"
-      >
-        ↩️
-      </button>
-      <button
-        class="tool-btn"
-        @click="redo"
-        :disabled="historyIndex >= history.length - 1"
-        title="重做"
-      >
-        ↪️
-      </button>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          aria-label="撤销"
+          class="tool-btn"
+          :disable="historyIndex <= 0"
+          title="撤销"
+          @click="undo"
+        >
+          ↩️
+        </q-btn>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          aria-label="重做"
+          class="tool-btn"
+          :disable="historyIndex >= history.length - 1"
+          title="重做"
+          @click="redo"
+        >
+          ↪️
+        </q-btn>
 
-      <div class="toolbar-divider"></div>
+        <div class="toolbar-divider" />
 
-      <button class="tool-btn" @click="resetAll" title="重置">
-        <Icon name="refresh-cw" :size="16" />
-      </button>
-    </div>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          aria-label="重置"
+          class="tool-btn"
+          title="重置"
+          @click="resetAll"
+        >
+          <Icon name="refresh-cw" :size="16" />
+        </q-btn>
+      </q-toolbar>
 
-    <!-- 调整面板 -->
-    <div class="adjustment-panel" v-if="showAdjustmentPanel">
-      <div class="panel-header">
-        <span>{{ currentToolName }}</span>
-        <button class="panel-close" @click="showAdjustmentPanel = false">
-          <Icon name="x" :size="16" />
-        </button>
+      <!-- 调整面板 -->
+      <div v-if="showAdjustmentPanel" class="adjustment-panel">
+        <div class="panel-header">
+          <span>{{ currentToolName }}</span>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="panel-close"
+            @click="showAdjustmentPanel = false"
+          >
+            <Icon name="x" :size="16" />
+          </q-btn>
+        </div>
+
+        <div class="panel-content">
+          <!-- 裁剪工具 -->
+          <div v-if="currentTool === 'crop'" class="crop-controls">
+            <p class="hint">拖动四个角点框选裁剪区域</p>
+            <div class="crop-buttons">
+              <q-btn
+                no-caps
+                unelevated
+                type="button"
+                flat
+                class="control-btn"
+                @click="resetCrop"
+              >
+                重置选区
+              </q-btn>
+              <q-btn
+                no-caps
+                unelevated
+                type="button"
+                color="primary"
+                class="control-btn primary"
+                @click="applyCrop"
+              >
+                应用裁剪
+              </q-btn>
+            </div>
+          </div>
+
+          <!-- 旋转工具 -->
+          <div v-if="currentTool === 'rotate'" class="rotate-controls">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="control-btn"
+              @click="rotate(-90)"
+            >
+              ↺ 左转90°
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="control-btn"
+              @click="rotate(90)"
+            >
+              ↻ 右转90°
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="control-btn"
+              @click="rotate(180)"
+            >
+              ↻ 180°
+            </q-btn>
+            <div class="flip-row">
+              <q-btn
+                no-caps
+                unelevated
+                type="button"
+                flat
+                class="control-btn flip-btn"
+                @click="flipHorizontally"
+              >
+                ↔ 水平翻转
+              </q-btn>
+              <q-btn
+                no-caps
+                unelevated
+                type="button"
+                flat
+                class="control-btn flip-btn"
+                @click="flipVertically"
+              >
+                ↕ 垂直翻转
+              </q-btn>
+            </div>
+            <div class="slider-control">
+              <label>自由旋转: {{ rotationAngle }}°</label>
+              <q-slider
+                v-model="rotationAngle"
+                color="primary"
+                dark
+                :min="-180"
+                :max="180"
+                @update:model-value="previewRotation"
+                @change="applyRotation"
+              />
+            </div>
+          </div>
+
+          <!-- 对比度工具 -->
+          <div v-if="currentTool === 'contrast'" class="contrast-controls">
+            <div class="slider-control">
+              <label>对比度: {{ contrast }}%</label>
+              <q-slider
+                v-model="contrast"
+                color="primary"
+                dark
+                :min="0"
+                :max="200"
+                @update:model-value="previewContrast"
+              />
+            </div>
+            <div class="slider-control">
+              <label>亮度: {{ brightness }}%</label>
+              <q-slider
+                v-model="brightness"
+                color="primary"
+                dark
+                :min="0"
+                :max="200"
+                @update:model-value="previewContrast"
+              />
+            </div>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="control-btn"
+              @click="resetContrast"
+            >
+              重置
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              color="primary"
+              class="control-btn primary"
+              @click="applyContrast"
+            >
+              应用
+            </q-btn>
+          </div>
+
+          <!-- 二值化工具 -->
+          <div v-if="currentTool === 'threshold'" class="threshold-controls">
+            <div class="slider-control">
+              <label>阈值: {{ threshold }}</label>
+              <q-slider
+                v-model="threshold"
+                color="primary"
+                dark
+                :min="0"
+                :max="255"
+                @update:model-value="previewThreshold"
+              />
+            </div>
+            <div class="checkbox-control">
+              <q-checkbox
+                id="invert"
+                v-model="invertThreshold"
+                color="primary"
+                aria-label="invert"
+              />
+              <label for="invert">反色</label>
+            </div>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="control-btn"
+              @click="resetThreshold"
+            >
+              重置
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              color="primary"
+              class="control-btn primary"
+              @click="applyThreshold"
+            >
+              应用
+            </q-btn>
+          </div>
+        </div>
       </div>
 
-      <div class="panel-content">
-        <!-- 裁剪工具 -->
-        <div v-if="currentTool === 'crop'" class="crop-controls">
-          <p class="hint">拖动四个角点框选裁剪区域</p>
-          <div class="crop-buttons">
-            <button class="control-btn" @click="resetCrop">重置选区</button>
-            <button class="control-btn primary" @click="applyCrop">
-              应用裁剪
-            </button>
-          </div>
-        </div>
+      <div ref="containerRef" class="edit-canvas-container">
+        <canvas
+          ref="canvasRef"
+          @mousedown="handleMouseDown"
+          @touchstart="handleTouchStart"
+          @touchmove="handleTouchMove"
+          @touchend="handleTouchEnd"
+          @wheel="handleWheel"
+        />
+      </div>
 
-        <!-- 旋转工具 -->
-        <div v-if="currentTool === 'rotate'" class="rotate-controls">
-          <button class="control-btn" @click="rotate(-90)">↺ 左转90°</button>
-          <button class="control-btn" @click="rotate(90)">↻ 右转90°</button>
-          <button class="control-btn" @click="rotate(180)">↻ 180°</button>
-          <div class="flip-row">
-            <button class="control-btn flip-btn" @click="flipHorizontally">
-              ↔ 水平翻转
-            </button>
-            <button class="control-btn flip-btn" @click="flipVertically">
-              ↕ 垂直翻转
-            </button>
-          </div>
-          <div class="slider-control">
-            <label>自由旋转: {{ rotationAngle }}°</label>
-            <input
-              type="range"
-              v-model.number="rotationAngle"
-              min="-180"
-              max="180"
-              @input="previewRotation"
-              @change="applyRotation"
-            />
-          </div>
-        </div>
+      <!-- 状态栏 -->
+      <div class="status-bar">
+        <span>{{ imageInfo }}</span>
+        <span v-if="currentTool === 'crop'">{{ cropInfo }}</span>
+      </div>
 
-        <!-- 对比度工具 -->
-        <div v-if="currentTool === 'contrast'" class="contrast-controls">
-          <div class="slider-control">
-            <label>对比度: {{ contrast }}%</label>
-            <input
-              type="range"
-              v-model.number="contrast"
-              min="0"
-              max="200"
-              @input="previewContrast"
-            />
-          </div>
-          <div class="slider-control">
-            <label>亮度: {{ brightness }}%</label>
-            <input
-              type="range"
-              v-model.number="brightness"
-              min="0"
-              max="200"
-              @input="previewContrast"
-            />
-          </div>
-          <button class="control-btn" @click="resetContrast">重置</button>
-          <button class="control-btn primary" @click="applyContrast">
-            应用
-          </button>
-        </div>
-
-        <!-- 二值化工具 -->
-        <div v-if="currentTool === 'threshold'" class="threshold-controls">
-          <div class="slider-control">
-            <label>阈值: {{ threshold }}</label>
-            <input
-              type="range"
-              v-model.number="threshold"
-              min="0"
-              max="255"
-              @input="previewThreshold"
-            />
-          </div>
-          <div class="checkbox-control">
-            <input type="checkbox" id="invert" v-model="invertThreshold" />
-            <label for="invert">反色</label>
-          </div>
-          <button class="control-btn" @click="resetThreshold">重置</button>
-          <button class="control-btn primary" @click="applyThreshold">
-            应用
-          </button>
-        </div>
+      <!-- 放大镜 -->
+      <div
+        v-if="showLoupe"
+        class="loupe"
+        :style="{ left: loupePosition.x + 'px', top: loupePosition.y + 'px' }"
+      >
+        <canvas ref="loupeCanvasRef" width="150" height="150" />
       </div>
     </div>
-
-    <div class="edit-canvas-container" ref="containerRef">
-      <canvas
-        ref="canvasRef"
-        @mousedown="handleMouseDown"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-        @wheel="handleWheel"
-      ></canvas>
-    </div>
-
-    <!-- 状态栏 -->
-    <div class="status-bar">
-      <span>{{ imageInfo }}</span>
-      <span v-if="currentTool === 'crop'">{{ cropInfo }}</span>
-    </div>
-
-    <!-- 放大镜 -->
-    <div
-      class="loupe"
-      v-if="showLoupe"
-      :style="{ left: loupePosition.x + 'px', top: loupePosition.y + 'px' }"
-    >
-      <canvas ref="loupeCanvasRef" width="150" height="150"></canvas>
-    </div>
-  </div>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
+import { computed, nextTick, onUnmounted, ref } from 'vue'
 
 interface Props {
   visible: boolean
@@ -281,27 +436,30 @@ const cropInfo = computed(() => {
   return `选区: ${Math.round(maxX - minX)} × ${Math.round(maxY - minY)}px`
 })
 
-// 监听 visible 变化
-watch(
-  () => props.visible,
-  async (newVal) => {
-    console.log(
-      'ImageEditor visible changed:',
-      newVal,
-      'autoDetect:',
-      props.autoDetect
-    )
-    if (newVal && props.imageData) {
-      await loadImage()
-    }
-  }
-)
+let loadVersion = 0
+let autoDetectTimer: ReturnType<typeof setTimeout> | undefined
+onUnmounted(() => {
+  disposeInteraction()
+})
+
+function disposeInteraction() {
+  ++loadVersion
+  clearTimeout(autoDetectTimer)
+  window.removeEventListener('mousemove', handleGlobalMouseMove)
+  window.removeEventListener('mouseup', handleGlobalMouseUp)
+  draggingCorner.value = null
+  draggingEdge.value = null
+  isPanning.value = false
+}
 
 // 加载图片
 const loadImage = () => {
+  const version = ++loadVersion
+  clearTimeout(autoDetectTimer)
   console.log('ImageEditor loadImage, autoDetect:', props.autoDetect)
   const img = new Image()
   img.onload = () => {
+    if (version !== loadVersion || !props.visible) return
     originalImage.value = img
     currentImage.value = img
 
@@ -319,8 +477,8 @@ const loadImage = () => {
       // 如果需要自动识别，延迟执行以确保Canvas初始化完成
       if (props.autoDetect) {
         console.log('自动识别开始执行')
-        setTimeout(() => {
-          autoDetectRegion()
+        autoDetectTimer = setTimeout(() => {
+          if (version === loadVersion && props.visible) autoDetectRegion()
         }, 500)
       }
     })
@@ -1769,7 +1927,9 @@ const handleCancel = () => {
 
 <style scoped>
 .edit-modal {
-  position: fixed;
+  position: relative;
+  width: 100%;
+  height: 100%;
   top: 0;
   left: 0;
   right: 0;

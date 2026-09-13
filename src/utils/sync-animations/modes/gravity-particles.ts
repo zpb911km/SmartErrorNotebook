@@ -7,7 +7,7 @@
  */
 
 import type { AnimationMode } from '../types'
-import { SeededRandom, dist, isDarkTheme, hslToString } from '../utils'
+import { dist, hslToString, isDarkTheme, SeededRandom } from '../utils'
 
 interface GParticle {
   x: number

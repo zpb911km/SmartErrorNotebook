@@ -1,9 +1,10 @@
 import { appCacheDir, join } from '@tauri-apps/api/path'
-import { writeTextFile, BaseDirectory } from '@tauri-apps/plugin-fs'
+import { BaseDirectory, writeTextFile } from '@tauri-apps/plugin-fs'
 import { shareFile } from 'tauri-plugin-share'
-import { showError } from './notification'
+
 import type { QuestionContent } from '../types/questionView'
 import { buildQuestionsHTML } from './exportHtml'
+import { showError } from './notification'
 
 /**
  * 通用分享流程：写入临时文件 → 调用系统分享面板
@@ -34,7 +35,7 @@ export async function shareContent(
       console.warn('分享返回非空结果:', result)
     }
     return true
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('分享失败:', e)
     showError('分享失败', `分享过程中出现错误: ${String(e)}`)
     return false
@@ -84,7 +85,7 @@ export async function shareQuestionsToHTML(
     const html = buildQuestionsHTML(questions)
     const filename = `sen_share_${Date.now()}.html`
     return await shareContent(filename, html, 'text/html;charset=utf-8')
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('分享 HTML 失败:', e)
     showError('分享失败', `HTML 分享过程中出现错误: ${String(e)}`)
     return false

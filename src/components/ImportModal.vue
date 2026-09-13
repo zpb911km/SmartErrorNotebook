@@ -1,6 +1,12 @@
 <template>
-  <div class="import-modal-overlay" :inert="saving" @click.self="handleClose">
-    <div class="import-modal">
+  <q-dialog
+    class="notebook-dialog"
+    :model-value="true"
+    :maximized="$q.screen.lt.sm"
+    :persistent="saving"
+    @hide="handleClose"
+  >
+    <q-card flat bordered class="import-modal" :inert="saving">
       <!-- 标题 -->
       <div class="modal-header">
         <h2 class="modal-title">
@@ -12,9 +18,16 @@
                 : '导入结果'
           }}
         </h2>
-        <button class="modal-close-btn" @click="handleClose">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="modal-close-btn"
+          @click="handleClose"
+        >
           <Icon name="x" :size="18" />
-        </button>
+        </q-btn>
       </div>
 
       <div class="modal-body">
@@ -30,7 +43,9 @@
                 </div>
               </div>
             </div>
-            <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
+            <div v-if="errorMsg" class="error-msg">
+              {{ errorMsg }}
+            </div>
           </div>
         </div>
 
@@ -41,7 +56,7 @@
             <div
               class="progress-fill"
               :style="{ width: progressPercent + '%' }"
-            ></div>
+            />
           </div>
 
           <!-- 版本警告 -->
@@ -51,18 +66,23 @@
           </div>
 
           <!-- 题目卡片 -->
-          <div class="import-review-card" v-if="currentQuestion">
+          <q-card
+            v-if="currentQuestion"
+            flat
+            bordered
+            class="import-review-card"
+          >
             <!-- 题干 -->
             <div class="review-section">
               <div class="review-label">题目</div>
               <div
                 class="review-content markdown-body"
                 v-html="currentQuestion.promptHtml"
-              ></div>
+              />
             </div>
 
             <!-- 答案（可折叠） -->
-            <div class="review-section" v-if="currentQuestion.answer">
+            <div v-if="currentQuestion.answer" class="review-section">
               <div class="review-label collapsible" @click="toggleAnswer">
                 参考答案
                 <span class="collapse-icon">{{ showAnswer ? '▲' : '▼' }}</span>
@@ -71,11 +91,11 @@
                 v-show="showAnswer"
                 class="review-content markdown-body"
                 v-html="currentQuestion.answerHtml"
-              ></div>
+              />
             </div>
 
             <!-- 解析（可折叠） -->
-            <div class="review-section" v-if="currentQuestion.analysis">
+            <div v-if="currentQuestion.analysis" class="review-section">
               <div class="review-label collapsible" @click="toggleAnalysis">
                 解析
                 <span class="collapse-icon">{{
@@ -86,7 +106,7 @@
                 v-show="showAnalysis"
                 class="review-content markdown-body"
                 v-html="currentQuestion.analysisHtml"
-              ></div>
+              />
             </div>
 
             <!-- 配置区 -->
@@ -101,15 +121,16 @@
                 </div>
                 <div class="config-field">
                   <label>题型</label>
-                  <select v-model="reviewType" class="type-select">
-                    <option
-                      v-for="t in questionTypes"
-                      :key="t.value"
-                      :value="t.value"
-                    >
-                      {{ t.label }}
-                    </option>
-                  </select>
+                  <q-select
+                    v-model="reviewType"
+                    outlined
+                    dense
+                    emit-value
+                    map-options
+                    :options="questionTypes"
+                    aria-label="选择选项"
+                    class="type-select"
+                  />
                 </div>
               </div>
               <!-- 错因标签 -->
@@ -121,8 +142,12 @@
                 />
               </div>
               <!-- 应用到全部 -->
-              <label class="apply-all-check" v-if="currentIndex > 0">
-                <input type="checkbox" v-model="applyToAll" />
+              <label v-if="currentIndex > 0" class="apply-all-check">
+                <q-checkbox
+                  v-model="applyToAll"
+                  color="primary"
+                  aria-label="选择"
+                />
                 <span>将此配置应用到剩余题目</span>
               </label>
             </div>
@@ -132,7 +157,7 @@
               <Icon name="info" :size="14" />
               此题目与已有题目重复（prompt 匹配），导入将跳过
             </div>
-          </div>
+          </q-card>
 
           <!-- 操作按钮 -->
           <div class="review-actions">
@@ -140,36 +165,52 @@
               >第 {{ currentIndex + 1 }} / {{ totalCount }} 题</span
             >
             <div class="action-group">
-              <button
+              <q-btn
+                no-caps
+                unelevated
+                type="button"
+                flat
                 class="act-btn skip-btn"
+                :disable="saving"
                 @click="skipQuestion"
-                :disabled="saving"
               >
                 跳过
-              </button>
-              <button
+              </q-btn>
+              <q-btn
                 v-if="isDuplicate"
+                no-caps
+                unelevated
+                type="button"
+                flat
                 class="act-btn skip-btn"
+                :disable="saving"
                 @click="skipQuestion"
-                :disabled="saving"
               >
                 跳过重复
-              </button>
-              <button
+              </q-btn>
+              <q-btn
                 v-else
+                no-caps
+                unelevated
+                type="button"
+                flat
                 class="act-btn import-btn"
+                :disable="!reviewSubjectId || saving"
                 @click="importCurrent"
-                :disabled="!reviewSubjectId || saving"
               >
                 {{ saving ? '导入中...' : '导入此题目' }}
-              </button>
-              <button
+              </q-btn>
+              <q-btn
+                no-caps
+                unelevated
+                type="button"
+                flat
                 class="act-btn import-all-btn"
+                :disable="!reviewSubjectId || saving"
                 @click="importAllRemaining"
-                :disabled="!reviewSubjectId || saving"
               >
                 导入剩余全部
-              </button>
+              </q-btn>
             </div>
           </div>
         </div>
@@ -182,8 +223,12 @@
           <div class="result-icon" :class="resultClass">
             {{ resultIcon }}
           </div>
-          <div class="result-title">{{ resultTitle }}</div>
-          <div class="result-detail">{{ resultTitle }}</div>
+          <div class="result-title">
+            {{ resultTitle }}
+          </div>
+          <div class="result-detail">
+            {{ resultTitle }}
+          </div>
           <div v-if="resultErrors.length" class="result-errors">
             <div
               v-for="(e, i) in resultErrors"
@@ -198,61 +243,35 @@
 
       <!-- 底部 -->
       <div class="modal-footer">
-        <button class="cancel-btn" @click="handleClose">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="cancel-btn"
+          @click="handleClose"
+        >
           {{ step === 'result' ? '关闭' : '取消' }}
-        </button>
+        </q-btn>
       </div>
-    </div>
-  </div>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { open } from '@tauri-apps/plugin-dialog'
+import { computed, onMounted, ref } from 'vue'
+
+import {
+  getExistingPromptSet,
+  importSingleQuestion,
+  parseImportFile
+} from '../utils/importJson'
+import { renderMarkdown as renderMd } from '../utils/markdown'
+import { questionTypeLabels } from '../utils/questionDisplay'
+import ErrorTagSelector from './ErrorTagSelector.vue'
 import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
-import ErrorTagSelector from './ErrorTagSelector.vue'
-import { questionTypeLabels } from '../utils/questionDisplay'
-import {
-  parseImportFile,
-  importSingleQuestion,
-  getExistingPromptSet
-} from '../utils/importJson'
-import { Marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
-
-// ===== marked 渲染 =====
-const _marked = new Marked(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true,
-    strict: 'ignore'
-  }),
-  {
-    renderer: {
-      code({ text, lang }) {
-        const e = text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-        return `<pre><code class="hljs ${lang ? `language-${lang}` : ''}">${e}</code></pre>`
-      }
-    }
-  }
-)
-
-function renderMd(t: string | undefined | null): string {
-  if (!t) return ''
-  const c = (t || '').replace(/[①-⑳]/g, (m) => `(${m.charCodeAt(0) - 0x245f})`)
-  return _marked.parse(
-    c
-      .replace(/\\\[/g, '$$$$')
-      .replace(/\\\]/g, '$$$$')
-      .replace(/\\\(/g, '$')
-      .replace(/\\\)/g, '$'),
-    { breaks: true, gfm: true }
-  ) as string
-}
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -378,7 +397,6 @@ const enterReviewMode = async (
 const handleSelectFile = async () => {
   try {
     errorMsg.value = ''
-    const { open } = await import('@tauri-apps/plugin-dialog')
     const { readTextFile } = await import('@tauri-apps/plugin-fs')
     const filePath = await open({
       multiple: false,

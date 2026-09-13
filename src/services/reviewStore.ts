@@ -1,7 +1,7 @@
 // 复习队列共享状态
 // Preview 设置队列 -> Review-Detail 消费
 
-import type { SrsData, Question } from '../types'
+import type { Question, SrsData } from '../types'
 
 export interface ReviewCard {
   questionId: string

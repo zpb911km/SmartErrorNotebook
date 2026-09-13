@@ -2,17 +2,17 @@ import {
   getQuestion,
   listQuestions,
   listSources,
+  listSrsData,
   listSubjects,
-  listTags,
-  listSrsData
+  listTags
 } from '../api'
 import type {
   ListQuestionsRequest,
   Question,
   Source,
+  SrsData,
   Subject,
-  Tag,
-  SrsData
+  Tag
 } from '../types'
 import type { QuestionView } from '../types/questionView'
 

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import * as api from '../src/api'
 import {
-  loadQuestionLibrary,
   loadQuestionDetail,
+  loadQuestionLibrary,
   projectQuestions
 } from '../src/services/questionQueries'
-import type { Question, Source, Subject, SrsData } from '../src/types'
+import type { Question, Source, SrsData, Subject } from '../src/types'
 
 vi.mock('../src/api', () => ({
   listQuestions: vi.fn(),

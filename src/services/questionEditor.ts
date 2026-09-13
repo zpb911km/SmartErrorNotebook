@@ -1,8 +1,8 @@
 import * as api from '../api'
 import type { Question, UpdateQuestionRequest } from '../types'
-import type { SourceSelection } from './sourceSelection'
-import { materializeSourceSelection } from './sourcePersistence'
 import { prepareAttachment } from '../utils/attachments'
+import { materializeSourceSelection } from './sourcePersistence'
+import type { SourceSelection } from './sourceSelection'
 
 export interface TagDraft {
   id?: string

@@ -1,11 +1,11 @@
-import { loadQuestionLibrary } from '../services/questionQueries'
 import {
   createQuestionEditor,
   type SaveState
 } from '../services/questionEditor'
-import { parseQuestionType } from './questionDisplay'
-import { errorMessage } from './errors'
+import { loadQuestionLibrary } from '../services/questionQueries'
 import type { ExportJSONSchema } from '../types/transfer'
+import { errorMessage } from './errors'
+import { parseQuestionType } from './questionDisplay'
 
 export function parseImportFile(content: string): {
   questions: ExportJSONSchema['questions']

@@ -1,7 +1,7 @@
 import type { QuestionContent } from '../types/questionView'
 import type { ExportJSONSchema } from '../types/transfer'
-import { showError } from './notification'
 import { exportFile } from './exportFile'
+import { showError } from './notification'
 
 export async function exportQuestionsToJSON(
   questions: QuestionContent[]

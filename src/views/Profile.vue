@@ -1,90 +1,127 @@
 <template>
   <div class="profile-page">
+    <div class="page-heading">
+      <h1>看见自己的进步</h1>
+      <p>从科目分布与复习表现，找到下一次学习的方向。</p>
+    </div>
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
-      <div class="loading-spinner"></div>
+      <q-spinner color="primary" size="28px" />
       <div>加载中...</div>
     </div>
 
     <!-- 错误状态 -->
     <div v-else-if="loadError" class="error-state">
       <Icon name="circle-alert" :size="48" class="error-icon" />
-      <div class="error-description">{{ loadError }}</div>
-      <button class="retry-btn" @click="loadData">重试</button>
+      <div class="error-description">
+        {{ loadError }}
+      </div>
+      <q-btn
+        no-caps
+        unelevated
+        type="button"
+        flat
+        class="retry-btn"
+        @click="loadData"
+      >
+        重试
+      </q-btn>
     </div>
 
     <!-- 正常内容 -->
     <template v-else>
       <!-- 概览卡片 -->
       <div class="overview-cards">
-        <div v-scroll-reveal="{ delay: 0 }" class="overview-card">
+        <q-card flat bordered class="overview-card">
           <Icon name="chart-column" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value">{{ animatedTotal }}</div>
+            <div class="card-value">
+              {{ animatedTotal }}
+            </div>
             <div class="card-label">总题目数</div>
           </div>
-        </div>
-        <div
-          v-scroll-reveal="{ delay: 80 }"
+        </q-card>
+        <q-card
+          flat
+          bordered
+          tabindex="0"
+          role="button"
           class="overview-card"
-          @click="$router.push('/review')"
           style="cursor: pointer"
+          @keydown.enter="$router.push('/review')"
+          @keydown.space.prevent="$router.push('/review')"
+          @click="$router.push('/review')"
         >
           <Icon name="alarm-clock" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value due">{{ animatedDue }}</div>
+            <div class="card-value due">
+              {{ animatedDue }}
+            </div>
             <div class="card-label">待复习</div>
           </div>
-        </div>
-        <div v-scroll-reveal="{ delay: 160 }" class="overview-card">
+        </q-card>
+        <q-card flat bordered class="overview-card">
           <Icon name="brain" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value memory">{{ animatedMemory }}</div>
+            <div class="card-value memory">
+              {{ animatedMemory }}
+            </div>
             <div class="card-label">目前记忆</div>
           </div>
-        </div>
-        <div v-scroll-reveal="{ delay: 240 }" class="overview-card">
+        </q-card>
+        <q-card flat bordered class="overview-card">
           <Icon name="sparkles" :size="24" class="card-icon" />
           <div class="card-content">
-            <div class="card-value new">{{ animatedNewCards }}</div>
+            <div class="card-value new">
+              {{ animatedNewCards }}
+            </div>
             <div class="card-label">新卡片数</div>
           </div>
-        </div>
+        </q-card>
       </div>
 
       <!-- SRS 详细指标 -->
       <div class="stats-row">
-        <div v-scroll-reveal="{ delay: 100 }" class="stat-item">
+        <div class="stat-item">
           <div class="stat-label">平均记忆强度</div>
           <div class="stat-value">
             {{ srsStats.averageStability.toFixed(1) }} 天
           </div>
         </div>
-        <div v-scroll-reveal="{ delay: 180 }" class="stat-item">
+        <div class="stat-item">
           <div class="stat-label">平均难度</div>
           <div class="stat-value">
             {{ srsStats.averageDifficulty.toFixed(2) }}
           </div>
           <div class="stat-sub">范围 [1, 10]，越高越难</div>
         </div>
-        <div v-scroll-reveal="{ delay: 260 }" class="stat-item">
+        <div class="stat-item">
           <div class="stat-label">累计复习</div>
           <div class="stat-value">{{ srsStats.totalReviews }} 次</div>
         </div>
-        <div v-scroll-reveal="{ delay: 340 }" class="stat-item">
+        <div class="stat-item">
           <div class="stat-label">SRS 卡片</div>
-          <div class="stat-value">{{ srsStats.total }}</div>
+          <div class="stat-value">
+            {{ srsStats.total }}
+          </div>
         </div>
       </div>
 
       <!-- 科目分布 -->
-      <div class="chart-section">
+      <q-card flat bordered class="chart-section">
         <div class="section-header">
           <h3>科目分布</h3>
-          <button class="manage-btn" @click="openManageCascade">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="manage-btn"
+            @click="openManageCascade"
+          >
             <Icon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
-          </button>
+          </q-btn>
         </div>
 
         <!-- 可视化科目分布条 -->
@@ -101,9 +138,9 @@
               :class="{
                 'segment-selected': selectedSubject?.name === item.name
               }"
-              @click="handleSelectSubjectByName(item.name)"
               :title="`${item.name}: ${item.count}题 (${item.percent}%)`"
-            ></div>
+              @click="handleSelectSubjectByName(item.name)"
+            />
           </div>
           <div class="bar-total">{{ overview.total }} 题</div>
           <div class="legend">
@@ -116,10 +153,7 @@
               }"
               @click="handleSelectSubjectByName(item.name)"
             >
-              <span
-                class="legend-color"
-                :style="{ background: item.color }"
-              ></span>
+              <span class="legend-color" :style="{ background: item.color }" />
               <span class="legend-label">{{ item.name }}</span>
               <span class="legend-value"
                 >{{ item.count }}题 ({{ item.percent }}%)</span
@@ -129,15 +163,22 @@
         </div>
 
         <div
-          ref="cascadeContainer"
           v-if="showCascade"
+          ref="cascadeContainer"
           class="cascade-container"
         >
           <div class="cascade-header">
             <span class="cascade-title">科目详情</span>
-            <button class="close-btn" @click="closeCascade">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="close-btn"
+              @click="closeCascade"
+            >
               <Icon name="x" :size="16" />
-            </button>
+            </q-btn>
           </div>
           <div class="cascade-scroll-wrapper">
             <div class="cascade-column-wrapper">
@@ -147,9 +188,10 @@
                 :class="{ 'active-column': activeColumn === 0 }"
               >
                 <div class="column-title">科目</div>
-                <div
+                <q-item
                   v-for="(subject, index) in subjects"
                   :key="subject.id"
+                  clickable
                   class="column-item"
                   :class="{
                     'item-selected': selectedSubject?.id === subject.id,
@@ -171,28 +213,42 @@
                     "
                     class="edit-form"
                   >
-                    <input
+                    <q-input
                       v-model="editingItemName"
+                      outlined
+                      dense
+                      aria-label="输入内容"
                       @keyup.enter="saveEditSubject(subject, index)"
                     />
-                    <input type="color" v-model="editingItemColor" />
+                    <input v-model="editingItemColor" type="color" />
                     <div class="edit-buttons">
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="primary"
                         class="btn-save"
                         @click="saveEditSubject(subject, index)"
                       >
                         ✓
-                      </button>
-                      <button class="btn-cancel" @click="cancelEdit">
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
+                        class="btn-cancel"
+                        @click="cancelEdit"
+                      >
                         <Icon name="x" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </div>
                   <template v-else>
                     <span
                       class="item-dot"
                       :style="{ background: subject.color || '#1976d2' }"
-                    ></span>
+                    />
                     <span class="item-text">{{ subject.name }}</span>
                     <div
                       v-if="
@@ -201,21 +257,29 @@
                       "
                       class="item-actions"
                     >
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
                         class="action-btn edit-btn"
                         @click.stop="startEditSubject(subject, index)"
                       >
                         <Icon name="pencil" :size="16" />
-                      </button>
-                      <button
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="negative"
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteSubject(subject)"
                       >
                         <Icon name="trash-2" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </template>
-                </div>
+                </q-item>
                 <div v-if="subjects.length === 0" class="empty-column-item">
                   暂无科目
                 </div>
@@ -223,17 +287,18 @@
 
               <!-- 书籍列 -->
               <div
+                v-show="selectedSubject"
                 class="cascade-column cascade-col-2"
                 :class="{
                   'active-column': activeColumn === 1,
                   'show-column': selectedSubject
                 }"
-                v-show="selectedSubject"
               >
                 <div class="column-title">书籍</div>
-                <div
+                <q-item
                   v-for="(book, index) in books"
                   :key="book"
+                  clickable
                   class="column-item"
                   :class="{
                     'item-selected': selectedBook === book,
@@ -255,20 +320,34 @@
                     "
                     class="edit-form"
                   >
-                    <input
+                    <q-input
                       v-model="editingItemName"
+                      outlined
+                      dense
+                      aria-label="输入内容"
                       @keyup.enter="saveEditBook(book, index)"
                     />
                     <div class="edit-buttons">
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="primary"
                         class="btn-save"
                         @click="saveEditBook(book, index)"
                       >
                         ✓
-                      </button>
-                      <button class="btn-cancel" @click="cancelEdit">
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
+                        class="btn-cancel"
+                        @click="cancelEdit"
+                      >
                         <Icon name="x" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </div>
                   <template v-else>
@@ -279,21 +358,29 @@
                       "
                       class="item-actions"
                     >
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
                         class="action-btn edit-btn"
                         @click.stop="startEditBook(book, index)"
                       >
                         <Icon name="pencil" :size="16" />
-                      </button>
-                      <button
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="negative"
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteBook(book)"
                       >
                         <Icon name="trash-2" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </template>
-                </div>
+                </q-item>
                 <div v-if="books.length === 0" class="empty-column-item">
                   暂无书籍
                 </div>
@@ -301,17 +388,18 @@
 
               <!-- 章节列 -->
               <div
+                v-show="selectedBook"
                 class="cascade-column cascade-col-3"
                 :class="{
                   'active-column': activeColumn === 2,
                   'show-column': selectedBook
                 }"
-                v-show="selectedBook"
               >
                 <div class="column-title">章节</div>
-                <div
+                <q-item
                   v-for="(chapter, index) in chapters"
                   :key="chapter"
+                  clickable
                   class="column-item"
                   :class="{
                     'item-selected': selectedChapter === chapter,
@@ -333,20 +421,34 @@
                     "
                     class="edit-form"
                   >
-                    <input
+                    <q-input
                       v-model="editingItemName"
+                      outlined
+                      dense
+                      aria-label="输入内容"
                       @keyup.enter="saveEditChapter(chapter, index)"
                     />
                     <div class="edit-buttons">
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="primary"
                         class="btn-save"
                         @click="saveEditChapter(chapter, index)"
                       >
                         ✓
-                      </button>
-                      <button class="btn-cancel" @click="cancelEdit">
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
+                        class="btn-cancel"
+                        @click="cancelEdit"
+                      >
                         <Icon name="x" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </div>
                   <template v-else>
@@ -358,21 +460,29 @@
                       "
                       class="item-actions"
                     >
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
                         class="action-btn edit-btn"
                         @click.stop="startEditChapter(chapter, index)"
                       >
                         <Icon name="pencil" :size="16" />
-                      </button>
-                      <button
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="negative"
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteChapter(chapter)"
                       >
                         <Icon name="trash-2" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </template>
-                </div>
+                </q-item>
                 <div v-if="chapters.length === 0" class="empty-column-item">
                   暂无章节
                 </div>
@@ -380,17 +490,18 @@
 
               <!-- 知识点列 -->
               <div
+                v-show="selectedChapter"
                 class="cascade-column cascade-col-4"
                 :class="{
                   'active-column': activeColumn === 3,
                   'show-column': selectedChapter
                 }"
-                v-show="selectedChapter"
               >
                 <div class="column-title">知识点</div>
-                <div
+                <q-item
                   v-for="(knowledge, index) in knowledges"
                   :key="knowledge"
+                  clickable
                   class="column-item"
                   :class="{
                     'item-selected': selectedKnowledge === knowledge,
@@ -413,20 +524,34 @@
                     "
                     class="edit-form"
                   >
-                    <input
+                    <q-input
                       v-model="editingItemName"
+                      outlined
+                      dense
+                      aria-label="输入内容"
                       @keyup.enter="saveEditKnowledge(knowledge, index)"
                     />
                     <div class="edit-buttons">
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="primary"
                         class="btn-save"
                         @click="saveEditKnowledge(knowledge, index)"
                       >
                         ✓
-                      </button>
-                      <button class="btn-cancel" @click="cancelEdit">
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
+                        class="btn-cancel"
+                        @click="cancelEdit"
+                      >
                         <Icon name="x" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </div>
                   <template v-else>
@@ -438,21 +563,29 @@
                       "
                       class="item-actions"
                     >
-                      <button
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        flat
                         class="action-btn edit-btn"
                         @click.stop="startEditKnowledge(knowledge, index)"
                       >
                         <Icon name="pencil" :size="16" />
-                      </button>
-                      <button
+                      </q-btn>
+                      <q-btn
+                        no-caps
+                        unelevated
+                        type="button"
+                        color="negative"
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteKnowledge(knowledge)"
                       >
                         <Icon name="trash-2" :size="16" />
-                      </button>
+                      </q-btn>
                     </div>
                   </template>
-                </div>
+                </q-item>
                 <div v-if="knowledges.length === 0" class="empty-column-item">
                   暂无知识点
                 </div>
@@ -460,11 +593,7 @@
             </div>
 
             <!-- 删除确认弹窗 -->
-            <div
-              v-if="showDeleteConfirm"
-              class="delete-confirm-overlay"
-              @click.self="cancelDelete"
-            >
+            <q-dialog :model-value="showDeleteConfirm" persistent>
               <div class="delete-confirm-modal">
                 <h3>确认删除</h3>
                 <p>确定要删除 {{ deleteItemInfo?.name }} 吗？</p>
@@ -475,27 +604,48 @@
                   这将同时删除所有下级内容！
                 </p>
                 <div class="modal-buttons">
-                  <button class="btn-danger" @click="executeDelete">
+                  <q-btn
+                    no-caps
+                    unelevated
+                    type="button"
+                    color="negative"
+                    class="btn-danger"
+                    @click="executeDelete"
+                  >
                     删除
-                  </button>
-                  <button class="btn-secondary" @click="cancelDelete">
+                  </q-btn>
+                  <q-btn
+                    no-caps
+                    unelevated
+                    type="button"
+                    flat
+                    class="btn-secondary"
+                    @click="cancelDelete"
+                  >
                     取消
-                  </button>
+                  </q-btn>
                 </div>
               </div>
-            </div>
+            </q-dialog>
           </div>
         </div>
-      </div>
+      </q-card>
 
       <!-- 错因分布 -->
-      <div class="chart-section">
+      <q-card flat bordered class="chart-section">
         <div class="section-header">
           <h3>错因分布</h3>
-          <button class="manage-btn" @click="openManageModal">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            class="manage-btn"
+            @click="openManageModal"
+          >
             <Icon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
-          </button>
+          </q-btn>
         </div>
         <div
           v-if="errorTagDistribution.length > 0"
@@ -536,7 +686,9 @@
             </svg>
             <!-- 中心显示总数量 -->
             <div class="donut-center">
-              <div class="donut-center-count">{{ totalTags }}</div>
+              <div class="donut-center-count">
+                {{ totalTags }}
+              </div>
               <div class="donut-center-label">题目错因总数</div>
             </div>
           </div>
@@ -549,10 +701,7 @@
               @mouseenter="hoveredIndex = index"
               @mouseleave="hoveredIndex = -1"
             >
-              <span
-                class="tag-color-dot"
-                :style="{ background: tag.color }"
-              ></span>
+              <span class="tag-color-dot" :style="{ background: tag.color }" />
               <span class="tag-name">{{ tag.name }}</span>
               <span class="tag-count">{{ tag.count }}</span>
               <span class="tag-percentage"
@@ -564,18 +713,27 @@
         <div v-else class="empty-state">
           <div class="empty-description">暂无错因数据</div>
         </div>
-      </div>
+      </q-card>
 
       <!-- 错因管理弹窗 -->
-      <div
-        v-if="showManageModal"
-        class="modal-overlay"
-        @click.self="closeManageModal"
+      <q-dialog
+        class="notebook-dialog"
+        :model-value="showManageModal"
+        @hide="closeManageModal"
       >
         <div class="modal-container">
           <div class="modal-header">
             <h3 class="modal-title">错因管理</h3>
-            <button class="modal-close" @click="closeManageModal">×</button>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="modal-close"
+              @click="closeManageModal"
+            >
+              ×
+            </q-btn>
           </div>
           <div class="modal-body">
             <div v-if="manageErrorTags.length === 0" class="empty-list">
@@ -594,80 +752,113 @@
                       background:
                         editingTagIndex === index ? editingTagColor : tag.color
                     }"
-                  ></span>
+                  />
                   <span
                     v-if="editingTagIndex !== index"
                     class="tag-name-text"
                     >{{ tag.name }}</span
                   >
                   <template v-else>
-                    <input
-                      type="text"
+                    <q-input
                       v-model="editingTagName"
+                      outlined
+                      dense
+                      aria-label="输入内容"
+                      type="text"
                       class="tag-input"
                       @keyup.enter="saveTagEdit(index)"
                       @keyup.escape="cancelTagEdit"
                     />
                     <input
-                      type="color"
                       v-model="editingTagColor"
+                      type="color"
                       class="tag-color-input"
                     />
                   </template>
                 </div>
                 <div class="tag-actions">
                   <div v-if="editingTagIndex !== index" class="actions-group">
-                    <button
+                    <q-btn
+                      no-caps
+                      unelevated
+                      type="button"
+                      flat
                       class="action-btn edit-btn"
                       @click="startEditTag(index)"
                     >
                       <Icon name="pencil" :size="16" />
-                    </button>
-                    <button
+                    </q-btn>
+                    <q-btn
+                      no-caps
+                      unelevated
+                      type="button"
+                      color="negative"
                       class="action-btn delete-btn"
                       @click="confirmDeleteTag(tag)"
                     >
                       <Icon name="trash-2" :size="16" />
-                    </button>
+                    </q-btn>
                   </div>
                   <div v-else class="actions-group">
-                    <button
+                    <q-btn
+                      no-caps
+                      unelevated
+                      type="button"
+                      color="primary"
                       class="action-btn save-btn"
                       @click="saveTagEdit(index)"
                     >
                       <span>✓</span>
-                    </button>
-                    <button
+                    </q-btn>
+                    <q-btn
+                      no-caps
+                      unelevated
+                      type="button"
+                      flat
                       class="action-btn cancel-btn"
                       @click="cancelTagEdit"
                     >
                       <Icon name="x" :size="16" />
-                    </button>
+                    </q-btn>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="closeManageModal">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="btn btn-secondary"
+              @click="closeManageModal"
+            >
               关闭
-            </button>
+            </q-btn>
           </div>
         </div>
-      </div>
+      </q-dialog>
 
       <!-- 错因标签删除确认弹窗 -->
-      <div
-        v-if="showTagDeleteConfirm"
-        class="modal-overlay"
-        @click.self="showTagDeleteConfirm = false"
+      <q-dialog
+        class="notebook-dialog"
+        :model-value="showTagDeleteConfirm"
+        @hide="showTagDeleteConfirm = false"
       >
         <div class="modal-container confirm-modal">
           <div class="modal-header">
             <h3 class="modal-title">确认删除</h3>
-            <button class="modal-close" @click="showTagDeleteConfirm = false">
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
+              class="modal-close"
+              @click="showTagDeleteConfirm = false"
+            >
               ×
-            </button>
+            </q-btn>
           </div>
           <div class="modal-body">
             <p class="confirm-text">
@@ -676,21 +867,32 @@
             <p class="confirm-hint">此操作将删除所有题目的该标签</p>
           </div>
           <div class="modal-footer">
-            <button
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              flat
               class="btn btn-secondary"
               @click="showTagDeleteConfirm = false"
             >
               取消
-            </button>
-            <button class="btn btn-danger" @click="executeDeleteTag">
+            </q-btn>
+            <q-btn
+              no-caps
+              unelevated
+              type="button"
+              color="negative"
+              class="btn btn-danger"
+              @click="executeDeleteTag"
+            >
               删除
-            </button>
+            </q-btn>
           </div>
         </div>
-      </div>
+      </q-dialog>
 
       <!-- 科目 × 难度热力图 -->
-      <div class="chart-section">
+      <q-card flat bordered class="chart-section">
         <h3>科目 × 难度热力图</h3>
         <div class="heatmap-hint">
           颜色越深表示该区间题目越多，难度区间动态10等分
@@ -704,7 +906,9 @@
             <thead>
               <tr>
                 <th class="row-header">科目</th>
-                <th v-for="b in 10" :key="b" class="col-header">{{ b }}</th>
+                <th v-for="b in 10" :key="b" class="col-header">
+                  {{ b }}
+                </th>
                 <th class="row-header total-col">合计</th>
               </tr>
             </thead>
@@ -725,7 +929,9 @@
                 >
                   {{ cell.count || '' }}
                 </td>
-                <td class="row-total">{{ row.total }}</td>
+                <td class="row-total">
+                  {{ row.total }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -747,10 +953,10 @@
               :key="l"
               class="legend-block"
               :style="{ background: `rgba(33, 150, 243, ${0.1 + l * 0.18})` }"
-            ></span>
+            />
             <span>多</span>
           </div>
-          <div class="difficulty-range" v-if="difficultyRange">
+          <div v-if="difficultyRange" class="difficulty-range">
             难度范围: {{ difficultyRange.min.toFixed(4) }} ~
             {{ difficultyRange.max.toFixed(4) }}
           </div>
@@ -758,10 +964,10 @@
         <div v-else class="empty-state">
           <div class="empty-description">暂无足够数据生成热力图</div>
         </div>
-      </div>
+      </q-card>
 
       <!-- 复习间隔分布 -->
-      <div class="chart-section">
+      <q-card flat bordered class="chart-section">
         <h3>复习间隔分布</h3>
         <div v-if="intervalBuckets.length > 0" class="interval-chart">
           <div class="interval-bars">
@@ -770,44 +976,50 @@
               :key="index"
               class="interval-bar-group"
             >
-              <div class="bar-value">{{ bucket.count }}</div>
+              <div class="bar-value">
+                {{ bucket.count }}
+              </div>
               <div
                 class="bar-fill"
                 :style="{
                   height: getIntervalBarHeight(bucket.count) + '%',
                   background: bucket.color
                 }"
-              ></div>
-              <div class="bar-label">{{ bucket.label }}</div>
+              />
+              <div class="bar-label">
+                {{ bucket.label }}
+              </div>
             </div>
           </div>
         </div>
         <div v-else class="empty-state">
           <div class="empty-description">暂无间隔数据</div>
         </div>
-      </div>
+      </q-card>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+
 import {
   deleteSubject as removeSubject,
-  updateSubject as editSubject,
-  updateSource,
-  updateTag,
   deleteTag,
-  getLibraryStatistics
+  getLibraryStatistics,
+  updateSource,
+  updateSubject as editSubject,
+  updateTag
 } from '../api'
+import { deleteSources } from '../api'
+import { useCountUp } from '../composables/useCountUp'
+import { useLatestRequest } from '../composables/useLatestRequest'
 import { loadQuestionLibrary } from '../services/questionQueries'
 import { createSourceCatalog } from '../services/sourceCatalog'
-import { useLatestRequest } from '../composables/useLatestRequest'
-import { timestampSeconds } from '../utils/questionDisplay'
 import type { Question, SrsData } from '../types'
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { deleteSources } from '../api'
-import type { Subject, Source, Tag } from '../types'
-import { useCountUp } from '../composables/useCountUp'
+import type { Source, Subject, Tag } from '../types'
+import { showAlert } from '../utils/dialog'
+import { timestampSeconds } from '../utils/questionDisplay'
 
 // ==================== 状态 ====================
 const loading = ref(true)
@@ -885,7 +1097,6 @@ const deleteItemInfo = ref<{
 } | null>(null)
 
 // 难度区间标注
-const difficultyRange = ref<{ min: number; max: number } | null>(null)
 
 // ==================== 科目分布 ====================
 interface SubjectDistItem {
@@ -975,8 +1186,11 @@ interface HeatmapRow {
   total: number
 }
 
-const heatmapData = computed<HeatmapRow[]>(() => {
-  if (allCards.value.length === 0) return []
+const heatmap = computed<{
+  rows: HeatmapRow[]
+  range: { min: number; max: number } | null
+}>(() => {
+  if (allCards.value.length === 0) return { rows: [], range: null }
 
   // 建立 questionId → subjectId 映射
   const qToSubject = new Map<string, string>()
@@ -997,11 +1211,11 @@ const heatmapData = computed<HeatmapRow[]>(() => {
     difficulties.push(card.difficulty)
   }
 
-  if (validCards.length === 0 || difficulties.length === 0) return []
+  if (validCards.length === 0 || difficulties.length === 0)
+    return { rows: [], range: null }
 
   const minDiff = Math.min(...difficulties)
   const maxDiff = Math.max(...difficulties)
-  difficultyRange.value = { min: minDiff, max: maxDiff }
 
   const range = maxDiff - minDiff
   const bucketSize = range / 10
@@ -1040,8 +1254,10 @@ const heatmapData = computed<HeatmapRow[]>(() => {
   }
 
   rows.sort((a, b) => b.total - a.total)
-  return rows
+  return { rows, range: { min: minDiff, max: maxDiff } }
 })
+const heatmapData = computed(() => heatmap.value.rows)
+const difficultyRange = computed(() => heatmap.value.range)
 
 // ==================== 错因分布 ====================
 interface ErrorTagDistItem {
@@ -1328,6 +1544,7 @@ const closeCascade = () => {
 }
 
 // ==================== 科目/来源长按和管理功能 ====================
+let longPressResetTimer: ReturnType<typeof setTimeout> | undefined
 
 function startLongPress(
   type: 'subject' | 'book' | 'chapter' | 'knowledge',
@@ -1364,7 +1581,8 @@ function startLongPress(
     }
 
     // 300ms 后重置标志，避免后续点击被影响
-    setTimeout(() => {
+    clearTimeout(longPressResetTimer)
+    longPressResetTimer = setTimeout(() => {
       justFinishedLongPress.value = false
     }, 300)
   }, 500)
@@ -1489,7 +1707,7 @@ async function saveEditSubject(subject: Subject, index: number) {
     isInLongPressMode.value = false
   } catch (error) {
     console.error('更新科目失败:', error)
-    alert('更新失败')
+    showAlert('更新失败')
   }
 }
 
@@ -1535,7 +1753,7 @@ async function saveEditBook(oldName: string, index: number) {
     isInLongPressMode.value = false
   } catch (error) {
     console.error('更新书籍失败:', error)
-    alert('更新失败')
+    showAlert('更新失败')
   }
 }
 
@@ -1589,7 +1807,7 @@ async function saveEditChapter(oldName: string, index: number) {
     isInLongPressMode.value = false
   } catch (error) {
     console.error('更新章节失败:', error)
-    alert('更新失败')
+    showAlert('更新失败')
   }
 }
 
@@ -1646,7 +1864,7 @@ async function saveEditKnowledge(oldName: string, index: number) {
     isInLongPressMode.value = false
   } catch (error) {
     console.error('更新知识点失败:', error)
-    alert('更新失败')
+    showAlert('更新失败')
   }
 }
 
@@ -1786,7 +2004,7 @@ async function executeDelete() {
     isInLongPressMode.value = false
   } catch (error) {
     console.error('删除失败:', error)
-    alert('删除失败')
+    showAlert('删除失败')
   }
 }
 
@@ -1838,6 +2056,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  cancelLongPress()
+  clearTimeout(longPressResetTimer)
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('resize', onWindowResize)
 })
@@ -1863,7 +2083,7 @@ const donutSegments = computed(() => {
   const circumference = 251.33 // 2 * Math.PI * 40
   const gap = 0 // 扇区间隙
 
-  errorTagDistribution.value.forEach((tag, _index) => {
+  errorTagDistribution.value.forEach((tag) => {
     const percent = tag.count / totalTags.value
     const rawLength = percent * circumference
     const drawnLength = Math.max(0.5, rawLength - gap)
@@ -1991,20 +2211,37 @@ async function executeDeleteTag() {
     manageErrorTags.value = manageErrorTags.value.filter((item) => item !== tag)
     showTagDeleteConfirm.value = false
   } catch (error) {
-    alert('部分标签未能删除，可重试剩余项：' + String(error))
+    showAlert('部分标签未能删除，可重试剩余项：' + String(error))
   }
 }
 </script>
 
 <style scoped>
 .profile-page {
-  padding: 40px 20px;
-  padding-bottom: 100px;
-  background: var(--bg-primary);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 20px;
+}
+
+.page-heading,
+.overview-cards,
+.stats-row,
+.loading-state,
+.error-state {
+  grid-column: 1 / -1;
+}
+.profile-page > .q-card {
+  min-width: 0;
+  box-shadow: none;
+}
+.chart-section {
+  overflow: auto;
+}
+@media (max-width: 1023px) {
+  .profile-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (min-width: 769px) {
@@ -2519,8 +2756,14 @@ async function executeDeleteTag() {
 /* ========== 概览卡片 ========== */
 .overview-cards {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+@media (max-width: 599px) {
+  .overview-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .overview-card {

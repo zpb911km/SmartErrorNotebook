@@ -1,4 +1,4 @@
-import type { Question, Source, Subject, Tag, SrsData } from './index'
+import type { Question, Source, SrsData, Subject, Tag } from './index'
 
 /** Read-only projection; persisted fields always come from the Current API. */
 export interface QuestionView extends Question {

@@ -1,44 +1,10 @@
-import { showError } from './notification'
-import type { QuestionContent } from '../types/questionView'
-import { jsPDF } from 'jspdf'
-import { exportFile } from './exportFile'
-import { Marked } from 'marked'
-import markedKatex from 'marked-katex-extension'
 import html2canvas from 'html2canvas'
-import 'katex/dist/katex.min.css'
+import { jsPDF } from 'jspdf'
 
-const _marked = new Marked(
-  markedKatex({
-    throwOnError: false,
-    output: 'html',
-    nonStandard: true,
-    strict: 'ignore'
-  }),
-  {
-    renderer: {
-      code({ text, lang }) {
-        const e = text
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-        return `<pre><code class="hljs ${lang ? `language-${lang}` : ''}">${e}</code></pre>`
-      }
-    }
-  }
-)
-
-function renderHtml(t: string | undefined | null): string {
-  if (!t) return ''
-  const c = (t || '').replace(/[①-⑳]/g, (m) => `(${m.charCodeAt(0) - 0x245f})`)
-  return _marked.parse(
-    c
-      .replace(/\\\[/g, '$$$$')
-      .replace(/\\\]/g, '$$$$')
-      .replace(/\\\(/g, '$')
-      .replace(/\\\)/g, '$'),
-    { breaks: true, gfm: true }
-  ) as string
-}
+import type { QuestionContent } from '../types/questionView'
+import { exportFile } from './exportFile'
+import { renderMarkdown as renderHtml } from './markdown'
+import { showError } from './notification'
 
 export async function exportQuestionsToPDF(
   questions: QuestionContent[]

@@ -1,5 +1,5 @@
 <template>
-  <div class="export-preview" ref="previewRef">
+  <div ref="previewRef" class="export-preview">
     <!-- 页头 -->
     <div class="preview-header">
       <h1 class="preview-title">错题集</h1>
@@ -21,7 +21,7 @@
         <div
           class="preview-content markdown-body"
           v-html="renderContent(question.stem)"
-        ></div>
+        />
       </div>
 
       <div v-if="question.correctAnswer" class="preview-section">
@@ -29,7 +29,7 @@
         <div
           class="preview-content markdown-body"
           v-html="renderContent(question.correctAnswer)"
-        ></div>
+        />
       </div>
 
       <div v-if="question.explanation" class="preview-section">
@@ -37,7 +37,7 @@
         <div
           class="preview-content markdown-body"
           v-html="renderContent(question.explanation)"
-        ></div>
+        />
       </div>
     </div>
 
@@ -45,13 +45,15 @@
     <div class="preview-footer">由 SmartErrorNotebook 生成</div>
 
     <!-- 页码占位 -->
-    <div class="preview-page-number"></div>
+    <div class="preview-page-number" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+
 import type { QuestionContent } from '../types/questionView'
+import { renderMarkdown as renderContent } from '../utils/markdown'
 
 interface Props {
   questions: QuestionContent[]
@@ -66,47 +68,6 @@ const exportDate = computed(() => {
     day: 'numeric'
   })
 })
-
-/**
- * 安全渲染 Markdown 为 HTML
- * 支持：粗体、斜体、代码块、行内代码
- */
-function renderContent(text: string | undefined | null): string {
-  if (!text) return ''
-
-  let html = String(text)
-    // 转义 HTML 特殊字符
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-
-  // 代码块
-  html = html.replace(
-    /```(\w*)\n([\s\S]*?)```/g,
-    (_match: string, _lang: string, code: string) => {
-      const escaped = code
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-      return `<pre><code>${escaped}</code></pre>`
-    }
-  )
-
-  // 行内代码
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
-
-  // 粗体
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-
-  // 斜体
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-
-  // 换行
-  html = html.replace(/\n/g, '<br>')
-
-  return html
-}
 </script>
 
 <style scoped>

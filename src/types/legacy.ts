@@ -321,23 +321,23 @@ interface CreateAttachmentInput {
 
 // ==================== 导出 ====================
 
-export { QuestionType, AttachmentType, FileType }
+export { AttachmentType, FileType, QuestionType }
 
 export type {
-  ErrorQuestion,
-  SRSData,
-  Source,
-  ErrorTags,
   Attachment,
-  Subject,
-  UserConfig,
-  QuestionFilter,
-  UpdateQuestionInput,
-  QuestionStats,
-  CreateSourceInput,
-  UpdateSourceInput,
-  SourceFilter,
   CreateAttachmentInput,
+  CreateSourceInput,
+  ErrorQuestion,
+  ErrorTags,
   ExportJSONSchema,
-  ImportResult
+  ImportResult,
+  QuestionFilter,
+  QuestionStats,
+  Source,
+  SourceFilter,
+  SRSData,
+  Subject,
+  UpdateQuestionInput,
+  UpdateSourceInput,
+  UserConfig
 }

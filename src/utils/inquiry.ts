@@ -51,7 +51,7 @@ export interface TaggedResult {
   /** 是否执行成功 */
   success: boolean
   /** 解析后的 JSON 数据（如果 outputFormat 为 json） */
-  parsedContent?: any
+  parsedContent?: unknown
 }
 
 // ==================== 存储键 ====================
@@ -114,7 +114,7 @@ const getPromptText = async (tag: string): Promise<string> => {
   if (tag in DEFAULT_PROMPTS) {
     let dprompt = DEFAULT_PROMPTS[tag as keyof typeof DEFAULT_PROMPTS]
     if (tag === 'subject') {
-      let existingSubjects = await getExistingSubjects()
+      const existingSubjects = await getExistingSubjects()
       dprompt = dprompt.replace(
         '{{existingSubjects}}',
         existingSubjects.join(', ')
@@ -332,7 +332,7 @@ export const inquiryAIAddInfo = async (
         console.log(`[${prompt.tag}] AI 响应:`, response)
 
         // 解析响应
-        let parsedContent: any = undefined
+        let parsedContent: unknown = undefined
         if (prompt.outputFormat === 'json') {
           try {
             console.log(`[${prompt.tag}] 尝试解析 JSON...`)

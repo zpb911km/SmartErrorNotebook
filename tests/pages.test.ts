@@ -1,18 +1,29 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { createApp, nextTick, type Component } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { Quasar } from 'quasar'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { type Component, createApp, nextTick } from 'vue'
+
+import ImportModal from '../src/components/ImportModal.vue'
+import { quasarOptions } from '../src/quasar'
+import { llm } from '../src/services/llm'
+import { clearReviewQueue, setReviewQueue } from '../src/services/reviewStore'
+import type { Question, SrsData } from '../src/types'
+import { inquiryAIAddInfo, type TaggedResult } from '../src/utils/inquiry'
 import Add from '../src/views/Add.vue'
 import Manage from '../src/views/Manage.vue'
 import Detail from '../src/views/Manage-Detail.vue'
 import Preview from '../src/views/Preview.vue'
 import Profile from '../src/views/Profile.vue'
 import Review from '../src/views/Review-Detail.vue'
-import ImportModal from '../src/components/ImportModal.vue'
-import { setReviewQueue, clearReviewQueue } from '../src/services/reviewStore'
-import type { Question, SrsData } from '../src/types'
+
+vi.mock('../src/utils/inquiry', () => ({ inquiryAIAddInfo: vi.fn() }))
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
+vi.mock('../src/utils/dialog', () => ({
+  confirmAction: vi.fn(async () => true),
+  showAlert: vi.fn()
+}))
 vi.mock('../src/components/Icon.vue', () => ({
   default: { render: () => null }
 }))
@@ -92,6 +103,7 @@ function mount<T>(component: Component, props: Record<string, unknown> = {}) {
   const element = document.createElement('div')
   document.body.append(element)
   const app = createApp(component, props)
+  app.use(Quasar, quasarOptions)
   app.component('Icon', { render: () => null })
   app.component('MarkdownTextarea', {
     props: ['modelValue'],
@@ -277,6 +289,119 @@ it('adds a question using complete Current fields from the existing form', async
   })
 })
 
+it('preserves manual edits while AI results arrive and ignores duplicate recognition', async () => {
+  vi.spyOn(llm, 'isConfigured').mockReturnValue(true)
+  let resolve!: (results: TaggedResult[]) => void
+  const pending = new Promise<TaggedResult[]>((done) => {
+    resolve = done
+  })
+  vi.mocked(inquiryAIAddInfo).mockReturnValue(pending)
+  const { state } = mount<{
+    form: { prompt: string; answer: string }
+    imageUrls: string[]
+    inquiryAI: () => Promise<void>
+  }>(Add)
+  state.imageUrls.push('data:image/png;base64,fixture')
+  state.form.prompt = 'Original'
+  const recognition = state.inquiryAI()
+  await state.inquiryAI()
+  expect(inquiryAIAddInfo).toHaveBeenCalledTimes(5)
+  state.form.prompt = 'Manual edit'
+  resolve([
+    {
+      tag: 'question_text',
+      content: 'AI text',
+      success: true,
+      parsedContent: 'AI text'
+    }
+  ])
+  await recognition
+  expect(state.form.prompt).toBe('Manual edit')
+  expect(state.form.answer).toBe('AI text')
+})
+
+it.each(['question_text', 'question_type'])(
+  'tracks independent AI spinners when %s finishes first',
+  async (first) => {
+    vi.spyOn(llm, 'isConfigured').mockReturnValue(true)
+    const pending = new Map<
+      string,
+      {
+        resolve: (value: TaggedResult[]) => void
+        reject: (error: Error) => void
+      }
+    >()
+    vi.mocked(inquiryAIAddInfo).mockImplementation(
+      (_images, tags) =>
+        new Promise((resolve, reject) => {
+          pending.set(tags![0], { resolve, reject })
+        })
+    )
+    const { state, element } = mount<{
+      imageUrls: string[]
+      inquiryAI: () => Promise<void>
+    }>(Add)
+    state.imageUrls.push('data:image/png;base64,fixture')
+    const recognition = state.inquiryAI()
+    await nextTick()
+    const group = (label: string) =>
+      [...element.querySelectorAll('.form-group')].find(
+        (node) => node.querySelector('label')?.textContent === label
+      )!
+    expect(group('题型').querySelectorAll('.q-spinner')).toHaveLength(1)
+    expect(group('题目').querySelectorAll('.q-spinner')).toHaveLength(1)
+    pending.get(first)!.resolve([])
+    await vi.waitFor(() =>
+      expect(
+        group(first === 'question_type' ? '题型' : '题目').querySelector(
+          '.q-spinner'
+        )
+      ).toBeNull()
+    )
+    expect(
+      group(first === 'question_type' ? '题目' : '题型').querySelectorAll(
+        '.q-spinner'
+      )
+    ).toHaveLength(1)
+    for (const [tag, promise] of pending) {
+      if (tag !== first) promise.reject(new Error('Recognition failed'))
+    }
+    await recognition
+    await nextTick()
+    expect(element.querySelector('.form-group .q-spinner')).toBeNull()
+  }
+)
+
+it('ignores AI results from before a form reset', async () => {
+  vi.spyOn(llm, 'isConfigured').mockReturnValue(true)
+  let resolve!: (results: TaggedResult[]) => void
+  vi.mocked(inquiryAIAddInfo).mockReturnValue(
+    new Promise((done) => {
+      resolve = done
+    })
+  )
+  const { state } = mount<{
+    form: { prompt: string; answer: string }
+    imageUrls: string[]
+    inquiryAI: () => Promise<void>
+    resetForm: () => void
+  }>(Add)
+  state.imageUrls.push('data:image/png;base64,fixture')
+  const recognition = state.inquiryAI()
+  state.resetForm()
+  resolve([
+    {
+      tag: 'question_text',
+      content: 'Stale',
+      success: true,
+      parsedContent: 'Stale'
+    }
+  ])
+  await recognition
+  expect(state.form.prompt).toBe('')
+  expect(state.form.answer).toBe('')
+})
+
 it('edits and clears nullable fields and relationships, then deletes through the Current API', async () => {
   const { element, state } = mount<{
     editForm: {
@@ -312,7 +437,7 @@ it('edits and clears nullable fields and relationships, then deletes through the
   )
   element.querySelector<HTMLButtonElement>('button.delete-btn')!.click()
   await nextTick()
-  element.querySelector<HTMLButtonElement>('button.btn-confirm')!.click()
+  document.body.querySelector<HTMLButtonElement>('button.btn-confirm')!.click()
   await vi.waitFor(() => expect(savedQuestions).toHaveLength(0))
 })
 
@@ -330,6 +455,30 @@ it('loads statistics using Current library and SRS responses', async () => {
       .mocked(invoke)
       .mock.calls.filter(([command]) => command === 'get_library_statistics')
   ).toHaveLength(1)
+})
+
+it('keeps heatmap range synchronized through empty and unrelated card data', async () => {
+  const { state } = mount<{
+    loading: boolean
+    allCards: SrsData[]
+    heatmapData: { buckets: { count: number }[] }[]
+    difficultyRange: { min: number; max: number } | null
+  }>(Profile)
+  await vi.waitFor(() => expect(state.loading).toBe(false))
+  expect(state.difficultyRange).toEqual({ min: 5, max: 5 })
+  expect(
+    state.heatmapData
+      .flatMap((row) => row.buckets)
+      .reduce((total, bucket) => total + bucket.count, 0)
+  ).toBe(1)
+  state.allCards = []
+  expect(state.difficultyRange).toBeNull()
+  expect(state.heatmapData).toEqual([])
+  state.allCards = [{ ...srs, questionId: 'missing' }]
+  expect(state.difficultyRange).toBeNull()
+  expect(state.heatmapData).toEqual([])
+  state.allCards = [{ ...srs, difficulty: 7 }]
+  expect(state.difficultyRange).toEqual({ min: 7, max: 7 })
 })
 
 it('submits review with an RFC 3339 timestamp and consumes the Current result', async () => {
@@ -354,7 +503,7 @@ it('submits review with an RFC 3339 timestamp and consumes the Current result', 
 
 it('reports batch import failures instead of counting them as successful questions', async () => {
   failCreate = true
-  const { element, state } = mount<{ step: string; reviewSubjectId: string }>(
+  const { state } = mount<{ step: string; reviewSubjectId: string }>(
     ImportModal,
     {
       initialData: {
@@ -369,9 +518,11 @@ it('reports batch import failures instead of counting them as successful questio
   await vi.waitFor(() => expect(state.step).toBe('review'))
   state.reviewSubjectId = 'subject'
   await nextTick()
-  element.querySelector<HTMLButtonElement>('button.import-all-btn')!.click()
+  document.body
+    .querySelector<HTMLButtonElement>('button.import-all-btn')!
+    .click()
   await vi.waitFor(() => expect(state.step).toBe('result'))
-  expect(element.textContent).toContain('失败 2 题')
-  expect(element.textContent).not.toContain('成功 2 题')
+  expect(document.body.textContent).toContain('失败 2 题')
+  expect(document.body.textContent).not.toContain('成功 2 题')
   expect(savedQuestions).toHaveLength(1)
 })

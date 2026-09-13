@@ -1,8 +1,8 @@
 // 社区分享暂存数据
 // Community 设置 -> Add 消费
 
-import type { QuestionContent } from '../types/questionView'
 import type { Question } from '../types'
+import type { QuestionContent } from '../types/questionView'
 
 export type SharedQuestionData = QuestionContent &
   Pick<Question, 'questionType' | 'note'>

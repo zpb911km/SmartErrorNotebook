@@ -1,66 +1,119 @@
 <template>
-  <div v-if="visible" class="image-preview-overlay" @click="handleClose">
-    <div class="image-preview-container" @click.stop>
-      <!-- 关闭按钮 -->
-      <button class="close-btn" @click="handleClose" title="关闭">
-        <Icon name="x" :size="18" />
-      </button>
+  <q-dialog
+    :model-value="visible"
+    maximized
+    @update:model-value="handleClose"
+    @show="clampToViewport"
+    @hide="disposeInteraction"
+  >
+    <div class="image-preview-overlay">
+      <div class="image-preview-container" @click.stop>
+        <!-- 关闭按钮 -->
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          aria-label="关闭"
+          class="close-btn"
+          title="关闭"
+          @click="handleClose"
+        >
+          <Icon name="x" :size="18" />
+        </q-btn>
 
-      <!-- 图片 -->
-      <div
-        ref="imageWrapperRef"
-        class="image-wrapper"
-        @wheel.capture="handleWheel"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
-      >
-        <img
-          :src="imageUrl"
-          alt="图片预览"
-          :class="['preview-image', { 'is-dragging': isDragging }]"
-          :style="{
-            transform: `scale(${scale}) rotate(${rotation}deg) translate(${translateX}px, ${translateY}px)`,
-            transition:
-              isDragging || isPinching ? 'none' : 'transform 0.1s ease-out'
-          }"
-          @mousedown="handleMouseDown"
-          @dblclick="resetAll"
-        />
-      </div>
+        <!-- 图片 -->
+        <div
+          ref="imageWrapperRef"
+          class="image-wrapper"
+          @wheel.capture="handleWheel"
+          @touchstart="handleTouchStart"
+          @touchmove="handleTouchMove"
+          @touchend="handleTouchEnd"
+        >
+          <img
+            :src="imageUrl"
+            alt="图片预览"
+            :class="['preview-image', { 'is-dragging': isDragging }]"
+            :style="{
+              transform: `scale(${scale}) rotate(${rotation}deg) translate(${translateX}px, ${translateY}px)`,
+              transition:
+                isDragging || isPinching ? 'none' : 'transform 0.1s ease-out'
+            }"
+            @mousedown="handleMouseDown"
+            @dblclick="resetAll"
+          />
+        </div>
 
-      <!-- 缩放控制 -->
-      <div class="zoom-controls">
-        <button class="zoom-btn" @click="zoomIn" title="放大">
-          <Icon name="zoom-in" :size="18" :stroke-width="2.5" />
-        </button>
-        <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
-        <button class="zoom-btn" @click="zoomOut" title="缩小">
-          <Icon name="zoom-out" :size="18" :stroke-width="2.5" />
-        </button>
-        <span class="divider"></span>
-        <button class="zoom-btn rotate-btn" @click="rotateImage" title="旋转">
-          <Icon name="rotate-cw" :size="18" />
-        </button>
-        <button class="zoom-btn reset-btn" @click="resetAll" title="重置">
-          重置
-        </button>
-      </div>
+        <!-- 缩放控制 -->
+        <div class="zoom-controls">
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            aria-label="放大"
+            class="zoom-btn"
+            title="放大"
+            @click="zoomIn"
+          >
+            <Icon name="zoom-in" :size="18" :stroke-width="2.5" />
+          </q-btn>
+          <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            aria-label="缩小"
+            class="zoom-btn"
+            title="缩小"
+            @click="zoomOut"
+          >
+            <Icon name="zoom-out" :size="18" :stroke-width="2.5" />
+          </q-btn>
+          <span class="divider" />
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            aria-label="旋转"
+            class="zoom-btn rotate-btn"
+            title="旋转"
+            @click="rotateImage"
+          >
+            <Icon name="rotate-cw" :size="18" />
+          </q-btn>
+          <q-btn
+            no-caps
+            unelevated
+            type="button"
+            flat
+            aria-label="重置"
+            class="zoom-btn reset-btn"
+            title="重置"
+            @click="resetAll"
+          >
+            重置
+          </q-btn>
+        </div>
 
-      <!-- 提示（根据平台动态显示） -->
-      <div class="zoom-hint">
-        {{
-          isTouchDevice
-            ? '双指缩放 · 拖拽平移 · 双击重置'
-            : '滚轮缩放 · 拖拽平移 · 双击重置'
-        }}
+        <!-- 提示（根据平台动态显示） -->
+        <div class="zoom-hint">
+          {{
+            isTouchDevice
+              ? '双指缩放 · 拖拽平移 · 双击重置'
+              : '滚轮缩放 · 拖拽平移 · 双击重置'
+          }}
+        </div>
       </div>
     </div>
-  </div>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 
 interface Props {
   visible: boolean
@@ -98,6 +151,16 @@ let lastTapY = 0
 
 // 抑制触摸后合成的 mousedown（防止拖拽漂移）
 let suppressNextMouseDown = false
+let releaseDrag: (() => void) | undefined
+let suppressTimer: ReturnType<typeof setTimeout> | undefined
+function disposeInteraction() {
+  releaseDrag?.()
+  releaseDrag = undefined
+  clearTimeout(suppressTimer)
+  isDragging.value = false
+  isPinching.value = false
+  suppressNextMouseDown = false
+}
 
 // ─── 容器引用 ────────────────────────────────────────────────
 const imageWrapperRef = ref<HTMLDivElement | null>(null)
@@ -137,8 +200,8 @@ watch(
       translateX.value = 0
       translateY.value = 0
       rotation.value = 0
-      // 等待 DOM 渲染完成后再计算视图口限制
-      setTimeout(clampToViewport, 100)
+    } else {
+      disposeInteraction()
     }
   }
 )
@@ -185,6 +248,7 @@ const handleMouseDown = (e: MouseEvent) => {
 
   // 仅左键拖拽
   if (e.button !== 0) return
+  releaseDrag?.()
 
   e.preventDefault()
   isDragging.value = true
@@ -205,7 +269,6 @@ const handleMouseDown = (e: MouseEvent) => {
   }
 
   const onMouseUp = () => {
-    if (!isDragging.value) return
     isDragging.value = false
     document.removeEventListener('mousemove', onMouseMove)
     document.removeEventListener('mouseup', onMouseUp)
@@ -213,6 +276,7 @@ const handleMouseDown = (e: MouseEvent) => {
 
   document.addEventListener('mousemove', onMouseMove, { passive: false })
   document.addEventListener('mouseup', onMouseUp, { passive: true })
+  releaseDrag = onMouseUp
 }
 
 // ─── 移动端触摸交互 ──────────────────────────────────────────
@@ -322,22 +386,22 @@ const handleTouchEnd = (e: TouchEvent) => {
   }
 
   // 延迟清除抑制标记，保证合成的 mousedown 被消费
-  setTimeout(() => {
+  clearTimeout(suppressTimer)
+  suppressTimer = setTimeout(() => {
     suppressNextMouseDown = false
   }, 400)
 }
 
 // ─── 组件卸载清理 ────────────────────────────────────────────
-onUnmounted(() => {
-  // 防止拖拽过程中卸载导致监听器泄漏（虽然不是最优雅的，但安全）
-  // 实际移除由 mouseup 回调自行处理，此处仅做兜底
-})
+onUnmounted(disposeInteraction)
 </script>
 
 <style scoped>
 /* ===== 背景遮罩 ===== */
 .image-preview-overlay {
-  position: fixed;
+  position: relative;
+  width: 100%;
+  height: 100%;
   top: 0;
   left: 0;
   right: 0;

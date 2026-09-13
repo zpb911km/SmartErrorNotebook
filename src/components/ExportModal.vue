@@ -1,11 +1,24 @@
 <template>
-  <div class="export-modal-overlay" @click.self="handleClose">
-    <div class="export-modal">
+  <q-dialog
+    class="notebook-dialog"
+    :model-value="true"
+    :persistent="isExporting"
+    :maximized="$q.screen.lt.sm"
+    @hide="handleClose"
+  >
+    <q-card flat bordered class="export-modal">
       <div class="modal-header">
         <h2 class="modal-title">导出错题</h2>
-        <button class="modal-close-btn" @click="handleClose">
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="modal-close-btn"
+          @click="handleClose"
+        >
           <Icon name="x" :size="18" />
-        </button>
+        </q-btn>
       </div>
 
       <div class="modal-body">
@@ -19,7 +32,7 @@
 
         <div class="export-formats">
           <!-- JSON 导出 / 分享 -->
-          <div class="format-card">
+          <q-card flat bordered class="format-card">
             <div class="format-icon json-icon">
               <Icon name="file-text" :size="28" />
             </div>
@@ -30,26 +43,34 @@
               </div>
             </div>
             <div class="format-action">
-              <span
+              <q-btn
+                flat
+                round
+                color="primary"
+                :disable="isExporting"
                 class="action-btn"
-                @click="handleExportJSON"
                 title="导出 JSON"
+                @click="handleExportJSON"
               >
                 <Icon name="download" :size="16" />
-              </span>
-              <span
+              </q-btn>
+              <q-btn
                 v-if="isMobile"
+                flat
+                round
+                color="primary"
+                :disable="isExporting"
                 class="action-btn share-btn"
-                @click="handleShareJSON"
                 title="分享 JSON"
+                @click="handleShareJSON"
               >
                 <Icon name="share-2" :size="16" />
-              </span>
+              </q-btn>
             </div>
-          </div>
+          </q-card>
 
           <!-- HTML 导出 / 分享 -->
-          <div class="format-card">
+          <q-card flat bordered class="format-card">
             <div class="format-icon html-icon">
               <Icon name="file-text" :size="28" />
             </div>
@@ -60,23 +81,31 @@
               </div>
             </div>
             <div class="format-action">
-              <span
+              <q-btn
+                flat
+                round
+                color="primary"
+                :disable="isExporting"
                 class="action-btn html-btn"
-                @click="handleExportHTML"
                 title="导出 HTML"
+                @click="handleExportHTML"
               >
                 <Icon name="download" :size="16" />
-              </span>
-              <span
+              </q-btn>
+              <q-btn
                 v-if="isMobile"
+                flat
+                round
+                color="primary"
+                :disable="isExporting"
                 class="action-btn html-share-btn"
-                @click="handleShareHTML"
                 title="分享 HTML"
+                @click="handleShareHTML"
               >
                 <Icon name="share-2" :size="16" />
-              </span>
+              </q-btn>
             </div>
-          </div>
+          </q-card>
         </div>
 
         <div class="export-note">
@@ -90,23 +119,38 @@
       </div>
 
       <div class="modal-footer">
-        <button class="cancel-btn" @click="handleClose">取消</button>
+        <q-btn
+          no-caps
+          unelevated
+          type="button"
+          flat
+          class="cancel-btn"
+          @click="handleClose"
+        >
+          取消
+        </q-btn>
       </div>
-    </div>
-  </div>
+      <q-inner-loading
+        :showing="isExporting"
+        color="primary"
+        label="正在导出…"
+      />
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Icon from './Icon.vue'
+
 import type { QuestionContent } from '../types/questionView'
-import { exportQuestionsToJSON } from '../utils/exportJson'
 import { exportQuestionsToHTML } from '../utils/exportHtml'
-import {
-  shareQuestionsToJSON,
-  shareQuestionsToHTML
-} from '../utils/shareContent'
+import { exportQuestionsToJSON } from '../utils/exportJson'
 import { showError } from '../utils/notification'
+import {
+  shareQuestionsToHTML,
+  shareQuestionsToJSON
+} from '../utils/shareContent'
+import Icon from './Icon.vue'
 
 const props = defineProps<{
   questions: QuestionContent[]
@@ -170,7 +214,7 @@ const handleShareJSON = async () => {
   }
   isExporting.value = true
   try {
-    shareQuestionsToJSON(props.questions)
+    await shareQuestionsToJSON(props.questions)
   } finally {
     isExporting.value = false
     emit('close')
@@ -185,7 +229,7 @@ const handleShareHTML = async () => {
   }
   isExporting.value = true
   try {
-    shareQuestionsToHTML(props.questions)
+    await shareQuestionsToHTML(props.questions)
   } finally {
     isExporting.value = false
     emit('close')

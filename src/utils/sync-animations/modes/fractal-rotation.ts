@@ -8,7 +8,7 @@
  */
 
 import type { AnimationMode } from '../types'
-import { SeededRandom, mapRange, isDarkTheme, hslToString } from '../utils'
+import { hslToString, isDarkTheme, mapRange, SeededRandom } from '../utils'
 
 type ShapeType = 'square' | 'hexagon' | 'triangle' | 'diamond'
 

@@ -12,7 +12,8 @@ export type SourceSelection =
     }
 
 const compareSources = (left: Source, right: Source) =>
-  left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id)
+  left.createdAt.localeCompare(right.createdAt) ||
+  left.id.localeCompare(right.id)
 
 export const selectSourceValues = (
   sources: Source[],
