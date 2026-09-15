@@ -8,19 +8,19 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/home',
     name: 'Home',
-    component: () => import('../views/Home.vue'),
+    component: () => import('../views/HomeView.vue'),
     meta: { title: '首页' }
   },
   {
     path: '/add',
     name: 'Add',
-    component: () => import('../views/Add.vue'),
+    component: () => import('../views/AddView.vue'),
     meta: { title: '添加错题' }
   },
   {
     path: '/manage',
     name: 'Manage',
-    component: () => import('../views/Manage.vue'),
+    component: () => import('../views/ManageView.vue'),
     meta: { title: '错题管理' }
   },
   {
@@ -32,7 +32,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/review',
     name: 'Preview',
-    component: () => import('../views/Preview.vue'),
+    component: () => import('../views/PreviewView.vue'),
     meta: { title: '复习计划' }
   },
   {
@@ -44,19 +44,19 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/stats',
     name: 'Profile',
-    component: () => import('../views/Profile.vue'),
+    component: () => import('../views/ProfileView.vue'),
     meta: { title: '个人主页' }
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: () => import('../views/Settings.vue'),
+    component: () => import('../views/SettingsView.vue'),
     meta: { title: '设置' }
   },
   {
     path: '/sync',
     name: 'Sync',
-    component: () => import('../views/Sync.vue'),
+    component: () => import('../views/SyncView.vue'),
     meta: { title: '同步' }
   },
   {

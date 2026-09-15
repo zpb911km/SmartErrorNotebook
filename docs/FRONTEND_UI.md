@@ -29,12 +29,13 @@
 ```sh
 pnpm install --frozen-lockfile
 pnpm lint
+pnpm format:check:all
 pnpm test
 pnpm build
 pnpm test:ui
 ```
 
-`pnpm lint` 依次运行 ESLint 与 Prettier 格式检查，任一步失败都会返回非零退出码。`pnpm format` 统一格式化源码、测试以及根目录 TypeScript/JSON 配置；`pnpm format:check` 仅检查同一范围。
+`pnpm lint` 仅运行 ESLint。`pnpm format` 统一格式化源码、测试以及根目录 TypeScript/JSON 配置，`pnpm format:check` 仅检查同一范围；`pnpm format:all` 与 `pnpm format:check:all` 分别格式化、检查 `.prettierignore` 之外的整个项目。
 
 Playwright 在 Windows 使用已安装的 Microsoft Edge；其他系统先运行 `pnpm exec playwright install chromium`。测试通过 Node 直接启动本地 Vite 服务，固定端口 1420，测试结束时释放服务；本地已有服务时会复用且不会将其关闭，运行前应确认它对应当前仓库。CI 不复用已有服务。
 
@@ -44,4 +45,4 @@ Windows 受限沙箱中，服务器进程树清理可能挂起，即使用例已
 
 浏览器测试通过模拟 Tauri IPC 使用固定数据，不访问真实数据库或外部 AI 服务，不能替代原生端验收。发布前仍需在桌面 Tauri 与 Android 真机验证：相机授权/取消、图片编辑与长图、文件导入及文件关联、导出保存/分享、系统返回键、安全区域和软键盘。远程同步和社区仍保持停用；`/markdown-test` 是开发调试入口。
 
-Quasar 版本固定在满足仓库依赖发布时间策略的版本；升级时保留锁文件与供应链检查，不添加绕过发布时间检查的例外。
+Quasar 使用语义化版本兼容范围，允许包管理器在该范围内升级；升级时提交锁文件以固定实际安装版本，并保留供应链检查，不添加绕过发布时间检查的例外。

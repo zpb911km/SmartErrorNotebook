@@ -193,30 +193,30 @@ flowchart TD
 
 ### 前端 (`src/`)
 
-| 目录 | 职责 | 关键约定 |
-|------|------|----------|
-| `views/` | 页面组件，对应路由 | 每个 `.vue` 一个页面，命名 PascalCase |
-| `components/` | 可复用 UI 组件 | 无业务逻辑，通过 props/events 通信 |
-| `api/` | 分领域的新版 `invoke()` 封装及明确的平台例外 | 公共契约使用 camelCase；`index.ts` 提供统一导出 |
-| `services/` | 状态管理 + 业务服务 | LLM 服务为单例模式 |
-| `utils/` | 纯函数工具 | 不含副作用 |
-| `types/` | 分领域的新版 TypeScript 接口定义 | 与 Rust IPC DTO 对齐；`index.ts` 提供统一导出 |
-| `types/legacy.ts` | 仅供历史 API 使用的旧类型 | 业务 UI 不再依赖 |
-| `directives/` | Vue 自定义指令 | — |
-| `styles/` | 全局样式 + 主题变量 | 主题通过 CSS 变量切换 |
+| 目录              | 职责                                         | 关键约定                                        |
+| ----------------- | -------------------------------------------- | ----------------------------------------------- |
+| `views/`          | 页面组件，对应路由                           | 每个 `.vue` 一个页面，命名 PascalCase           |
+| `components/`     | 可复用 UI 组件                               | 无业务逻辑，通过 props/events 通信              |
+| `api/`            | 分领域的新版 `invoke()` 封装及明确的平台例外 | 公共契约使用 camelCase；`index.ts` 提供统一导出 |
+| `services/`       | 状态管理 + 业务服务                          | LLM 服务为单例模式                              |
+| `utils/`          | 纯函数工具                                   | 不含副作用                                      |
+| `types/`          | 分领域的新版 TypeScript 接口定义             | 与 Rust IPC DTO 对齐；`index.ts` 提供统一导出   |
+| `types/legacy.ts` | 仅供历史 API 使用的旧类型                    | 业务 UI 不再依赖                                |
+| `directives/`     | Vue 自定义指令                               | —                                               |
+| `styles/`         | 全局样式 + 主题变量                          | 主题通过 CSS 变量切换                           |
 
 ### Rust 后端 (`src-tauri/src/`)
 
-| 目录 | 职责 | 关键约定 |
-|------|------|----------|
-| `command/` | 新版 IPC DTO、薄适配命令及 legacy 兼容处理器 | 新版命令只转换传输数据并调用 Application 用例 |
-| `application/` | 新版应用用例 | 负责业务约束、跨模型事务、筛选和统计；IPC 命令层只编排响应 DTO |
-| `domain/repository/` | 仓储 traits 与 legacy 契约 | Application 通过 RepositoryFactory 访问持久化数据 |
-| `data/repository/` | SeaORM 仓储实现 | Application 写入由 RepositoryTransactionExecutor 包裹 |
-| `data/database/entity/` | 规范化 SeaORM 实体 | 使用 UUID、DateTime 和交叉引用实体 |
-| `domain/model/` | 内部领域模型 | 与 legacy IPC 请求/响应隔离 |
-| `crates/migration/` | 独立迁移 crate | 命名 `mYYYYMMDD_NNNNNN_desc.rs` |
-| `srs/` | 核心复习算法 | 纯函数，不依赖 Tauri/数据库 |
+| 目录                    | 职责                                         | 关键约定                                                       |
+| ----------------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| `command/`              | 新版 IPC DTO、薄适配命令及 legacy 兼容处理器 | 新版命令只转换传输数据并调用 Application 用例                  |
+| `application/`          | 新版应用用例                                 | 负责业务约束、跨模型事务、筛选和统计；IPC 命令层只编排响应 DTO |
+| `domain/repository/`    | 仓储 traits 与 legacy 契约                   | Application 通过 RepositoryFactory 访问持久化数据              |
+| `data/repository/`      | SeaORM 仓储实现                              | Application 写入由 RepositoryTransactionExecutor 包裹          |
+| `data/database/entity/` | 规范化 SeaORM 实体                           | 使用 UUID、DateTime 和交叉引用实体                             |
+| `domain/model/`         | 内部领域模型                                 | 与 legacy IPC 请求/响应隔离                                    |
+| `crates/migration/`     | 独立迁移 crate                               | 命名 `mYYYYMMDD_NNNNNN_desc.rs`                                |
+| `srs/`                  | 核心复习算法                                 | 纯函数，不依赖 Tauri/数据库                                    |
 
 跨模型业务一致性由应用用例负责：删除来源会在单个事务内解除题目来源关联并写入墓碑；删除科目仅清空来源的科目关联并写入科目墓碑。题目分页及统计也在单个只读事务快照中同时生成明细和汇总。
 
@@ -266,25 +266,25 @@ graph LR
 
 ### 移动端与桌面端的差异点
 
-| 维度 | 桌面端 | Android 端 |
-|------|--------|------------|
-| **窗口** | 独立窗口 (800×600) | 全屏 Activity，无窗口概念 |
-| **文件交互** | Tauri save/open dialog | Tauri Dialog Plugin + Web Share API |
-| **分享** | 隐藏分享按钮 | `navigator.share()` 调用系统分享 |
-| **相机** | `navigator.mediaDevices.getUserMedia()` | 同上（Tauri 桥接） |
-| **safe-area** | 不生效 | 顶部/底部留白避开状态栏和导航栏 |
-| **数据库路径** | AppData 目录 | Android 内部存储 |
-| **构建工具** | cargo + system deps | Gradle + Android NDK 交叉编译 |
+| 维度           | 桌面端                                  | Android 端                          |
+| -------------- | --------------------------------------- | ----------------------------------- |
+| **窗口**       | 独立窗口 (800×600)                      | 全屏 Activity，无窗口概念           |
+| **文件交互**   | Tauri save/open dialog                  | Tauri Dialog Plugin + Web Share API |
+| **分享**       | 隐藏分享按钮                            | `navigator.share()` 调用系统分享    |
+| **相机**       | `navigator.mediaDevices.getUserMedia()` | 同上（Tauri 桥接）                  |
+| **safe-area**  | 不生效                                  | 顶部/底部留白避开状态栏和导航栏     |
+| **数据库路径** | AppData 目录                            | Android 内部存储                    |
+| **构建工具**   | cargo + system deps                     | Gradle + Android NDK 交叉编译       |
 
 ### 移动端特有的前端代码
 
-| 文件 | 移动端逻辑 |
-|------|-----------|
-| `ExportModal.vue` | `navigator.userAgent` 判断移动端，显示分享按钮 |
-| `exportFile.ts` | 移动端走 `navigator.share()` 分享文件 |
-| `shareContent.ts` | Tauri Share Plugin 调用 Android Intent |
-| `FilterNav.vue` | 窗口宽度 ≤ 768px 时切换为底部弹出样式 |
-| `App.vue` + `TopBar.vue` + `CameraModal.vue` + `ImageEditor.vue` | `safe-area-inset` 适配刘海屏/挖孔屏 |
+| 文件                                                             | 移动端逻辑                                     |
+| ---------------------------------------------------------------- | ---------------------------------------------- |
+| `ExportModal.vue`                                                | `navigator.userAgent` 判断移动端，显示分享按钮 |
+| `exportFile.ts`                                                  | 移动端走 `navigator.share()` 分享文件          |
+| `shareContent.ts`                                                | Tauri Share Plugin 调用 Android Intent         |
+| `FilterNav.vue`                                                  | 窗口宽度 ≤ 768px 时切换为底部弹出样式          |
+| `App.vue` + `TopBar.vue` + `CameraModal.vue` + `ImageEditor.vue` | `safe-area-inset` 适配刘海屏/挖孔屏            |
 
 ---
 
@@ -295,6 +295,7 @@ graph LR
 **决策**：本地存储使用 SQLite，通过 SeaORM 访问。
 
 **理由**：
+
 - **零配置**：用户无需安装数据库服务，开箱即用
 - **单文件**：备份、迁移、同步都极为简单
 - **嵌入式中等负载**：单用户场景 SQLite 性能绰绰有余
@@ -305,6 +306,7 @@ graph LR
 **决策**：采用基于连续反馈的 SDR（Stability-Difficulty-Retrievability）模型。
 
 **理由**：
+
 - **连续反馈**：SM-2 只有 0-5 六个离散等级，SDR 支持 [0, 1] 连续值
 - **自适应难度**：SDR 有独立的难度参数 $D$，会随历史反馈慢变
 - **遗忘曲线拟合**：$R = e^{-t/S}$ 更符合记忆科学中的指数遗忘曲线
@@ -393,16 +395,16 @@ erDiagram
     }
 ```
 
-| 表 | 记录数级（单用户） | 说明 |
-|----|-------------------|------|
-| subject | 10-50 | 科目 |
-| source | 50-500 | 来源及科目归属 |
-| question | 100-5000 | 错题主表 |
-| srs_data | = 错题数 | 一对一关系 |
-| tag | 200-2000 | 可复用错因标签 |
-| attachment | 100-2000 | 二进制附件 |
-| question_tag_cross_ref | 随关系增长 | 题目与标签多对多关系 |
-| question_attachment_cross_ref | 随关系增长 | 题目与附件多对多关系 |
+| 表                            | 记录数级（单用户） | 说明                 |
+| ----------------------------- | ------------------ | -------------------- |
+| subject                       | 10-50              | 科目                 |
+| source                        | 50-500             | 来源及科目归属       |
+| question                      | 100-5000           | 错题主表             |
+| srs_data                      | = 错题数           | 一对一关系           |
+| tag                           | 200-2000           | 可复用错因标签       |
+| attachment                    | 100-2000           | 二进制附件           |
+| question_tag_cross_ref        | 随关系增长         | 题目与标签多对多关系 |
+| question_attachment_cross_ref | 随关系增长         | 题目与附件多对多关系 |
 
 ---
 
@@ -414,12 +416,12 @@ erDiagram
 
 ## 📈 性能考虑
 
-| 场景 | 当前方案 | 优化空间 |
-|------|----------|----------|
-| 图片存储 | base64/BLOB 存入 SQLite | 大文件可改为文件系统存储 |
-| 大数据量查询 | 基础分页 (limit/offset) | 可加游标分页 |
-| 复习队列 | 全量加载后排序 | 可加索引优化 next_review_at 查询 |
-| 远程同步 | 当前停用 | 按协议草案重新实现 |
+| 场景         | 当前方案                | 优化空间                         |
+| ------------ | ----------------------- | -------------------------------- |
+| 图片存储     | base64/BLOB 存入 SQLite | 大文件可改为文件系统存储         |
+| 大数据量查询 | 基础分页 (limit/offset) | 可加游标分页                     |
+| 复习队列     | 全量加载后排序          | 可加索引优化 next_review_at 查询 |
+| 远程同步     | 当前停用                | 按协议草案重新实现               |
 
 ---
 

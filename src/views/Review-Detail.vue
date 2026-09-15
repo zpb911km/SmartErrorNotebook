@@ -56,7 +56,7 @@
           class="btn-reveal"
           @click="showAnswer = true"
         >
-          <Icon name="message-square" :size="18" /> 显示答案
+          <AppIcon name="message-square" :size="18" /> 显示答案
         </q-btn>
       </div>
 
@@ -95,7 +95,7 @@
             class="btn-link"
             @click="goToDetail"
           >
-            <Icon name="link" :size="16" /> 查看/编辑详细
+            <AppIcon name="link" :size="16" /> 查看/编辑详细
           </q-btn>
         </div>
 

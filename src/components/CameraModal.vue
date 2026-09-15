@@ -18,7 +18,7 @@
             class="header-btn"
             @click="handleClose"
           >
-            <Icon name="x" :size="18" />
+            <AppIcon name="x" :size="18" />
           </q-btn>
           <span class="camera-title">拍照</span>
           <q-btn
@@ -30,7 +30,7 @@
             class="header-btn"
             @click="handleSwitchCamera"
           >
-            <Icon name="refresh-cw" :size="18" />
+            <AppIcon name="refresh-cw" :size="18" />
           </q-btn>
           <div v-else class="header-placeholder" />
         </q-toolbar>
@@ -50,7 +50,7 @@
 
           <!-- 错误提示 -->
           <div v-if="error" class="camera-error">
-            <Icon name="triangle-alert" :size="32" class="error-icon" />
+            <AppIcon name="triangle-alert" :size="32" class="error-icon" />
             <p>{{ error }}</p>
             <q-btn
               no-caps

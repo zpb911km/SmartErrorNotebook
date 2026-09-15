@@ -4,17 +4,18 @@ import { Quasar } from 'quasar'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { type Component, createApp, nextTick } from 'vue'
 
+import AppIcon from '../src/components/AppIcon.vue'
 import ImportModal from '../src/components/ImportModal.vue'
 import { quasarOptions } from '../src/quasar'
 import { llm } from '../src/services/llm'
 import { clearReviewQueue, setReviewQueue } from '../src/services/reviewStore'
 import type { Question, SrsData } from '../src/types'
 import { inquiryAIAddInfo, type TaggedResult } from '../src/utils/inquiry'
-import Add from '../src/views/Add.vue'
-import Manage from '../src/views/Manage.vue'
+import Add from '../src/views/AddView.vue'
 import Detail from '../src/views/Manage-Detail.vue'
-import Preview from '../src/views/Preview.vue'
-import Profile from '../src/views/Profile.vue'
+import Manage from '../src/views/ManageView.vue'
+import Preview from '../src/views/PreviewView.vue'
+import Profile from '../src/views/ProfileView.vue'
 import Review from '../src/views/Review-Detail.vue'
 
 vi.mock('../src/utils/inquiry', () => ({ inquiryAIAddInfo: vi.fn() }))
@@ -24,7 +25,7 @@ vi.mock('../src/utils/dialog', () => ({
   confirmAction: vi.fn(async () => true),
   showAlert: vi.fn()
 }))
-vi.mock('../src/components/Icon.vue', () => ({
+vi.mock('../src/components/AppIcon.vue', () => ({
   default: { render: () => null }
 }))
 vi.mock('../src/components/MarkdownTextarea.vue', () => ({
@@ -104,7 +105,7 @@ function mount<T>(component: Component, props: Record<string, unknown> = {}) {
   document.body.append(element)
   const app = createApp(component, props)
   app.use(Quasar, quasarOptions)
-  app.component('Icon', { render: () => null })
+  app.component('AppIcon', AppIcon)
   app.component('MarkdownTextarea', {
     props: ['modelValue'],
     setup: (props) => () => props.modelValue

@@ -1,6 +1,6 @@
 <!--
   统一 SVG 图标组件（基于 lucide-vue-next）
-  用法：<Icon name="home" :size="20" />
+  用法：<AppIcon name="home" :size="20" />
   所有图标名使用 kebab-case
 -->
 <script setup lang="ts">

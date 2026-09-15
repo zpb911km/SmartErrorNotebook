@@ -26,7 +26,7 @@
           class="modal-close-btn"
           @click="handleClose"
         >
-          <Icon name="x" :size="18" />
+          <AppIcon name="x" :size="18" />
         </q-btn>
       </div>
 
@@ -35,7 +35,7 @@
         <div v-if="step === 'select'" class="step-container">
           <div class="step-content">
             <div class="file-select-area" @click="handleSelectFile">
-              <Icon name="file-text" :size="48" />
+              <AppIcon name="file-text" :size="48" />
               <div class="file-select-text">
                 <div class="file-select-title">点击选择 JSON 文件</div>
                 <div class="file-select-desc">
@@ -61,7 +61,7 @@
 
           <!-- 版本警告 -->
           <div v-if="versionWarning" class="version-warning">
-            <Icon name="triangle-alert" :size="14" />
+            <AppIcon name="triangle-alert" :size="14" />
             文件版本 "{{ versionWarning }}" 与当前版本不匹配
           </div>
 
@@ -154,7 +154,7 @@
 
             <!-- 去重提示 -->
             <div v-if="isDuplicate" class="duplicate-tag">
-              <Icon name="info" :size="14" />
+              <AppIcon name="info" :size="14" />
               此题目与已有题目重复（prompt 匹配），导入将跳过
             </div>
           </q-card>
@@ -269,8 +269,8 @@ import {
 } from '../utils/importJson'
 import { renderMarkdown as renderMd } from '../utils/markdown'
 import { questionTypeLabels } from '../utils/questionDisplay'
+import AppIcon from './AppIcon.vue'
 import ErrorTagSelector from './ErrorTagSelector.vue'
-import Icon from './Icon.vue'
 import SubjectSelector from './SubjectSelector.vue'
 
 const emit = defineEmits<{

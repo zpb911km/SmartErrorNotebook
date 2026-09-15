@@ -36,13 +36,13 @@ interface IpcError {
 
 ## 命令
 
-| 领域 | 命令 |
-| --- | --- |
-| 科目 | `list_subjects`, `create_subject`, `update_subject`, `delete_subject` |
-| 来源 | `get_source`, `list_sources`, `create_source`, `update_source`, `delete_source`, `delete_sources` |
-| 标签 | `list_tags`, `create_tag`, `update_tag`, `delete_tag` |
-| 附件 | `create_attachment`, `get_attachment`, `delete_attachment` |
-| 题目 | `list_questions`, `get_question`, `create_question`, `update_question`, `delete_question` |
+| 领域 | 命令                                                                                                |
+| ---- | --------------------------------------------------------------------------------------------------- |
+| 科目 | `list_subjects`, `create_subject`, `update_subject`, `delete_subject`                               |
+| 来源 | `get_source`, `list_sources`, `create_source`, `update_source`, `delete_source`, `delete_sources`   |
+| 标签 | `list_tags`, `create_tag`, `update_tag`, `delete_tag`                                               |
+| 附件 | `create_attachment`, `get_attachment`, `delete_attachment`                                          |
+| 题目 | `list_questions`, `get_question`, `create_question`, `update_question`, `delete_question`           |
 | 复习 | `get_library_statistics`, `submit_review`, `reset_review_progress`, `get_srs_data`, `list_srs_data` |
 
 科目写命令接收针对具体操作的 `request` 对象。创建和更新返回 `{ subject }`，删除返回 `{ id }`；列表不接收 request，并返回 `{ subjects }`。科目名称和颜色会按输入原样存储。

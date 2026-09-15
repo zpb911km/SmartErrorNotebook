@@ -60,7 +60,7 @@
         class="action-btn import-btn"
         @click="showImportModal = true"
       >
-        <Icon name="plus" :size="16" />
+        <AppIcon name="plus" :size="16" />
         <span>导入</span>
       </q-btn>
       <q-btn
@@ -72,7 +72,7 @@
         :disable="selecting && !selectedIds.length"
         @click="showExportModal = true"
       >
-        <Icon name="file-text" :size="16" />
+        <AppIcon name="file-text" :size="16" />
         <span>导出</span>
       </q-btn>
     </div>
@@ -94,7 +94,7 @@
           class="filter-tag-close"
           @click="removeFilter(filter.key)"
         >
-          <Icon name="x" :size="14" />
+          <AppIcon name="x" :size="14" />
         </q-btn>
       </span>
       <q-btn

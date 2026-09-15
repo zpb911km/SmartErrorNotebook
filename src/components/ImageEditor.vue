@@ -17,7 +17,7 @@
           class="header-btn close-btn"
           @click="handleCancel"
         >
-          <Icon name="x" :size="18" />
+          <AppIcon name="x" :size="18" />
         </q-btn>
         <span class="edit-title">图片编辑</span>
         <q-btn
@@ -92,7 +92,7 @@
           title="重置"
           @click="resetAll"
         >
-          <Icon name="refresh-cw" :size="16" />
+          <AppIcon name="refresh-cw" :size="16" />
         </q-btn>
       </q-toolbar>
 
@@ -108,7 +108,7 @@
             class="panel-close"
             @click="showAdjustmentPanel = false"
           >
-            <Icon name="x" :size="16" />
+            <AppIcon name="x" :size="16" />
           </q-btn>
         </div>
 

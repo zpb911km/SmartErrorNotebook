@@ -8,7 +8,7 @@
       <!-- 主题设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <Icon name="palette" :size="22" class="setting-icon" />
+          <AppIcon name="palette" :size="22" class="setting-icon" />
           <div class="setting-name">主题设置</div>
         </div>
         <div class="setting-action">
@@ -34,7 +34,7 @@
       <!-- AI 选项 -->
       <div class="setting-item">
         <div class="setting-info">
-          <Icon name="bot" :size="22" class="setting-icon" />
+          <AppIcon name="bot" :size="22" class="setting-icon" />
           <div class="setting-name">AI 辅助</div>
         </div>
         <div class="setting-action">
@@ -53,7 +53,7 @@
       <!-- LLM 配置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <Icon name="settings" :size="22" class="setting-icon" />
+          <AppIcon name="settings" :size="22" class="setting-icon" />
           <div class="setting-name">LLM 配置</div>
         </div>
         <div class="setting-action">
@@ -74,7 +74,7 @@
       <!-- AI 提示词设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <Icon name="pencil" :size="22" class="setting-icon" />
+          <AppIcon name="pencil" :size="22" class="setting-icon" />
           <div class="setting-name">AI 提示词设置</div>
         </div>
         <div class="setting-action">
@@ -95,7 +95,7 @@
       <!-- 导出设置 -->
       <div class="setting-item">
         <div class="setting-info">
-          <Icon name="file-text" :size="22" class="setting-icon" />
+          <AppIcon name="file-text" :size="22" class="setting-icon" />
           <div class="setting-name">HTML 导出包含答案和解析</div>
         </div>
         <div class="setting-action">
@@ -115,7 +115,7 @@
       <!-- 数据清理 -->
       <div class="setting-item">
         <div class="setting-info">
-          <Icon name="trash-2" :size="22" class="setting-icon" />
+          <AppIcon name="trash-2" :size="22" class="setting-icon" />
           <div class="setting-name">清理已同步的软删除数据</div>
         </div>
         <div class="setting-action">
@@ -150,7 +150,7 @@
               class="close-btn"
               @click="closeLLMConfig"
             >
-              <Icon name="x" :size="18" />
+              <AppIcon name="x" :size="18" />
             </q-btn>
           </div>
           <div class="modal-body">
@@ -245,7 +245,7 @@
               class="close-btn"
               @click="closeLLMTest"
             >
-              <Icon name="x" :size="18" />
+              <AppIcon name="x" :size="18" />
             </q-btn>
           </div>
           <div class="modal-body test-body">
@@ -325,7 +325,7 @@
               class="close-btn"
               @click="closePromptEditor"
             >
-              <Icon name="x" :size="18" />
+              <AppIcon name="x" :size="18" />
             </q-btn>
           </div>
           <div class="modal-body">

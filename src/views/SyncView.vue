@@ -2,7 +2,7 @@
   <main class="unsupported-page">
     <section class="unsupported-card" role="status">
       <div class="unsupported-icon" aria-hidden="true">
-        <Icon name="cloud-off" :size="32" />
+        <AppIcon name="cloud-off" :size="32" />
       </div>
       <h1>远程服务暂不可用</h1>
       <p>
@@ -15,5 +15,5 @@
 </template>
 
 <script setup lang="ts">
-import Icon from '../components/Icon.vue'
+import AppIcon from '../components/AppIcon.vue'
 </script>

@@ -21,18 +21,19 @@
 
 ## 🔧 环境要求
 
-| 工具 | 最低版本 | 安装方式 |
-|------|----------|----------|
-| Rust | 1.77+ | [rustup](https://rustup.rs/) |
-| Node.js | 22.13+ | [nvm](https://github.com/nvm-sh/nvm) 或官方安装包 |
-| pnpm | 11+ | `npm install -g pnpm@^11.0.0` |
-| Tauri CLI | 2.x | 由 pnpm 管理 |
-| Android SDK | 34+ | Android Studio 或命令行 |
-| Android NDK | 26+ | 通过 SDK Manager 安装 |
-| Gradle | 8.14+ | 由 Tauri 自动管理 |
+| 工具        | 最低版本 | 安装方式                                          |
+| ----------- | -------- | ------------------------------------------------- |
+| Rust        | 1.77+    | [rustup](https://rustup.rs/)                      |
+| Node.js     | 22.13+   | [nvm](https://github.com/nvm-sh/nvm) 或官方安装包 |
+| pnpm        | 11+      | `npm install -g pnpm@^11.0.0`                     |
+| Tauri CLI   | 2.x      | 由 pnpm 管理                                      |
+| Android SDK | 34+      | Android Studio 或命令行                           |
+| Android NDK | 26+      | 通过 SDK Manager 安装                             |
+| Gradle      | 8.14+    | 由 Tauri 自动管理                                 |
 
 > **Android 开发须知**：构建 Android 端需要安装 Android Studio（或至少 Android SDK + NDK）。
 > 安装后设置环境变量：
+>
 > ```bash
 > export ANDROID_HOME=$HOME/Android/Sdk
 > export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.3.11579264
@@ -93,6 +94,7 @@ pnpm dev
 ### 开发模式说明
 
 `pnpm tauri dev` 会：
+
 1. 启动 Vite 开发服务器（端口 1420）
 2. 编译 Rust 后端
 3. 打开 Tauri 桌面窗口，加载前端页面
@@ -126,15 +128,15 @@ SmartErrorNotebook/
 │   │   └── index.ts            # Vue Router 路由定义（12 个页面）
 │   │
 │   ├── views/                  # 页面组件
-│   │   ├── Home.vue            # 首页（轮播、统计概览）
-│   │   ├── Add.vue             # 添加错题（拍照/选图/AI 识别）
-│   │   ├── Manage.vue          # 错题管理（搜索、筛选、列表）
+│   │   ├── HomeView.vue        # 首页（轮播、统计概览）
+│   │   ├── AddView.vue         # 添加错题（拍照/选图/AI 识别）
+│   │   ├── ManageView.vue      # 错题管理（搜索、筛选、列表）
 │   │   ├── Manage-Detail.vue   # 错题详情（编辑、附件、标签）
-│   │   ├── Preview.vue         # 复习计划（筛选待复习卡片）
+│   │   ├── PreviewView.vue     # 复习计划（筛选待复习卡片）
 │   │   ├── Review-Detail.vue   # 复习执行（展示题目、评分）
-│   │   ├── Profile.vue         # 个人主页（统计、SRS 图表）
-│   │   ├── Settings.vue        # 设置（主题、AI、导出配置）
-│   │   ├── Sync.vue            # 远程服务停用说明
+│   │   ├── ProfileView.vue     # 个人主页（统计、SRS 图表）
+│   │   ├── SettingsView.vue    # 设置（主题、AI、导出配置）
+│   │   ├── SyncView.vue        # 远程服务停用说明
 │   │   └── MarkdownTextareaTest.vue  # 组件测试页
 │   │
 │   ├── components/             # 复用组件
@@ -156,7 +158,7 @@ SmartErrorNotebook/
 │   │   ├── PromptEditor.vue    # 提示词编辑器
 │   │   ├── Button.vue          # 按钮组件
 │   │   ├── Tag.vue             # 标签组件
-│   │   └── Icon.vue            # Lucide 图标封装
+│   │   └── AppIcon.vue         # Lucide 图标封装
 │   │
 │   ├── api/                    # 新版 IPC 封装、平台例外及历史 API
 │   │   ├── index.ts            # camelCase 新版契约
@@ -278,20 +280,20 @@ SmartErrorNotebook/
 
 ### 路由表
 
-| 路径 | 页面 | 标题 |
-|------|------|------|
-| `/` | 重定向到 `/home` | — |
-| `/home` | Home | 首页 |
-| `/add` | Add | 添加错题 |
-| `/manage` | Manage | 错题管理 |
-| `/manage-detail/:id` | ManageDetail | 错题详情管理 |
-| `/review` | Preview | 复习计划 |
-| `/review-detail` | ReviewDetail | 复习详情 |
-| `/stats` | Profile | 个人主页 |
-| `/settings` | Settings | 设置 |
-| `/sync` | Sync | 远程服务停用说明 |
-| `/community` | redirect | 重定向到同步停用说明 |
-| `/markdown-test` | MarkdownTextareaTest | Markdown 组件测试 |
+| 路径                 | 页面                 | 标题                 |
+| -------------------- | -------------------- | -------------------- |
+| `/`                  | 重定向到 `/home`     | —                    |
+| `/home`              | Home                 | 首页                 |
+| `/add`               | Add                  | 添加错题             |
+| `/manage`            | Manage               | 错题管理             |
+| `/manage-detail/:id` | ManageDetail         | 错题详情管理         |
+| `/review`            | Preview              | 复习计划             |
+| `/review-detail`     | ReviewDetail         | 复习详情             |
+| `/stats`             | Profile              | 个人主页             |
+| `/settings`          | Settings             | 设置                 |
+| `/sync`              | Sync                 | 远程服务停用说明     |
+| `/community`         | redirect             | 重定向到同步停用说明 |
+| `/markdown-test`     | MarkdownTextareaTest | Markdown 组件测试    |
 
 ### 调用 Rust 后端
 
@@ -322,9 +324,7 @@ const newQuestion = await createQuestion({
 import { LLMService } from '../services/llm'
 
 const llm = LLMService.getInstance()
-const response = await llm.call([
-  { role: 'user', content: 'Hello' }
-])
+const response = await llm.call([{ role: 'user', content: 'Hello' }])
 ```
 
 ---
@@ -372,6 +372,7 @@ pub struct AppState {
 ```
 
 数据库文件位置：
+
 - **桌面和移动端**：系统 AppData 下的 `SmartErrorNotebook/data/database.db`
 - **测试**：测试夹具使用单连接内存 SQLite
 
@@ -511,7 +512,6 @@ src-tauri/gen/android/app/build/outputs/
 └── bundle/  # AAB 文件（Google Play 上传）
 ```
 
-
 ### 发布前检查清单
 
 - [ ] 前端构建无报错（`pnpm build`）
@@ -528,13 +528,13 @@ src-tauri/gen/android/app/build/outputs/
 
 Android 端需要以下权限，在 `src-tauri/gen/android/app/src/main/AndroidManifest.xml` 中声明：
 
-| 权限 | 用途 | 类别 |
-|------|------|:----:|
-| `CAMERA` | 拍照录入错题 | 危险权限 |
-| `INTERNET` | LLM API 调用 | 普通 |
-| `ACCESS_NETWORK_STATE` | 检查网络状态 | 普通 |
+| 权限                     | 用途                            |   类别   |
+| ------------------------ | ------------------------------- | :------: |
+| `CAMERA`                 | 拍照录入错题                    | 危险权限 |
+| `INTERNET`               | LLM API 调用                    |   普通   |
+| `ACCESS_NETWORK_STATE`   | 检查网络状态                    |   普通   |
 | `WRITE_EXTERNAL_STORAGE` | 导出文件保存（Android 10 以下） | 危险权限 |
-| `POST_NOTIFICATIONS` | 复习提醒（计划中） | 危险权限 |
+| `POST_NOTIFICATIONS`     | 复习提醒（计划中）              | 危险权限 |
 
 权限在运行时动态申请（使用 Tauri Dialog Plugin），首次使用相关功能时弹出授权请求。
 
@@ -561,14 +561,14 @@ pnpm format
 
 推荐使用以下提交类型：
 
-| 类型 | 用途 |
-|------|------|
-| `feat:` | 新功能 |
-| `fix:` | 修复 |
-| `docs:` | 文档 |
-| `refactor:` | 重构 |
-| `perf:` | 性能优化 |
-| `chore:` | 杂项（构建、依赖等） |
+| 类型        | 用途                 |
+| ----------- | -------------------- |
+| `feat:`     | 新功能               |
+| `fix:`      | 修复                 |
+| `docs:`     | 文档                 |
+| `refactor:` | 重构                 |
+| `perf:`     | 性能优化             |
+| `chore:`    | 杂项（构建、依赖等） |
 
 示例：`feat: 添加按来源筛选错题功能`
 
@@ -594,6 +594,7 @@ pnpm format
 ### 报告 Issue
 
 提交 Issue 时请包含：
+
 - 问题描述
 - 复现步骤
 - 预期行为与实际行为

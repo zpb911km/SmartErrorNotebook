@@ -1,71 +1,69 @@
+import path from 'node:path'
+
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import vue from '@vitejs/plugin-vue'
-import { defineConfig } from 'vite'
+import { visualizer } from 'rollup-plugin-visualizer'
+import { defineConfig, loadEnv } from 'vite'
 
-// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [vue({ template: { transformAssetUrls } }), quasar()],
+export default defineConfig(async ({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
 
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          const moduleId = id.replaceAll('\\', '/')
-          const isPackage = (name: string) =>
-            moduleId.includes(`/node_modules/${name}/`)
+  return {
+    plugins: [
+      vue({ template: { transformAssetUrls } }),
+      quasar(),
+      env.VITE_ANALYZE === 'true' &&
+        visualizer({
+          filename: 'stats.html',
+          gzipSize: true,
+          brotliSize: true
+        })
+    ].filter(Boolean),
 
-          if (
-            ['marked', 'marked-highlight', 'marked-katex-extension'].some(
-              isPackage
-            )
-          ) {
-            return 'markdown'
-          }
-          if (isPackage('highlight.js')) return 'highlight'
-          if (isPackage('katex')) return 'katex'
-          if (
-            [
-              '@tauri-apps/api',
-              '@tauri-apps/plugin-fs',
-              '@tauri-apps/plugin-opener'
-            ].some(isPackage)
-          ) {
-            return 'tauri'
-          }
-          if (
-            isPackage('vue') ||
-            isPackage('vue-router') ||
-            moduleId.includes('/node_modules/@vue/')
-          ) {
-            return 'vendor'
+    resolve: {
+      alias: {
+        '@': path.join(import.meta.dirname, 'src')
+      }
+    },
+
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'katex',
+                test: /node_modules\/katex/
+              }
+            ]
           }
         }
       }
-    }
-  },
+    },
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
-  clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
-  server: {
-    port: 1420,
-    strictPort: true,
-    host: host || false,
-    hmr: host
-      ? {
-          protocol: 'ws',
-          host,
-          port: 1421
-        }
-      : undefined,
-    watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ['**/src-tauri/**']
+    // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
+    //
+    // 1. prevent Vite from obscuring rust errors
+    clearScreen: false,
+    // 2. tauri expects a fixed port, fail if that port is not available
+    server: {
+      port: 1420,
+      strictPort: true,
+      host: host || false,
+      hmr: host
+        ? {
+            protocol: 'ws',
+            host,
+            port: 1421
+          }
+        : undefined,
+      watch: {
+        // 3. tell Vite to ignore watching `src-tauri`
+        ignored: ['**/src-tauri/**']
+      }
     }
   }
-}))
+})

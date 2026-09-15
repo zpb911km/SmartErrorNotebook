@@ -1,4 +1,11 @@
-dist
-src-tauri/target
-src-tauri/gen
-node_modules
+pnpm-lock.yaml
+
+src-tauri/crates/migration/README.md
+src-tauri/gen/
+src-tauri/target/
+
+server/
+
+node_modules/
+dist/
+stats.html

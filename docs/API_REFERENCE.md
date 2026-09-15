@@ -13,12 +13,15 @@ Smart Error Notebook 通过 Tauri `invoke` 暴露 50 个数据库命令。本参
 import { invoke } from '@tauri-apps/api/core'
 
 const questions = await invoke<ErrorQuestion[]>('legacy_get_questions', {
-  filter: { subject_id: 'subject-id', limit: 20 },
+  filter: { subject_id: 'subject-id', limit: 20 }
 })
 
-const status = await invoke<SRSCardOutput | null>('legacy_get_question_srs_status', {
-  questionId: 'question-id',
-})
+const status = await invoke<SRSCardOutput | null>(
+  'legacy_get_question_srs_status',
+  {
+    questionId: 'question-id'
+  }
+)
 ```
 
 ### 参数命名
@@ -40,15 +43,15 @@ const status = await invoke<SRSCardOutput | null>('legacy_get_question_srs_statu
 
 ## 命令索引
 
-| 分组 | 命令 |
-| --- | --- |
-| 科目 | `legacy_get_subjects`, `legacy_create_subject`, `legacy_update_subject`, `legacy_delete_subject`, `legacy_upsert_subject` |
-| 错题 | `legacy_get_questions`, `legacy_get_question`, `legacy_create_question`, `legacy_update_question`, `legacy_delete_question`, `legacy_get_question_stats`, `legacy_upsert_error_question` |
-| 来源 | `legacy_get_sources`, `legacy_get_source`, `legacy_get_books`, `legacy_get_chapters`, `legacy_get_knowledges`, `legacy_create_source`, `legacy_update_source`, `legacy_delete_source`, `legacy_get_or_create_source_id`, `legacy_upsert_source` |
+| 分组     | 命令                                                                                                                                                                                                                                                           |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 科目     | `legacy_get_subjects`, `legacy_create_subject`, `legacy_update_subject`, `legacy_delete_subject`, `legacy_upsert_subject`                                                                                                                                      |
+| 错题     | `legacy_get_questions`, `legacy_get_question`, `legacy_create_question`, `legacy_update_question`, `legacy_delete_question`, `legacy_get_question_stats`, `legacy_upsert_error_question`                                                                       |
+| 来源     | `legacy_get_sources`, `legacy_get_source`, `legacy_get_books`, `legacy_get_chapters`, `legacy_get_knowledges`, `legacy_create_source`, `legacy_update_source`, `legacy_delete_source`, `legacy_get_or_create_source_id`, `legacy_upsert_source`                |
 | 错因标签 | `legacy_create_error_tags_for_question`, `legacy_get_error_tags`, `legacy_get_full_error_tags`, `legacy_get_error_tags_for_question`, `legacy_delete_error_tag`, `legacy_update_error_tag_by_name`, `legacy_update_error_tag_by_id`, `legacy_upsert_error_tag` |
-| 附件 | `legacy_create_attachment`, `legacy_create_attachments_for_question`, `legacy_get_attachments_by_question`, `legacy_delete_attachment`, `legacy_upsert_attachment` |
-| SRS | `legacy_create_srs_data`, `legacy_get_due_questions`, `legacy_submit_review_result`, `legacy_get_question_srs_status`, `legacy_reset_srs_progress`, `legacy_get_due_count`, `legacy_get_srs_statistics`, `legacy_get_all_cards`, `legacy_upsert_srs_data` |
-| 同步 | `legacy_get_all_records`, `legacy_get_all_pending_records`, `legacy_get_record_for_upload`, `legacy_set_record_sync_status_version`, `legacy_purge_synced_deletions`, `legacy_check_orphan_records` |
+| 附件     | `legacy_create_attachment`, `legacy_create_attachments_for_question`, `legacy_get_attachments_by_question`, `legacy_delete_attachment`, `legacy_upsert_attachment`                                                                                             |
+| SRS      | `legacy_create_srs_data`, `legacy_get_due_questions`, `legacy_submit_review_result`, `legacy_get_question_srs_status`, `legacy_reset_srs_progress`, `legacy_get_due_count`, `legacy_get_srs_statistics`, `legacy_get_all_cards`, `legacy_upsert_srs_data`      |
+| 同步     | `legacy_get_all_records`, `legacy_get_all_pending_records`, `legacy_get_record_for_upload`, `legacy_set_record_sync_status_version`, `legacy_purge_synced_deletions`, `legacy_check_orphan_records`                                                            |
 
 ## 数据类型
 
@@ -842,9 +845,9 @@ invoke<Record<string, { deleted: number }>>('legacy_purge_synced_deletions')
 
 **行为**：只检查当前未软删除记录。
 
-| 记录 | 父记录缺失时的处理 | 报告格式 |
-| --- | --- | --- |
-| `error_tags` | 没有任何题目关系时软删除并标记 `pending` | `error_tags:<id>` |
+| 记录          | 父记录缺失时的处理                       | 报告格式           |
+| ------------- | ---------------------------------------- | ------------------ |
+| `error_tags`  | 没有任何题目关系时软删除并标记 `pending` | `error_tags:<id>`  |
 | `attachments` | 没有任何题目关系时软删除并标记 `pending` | `attachments:<id>` |
 
 `total_checked` 是上述两类活动记录的检查总数。题目、来源和 SRS 引用完整性由规范化数据库关系及写入事务维护，此命令不扫描这些实体。

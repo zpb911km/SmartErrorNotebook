@@ -8,15 +8,16 @@ import './styles/global.css'
 import { Quasar } from 'quasar'
 import { createApp } from 'vue'
 
-import App from './App.vue'
-import Icon from './components/Icon.vue'
+import App from '@/App.vue'
+
+import AppIcon from './components/AppIcon.vue'
 import MarkdownTextarea from './components/MarkdownTextarea.vue'
 import { quasarOptions } from './quasar'
 import router from './router'
 
-const app = createApp(App)
-app.use(router)
-app.use(Quasar, quasarOptions)
-app.component('MarkdownTextarea', MarkdownTextarea)
-app.component('Icon', Icon)
-app.mount('#app')
+createApp(App)
+  .use(router)
+  .use(Quasar, quasarOptions)
+  .component('MarkdownTextarea', MarkdownTextarea)
+  .component('AppIcon', AppIcon)
+  .mount('#app')

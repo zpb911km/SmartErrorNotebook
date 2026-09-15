@@ -19,7 +19,7 @@
           title="关闭"
           @click="handleClose"
         >
-          <Icon name="x" :size="18" />
+          <AppIcon name="x" :size="18" />
         </q-btn>
 
         <!-- 图片 -->
@@ -57,7 +57,7 @@
             title="放大"
             @click="zoomIn"
           >
-            <Icon name="zoom-in" :size="18" :stroke-width="2.5" />
+            <AppIcon name="zoom-in" :size="18" :stroke-width="2.5" />
           </q-btn>
           <span class="zoom-level">{{ Math.round(scale * 100) }}%</span>
           <q-btn
@@ -70,7 +70,7 @@
             title="缩小"
             @click="zoomOut"
           >
-            <Icon name="zoom-out" :size="18" :stroke-width="2.5" />
+            <AppIcon name="zoom-out" :size="18" :stroke-width="2.5" />
           </q-btn>
           <span class="divider" />
           <q-btn
@@ -83,7 +83,7 @@
             title="旋转"
             @click="rotateImage"
           >
-            <Icon name="rotate-cw" :size="18" />
+            <AppIcon name="rotate-cw" :size="18" />
           </q-btn>
           <q-btn
             no-caps

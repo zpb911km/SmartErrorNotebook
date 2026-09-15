@@ -28,7 +28,7 @@
           class="filter-tag-close"
           @click="removeFilter(f.key)"
         >
-          <Icon name="x" :size="14" />
+          <AppIcon name="x" :size="14" />
         </q-btn>
       </span>
       <q-btn
@@ -78,7 +78,7 @@
         <div class="error-footer">
           <span class="meta-item">⏱ {{ item.lastReviewLabel }}</span>
           <span class="meta-item"
-            ><Icon name="target" :size="16" /> 预期回忆
+            ><AppIcon name="target" :size="16" /> 预期回忆
             {{ item.recallPercent }}%</span
           >
         </div>
@@ -120,7 +120,7 @@
         <div class="error-footer">
           <span class="meta-item">📅 {{ item.nextReviewLabel }}</span>
           <span class="meta-item"
-            ><Icon name="chart-column" :size="16" /> 记忆强度
+            ><AppIcon name="chart-column" :size="16" /> 记忆强度
             {{ item.stabilityText }}</span
           >
         </div>

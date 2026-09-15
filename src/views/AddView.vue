@@ -19,7 +19,7 @@
 
     <q-card flat bordered class="upload-area">
       <div class="upload-content">
-        <Icon name="camera" :size="48" class="upload-icon" />
+        <AppIcon name="camera" :size="48" class="upload-icon" />
         <div class="upload-buttons">
           <div class="upload-ctn">
             <q-btn
@@ -49,7 +49,7 @@
             :hidden="cameraDisabled"
             @click="handlePhotoClick"
           >
-            <Icon name="camera" :size="16" /> 拍照
+            <AppIcon name="camera" :size="16" /> 拍照
           </q-btn>
         </div>
       </div>
@@ -71,7 +71,7 @@
               title="编辑"
               @click="openEdit(url, index, true)"
             >
-              <Icon name="square-pen" :size="16" />
+              <AppIcon name="square-pen" :size="16" />
             </q-btn>
             <q-btn
               no-caps
@@ -83,7 +83,7 @@
               title="删除"
               @click="removeImage(index)"
             >
-              <Icon name="x" :size="16" />
+              <AppIcon name="x" :size="16" />
             </q-btn>
           </div>
           <div class="image-index">

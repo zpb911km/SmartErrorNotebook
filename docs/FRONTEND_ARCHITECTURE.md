@@ -4,15 +4,15 @@
 
 业务 UI 使用 `src/api/` 的新版类型化 IPC 封装。`src/api/compat.ts` 已移除；旧 API 和旧类型仅作为历史代码保留，不进入业务页面依赖链。布局、路由、JSON v1 文件格式保持兼容。
 
-| 层 | 职责 |
-| --- | --- |
-| `api/`、`types/` | IPC 参数与响应契约；UUID、RFC 3339 时间、完整更新字段 |
+| 层                            | 职责                                                          |
+| ----------------------------- | ------------------------------------------------------------- |
+| `api/`、`types/`              | IPC 参数与响应契约；UUID、RFC 3339 时间、完整更新字段         |
 | `services/questionQueries.ts` | 批次加载关联资源，生成 `QuestionView`；科目过滤先于客户端分页 |
-| `services/sourceCatalog.ts` | 从已加载来源推导级联选项，不再次读取数据库 |
-| `services/questionEditor.ts` | 独立资源操作与编辑会话内的成功检查点，不承诺跨资源事务 |
-| `composables/` | Vue 加载时序、编辑忙碌状态、错误与单独清理重试 |
-| `views/`、`components/` | 页面交互、展示、局部筛选及表单草稿 |
-| `types/transfer.ts` | 文件格式；仅导入导出边界映射 prompt/answer/analysis |
+| `services/sourceCatalog.ts`   | 从已加载来源推导级联选项，不再次读取数据库                    |
+| `services/questionEditor.ts`  | 独立资源操作与编辑会话内的成功检查点，不承诺跨资源事务        |
+| `composables/`                | Vue 加载时序、编辑忙碌状态、错误与单独清理重试                |
+| `views/`、`components/`       | 页面交互、展示、局部筛选及表单草稿                            |
+| `types/transfer.ts`           | 文件格式；仅导入导出边界映射 prompt/answer/analysis           |
 
 `QuestionView` 保留新版题目字段，只添加 source、subject、tags、srs。科目始终来自 Source；不构造旧字段别名，不把缺失 SRS 伪装成默认实体，也不在查询期间修复数据库。详情按需读取附件，列表不会读取附件内容。关联资源来自多个独立读取，不能视为跨 API 的单一数据库快照。
 

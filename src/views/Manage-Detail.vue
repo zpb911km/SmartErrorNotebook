@@ -27,7 +27,7 @@
         class="back-btn"
         @click="goBack"
       >
-        <Icon name="arrow-left" :size="16" class="back-icon" />
+        <AppIcon name="arrow-left" :size="16" class="back-icon" />
         <span>返回</span>
       </q-btn>
       <h2>错题详情管理</h2>
@@ -41,7 +41,7 @@
           :disable="saving || detailLoadState !== 'ready'"
           @click="toggleEditMode"
         >
-          <Icon name="square-pen" :size="16" class="btn-icon" />
+          <AppIcon name="square-pen" :size="16" class="btn-icon" />
           <span class="btn-label">{{ isEditing ? '取消编辑' : '编辑' }}</span>
         </q-btn>
         <q-btn
@@ -52,7 +52,7 @@
           class="action-btn delete-btn glare-btn"
           @click="confirmDelete"
         >
-          <Icon name="trash-2" :size="16" class="btn-icon" />
+          <AppIcon name="trash-2" :size="16" class="btn-icon" />
           <span class="btn-label">删除</span>
         </q-btn>
       </div>
@@ -162,7 +162,7 @@
                 title="删除图片"
                 @click.stop="deleteTempImage(image)"
               >
-                <Icon name="x" :size="16" />
+                <AppIcon name="x" :size="16" />
               </q-btn>
             </div>
           </div>
@@ -178,7 +178,7 @@
             class="btn-add-images"
             @click="triggerImageUpload"
           >
-            <Icon name="camera" :size="16" /> 添加图片
+            <AppIcon name="camera" :size="16" /> 添加图片
           </q-btn>
           <input
             ref="imageInput"

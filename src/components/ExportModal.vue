@@ -17,13 +17,13 @@
           class="modal-close-btn"
           @click="handleClose"
         >
-          <Icon name="x" :size="18" />
+          <AppIcon name="x" :size="18" />
         </q-btn>
       </div>
 
       <div class="modal-body">
         <div class="export-info">
-          <Icon name="info" :size="16" />
+          <AppIcon name="info" :size="16" />
           <span
             >当前筛选条件下共
             <strong>{{ questions.length }}</strong> 道错题</span
@@ -34,7 +34,7 @@
           <!-- JSON 导出 / 分享 -->
           <q-card flat bordered class="format-card">
             <div class="format-icon json-icon">
-              <Icon name="file-text" :size="28" />
+              <AppIcon name="file-text" :size="28" />
             </div>
             <div class="format-info">
               <div class="format-name">JSON</div>
@@ -52,7 +52,7 @@
                 title="导出 JSON"
                 @click="handleExportJSON"
               >
-                <Icon name="download" :size="16" />
+                <AppIcon name="download" :size="16" />
               </q-btn>
               <q-btn
                 v-if="isMobile"
@@ -64,7 +64,7 @@
                 title="分享 JSON"
                 @click="handleShareJSON"
               >
-                <Icon name="share-2" :size="16" />
+                <AppIcon name="share-2" :size="16" />
               </q-btn>
             </div>
           </q-card>
@@ -72,7 +72,7 @@
           <!-- HTML 导出 / 分享 -->
           <q-card flat bordered class="format-card">
             <div class="format-icon html-icon">
-              <Icon name="file-text" :size="28" />
+              <AppIcon name="file-text" :size="28" />
             </div>
             <div class="format-info">
               <div class="format-name">HTML</div>
@@ -90,7 +90,7 @@
                 title="导出 HTML"
                 @click="handleExportHTML"
               >
-                <Icon name="download" :size="16" />
+                <AppIcon name="download" :size="16" />
               </q-btn>
               <q-btn
                 v-if="isMobile"
@@ -102,14 +102,14 @@
                 title="分享 HTML"
                 @click="handleShareHTML"
               >
-                <Icon name="share-2" :size="16" />
+                <AppIcon name="share-2" :size="16" />
               </q-btn>
             </div>
           </q-card>
         </div>
 
         <div class="export-note">
-          <Icon name="info" :size="14" />
+          <AppIcon name="info" :size="14" />
           <span>
             <strong>HTML 推荐方案</strong> — 浏览器原生渲染，数学公式排版与 App
             内完全一致。 导出后用 Chrome/Edge 打开，按 Ctrl+P 可选择「另存为
@@ -150,7 +150,7 @@ import {
   shareQuestionsToHTML,
   shareQuestionsToJSON
 } from '../utils/shareContent'
-import Icon from './Icon.vue'
+import AppIcon from './AppIcon.vue'
 
 const props = defineProps<{
   questions: QuestionContent[]

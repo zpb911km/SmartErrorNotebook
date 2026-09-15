@@ -12,7 +12,7 @@
 
     <!-- 错误状态 -->
     <div v-else-if="loadError" class="error-state">
-      <Icon name="circle-alert" :size="48" class="error-icon" />
+      <AppIcon name="circle-alert" :size="48" class="error-icon" />
       <div class="error-description">
         {{ loadError }}
       </div>
@@ -33,7 +33,7 @@
       <!-- 概览卡片 -->
       <div class="overview-cards">
         <q-card flat bordered class="overview-card">
-          <Icon name="chart-column" :size="24" class="card-icon" />
+          <AppIcon name="chart-column" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value">
               {{ animatedTotal }}
@@ -52,7 +52,7 @@
           @keydown.space.prevent="$router.push('/review')"
           @click="$router.push('/review')"
         >
-          <Icon name="alarm-clock" :size="24" class="card-icon" />
+          <AppIcon name="alarm-clock" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value due">
               {{ animatedDue }}
@@ -61,7 +61,7 @@
           </div>
         </q-card>
         <q-card flat bordered class="overview-card">
-          <Icon name="brain" :size="24" class="card-icon" />
+          <AppIcon name="brain" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value memory">
               {{ animatedMemory }}
@@ -70,7 +70,7 @@
           </div>
         </q-card>
         <q-card flat bordered class="overview-card">
-          <Icon name="sparkles" :size="24" class="card-icon" />
+          <AppIcon name="sparkles" :size="24" class="card-icon" />
           <div class="card-content">
             <div class="card-value new">
               {{ animatedNewCards }}
@@ -119,7 +119,7 @@
             class="manage-btn"
             @click="openManageCascade"
           >
-            <Icon name="settings" :size="18" class="manage-icon" />
+            <AppIcon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
           </q-btn>
         </div>
@@ -177,7 +177,7 @@
               class="close-btn"
               @click="closeCascade"
             >
-              <Icon name="x" :size="16" />
+              <AppIcon name="x" :size="16" />
             </q-btn>
           </div>
           <div class="cascade-scroll-wrapper">
@@ -240,7 +240,7 @@
                         class="btn-cancel"
                         @click="cancelEdit"
                       >
-                        <Icon name="x" :size="16" />
+                        <AppIcon name="x" :size="16" />
                       </q-btn>
                     </div>
                   </div>
@@ -265,7 +265,7 @@
                         class="action-btn edit-btn"
                         @click.stop="startEditSubject(subject, index)"
                       >
-                        <Icon name="pencil" :size="16" />
+                        <AppIcon name="pencil" :size="16" />
                       </q-btn>
                       <q-btn
                         no-caps
@@ -275,7 +275,7 @@
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteSubject(subject)"
                       >
-                        <Icon name="trash-2" :size="16" />
+                        <AppIcon name="trash-2" :size="16" />
                       </q-btn>
                     </div>
                   </template>
@@ -346,7 +346,7 @@
                         class="btn-cancel"
                         @click="cancelEdit"
                       >
-                        <Icon name="x" :size="16" />
+                        <AppIcon name="x" :size="16" />
                       </q-btn>
                     </div>
                   </div>
@@ -366,7 +366,7 @@
                         class="action-btn edit-btn"
                         @click.stop="startEditBook(book, index)"
                       >
-                        <Icon name="pencil" :size="16" />
+                        <AppIcon name="pencil" :size="16" />
                       </q-btn>
                       <q-btn
                         no-caps
@@ -376,7 +376,7 @@
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteBook(book)"
                       >
-                        <Icon name="trash-2" :size="16" />
+                        <AppIcon name="trash-2" :size="16" />
                       </q-btn>
                     </div>
                   </template>
@@ -447,7 +447,7 @@
                         class="btn-cancel"
                         @click="cancelEdit"
                       >
-                        <Icon name="x" :size="16" />
+                        <AppIcon name="x" :size="16" />
                       </q-btn>
                     </div>
                   </div>
@@ -468,7 +468,7 @@
                         class="action-btn edit-btn"
                         @click.stop="startEditChapter(chapter, index)"
                       >
-                        <Icon name="pencil" :size="16" />
+                        <AppIcon name="pencil" :size="16" />
                       </q-btn>
                       <q-btn
                         no-caps
@@ -478,7 +478,7 @@
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteChapter(chapter)"
                       >
-                        <Icon name="trash-2" :size="16" />
+                        <AppIcon name="trash-2" :size="16" />
                       </q-btn>
                     </div>
                   </template>
@@ -550,7 +550,7 @@
                         class="btn-cancel"
                         @click="cancelEdit"
                       >
-                        <Icon name="x" :size="16" />
+                        <AppIcon name="x" :size="16" />
                       </q-btn>
                     </div>
                   </div>
@@ -571,7 +571,7 @@
                         class="action-btn edit-btn"
                         @click.stop="startEditKnowledge(knowledge, index)"
                       >
-                        <Icon name="pencil" :size="16" />
+                        <AppIcon name="pencil" :size="16" />
                       </q-btn>
                       <q-btn
                         no-caps
@@ -581,7 +581,7 @@
                         class="action-btn delete-btn"
                         @click.stop="confirmDeleteKnowledge(knowledge)"
                       >
-                        <Icon name="trash-2" :size="16" />
+                        <AppIcon name="trash-2" :size="16" />
                       </q-btn>
                     </div>
                   </template>
@@ -643,7 +643,7 @@
             class="manage-btn"
             @click="openManageModal"
           >
-            <Icon name="settings" :size="18" class="manage-icon" />
+            <AppIcon name="settings" :size="18" class="manage-icon" />
             <span>管理</span>
           </q-btn>
         </div>
@@ -786,7 +786,7 @@
                       class="action-btn edit-btn"
                       @click="startEditTag(index)"
                     >
-                      <Icon name="pencil" :size="16" />
+                      <AppIcon name="pencil" :size="16" />
                     </q-btn>
                     <q-btn
                       no-caps
@@ -796,7 +796,7 @@
                       class="action-btn delete-btn"
                       @click="confirmDeleteTag(tag)"
                     >
-                      <Icon name="trash-2" :size="16" />
+                      <AppIcon name="trash-2" :size="16" />
                     </q-btn>
                   </div>
                   <div v-else class="actions-group">
@@ -818,7 +818,7 @@
                       class="action-btn cancel-btn"
                       @click="cancelTagEdit"
                     >
-                      <Icon name="x" :size="16" />
+                      <AppIcon name="x" :size="16" />
                     </q-btn>
                   </div>
                 </div>
