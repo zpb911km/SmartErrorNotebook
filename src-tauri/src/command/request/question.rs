@@ -58,7 +58,7 @@ pub struct ListQuestionsRequest {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct QuestionFilterRequest {
-    pub(crate) search: Option<String>,
+    pub(crate) keyword: Option<String>,
     pub(crate) book: Option<String>,
     pub(crate) chapter: Option<String>,
     pub(crate) knowledge: Option<String>,

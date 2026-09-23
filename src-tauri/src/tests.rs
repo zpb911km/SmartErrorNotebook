@@ -1782,6 +1782,23 @@ async fn current_ipc_creates_and_reads_a_question_with_related_outputs() {
     assert_eq!(page["items"][0]["stem"], "What is 2 + 2?");
     assert_eq!(page["items"][0]["attachmentIds"], created["attachmentIds"]);
 
+    let keyword_page = harness
+        .ok(
+            "list_questions",
+            json!({"request":{"filter":{"keyword":"updated note"},"sort":[]}}),
+        )
+        .await;
+    assert_eq!(keyword_page["total"], 1);
+    assert_eq!(keyword_page["items"][0]["id"], created["id"]);
+    assert!(harness
+        .err(
+            "list_questions",
+            json!({"request":{"filter":{"search":"updated note"},"sort":[]}}),
+        )
+        .await
+        .as_str()
+        .is_some_and(|message| message.contains("unknown field `search`")));
+
     // Legacy remains registered during the migration window.
     assert_eq!(
         harness.ok("legacy_get_question_stats", json!({})).await["total"],
@@ -1791,6 +1808,69 @@ async fn current_ipc_creates_and_reads_a_question_with_related_outputs() {
         .ok("delete_question", json!({"request":{"id":created["id"]}}))
         .await;
     assert_eq!(deleted["id"], created["id"]);
+}
+
+#[tokio::test]
+async fn current_ipc_treats_keyword_as_a_literal_substring() {
+    let harness = Harness::new().await;
+    let subject = harness
+        .ok(
+            "create_subject",
+            json!({"request":{"name":"Mathematics","color":"#336699"}}),
+        )
+        .await;
+    let source = harness
+        .ok(
+            "create_source",
+            json!({"request":{"subjectId":subject["subject"]["id"]}}),
+        )
+        .await;
+    let source_id = &source["source"]["id"];
+
+    let literal = harness
+        .ok(
+            "create_question",
+            json!({"request":{
+                "sourceId":source_id,
+                "questionType":"SHORT_ANSWER",
+                "stem":"Rate 100% complete",
+                "correctAnswer":"yes",
+                "explanation":"under_score",
+                "note":r"C:\notes padded ",
+                "tagIds":[],
+                "attachmentIds":[]
+            }}),
+        )
+        .await;
+    harness
+        .ok(
+            "create_question",
+            json!({"request":{
+                "sourceId":source_id,
+                "questionType":"SHORT_ANSWER",
+                "stem":"Rate 1000 complete",
+                "correctAnswer":"yes",
+                "explanation":"underXscore",
+                "note":r"C:notes padded",
+                "tagIds":[],
+                "attachmentIds":[]
+            }}),
+        )
+        .await;
+
+    for keyword in ["100%", "under_score", r"C:\notes", " padded "] {
+        let page = harness
+            .ok(
+                "list_questions",
+                json!({"request":{"filter":{"keyword":keyword},"sort":[]}}),
+            )
+            .await;
+        assert_eq!(page["total"], 1, "unexpected result for {keyword:?}");
+        assert_eq!(
+            page["items"][0]["id"], literal["question"]["id"],
+            "unexpected result for {keyword:?}"
+        );
+    }
 }
 
 #[tokio::test]

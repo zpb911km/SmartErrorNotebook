@@ -1,48 +1,78 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref } from 'vue'
 
-import { getLibraryStatistics } from '../api'
-import { useLatestRequest } from '../composables/useLatestRequest'
-import type { LibraryStatisticsData } from '../types/review'
+import { getLibraryStatistics } from '@/api'
+import type { RouteNamedMap } from '@/router/catalog'
+import type { LibraryStatisticsData } from '@/types/review'
+import { createLatestTask } from '@/utils/latestTask'
 
+const isLoading = ref(true)
 const statistics = ref<LibraryStatisticsData | null>(null)
-const loading = ref(true)
 const error = ref('')
-const begin = useLatestRequest()
-async function load() {
-  const current = begin()
-  loading.value = true
+
+const load = createLatestTask(async (signal: AbortSignal) => {
+  isLoading.value = true
   error.value = ''
+
   try {
     const result = await getLibraryStatistics(new Date().toISOString())
-    if (current()) statistics.value = result
+    signal.throwIfAborted()
+    statistics.value = result
   } catch {
-    if (current()) error.value = '暂时无法读取学习数据，请重试。'
+    if (signal.aborted) return
+    error.value = '暂时无法读取学习数据，请重试。'
   } finally {
-    if (current()) loading.value = false
+    if (!signal.aborted) isLoading.value = false
   }
-}
+})
+
 onMounted(load)
-const actions = [
+
+onScopeDispose(load.cancel)
+
+const actions: Array<{
+  title: string
+  caption: string
+  icon: string
+  to: { name: keyof RouteNamedMap }
+}> = [
   {
     title: '添加错题',
     caption: '拍照、选图或手动记录',
     icon: 'add_photo_alternate',
-    path: '/add'
+    to: { name: 'question-create' }
   },
   {
     title: '整理错题',
     caption: '按科目、来源和错因查找',
     icon: 'inventory_2',
-    path: '/manage'
+    to: { name: 'question-list' }
   },
   {
     title: '学习分析',
     caption: '了解自己的薄弱环节',
     icon: 'insights',
-    path: '/stats'
+    to: { name: 'profile' }
   }
 ]
+
+const overviewItems = computed(() => [
+  {
+    label: '收录错题',
+    value: statistics.value?.questionTotal,
+    icon: 'library_books'
+  },
+  {
+    label: '待复习',
+    value: statistics.value?.dueCount,
+    icon: 'schedule'
+  },
+  {
+    label: '累计复习',
+    value: statistics.value?.totalReviews,
+    icon: 'task_alt'
+  }
+])
 </script>
 
 <template>
@@ -60,19 +90,7 @@ const actions = [
     </q-banner>
     <div class="overview-grid overview-summary">
       <q-card
-        v-for="item in [
-          {
-            label: '收录错题',
-            value: statistics?.questionTotal,
-            icon: 'library_books'
-          },
-          { label: '待复习', value: statistics?.dueCount, icon: 'schedule' },
-          {
-            label: '累计复习',
-            value: statistics?.totalReviews,
-            icon: 'task_alt'
-          }
-        ]"
+        v-for="item in overviewItems"
         :key="item.label"
         flat
         bordered
@@ -83,7 +101,7 @@ const actions = [
           <div class="text-caption text-muted">
             {{ item.label }}
           </div>
-          <q-skeleton v-if="loading" width="64px" height="38px" />
+          <q-skeleton v-if="isLoading" width="64px" height="38px" />
           <div v-else class="stat-number">
             {{ item.value ?? '—' }}
           </div>
@@ -119,7 +137,7 @@ const actions = [
           text-color="primary"
           icon-right="arrow_forward"
           label="查看复习计划"
-          to="/review"
+          :to="{ name: 'review-plan' }"
         />
       </q-card-section>
       <q-icon name="auto_stories" size="140px" class="hero-icon" />
@@ -128,7 +146,7 @@ const actions = [
     <div class="overview-grid">
       <q-card
         v-for="action in actions"
-        :key="action.path"
+        :key="action.title"
         flat
         bordered
         class="quick-card"
@@ -147,7 +165,7 @@ const actions = [
           <q-btn
             flat
             color="primary"
-            :to="action.path"
+            :to="action.to"
             :label="action.title"
             icon-right="arrow_forward"
           />

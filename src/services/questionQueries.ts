@@ -23,6 +23,11 @@ export interface QuestionResources {
   srs: SrsData[]
 }
 
+export type QuestionMetadata = Pick<
+  QuestionResources,
+  'sources' | 'subjects' | 'tags'
+>
+
 export function projectQuestions(
   questions: Question[],
   resources: QuestionResources
@@ -45,43 +50,38 @@ export function projectQuestions(
   })
 }
 
+export async function loadQuestionMetadata(): Promise<QuestionMetadata> {
+  const [sources, subjects, tags] = await Promise.all([
+    listSources(),
+    listSubjects(),
+    listTags()
+  ])
+  return { sources, subjects, tags }
+}
+
 export async function loadQuestionResources(
   at = new Date().toISOString()
 ): Promise<QuestionResources> {
-  const [sources, subjects, tags, srs] = await Promise.all([
-    listSources(),
-    listSubjects(),
-    listTags(),
+  const [metadata, srs] = await Promise.all([
+    loadQuestionMetadata(),
     listSrsData(at)
   ])
-  return { sources, subjects, tags, srs }
+  return { ...metadata, srs }
 }
 
-export async function loadQuestionLibrary(
-  request: ListQuestionsRequest = {},
-  subjectId?: string
-) {
-  // Subject is a Source projection and must be filtered before client pagination.
+export async function loadQuestionLibrary(request: ListQuestionsRequest = {}) {
   const [page, resources] = await Promise.all([
     listQuestions({
       ...request,
-      sort: request.sort ?? ['UPDATED_AT_DESC'],
-      ...(subjectId ? { offset: undefined, limit: undefined } : {})
+      sort: request.sort ?? ['UPDATED_AT_DESC']
     }),
     loadQuestionResources()
   ])
-  let items = projectQuestions(page.items, resources)
-  let total = page.total
-  if (subjectId) {
-    items = items.filter((item) => item.subject?.id === subjectId)
-    total = items.length
-    const offset = request.offset ?? 0
-    items = items.slice(
-      offset,
-      request.limit === undefined ? undefined : offset + request.limit
-    )
+  return {
+    ...resources,
+    items: projectQuestions(page.items, resources),
+    total: page.total
   }
-  return { ...resources, items, total }
 }
 
 export async function loadQuestionDetail(id: string) {

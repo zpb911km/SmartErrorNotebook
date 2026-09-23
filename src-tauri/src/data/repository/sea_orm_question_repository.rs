@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, EntityTrait, ExprTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
+    sea_query::LikeExpr, ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, EntityTrait,
+    ExprTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set,
 };
 use uuid::Uuid;
 
@@ -24,6 +24,19 @@ use super::super::database::entity::{
 use super::{timestamp, uuid};
 
 const RELATION_QUERY_BATCH_SIZE: usize = 500;
+
+fn literal_contains_pattern(value: &str) -> LikeExpr {
+    let mut pattern = String::with_capacity(value.len() + 2);
+    pattern.push('%');
+    for character in value.chars() {
+        if matches!(character, '\\' | '%' | '_') {
+            pattern.push('\\');
+        }
+        pattern.push(character);
+    }
+    pattern.push('%');
+    LikeExpr::new(pattern).escape('\\')
+}
 
 fn mastery_at(value: &(Question, Option<SrsData>), at: chrono::DateTime<chrono::Utc>) -> f32 {
     value
@@ -573,12 +586,12 @@ impl<'c, C: ConnectionTrait> SeaOrmQuestionRepository<'c, C> {
             query =
                 query.filter(question::Column::SourceId.is_in(filter.source_ids.iter().copied()));
         }
-        if let Some(search) = filter.search.as_ref().filter(|value| !value.is_empty()) {
+        if let Some(keyword) = filter.keyword.as_ref().filter(|value| !value.is_empty()) {
             query = query.filter(
                 Condition::any()
-                    .add(question::Column::Stem.contains(search))
-                    .add(question::Column::Explanation.contains(search))
-                    .add(question::Column::Note.contains(search)),
+                    .add(question::Column::Stem.like(literal_contains_pattern(keyword)))
+                    .add(question::Column::Explanation.like(literal_contains_pattern(keyword)))
+                    .add(question::Column::Note.like(literal_contains_pattern(keyword))),
             );
         }
         if filter.subject_id.is_some()

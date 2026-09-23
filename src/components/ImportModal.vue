@@ -274,8 +274,8 @@ import ErrorTagSelector from './ErrorTagSelector.vue'
 import SubjectSelector from './SubjectSelector.vue'
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'import-complete'): void
+  (e: 'dismiss'): void
+  (e: 'complete'): void
 }>()
 
 const props = defineProps<{
@@ -554,12 +554,11 @@ const showFinalResult = () => {
     errors: accumErrors.value
   }
   step.value = 'result'
-  emit('import-complete')
+  emit('complete')
 }
 
 const handleClose = () => {
-  if (step.value === 'result') emit('close')
-  else emit('close')
+  emit('dismiss')
 }
 </script>
 

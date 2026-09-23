@@ -48,9 +48,9 @@
           role="button"
           class="overview-card"
           style="cursor: pointer"
-          @keydown.enter="$router.push('/review')"
-          @keydown.space.prevent="$router.push('/review')"
-          @click="$router.push('/review')"
+          @keydown.enter="goReviewPlan()"
+          @keydown.space.prevent="goReviewPlan()"
+          @click="goReviewPlan()"
         >
           <AppIcon name="alarm-clock" :size="24" class="card-icon" />
           <div class="card-content">
@@ -1014,6 +1014,7 @@ import {
 import { deleteSources } from '../api'
 import { useCountUp } from '../composables/useCountUp'
 import { useLatestRequest } from '../composables/useLatestRequest'
+import { goReviewPlan } from '../router'
 import { loadQuestionLibrary } from '../services/questionQueries'
 import { createSourceCatalog } from '../services/sourceCatalog'
 import type { Question, SrsData } from '../types'
@@ -1022,6 +1023,7 @@ import { showAlert } from '../utils/dialog'
 import { timestampSeconds } from '../utils/questionDisplay'
 
 // ==================== 状态 ====================
+
 const loading = ref(true)
 const loadError = ref('')
 

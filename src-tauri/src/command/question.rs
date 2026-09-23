@@ -159,7 +159,7 @@ pub async fn list_questions(
             .updated_since
             .map(|value| parse_datetime(&value, "updatedSince"))
             .transpose()?,
-        search: request.filter.search,
+        keyword: request.filter.keyword,
         subject_id: None,
         book: request.filter.book,
         chapter: request.filter.chapter,

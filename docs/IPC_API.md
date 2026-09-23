@@ -91,7 +91,7 @@ const question = created.question
 
 ## 读取与复习
 
-`list_questions` 返回 `{ items, total }`。其可选过滤器支持 `search`、`book`、`chapter`、`knowledge`、`tagIds`（任一匹配）、`updatedSince`（`updatedAt >= updatedSince`）和 `reviewState`。排序支持 `UPDATED_AT_ASC`、`UPDATED_AT_DESC`、`MASTERY_ASC`、`MASTERY_DESC`、`ID_ASC` 和 `ID_DESC`；分页为可选。提供 `sort` 时会按声明顺序应用，例如 `['MASTERY_ASC', 'UPDATED_AT_DESC', 'ID_ASC']`。省略它或提供空数组表示不要求任何顺序保证。调用方只提供主排序时，不隐含任何次级排序。科目过滤由前端查询服务在应用客户端分页前完成。
+`list_questions` 返回 `{ items, total }`。其可选过滤器支持 `keyword`、`book`、`chapter`、`knowledge`、`tagIds`（任一匹配）、`updatedSince`（`updatedAt >= updatedSince`）和 `reviewState`；未知字段会被拒绝。排序支持 `UPDATED_AT_ASC`、`UPDATED_AT_DESC`、`MASTERY_ASC`、`MASTERY_DESC`、`ID_ASC` 和 `ID_DESC`；分页为可选。提供 `sort` 时会按声明顺序应用，例如 `['MASTERY_ASC', 'UPDATED_AT_DESC', 'ID_ASC']`。省略它或提供空数组表示不要求任何顺序保证。调用方只提供主排序时，不隐含任何次级排序。当前题目列表在未分页的候选结果上按科目本地筛选；`list_questions` 不支持 `subjectId`，需要科目分页时必须先解决筛选与分页的顺序。
 
 分页条目和总数在同一个仓储事务中读取。资料库统计同样会在一个事务中读取题目和 SRS 总数，因此每个响应都表示同一个一致的数据库快照。
 

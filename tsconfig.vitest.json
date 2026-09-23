@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "outDir": "./.tsbuild/vitest",
+    "tsBuildInfoFile": "./.tsbuild/vitest.tsbuildinfo"
+  },
+  "references": [{ "path": "./tsconfig.app.json" }],
+  "include": ["tests/**/*.test.ts", "tests/**/*.test-d.ts"]
+}

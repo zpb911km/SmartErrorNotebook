@@ -121,6 +121,102 @@ test.beforeEach(async ({ page }) => {
   await seed(page)
 })
 
+for (const width of [360, 1280]) {
+  test('centralized navigation and search at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/home')
+    await expect(page).toHaveURL(/\/home$/)
+    const menu = page.locator(width >= 1024 ? '.q-drawer' : '.mobile-tabs')
+    const title = page.locator('.q-toolbar__title')
+    const back = page
+      .locator('.app-header')
+      .getByRole('link', { name: '返回', exact: true })
+    await expect(title).toHaveText('首页')
+    await expect(back).toHaveCount(0)
+    await expect(
+      menu.locator(
+        width >= 1024
+          ? '[aria-label="主导航"] .q-item__label:not(.q-item__label--caption)'
+          : '.q-tab__label'
+      )
+    ).toHaveText(['首页', '添加', '管理', '复习', '我的'])
+    const historyBeforeHome = await page.evaluate(() => history.length)
+    await menu.getByText('首页', { exact: true }).click()
+    await expect(page).toHaveURL(/\/$/)
+    expect(await page.evaluate(() => history.length)).toBe(
+      historyBeforeHome + 1
+    )
+    if (width >= 1024) {
+      await page.goto('/home')
+      const homeItem = menu.locator('.q-item').filter({ hasText: '首页' })
+      await homeItem.focus()
+      await homeItem.press('Enter')
+      await expect(page).toHaveURL(/\/$/)
+    }
+    await menu.getByText('添加', { exact: true }).click()
+    await expect(title).toHaveText('添加错题')
+    await expect(back).toHaveCount(0)
+    await expect(
+      menu.locator(width >= 1024 ? '.nav-active' : '.q-tab--active')
+    ).toContainText('添加')
+    await menu.getByText('管理', { exact: true }).click()
+    await expect(page).toHaveURL(/\/question\/list$/)
+    await page.goto('/question/q1')
+    await expect(title).toHaveText('错题详情管理')
+    await expect(
+      menu.locator(width >= 1024 ? '.nav-active' : '.q-tab--active')
+    ).toContainText('管理')
+    await page
+      .locator('.app-header')
+      .getByRole('link', { name: '返回', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/question\/list$/)
+    await menu.getByText('首页', { exact: true }).click()
+    await page.getByRole('button', { name: '搜索错题', exact: true }).click()
+    const search = page.getByPlaceholder('搜索题干、解析或笔记')
+    await expect(search).toBeFocused()
+    await expect(page).toHaveURL(/\/question\/list$/)
+    await search.fill('保留筛选')
+    await page.getByRole('button', { name: '搜索错题', exact: true }).click()
+    await expect(search).toBeFocused()
+    await expect(page).toHaveURL(/\/question\/list$/)
+    await expect(search).toHaveValue('保留筛选')
+    await menu.getByText('复习', { exact: true }).click()
+    await page.getByRole('button', { name: '开始复习' }).click()
+    await expect(page).toHaveURL(/\/review\/session$/)
+    await expect(title).toHaveText('复习详情')
+    await expect(
+      menu.locator(width >= 1024 ? '.nav-active' : '.q-tab--active')
+    ).toContainText('复习')
+    await page
+      .locator('.app-header')
+      .getByRole('link', { name: '返回', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/review$/)
+    await page
+      .locator('.app-header')
+      .getByRole('link', { name: '设置', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/settings$/)
+    await page
+      .locator('.app-header')
+      .getByRole('link', { name: '返回', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/$/)
+    await page.goto('/settings/sync')
+    await expect(title).toHaveText('同步')
+    await back.click()
+    await expect(page).toHaveURL(/\/settings$/)
+    await expect(title).toHaveText('设置')
+    await back.click()
+    await expect(page).toHaveURL(/\/$/)
+    await page.goto('/dev/markdown')
+    await expect(title).toHaveText('Markdown 组件测试')
+    await back.click()
+    await expect(page).toHaveURL(/\/$/)
+  })
+}
+
 for (const width of [360, 768, 1280]) {
   test('responsive pages at ' + width, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -128,26 +224,26 @@ for (const width of [360, 768, 1280]) {
     page.on('pageerror', (error) => errors.push(error.message))
     for (const path of [
       '/home',
-      '/add',
-      '/manage',
+      '/question/create',
+      '/question/list',
       '/review',
-      '/stats',
+      '/profile',
       '/settings',
-      '/manage-detail/q1',
-      '/sync',
-      '/markdown-test'
+      '/question/q1',
+      '/settings/sync',
+      '/dev/markdown'
     ]) {
-      await page.goto('/#' + path)
+      await page.goto(path)
       const roots: Record<string, string> = {
         '/home': '.home-page',
-        '/add': '.add-page',
-        '/manage': '.manage-page',
+        '/question/create': '.add-page',
+        '/question/list': '.manage-page',
         '/review': '.preview-page',
-        '/stats': '.profile-page',
+        '/profile': '.profile-page',
         '/settings': '.settings-page',
-        '/manage-detail/q1': '.manage-detail-page',
-        '/sync': '.unsupported-page',
-        '/markdown-test': '.markdown-textarea'
+        '/question/q1': '.manage-detail-page',
+        '/settings/sync': '.unsupported-page',
+        '/dev/markdown': '.markdown-textarea'
       }
       await expect(page.locator(roots[path]).first()).toBeVisible()
       await expect(page.locator('.app-page')).toBeVisible()
@@ -176,7 +272,7 @@ for (const width of [360, 768, 1280]) {
 
 test('mobile filters and dialogs remain usable', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 })
-  await page.goto('/#/manage')
+  await page.goto('/question/list')
   await page.getByRole('button', { name: '筛选与排序' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('button', { name: '查看结果' }).click()
@@ -188,7 +284,7 @@ test('mobile filters and dialogs remain usable', async ({ page }) => {
     .getByRole('button', { name: '取消', exact: true })
     .click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.goto('/#/add')
+  await page.goto('/question/create')
   await page.getByRole('combobox', { name: '科目', exact: true }).click()
   await page.getByText('添加新科目', { exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('添加新科目')
@@ -201,26 +297,26 @@ test('mobile filters and dialogs remain usable', async ({ page }) => {
 test('theme persists and review requires explicit submission', async ({
   page
 }) => {
-  await page.goto('/#/settings')
+  await page.goto('/settings')
   await page.locator('.theme-select').click()
   await page.getByRole('option', { name: '深色主题' }).click()
   await expect(page.locator('body')).toHaveClass(/body--dark/)
   await page.reload()
   await expect(page.locator('body')).toHaveClass(/body--dark/)
-  await page.goto('/#/review')
+  await page.goto('/review')
   await page.getByRole('button', { name: '开始复习' }).click()
   await page.getByRole('button', { name: '显示答案' }).click()
   await expect(page.getByRole('button', { name: '提交并继续' })).toBeVisible()
   await page.getByRole('slider', { name: '掌握程度' }).press('ArrowRight')
-  await expect(page).toHaveURL(/review-detail/)
+  await expect(page).toHaveURL(/review\/session/)
   await page.getByRole('button', { name: '提交并继续' }).click()
-  await expect(page).toHaveURL(/#\/review$/)
+  await expect(page).toHaveURL(/\/review$/)
 })
 
 test('source selection, markdown editing and save preserve the question', async ({
   page
 }) => {
-  await page.goto('/#/add')
+  await page.goto('/question/create')
   await page.getByRole('combobox', { name: '科目', exact: true }).click()
   await page.getByRole('option', { name: '数学', exact: true }).click()
   await page.getByRole('combobox', { name: '书名', exact: true }).click()
@@ -251,7 +347,7 @@ test('source selection, markdown editing and save preserve the question', async 
 })
 
 test('batch export selection and delete cancellation', async ({ page }) => {
-  await page.goto('/#/manage')
+  await page.goto('/question/list')
   await page.getByRole('button', { name: '批量选择' }).click()
   await expect(
     page.getByRole('button', { name: '导出', exact: true })
@@ -260,7 +356,7 @@ test('batch export selection and delete cancellation', async ({ page }) => {
   await page.getByRole('button', { name: '导出', exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('1 道错题')
   await page.getByRole('dialog').getByRole('button', { name: '取消' }).click()
-  await page.goto('/#/manage-detail/q1')
+  await page.goto('/question/q1')
   await page.getByRole('button', { name: '删除', exact: true }).click()
   await page
     .getByRole('dialog')
@@ -275,7 +371,7 @@ test('batch export selection and delete cancellation', async ({ page }) => {
 
 test('system theme changes reach both Quasar and content', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
-  await page.goto('/#/home')
+  await page.goto('/home')
   await expect(page.locator('body')).toHaveClass(/body--light/)
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('body')).toHaveClass(/body--dark/)
@@ -285,7 +381,7 @@ test('system theme changes reach both Quasar and content', async ({ page }) => {
 test('Markdown sanitization blocks executable HTML and unsafe URLs in the browser', async ({
   page
 }) => {
-  await page.goto('/#/home')
+  await page.goto('/home')
   const result = await page.evaluate(async () => {
     const modulePath = '/src/utils/markdown.ts'
     const { renderMarkdown } = await import(/* @vite-ignore */ modulePath)
@@ -310,7 +406,7 @@ test('mobile image editor can rotate, save and reopen an uploaded image', async 
   page
 }) => {
   await page.setViewportSize({ width: 360, height: 780 })
-  await page.goto('/#/add')
+  await page.goto('/question/create')
   const png = await page.evaluate(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 240

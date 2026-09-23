@@ -12,7 +12,7 @@ use super::error::{
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct QuestionFilter {
     pub source_ids: HashSet<Uuid>,
-    pub search: Option<String>,
+    pub keyword: Option<String>,
     pub subject_id: Option<Uuid>,
     pub book: Option<String>,
     pub chapter: Option<String>,

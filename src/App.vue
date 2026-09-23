@@ -1,36 +1,42 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event'
 import { computed, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 import { getOpenedUrls } from './api/platformExceptions'
-import AppNavigation from './components/AppNavigation.vue'
+import AppNavigation, {
+  routePresentation
+} from './components/AppNavigation.vue'
 import { initializeTheme } from './composables/useTheme'
+import { goQuestionList } from './router'
+import type { QuestionListIntent } from './router/types'
 import { importStore } from './stores/importStore'
 import { parseImportFile } from './utils/importJson'
 
+// The shell reads presentation state; cross-page actions stay in navigation.
 const route = useRoute()
-const router = useRouter()
-
-const pageTitle = computed(() => {
-  return (route.meta.title as string) || '智能错题本'
-})
-
-const parentPath = computed(() =>
-  route.path.startsWith('/manage-detail')
-    ? '/manage'
-    : route.path === '/review-detail'
-      ? '/review'
-      : '/home'
+const currentRoutePresentation = computed(() =>
+  route.name ? routePresentation[route.name] : undefined
 )
-const showBack = computed(() =>
-  /detail|settings|sync|markdown-test/.test(route.path)
+const pageTitle = computed(
+  () => currentRoutePresentation.value?.title ?? '智能错题本'
 )
-function search() {
-  if (route.path === '/manage')
-    window.dispatchEvent(new CustomEvent('focus-library-search'))
-  else router.push({ path: '/manage', query: { focus: 'search' } })
+const hasBackTarget = computed(
+  () => currentRoutePresentation.value?.backTo !== undefined
+)
+const backTarget = computed(
+  () => currentRoutePresentation.value?.backTo ?? { name: 'home' as const }
+)
+
+// Callers choose history semantics explicitly. The route maps query state to
+// page props; the destination clears a handled intent through navigation.
+function requestListIntent(intent: QuestionListIntent) {
+  return goQuestionList(
+    { intent },
+    route.name === 'question-list' ? { replace: true, force: true } : {}
+  )
 }
+
 const themeLifecycle = initializeTheme()
 
 /** 统一处理文件关联传入的 URL */
@@ -57,13 +63,7 @@ const handleOpenedUrl = async (url: string) => {
       version: result.version
     }
 
-    // 跳转到管理页面（如果不在那里），触发导入弹窗
-    if (route.path !== '/manage') {
-      router.push('/manage?import=1')
-    } else {
-      // 已经在管理页面，用 query 的变化触发重新检查
-      router.replace('/manage?import=1')
-    }
+    await requestListIntent('import')
   } catch (e) {
     console.error('处理文件关联导入失败:', e)
   }
@@ -116,20 +116,32 @@ onUnmounted(() => {
     <q-header bordered class="app-header">
       <q-toolbar class="app-toolbar">
         <q-btn
-          v-if="showBack"
+          v-if="hasBackTarget"
           flat
           round
           icon="arrow_back"
-          :to="parentPath"
+          :to="backTarget"
           aria-label="返回"
         />
         <q-toolbar-title class="text-weight-bold">
           {{ pageTitle }}
         </q-toolbar-title>
-        <q-btn flat round icon="search" aria-label="搜索错题" @click="search">
+        <q-btn
+          flat
+          round
+          icon="search"
+          aria-label="搜索错题"
+          @click="requestListIntent('search')"
+        >
           <q-tooltip>搜索错题</q-tooltip>
         </q-btn>
-        <q-btn flat round icon="settings" to="/settings" aria-label="设置">
+        <q-btn
+          flat
+          round
+          icon="settings"
+          :to="{ name: 'settings' }"
+          aria-label="设置"
+        >
           <q-tooltip>设置</q-tooltip>
         </q-btn>
       </q-toolbar>

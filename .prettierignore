@@ -7,5 +7,6 @@ src-tauri/target/
 server/
 
 node_modules/
+.tsbuild/
 dist/
 stats.html

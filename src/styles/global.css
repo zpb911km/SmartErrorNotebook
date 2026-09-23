@@ -464,14 +464,14 @@ a,
   flex-wrap: wrap;
   margin: 20px 0;
 }
-.active-filters {
+.active-filter-items {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
   margin: 16px 0;
 }
-.filter-tag,
+.active-filter-item,
 .subject-tag,
 .source-tag,
 .difficulty-tag,
@@ -486,7 +486,7 @@ a,
   color: var(--text-primary);
   font-size: 12px;
 }
-.filter-tag .q-btn {
+.active-filter-item .q-btn {
   padding: 0;
   min-height: 24px;
 }

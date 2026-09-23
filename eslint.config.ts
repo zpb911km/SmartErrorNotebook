@@ -3,13 +3,14 @@ import prettierConfig from 'eslint-config-prettier'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import pluginVue from 'eslint-plugin-vue'
 
-export default withVueTs(
+const config: ReturnType<typeof withVueTs> = withVueTs(
   {
     ignores: [
       'src-tauri/gen/**',
       'src-tauri/target/**',
       'node_modules/**',
       'dist/**',
+      '.tsbuild/**',
       'stats.html',
       'test-results/**',
       'playwright-report/**'
@@ -31,3 +32,5 @@ export default withVueTs(
 
   prettierConfig
 )
+
+export default config

@@ -10,23 +10,30 @@
       <h1>给记忆一点温习的时间</h1>
       <p>根据掌握情况安排复习，也可以选择任意错题自由回顾。</p>
     </div>
-    <LibraryFilters
-      v-model="filters"
-      :subjects="subjects"
-      :sources="Array.from(sourceInfoMap.values())"
+    <LibraryFilterPanel
+      ref="filterPanelRef"
+      v-model="filterModel"
+      :data="filterData"
     />
-    <!-- 已选筛选条件 -->
-    <div v-if="activeFilters.length > 0" class="active-filters">
-      <span class="active-filters-label">已选：</span>
-      <span v-for="f in activeFilters" :key="f.key" class="filter-tag">
-        {{ f.label }}
+    <div
+      v-if="filterPanelRef?.activeFilterItems.length"
+      class="active-filter-items"
+    >
+      <span class="active-filter-items-label">已选：</span>
+      <span
+        v-for="filter in filterPanelRef.activeFilterItems"
+        :key="filter.key"
+        class="active-filter-item"
+      >
+        {{ filter.label }}
         <q-btn
           no-caps
           unelevated
           type="button"
           flat
-          class="filter-tag-close"
-          @click="removeFilter(f.key)"
+          class="active-filter-item-close"
+          :aria-label="`移除${filter.label}`"
+          @click="filterPanelRef.clearFilterItem(filter.key)"
         >
           <AppIcon name="x" :size="14" />
         </q-btn>
@@ -36,8 +43,8 @@
         unelevated
         type="button"
         flat
-        class="clear-all-btn"
-        @click="clearAllFilters"
+        class="clear-all-filter-items-btn"
+        @click="filterPanelRef.clearAllFilterItems"
       >
         清除
       </q-btn>
@@ -161,10 +168,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
-import LibraryFilters from '../components/LibraryFilters.vue'
+import LibraryFilterPanel, {
+  createEmptyLibraryFilterPanelModelValue,
+  type LibraryFilterPanelData,
+  type LibraryFilterPanelModelValue
+} from '../components/LibraryFilterPanel.vue'
 import { useLatestRequest } from '../composables/useLatestRequest'
+import { goReviewSession } from '../router'
 import { loadQuestionLibrary } from '../services/questionQueries'
 import type { ReviewCard } from '../services/reviewStore'
 import { setReviewQueue } from '../services/reviewStore'
@@ -174,8 +185,6 @@ import type { QuestionView } from '../types/questionView'
 import { renderMarkdown } from '../utils/markdown'
 import { timestampSeconds } from '../utils/questionDisplay'
 
-const router = useRouter()
-
 // ============ Data ============
 const subjects = ref<Subject[]>([])
 const questions = ref<QuestionView[]>([])
@@ -184,28 +193,16 @@ const questionTagsMap = ref<Map<string, string[]>>(new Map())
 const sourceInfoMap = ref<Map<string | null, Source>>(new Map())
 const isLoading = ref(true)
 const loadError = ref('')
+const filterPanelRef = ref<InstanceType<typeof LibraryFilterPanel> | null>(null)
 
-const filters = ref({
-  subjectId: '',
-  book: '',
-  chapter: '',
-  knowledge: ''
-})
-
-const activeFilters = computed(() => {
-  const list: { key: string; label: string }[] = []
-  if (filters.value.subjectId) {
-    const s = subjects.value.find((x) => x.id === filters.value.subjectId)
-    if (s) list.push({ key: 'subjectId', label: s.name })
-  }
-  if (filters.value.book)
-    list.push({ key: 'book', label: `📖 ${filters.value.book}` })
-  if (filters.value.chapter)
-    list.push({ key: 'chapter', label: `📑 ${filters.value.chapter}` })
-  if (filters.value.knowledge)
-    list.push({ key: 'knowledge', label: `🏷 ${filters.value.knowledge}` })
-  return list
-})
+const filterModel = ref<LibraryFilterPanelModelValue>(
+  createEmptyLibraryFilterPanelModelValue()
+)
+const filters = computed(() => filterModel.value.filter)
+const filterData = computed<LibraryFilterPanelData>(() => ({
+  subjects: subjects.value,
+  sources: Array.from(sourceInfoMap.value.values())
+}))
 
 const now = () => Math.floor(Date.now() / 1000)
 
@@ -359,31 +356,6 @@ function getSubjectStyle(subjectId: string) {
   return { backgroundColor: '#e3f2fd', color: '#1976d2' }
 }
 
-function removeFilter(key: string) {
-  if (key === 'subjectId') {
-    filters.value.subjectId = ''
-    filters.value.book = ''
-    filters.value.chapter = ''
-    filters.value.knowledge = ''
-  } else if (key === 'book') {
-    filters.value.book = ''
-    filters.value.chapter = ''
-    filters.value.knowledge = ''
-  } else if (key === 'chapter') {
-    filters.value.chapter = ''
-    filters.value.knowledge = ''
-  } else if (key === 'knowledge') {
-    filters.value.knowledge = ''
-  }
-}
-
-function clearAllFilters() {
-  filters.value.subjectId = ''
-  filters.value.book = ''
-  filters.value.chapter = ''
-  filters.value.knowledge = ''
-}
-
 function buildReviewCard(item: MergedItem): ReviewCard {
   return {
     questionId: item.questionId,
@@ -395,14 +367,14 @@ function buildReviewCard(item: MergedItem): ReviewCard {
 
 function reviewCard(item: MergedItem) {
   setReviewQueue([buildReviewCard(item)], 'all')
-  router.push({ name: 'ReviewDetail' })
+  goReviewSession()
 }
 
 function startReview() {
   const queue = dueList.value.map(buildReviewCard)
   if (queue.length === 0) return
   setReviewQueue(queue, 'due')
-  router.push({ name: 'ReviewDetail' })
+  goReviewSession()
 }
 
 // ============ Lifecycle ============

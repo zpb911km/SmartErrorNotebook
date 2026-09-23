@@ -112,7 +112,10 @@ SmartErrorNotebook/
 ├── index.html                  # 入口 HTML
 ├── package.json                # 前端依赖与脚本
 ├── vite.config.ts              # Vite 构建配置
-├── tsconfig.json               # TypeScript 配置
+├── tsconfig.json               # TypeScript 项目图入口
+├── tsconfig.app.json           # 前端应用项目
+├── tsconfig.node.json          # 构建工具配置项目
+├── tsconfig.vitest.json        # 类型测试项目
 ├── .prettierrc                 # 代码格式化配置
 ├── .prettierignore             # 格式化忽略文件
 ├── .gitignore                  # Git 忽略规则
@@ -125,19 +128,22 @@ SmartErrorNotebook/
 │   ├── vite-env.d.ts           # Vite 类型声明
 │   │
 │   ├── router/
-│   │   └── index.ts            # Vue Router 路由定义（12 个页面）
+│   │   ├── catalog.ts          # RouteNamedMap 和完整路由树
+│   │   ├── navigation.ts       # 明确的跨页操作与历史操作
+│   │   ├── types.ts            # 路由类型注册及列表 Query 协议
+│   │   └── index.ts            # 创建路由实例并导出导航公共 API
 │   │
 │   ├── views/                  # 页面组件
-│   │   ├── HomeView.vue        # 首页（轮播、统计概览）
-│   │   ├── AddView.vue         # 添加错题（拍照/选图/AI 识别）
-│   │   ├── ManageView.vue      # 错题管理（搜索、筛选、列表）
-│   │   ├── Manage-Detail.vue   # 错题详情（编辑、附件、标签）
-│   │   ├── PreviewView.vue     # 复习计划（筛选待复习卡片）
-│   │   ├── Review-Detail.vue   # 复习执行（展示题目、评分）
-│   │   ├── ProfileView.vue     # 个人主页（统计、SRS 图表）
-│   │   ├── SettingsView.vue    # 设置（主题、AI、导出配置）
-│   │   ├── SyncView.vue        # 远程服务停用说明
-│   │   └── MarkdownTextareaTest.vue  # 组件测试页
+│   │   ├── HomeView.vue                # 首页（统计概览）
+│   │   ├── QuestionCreateView.vue      # 添加错题（拍照/选图/AI 识别）
+│   │   ├── QuestionListView.vue        # 错题管理（搜索、筛选、列表）
+│   │   ├── QuestionDetailView.vue      # 错题详情（编辑、附件、标签）
+│   │   ├── ReviewPlanView.vue          # 复习计划（筛选待复习卡片）
+│   │   ├── ReviewSessionView.vue       # 复习执行（展示题目、评分）
+│   │   ├── ProfileView.vue             # 个人主页（统计、SRS 图表）
+│   │   ├── SettingsView.vue            # 设置（主题、AI、导出配置）
+│   │   ├── SyncView.vue                # 远程服务停用说明
+│   │   └── MarkdownPlaygroundView.vue  # 组件测试页
 │   │
 │   ├── components/             # 复用组件
 │   │   ├── TopBar.vue          # 顶部导航栏
@@ -273,27 +279,32 @@ SmartErrorNotebook/
 - **框架**: Vue 3 (Composition API + `<script setup>`)
 - **语言**: TypeScript（`strict` 模式）
 - **构建**: Vite 6
-- **路由**: Vue Router 4 (Hash 模式)
+- **路由**: Vue Router 5 (Web History 模式)
 - **动效**: GSAP 3
 - **公式渲染**: KaTeX
 - **代码高亮**: Highlight.js
 
 ### 路由表
 
-| 路径                 | 页面                 | 标题                 |
-| -------------------- | -------------------- | -------------------- |
-| `/`                  | 重定向到 `/home`     | —                    |
-| `/home`              | Home                 | 首页                 |
-| `/add`               | Add                  | 添加错题             |
-| `/manage`            | Manage               | 错题管理             |
-| `/manage-detail/:id` | ManageDetail         | 错题详情管理         |
-| `/review`            | Preview              | 复习计划             |
-| `/review-detail`     | ReviewDetail         | 复习详情             |
-| `/stats`             | Profile              | 个人主页             |
-| `/settings`          | Settings             | 设置                 |
-| `/sync`              | Sync                 | 远程服务停用说明     |
-| `/community`         | redirect             | 重定向到同步停用说明 |
-| `/markdown-test`     | MarkdownTextareaTest | Markdown 组件测试    |
+`src/router/catalog.ts` 维护显式 `RouteNamedMap` 和完整 `routes` 树；运行时名称、路径和组件直接写在对应记录中，所有记录均启用大小写敏感和严格尾斜杠匹配。类型映射与实际规范路径通过一致性测试校验，`types.ts` 仅注册 `TypesConfig.RouteNamedMap`。首页规范地址为 `/`，`/home` 是保留地址的别名；`/question` 重定向到 `/question/list`。
+
+标题、菜单顺序、图标和返回目标由 `src/components/AppNavigation.vue` 的 `routePresentation` 维护。`src/router/types.ts` 定义路由类型及列表 Query 协议，`src/router/index.ts` 作为导航公共入口重新导出 `navigation.ts`；页面不读取 route，列表 intent 与详情 id 均由路由表映射为 props。所有编程式导航和历史返回统一从 `src/router` 导入。列表入口为 `goQuestionList(query?, options?)`，只序列化显式 `QuestionListQuery`，不继承 query/hash，不推断 replace/force；搜索、文件导入调用方在同页时显式指定 `{ replace: true, force: true }`。列表完成搜索聚焦或导入弹窗触发后，调用 `goQuestionList({}, { replace: true })` 清除瞬时 Intent 并重新进入规范列表地址，不重挂载组件或丢失本地状态。列表仅在 import 意图下检查待导入数据；冲突或无效 query 解析为无意图。`pnpm test` 运行行为、边界及类型检查。
+
+以下为新的规范地址。旧 `/questions` 系列地址，以及 `/add`、`/manage`、`/manage-detail/:id`、`/review-detail`、`/stats`、`/sync`、`/community` 和 `/markdown-test` 不提供兼容入口。
+
+| 路径               | 页面                | 标题              |
+| ------------------ | ------------------- | ----------------- |
+| `/`                | home                | 首页              |
+| `/home`            | home 的别名         | 首页              |
+| `/question/create` | question-create     | 添加错题          |
+| `/question/list`   | question-list       | 错题管理          |
+| `/question/:id`    | question-detail     | 错题详情管理      |
+| `/review`          | review-plan         | 复习计划          |
+| `/review/session`  | review-session      | 复习详情          |
+| `/profile`         | profile             | 个人主页          |
+| `/settings`        | settings            | 设置              |
+| `/settings/sync`   | sync                | 远程服务停用说明  |
+| `/dev/markdown`    | markdown-playground | Markdown 组件测试 |
 
 ### 调用 Rust 后端
 

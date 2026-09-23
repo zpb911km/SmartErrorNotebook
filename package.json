@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --build tsconfig.app.json && vite build",
     "build:analyze": "vite build --mode analyze",
     "dev": "vite",
     "force-build": "vite build",
@@ -47,6 +47,7 @@
     "@playwright/test": "^1.63.0",
     "@quasar/vite-plugin": "^2.0.2",
     "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^26.5.1",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/eslint-config-typescript": "^14.9.0",
     "eslint": "^10.10.0",

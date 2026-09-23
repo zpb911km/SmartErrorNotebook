@@ -7,7 +7,7 @@
 - `App.vue` 与 `AppNavigation.vue`：唯一的 QLayout 应用壳，负责页面容器、安全区域与导航。宽度达到 1024px 时显示侧栏，较小屏幕显示底部导航。详情页使用明确的父页面返回入口。
 - `quasar.ts`、`main.ts`：集中注册中文语言包、Dialog、Notify、图标与基础样式。不要在页面重复安装插件。
 - `views/`：编排页面状态与业务操作。可复用交互放在 `components/`，持久化仍经过 `services/` 和 `api/`，不在展示组件直接拼接 IPC。
-- `LibraryFilters.vue`：管理页与复习页共用的筛选字段；`ResponsiveFilterPanel.vue` 只负责桌面面板/移动弹窗。来源层级由 `sourceCatalog`、`sourceSelection` 统一处理。
+- `LibraryFilterPanel.vue`：管理页与复习页共用的筛选字段及条件清理行为；`ResponsiveFilterPanel.vue` 只负责桌面面板/移动弹窗。来源层级由 `sourceCatalog`、`sourceSelection` 统一处理。
 - `SourceSelector.vue`、`ErrorTagSelector.vue`：编辑本地草稿；来源的落库由保存边界完成，避免异步选择状态和保存互相竞争。
 - `useTheme.ts`：持久化主题偏好，使用 Quasar Dark 作为实际明暗状态来源；兼容内容区现有 CSS 变量，不重复监听系统主题。
 - `utils/dialog.ts`、`utils/notification.ts`：统一确认与通知入口。危险操作必须确认，异步提交必须防重入，并保留失败时的草稿。
@@ -43,6 +43,6 @@ Windows 受限沙箱中，服务器进程树清理可能挂起，即使用例已
 
 浏览器测试覆盖 360/768/1280px 布局、主要路由无横向溢出、移动筛选和弹窗、主题持久化/跟随系统、录入来源与 Markdown 保存、图片上传/旋转/保存、批量导出选择、删除取消、复习显式提交以及 Markdown 清理。截图输出到忽略提交的 `test-results/screens/`。
 
-浏览器测试通过模拟 Tauri IPC 使用固定数据，不访问真实数据库或外部 AI 服务，不能替代原生端验收。发布前仍需在桌面 Tauri 与 Android 真机验证：相机授权/取消、图片编辑与长图、文件导入及文件关联、导出保存/分享、系统返回键、安全区域和软键盘。远程同步和社区仍保持停用；`/markdown-test` 是开发调试入口。
+浏览器测试通过模拟 Tauri IPC 使用固定数据，不访问真实数据库或外部 AI 服务，不能替代原生端验收。发布前仍需在桌面 Tauri 与 Android 真机验证：相机授权/取消、图片编辑与长图、文件导入及文件关联、导出保存/分享、系统返回键、安全区域和软键盘。远程同步和社区仍保持停用；`/dev/markdown` 是开发调试入口。
 
 Quasar 使用语义化版本兼容范围，允许包管理器在该范围内升级；升级时提交锁文件以固定实际安装版本，并保留供应链检查，不添加绕过发布时间检查的例外。

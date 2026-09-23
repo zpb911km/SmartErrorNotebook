@@ -27,12 +27,12 @@ graph TB
     subgraph Frontend["🖥️ 前端展示层 (Vue 3 + TypeScript)"]
         direction TB
 
-        subgraph V["Views（12 页面）"]
-            V1[Home] --- V2[Add]
-            V3[Manage] --- V4[Manage-Detail]
-            V5[Preview] --- V6[Review-Detail]
-            V7[Profile] --- V8[Settings]
-            V9[Sync 停用说明]
+        subgraph V["Views（10 页面）"]
+            V1[HomeView] --- V2[QuestionCreateView]
+            V3[QuestionListView] --- V4[QuestionDetailView]
+            V5[ReviewPlanView] --- V6[ReviewSessionView]
+            V7[ProfileView] --- V8[SettingsView]
+            V9[SyncView 停用说明] --- V10[MarkdownPlaygroundView]
         end
 
         subgraph C["Components（18 组件）"]

@@ -206,16 +206,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 
 import { submitReview as submitReviewRequest } from '../api'
 import { useLatestRequest } from '../composables/useLatestRequest'
+import { goQuestionDetail, goReviewPlan } from '../router'
 import { clearReviewQueue, getReviewQueue } from '../services/reviewStore'
 import type { SubmitReviewResponse } from '../types'
 import { showAlert } from '../utils/dialog'
 import { formatTimestamp as formatTs } from '../utils/questionDisplay'
-
-const router = useRouter()
 
 // ============ State ============
 const queue = getReviewQueue()
@@ -302,7 +300,7 @@ async function submitReview() {
       lastResult.value = null
     } else {
       clearReviewQueue()
-      router.replace({ name: 'Preview' })
+      goReviewPlan({ replace: true })
     }
   } catch (e) {
     if (!isCurrent()) return
@@ -315,21 +313,18 @@ async function submitReview() {
 
 function goToDetail() {
   if (!currentCard.value) return
-  router.push({
-    name: 'ManageDetail',
-    params: { id: currentCard.value.questionId }
-  })
+  goQuestionDetail(currentCard.value.questionId)
 }
 
 function exitReview() {
   clearReviewQueue()
-  router.replace({ name: 'Preview' })
+  goReviewPlan({ replace: true })
 }
 
 // ============ Lifecycle ============
 onMounted(() => {
   if (queue.length === 0) {
-    router.replace({ name: 'Preview' })
+    goReviewPlan({ replace: true })
   }
 })
 </script>

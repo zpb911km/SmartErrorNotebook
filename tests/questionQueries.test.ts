@@ -92,22 +92,22 @@ describe('Current question queries', () => {
     expect(library.items[1].srs).toBeNull()
   })
 
-  it('filters the full subject candidate set before pagination', async () => {
+  it('forwards keyword filtering and pagination to the backend', async () => {
     vi.mocked(api.listQuestions).mockResolvedValue({
-      items: [question('other', null), question('first'), question('second')],
-      total: 3
+      items: [question('second')],
+      total: 2
     })
-    const library = await loadQuestionLibrary(
-      { offset: 1, limit: 1, filter: { search: 'test' } },
-      subject.id
-    )
-    expect(api.listQuestions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        offset: undefined,
-        limit: undefined,
-        filter: { search: 'test' }
-      })
-    )
+    const library = await loadQuestionLibrary({
+      offset: 1,
+      limit: 1,
+      filter: { keyword: 'test' }
+    })
+    expect(api.listQuestions).toHaveBeenCalledWith({
+      offset: 1,
+      limit: 1,
+      filter: { keyword: 'test' },
+      sort: ['UPDATED_AT_DESC']
+    })
     expect(library.total).toBe(2)
     expect(library.items.map((item) => item.id)).toEqual(['second'])
   })

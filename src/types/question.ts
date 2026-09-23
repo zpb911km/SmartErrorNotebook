@@ -84,7 +84,7 @@ export type QuestionSort =
   | 'ID_DESC'
 
 export interface QuestionFilter {
-  search?: string
+  keyword?: string
   book?: string
   chapter?: string
   knowledge?: string

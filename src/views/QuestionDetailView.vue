@@ -460,7 +460,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 
 import { deleteQuestion as removeQuestion, getAttachment } from '../api'
 import ErrorTagSelector from '../components/ErrorTagSelector.vue'
@@ -470,6 +469,7 @@ import MarkdownTextarea from '../components/MarkdownTextarea.vue'
 import SourceSelector from '../components/SourceSelector.vue'
 import SubjectSelector from '../components/SubjectSelector.vue'
 import { useQuestionEditor } from '../composables/useQuestionEditor'
+import { goBack as navigateBack, goQuestionList } from '../router'
 import type { QuestionDraft } from '../services/questionEditor'
 import { loadQuestionDetail } from '../services/questionQueries'
 import { materializeSourceSelection } from '../services/sourcePersistence'
@@ -489,11 +489,10 @@ import {
   questionTypeLabel
 } from '../utils/questionDisplay'
 
-const router = useRouter()
-const route = useRoute()
-
 // 错题ID
-const errorId = computed(() => route.params.id as string)
+// The router adapts parameters to props; pages do not read route state.
+const props = defineProps<{ id: string }>()
+const errorId = computed(() => props.id)
 
 // 数据状态
 const errorDetail = ref<QuestionView | null>(null)
@@ -742,7 +741,7 @@ const deleteError = async () => {
     await removeQuestion(errorId.value)
     showDeleteConfirm.value = false
     // 返回管理页面
-    router.push('/manage')
+    goQuestionList()
   } catch (error) {
     console.error('删除失败:', error)
     showAlert('删除失败，请重试')
@@ -755,7 +754,7 @@ const formatTimestamp = (timestamp?: string | null) =>
 
 // 返回上一页
 const goBack = () => {
-  router.back()
+  navigateBack()
 }
 
 // 处理科目选择
